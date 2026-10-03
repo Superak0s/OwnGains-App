@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # --legacy-peer-deps matches the documented local install: the peer
+      # ranges are not otherwise resolvable. Note this step also pulls xlsx
+      # from the SheetJS CDN rather than the npm registry, so a CDN outage
+      # fails the install rather than the code.
+      - run: npm ci --legacy-peer-deps
+
+      - run: npm run lint
+
+      # Icon-only buttons announce nothing to a screen reader. This keeps the
+      # count at zero rather than letting it creep back up.
+      - run: python3 scripts/find-unlabeled-icons.py
+
+      - run: npx tsc --noEmit
+
+      - run: npm test -- --ci

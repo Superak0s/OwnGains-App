@@ -1,0 +1,227 @@
+import React from "react";
+import { View, Text, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
+import type { ThemeColors } from "@shared/context/ThemeContext";
+import type {
+  Friend,
+  PendingFriendRequest,
+  SentFriendRequest,
+} from "../services";
+import type { UserSearchResult, UserRef } from "../types";
+import type { makeStyles } from "../FriendsScreen";
+import type { makePermStyles } from "./PermissionRow";
+import { Avatar } from "./Avatar";
+import { MIN_USER_SEARCH_LENGTH } from "../utils";
+
+interface SearchQrWidgetProps {
+  readonly permStyles: ReturnType<typeof makePermStyles>;
+  readonly onShowMyQr: () => void;
+  readonly onScanQr: () => void;
+}
+
+export function SearchQrWidget({
+  permStyles,
+  onShowMyQr,
+  onScanQr,
+}: SearchQrWidgetProps): React.JSX.Element {
+  return (
+    <View style={permStyles.row}>
+      <Text style={permStyles.icon}>🔳</Text>
+      <View style={permStyles.text}>
+        <Text style={permStyles.title}>Add via QR Code</Text>
+        <Text style={permStyles.desc}>
+          Show your code for a friend to scan, or scan theirs to add them
+          instantly.
+        </Text>
+      </View>
+      <TouchableOpacity style={permStyles.grantBtn} onPress={onShowMyQr}>
+        <Text style={permStyles.grantBtnText}>My Code</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[permStyles.grantBtn, { marginLeft: 8 }]}
+        onPress={onScanQr}
+      >
+        <Text style={permStyles.grantBtnText}>Scan</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+interface SearchUsersWidgetProps {
+  readonly styles: ReturnType<typeof makeStyles>;
+  readonly colors: ThemeColors;
+  readonly searchQuery: string;
+  readonly onChangeQuery: (text: string) => void;
+  readonly searching: boolean;
+  readonly searchResults: UserSearchResult[];
+  readonly friends: Friend[];
+  readonly sentRequests: SentFriendRequest[];
+  readonly pendingRequests: PendingFriendRequest[];
+  readonly currentUserId: number | string | undefined;
+  readonly onGoToRequests: () => void;
+  readonly onAddFriend: (username: string) => void;
+  readonly sendingRequestTo: number | string | null;
+  readonly onMoreActions: (user: UserRef) => void;
+}
+
+type SearchUserResultRowProps = Omit<
+  SearchUsersWidgetProps,
+  "searchQuery" | "onChangeQuery" | "searching" | "searchResults"
+> & { readonly result: UserSearchResult };
+
+function SearchUserResultRow({
+  result,
+  friends,
+  sentRequests,
+  pendingRequests,
+  currentUserId,
+  styles,
+  colors,
+  onGoToRequests,
+  onAddFriend,
+  sendingRequestTo,
+  onMoreActions,
+}: SearchUserResultRowProps): React.JSX.Element {
+  const isFriend = friends.some((f) => f.id === result.id);
+  const hasSent = sentRequests.some((r) => r.receiverId === result.id);
+  const hasPending = pendingRequests.some((r) => r.senderId === result.id);
+
+  let action: React.ReactNode;
+  if (result.id === currentUserId) {
+    action = (
+      <View style={styles.statusBadge}>
+        <Text style={styles.statusBadgeText}>You</Text>
+      </View>
+    );
+  } else if (isFriend) {
+    action = (
+      <View style={[styles.statusBadge, styles.statusBadgeFriend]}>
+        <Text style={styles.statusBadgeText}>✓ Friends</Text>
+      </View>
+    );
+  } else if (hasSent) {
+    action = (
+      <View style={styles.statusBadge}>
+        <Text style={styles.statusBadgeText}>Pending</Text>
+      </View>
+    );
+  } else if (hasPending) {
+    action = (
+      <TouchableOpacity style={styles.respondButton} onPress={onGoToRequests}>
+        <Text style={styles.respondButtonText}>Respond</Text>
+      </TouchableOpacity>
+    );
+  } else {
+    action = (
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() => onAddFriend(result.username)}
+        disabled={sendingRequestTo === result.username}
+      >
+        {sendingRequestTo === result.username ? (
+          <ActivityIndicator size='small' color={colors.textOnAccent} />
+        ) : (
+          <Text style={styles.addButtonText}>+ Add Friend</Text>
+        )}
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <View style={styles.searchResultCard}>
+      <View style={styles.friendInfo}>
+        <Avatar username={result.username} />
+        <View style={styles.friendDetails}>
+          <Text style={styles.friendName}>{result.username}</Text>
+        </View>
+      </View>
+      <View style={styles.searchResultActions}>
+        {action}
+        {result.id !== currentUserId && (
+          <TouchableOpacity
+            style={[styles.rejectButton, { marginLeft: 8 }]}
+            onPress={() => onMoreActions({ id: result.id, username: result.username })}
+            accessibilityRole="button"
+            accessibilityLabel={`Report or block ${result.username}`}
+          >
+            <Text style={styles.rejectButtonText}>⋯</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+}
+
+export function SearchUsersWidget({
+  styles,
+  colors,
+  searchQuery,
+  onChangeQuery,
+  searching,
+  searchResults,
+  friends,
+  sentRequests,
+  pendingRequests,
+  currentUserId,
+  onGoToRequests,
+  onAddFriend,
+  sendingRequestTo,
+  onMoreActions,
+}: SearchUsersWidgetProps): React.JSX.Element {
+  const query = searchQuery.trim();
+  const noResults =
+    query.length > 0 && query.length < MIN_USER_SEARCH_LENGTH ? (
+      <View style={styles.emptyStateSmall}>
+        <Text style={styles.emptyTextSmall}>
+          Type at least {MIN_USER_SEARCH_LENGTH} letters of a username
+        </Text>
+      </View>
+    ) : query && !searching && searchResults.length === 0 ? (
+      <View style={styles.emptyStateSmall}>
+        <Text style={styles.emptyTextSmall}>No users found</Text>
+      </View>
+    ) : null;
+  return (
+    <View>
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder='Search by username (3+ letters)'
+          accessibilityLabel='Search users by username'
+          value={searchQuery}
+          onChangeText={onChangeQuery}
+          autoCapitalize='none'
+          autoCorrect={false}
+        />
+        {searching && (
+          <ActivityIndicator
+            style={styles.searchLoader}
+            size='small'
+            color={colors.accent}
+          />
+        )}
+      </View>
+      {searchResults.length > 0 ? (
+        <View style={styles.listContainer}>
+          {searchResults.map((result) => (
+            <SearchUserResultRow
+              key={String(result.id)}
+              result={result}
+              friends={friends}
+              sentRequests={sentRequests}
+              pendingRequests={pendingRequests}
+              currentUserId={currentUserId}
+              styles={styles}
+              colors={colors}
+              onGoToRequests={onGoToRequests}
+              onAddFriend={onAddFriend}
+              sendingRequestTo={sendingRequestTo}
+              onMoreActions={onMoreActions}
+            />
+          ))}
+        </View>
+      ) : (
+        noResults
+      )}
+    </View>
+  );
+}

@@ -1,0 +1,86 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(sed -n:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run test:coverage:*)",
+      "Bash(npx jest:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx eslint:*)",
+      "Bash(node scripts/:*)",
+      "Bash(python scripts/:*)",
+      "Bash(python3 scripts/:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./**/*.jks)",
+      "Read(./**/*.keystore)",
+      "Read(./**/*.p12)",
+      "Read(./**/keystore.properties)",
+      "Read(./**/credentials.json)",
+      "Edit(./.env)",
+      "Write(./.env)",
+      "Edit(./.env.local)",
+      "Write(./.env.local)",
+      "Edit(./**/*.jks)",
+      "Write(./**/*.jks)",
+      "Edit(./**/*.keystore)",
+      "Write(./**/*.keystore)",
+      "Edit(./**/*.p12)",
+      "Write(./**/*.p12)",
+      "Edit(./**/keystore.properties)",
+      "Write(./**/keystore.properties)",
+      "Edit(./**/credentials.json)",
+      "Write(./**/credentials.json)",
+      "Edit(./ios/**)",
+      "Write(./ios/**)",
+      "Edit(./package-lock.json)",
+      "Write(./package-lock.json)",
+      "Edit(./src/data/exercises.ts)",
+      "Edit(./src/data/exercises.json)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/post-edit.js\"",
+            "timeout": 120,
+            "statusMessage": "Linting edited file..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-typecheck.js\"",
+            "timeout": 180,
+            "statusMessage": "Typechecking..."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,1334 @@
+[
+  {
+    "id": "push-pull-legs",
+    "name": "Push Pull Legs",
+    "description": "Classic 3-day split organized by movement pattern. Repeat the cycle 2x/week for a 6-day split.",
+    "days": [
+      {
+        "dayTitle": "Day 1 — Push",
+        "primaryMuscles": [
+          "Chest",
+          "Shoulders",
+          "Triceps"
+        ]
+      },
+      {
+        "dayTitle": "Day 2 — Pull",
+        "primaryMuscles": [
+          "Back",
+          "Biceps",
+          "Rear Delts"
+        ]
+      },
+      {
+        "dayTitle": "Day 3 — Legs",
+        "primaryMuscles": [
+          "Quads",
+          "Hamstrings",
+          "Glutes",
+          "Calves"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "full-body",
+    "name": "Full Body",
+    "description": "3-day full-body split. Good for beginners or lower weekly training frequency.",
+    "days": [
+      {
+        "dayTitle": "Day 1 — Full Body A",
+        "primaryMuscles": [
+          "Chest",
+          "Back",
+          "Quads",
+          "Shoulders"
+        ]
+      },
+      {
+        "dayTitle": "Day 2 — Full Body B",
+        "primaryMuscles": [
+          "Back",
+          "Hamstrings",
+          "Chest",
+          "Arms"
+        ]
+      },
+      {
+        "dayTitle": "Day 3 — Full Body C",
+        "primaryMuscles": [
+          "Quads",
+          "Shoulders",
+          "Back",
+          "Core"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "upper-lower",
+    "name": "Upper / Lower",
+    "description": "4-day split alternating upper and lower body sessions.",
+    "days": [
+      {
+        "dayTitle": "Day 1 — Upper",
+        "primaryMuscles": [
+          "Chest",
+          "Back",
+          "Shoulders",
+          "Arms"
+        ]
+      },
+      {
+        "dayTitle": "Day 2 — Lower",
+        "primaryMuscles": [
+          "Quads",
+          "Hamstrings",
+          "Glutes",
+          "Calves"
+        ]
+      },
+      {
+        "dayTitle": "Day 3 — Upper",
+        "primaryMuscles": [
+          "Chest",
+          "Back",
+          "Shoulders",
+          "Arms"
+        ]
+      },
+      {
+        "dayTitle": "Day 4 — Lower",
+        "primaryMuscles": [
+          "Quads",
+          "Hamstrings",
+          "Glutes",
+          "Core"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "stronglifts-5x5",
+    "name": "StrongLifts 5x5",
+    "description": "Beginner linear-progression program: two alternating full-body workouts, 3 days a week. Add weight each session.",
+    "days": [
+      {
+        "dayTitle": "Workout A",
+        "primaryMuscles": [
+          "Quads",
+          "Chest",
+          "Back"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Squat",
+            "exerciseId": "Barbell_Squat",
+            "primaryMuscles": [
+              "quadriceps"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "hamstrings",
+              "lower back"
+            ],
+            "sets": 5,
+            "reps": "5"
+          },
+          {
+            "name": "Barbell Bench Press - Medium Grip",
+            "exerciseId": "Barbell_Bench_Press_-_Medium_Grip",
+            "primaryMuscles": [
+              "chest"
+            ],
+            "secondaryMuscles": [
+              "shoulders",
+              "triceps"
+            ],
+            "sets": 5,
+            "reps": "5"
+          },
+          {
+            "name": "Bent Over Barbell Row",
+            "exerciseId": "Bent_Over_Barbell_Row",
+            "primaryMuscles": [
+              "middle back"
+            ],
+            "secondaryMuscles": [
+              "biceps",
+              "lats",
+              "shoulders"
+            ],
+            "sets": 5,
+            "reps": "5"
+          }
+        ]
+      },
+      {
+        "dayTitle": "Workout B",
+        "primaryMuscles": [
+          "Quads",
+          "Shoulders",
+          "Hamstrings"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Squat",
+            "exerciseId": "Barbell_Squat",
+            "primaryMuscles": [
+              "quadriceps"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "hamstrings",
+              "lower back"
+            ],
+            "sets": 5,
+            "reps": "5"
+          },
+          {
+            "name": "Standing Military Press",
+            "exerciseId": "Standing_Military_Press",
+            "primaryMuscles": [
+              "shoulders"
+            ],
+            "secondaryMuscles": [
+              "triceps"
+            ],
+            "sets": 5,
+            "reps": "5"
+          },
+          {
+            "name": "Barbell Deadlift",
+            "exerciseId": "Barbell_Deadlift",
+            "primaryMuscles": [
+              "lower back"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "forearms",
+              "glutes",
+              "hamstrings",
+              "lats",
+              "middle back",
+              "quadriceps",
+              "traps"
+            ],
+            "sets": 1,
+            "reps": "5"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "starting-strength",
+    "name": "Starting Strength",
+    "description": "Rippetoe's novice program: alternating full-body A/B, 3 days a week, 3x5 on the main lifts.",
+    "days": [
+      {
+        "dayTitle": "Workout A",
+        "primaryMuscles": [
+          "Quads",
+          "Chest"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Squat",
+            "exerciseId": "Barbell_Squat",
+            "primaryMuscles": [
+              "quadriceps"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "hamstrings",
+              "lower back"
+            ],
+            "sets": 3,
+            "reps": "5"
+          },
+          {
+            "name": "Barbell Bench Press - Medium Grip",
+            "exerciseId": "Barbell_Bench_Press_-_Medium_Grip",
+            "primaryMuscles": [
+              "chest"
+            ],
+            "secondaryMuscles": [
+              "shoulders",
+              "triceps"
+            ],
+            "sets": 3,
+            "reps": "5"
+          },
+          {
+            "name": "Barbell Deadlift",
+            "exerciseId": "Barbell_Deadlift",
+            "primaryMuscles": [
+              "lower back"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "forearms",
+              "glutes",
+              "hamstrings",
+              "lats",
+              "middle back",
+              "quadriceps",
+              "traps"
+            ],
+            "sets": 1,
+            "reps": "5"
+          }
+        ]
+      },
+      {
+        "dayTitle": "Workout B",
+        "primaryMuscles": [
+          "Quads",
+          "Shoulders",
+          "Back"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Squat",
+            "exerciseId": "Barbell_Squat",
+            "primaryMuscles": [
+              "quadriceps"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "hamstrings",
+              "lower back"
+            ],
+            "sets": 3,
+            "reps": "5"
+          },
+          {
+            "name": "Standing Military Press",
+            "exerciseId": "Standing_Military_Press",
+            "primaryMuscles": [
+              "shoulders"
+            ],
+            "secondaryMuscles": [
+              "triceps"
+            ],
+            "sets": 3,
+            "reps": "5"
+          },
+          {
+            "name": "Power Clean",
+            "exerciseId": "Power_Clean",
+            "primaryMuscles": [
+              "hamstrings"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "forearms",
+              "glutes",
+              "lower back",
+              "middle back",
+              "quadriceps",
+              "shoulders",
+              "traps",
+              "triceps"
+            ],
+            "sets": 5,
+            "reps": "3"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "gzclp",
+    "name": "GZCLP",
+    "description": "Cody Lefever's 3-day linear progression: a heavy T1 lift, a moderate T2 lift and light T3 accessories each day.",
+    "days": [
+      {
+        "dayTitle": "Day 1",
+        "primaryMuscles": [
+          "Quads",
+          "Chest",
+          "Back"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Squat",
+            "exerciseId": "Barbell_Squat",
+            "primaryMuscles": [
+              "quadriceps"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "hamstrings",
+              "lower back"
+            ],
+            "sets": 5,
+            "reps": "3+"
+          },
+          {
+            "name": "Dumbbell Bench Press",
+            "exerciseId": "Dumbbell_Bench_Press",
+            "primaryMuscles": [
+              "chest"
+            ],
+            "secondaryMuscles": [
+              "shoulders",
+              "triceps"
+            ],
+            "sets": 3,
+            "reps": "10"
+          },
+          {
+            "name": "Wide-Grip Lat Pulldown",
+            "exerciseId": "Wide-Grip_Lat_Pulldown",
+            "primaryMuscles": [
+              "lats"
+            ],
+            "secondaryMuscles": [
+              "biceps",
+              "middle back",
+              "shoulders"
+            ],
+            "sets": 3,
+            "reps": "15+"
+          }
+        ]
+      },
+      {
+        "dayTitle": "Day 2",
+        "primaryMuscles": [
+          "Shoulders",
+          "Hamstrings",
+          "Back"
+        ],
+        "exercises": [
+          {
+            "name": "Standing Military Press",
+            "exerciseId": "Standing_Military_Press",
+            "primaryMuscles": [
+              "shoulders"
+            ],
+            "secondaryMuscles": [
+              "triceps"
+            ],
+            "sets": 5,
+            "reps": "3+"
+          },
+          {
+            "name": "Barbell Deadlift",
+            "exerciseId": "Barbell_Deadlift",
+            "primaryMuscles": [
+              "lower back"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "forearms",
+              "glutes",
+              "hamstrings",
+              "lats",
+              "middle back",
+              "quadriceps",
+              "traps"
+            ],
+            "sets": 3,
+            "reps": "10"
+          },
+          {
+            "name": "Seated Cable Rows",
+            "exerciseId": "Seated_Cable_Rows",
+            "primaryMuscles": [
+              "middle back"
+            ],
+            "secondaryMuscles": [
+              "biceps",
+              "lats",
+              "shoulders"
+            ],
+            "sets": 3,
+            "reps": "15+"
+          }
+        ]
+      },
+      {
+        "dayTitle": "Day 3",
+        "primaryMuscles": [
+          "Chest",
+          "Quads",
+          "Back"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Bench Press - Medium Grip",
+            "exerciseId": "Barbell_Bench_Press_-_Medium_Grip",
+            "primaryMuscles": [
+              "chest"
+            ],
+            "secondaryMuscles": [
+              "shoulders",
+              "triceps"
+            ],
+            "sets": 5,
+            "reps": "3+"
+          },
+          {
+            "name": "Barbell Squat",
+            "exerciseId": "Barbell_Squat",
+            "primaryMuscles": [
+              "quadriceps"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "hamstrings",
+              "lower back"
+            ],
+            "sets": 3,
+            "reps": "10"
+          },
+          {
+            "name": "Wide-Grip Lat Pulldown",
+            "exerciseId": "Wide-Grip_Lat_Pulldown",
+            "primaryMuscles": [
+              "lats"
+            ],
+            "secondaryMuscles": [
+              "biceps",
+              "middle back",
+              "shoulders"
+            ],
+            "sets": 3,
+            "reps": "15+"
+          }
+        ]
+      },
+      {
+        "dayTitle": "Day 4",
+        "primaryMuscles": [
+          "Hamstrings",
+          "Shoulders",
+          "Back"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Deadlift",
+            "exerciseId": "Barbell_Deadlift",
+            "primaryMuscles": [
+              "lower back"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "forearms",
+              "glutes",
+              "hamstrings",
+              "lats",
+              "middle back",
+              "quadriceps",
+              "traps"
+            ],
+            "sets": 5,
+            "reps": "3+"
+          },
+          {
+            "name": "Standing Military Press",
+            "exerciseId": "Standing_Military_Press",
+            "primaryMuscles": [
+              "shoulders"
+            ],
+            "secondaryMuscles": [
+              "triceps"
+            ],
+            "sets": 3,
+            "reps": "10"
+          },
+          {
+            "name": "Seated Cable Rows",
+            "exerciseId": "Seated_Cable_Rows",
+            "primaryMuscles": [
+              "middle back"
+            ],
+            "secondaryMuscles": [
+              "biceps",
+              "lats",
+              "shoulders"
+            ],
+            "sets": 3,
+            "reps": "15+"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "reddit-ppl",
+    "name": "Push Pull Legs (6-day)",
+    "description": "Six days a week: push, pull and legs, each trained twice. A heavy compound first, higher-rep accessories after.",
+    "days": [
+      {
+        "dayTitle": "Pull A",
+        "primaryMuscles": [
+          "Back",
+          "Biceps"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Deadlift",
+            "exerciseId": "Barbell_Deadlift",
+            "primaryMuscles": [
+              "lower back"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "forearms",
+              "glutes",
+              "hamstrings",
+              "lats",
+              "middle back",
+              "quadriceps",
+              "traps"
+            ],
+            "sets": 3,
+            "reps": "5"
+          },
+          {
+            "name": "Pullups",
+            "exerciseId": "Pullups",
+            "primaryMuscles": [
+              "lats"
+            ],
+            "secondaryMuscles": [
+              "biceps",
+              "middle back"
+            ],
+            "sets": 4,
+            "reps": "6-10"
+          },
+          {
+            "name": "Bent Over Barbell Row",
+            "exerciseId": "Bent_Over_Barbell_Row",
+            "primaryMuscles": [
+              "middle back"
+            ],
+            "secondaryMuscles": [
+              "biceps",
+              "lats",
+              "shoulders"
+            ],
+            "sets": 3,
+            "reps": "8-12"
+          },
+          {
+            "name": "Face Pull",
+            "exerciseId": "Face_Pull",
+            "primaryMuscles": [
+              "shoulders"
+            ],
+            "secondaryMuscles": [
+              "middle back"
+            ],
+            "sets": 3,
+            "reps": "15-20"
+          },
+          {
+            "name": "Dumbbell Bicep Curl",
+            "exerciseId": "Dumbbell_Bicep_Curl",
+            "primaryMuscles": [
+              "biceps"
+            ],
+            "secondaryMuscles": [
+              "forearms"
+            ],
+            "sets": 3,
+            "reps": "10-15"
+          }
+        ]
+      },
+      {
+        "dayTitle": "Push A",
+        "primaryMuscles": [
+          "Chest",
+          "Shoulders",
+          "Triceps"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Bench Press - Medium Grip",
+            "exerciseId": "Barbell_Bench_Press_-_Medium_Grip",
+            "primaryMuscles": [
+              "chest"
+            ],
+            "secondaryMuscles": [
+              "shoulders",
+              "triceps"
+            ],
+            "sets": 4,
+            "reps": "5-8"
+          },
+          {
+            "name": "Standing Military Press",
+            "exerciseId": "Standing_Military_Press",
+            "primaryMuscles": [
+              "shoulders"
+            ],
+            "secondaryMuscles": [
+              "triceps"
+            ],
+            "sets": 3,
+            "reps": "6-10"
+          },
+          {
+            "name": "Incline Dumbbell Press",
+            "exerciseId": "Incline_Dumbbell_Press",
+            "primaryMuscles": [
+              "chest"
+            ],
+            "secondaryMuscles": [
+              "shoulders",
+              "triceps"
+            ],
+            "sets": 3,
+            "reps": "8-12"
+          },
+          {
+            "name": "Triceps Pushdown",
+            "exerciseId": "Triceps_Pushdown",
+            "primaryMuscles": [
+              "triceps"
+            ],
+            "secondaryMuscles": [],
+            "sets": 3,
+            "reps": "10-15"
+          },
+          {
+            "name": "Side Lateral Raise",
+            "exerciseId": "Side_Lateral_Raise",
+            "primaryMuscles": [
+              "shoulders"
+            ],
+            "secondaryMuscles": [],
+            "sets": 3,
+            "reps": "12-20"
+          }
+        ]
+      },
+      {
+        "dayTitle": "Legs A",
+        "primaryMuscles": [
+          "Quads",
+          "Hamstrings",
+          "Calves"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Squat",
+            "exerciseId": "Barbell_Squat",
+            "primaryMuscles": [
+              "quadriceps"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "hamstrings",
+              "lower back"
+            ],
+            "sets": 4,
+            "reps": "5-8"
+          },
+          {
+            "name": "Romanian Deadlift",
+            "exerciseId": "Romanian_Deadlift",
+            "primaryMuscles": [
+              "hamstrings"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "lower back"
+            ],
+            "sets": 3,
+            "reps": "8-10"
+          },
+          {
+            "name": "Leg Press",
+            "exerciseId": "Leg_Press",
+            "primaryMuscles": [
+              "quadriceps"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "hamstrings"
+            ],
+            "sets": 3,
+            "reps": "10-15"
+          },
+          {
+            "name": "Lying Leg Curls",
+            "exerciseId": "Lying_Leg_Curls",
+            "primaryMuscles": [
+              "hamstrings"
+            ],
+            "secondaryMuscles": [],
+            "sets": 3,
+            "reps": "10-15"
+          },
+          {
+            "name": "Standing Calf Raises",
+            "exerciseId": "Standing_Calf_Raises",
+            "primaryMuscles": [
+              "calves"
+            ],
+            "secondaryMuscles": [],
+            "sets": 4,
+            "reps": "10-15"
+          }
+        ]
+      },
+      {
+        "dayTitle": "Pull B",
+        "primaryMuscles": [
+          "Back",
+          "Biceps"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Deadlift",
+            "exerciseId": "Barbell_Deadlift",
+            "primaryMuscles": [
+              "lower back"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "forearms",
+              "glutes",
+              "hamstrings",
+              "lats",
+              "middle back",
+              "quadriceps",
+              "traps"
+            ],
+            "sets": 3,
+            "reps": "5"
+          },
+          {
+            "name": "Pullups",
+            "exerciseId": "Pullups",
+            "primaryMuscles": [
+              "lats"
+            ],
+            "secondaryMuscles": [
+              "biceps",
+              "middle back"
+            ],
+            "sets": 4,
+            "reps": "6-10"
+          },
+          {
+            "name": "Bent Over Barbell Row",
+            "exerciseId": "Bent_Over_Barbell_Row",
+            "primaryMuscles": [
+              "middle back"
+            ],
+            "secondaryMuscles": [
+              "biceps",
+              "lats",
+              "shoulders"
+            ],
+            "sets": 3,
+            "reps": "8-12"
+          },
+          {
+            "name": "Face Pull",
+            "exerciseId": "Face_Pull",
+            "primaryMuscles": [
+              "shoulders"
+            ],
+            "secondaryMuscles": [
+              "middle back"
+            ],
+            "sets": 3,
+            "reps": "15-20"
+          },
+          {
+            "name": "Dumbbell Bicep Curl",
+            "exerciseId": "Dumbbell_Bicep_Curl",
+            "primaryMuscles": [
+              "biceps"
+            ],
+            "secondaryMuscles": [
+              "forearms"
+            ],
+            "sets": 3,
+            "reps": "10-15"
+          }
+        ]
+      },
+      {
+        "dayTitle": "Push B",
+        "primaryMuscles": [
+          "Chest",
+          "Shoulders",
+          "Triceps"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Bench Press - Medium Grip",
+            "exerciseId": "Barbell_Bench_Press_-_Medium_Grip",
+            "primaryMuscles": [
+              "chest"
+            ],
+            "secondaryMuscles": [
+              "shoulders",
+              "triceps"
+            ],
+            "sets": 4,
+            "reps": "5-8"
+          },
+          {
+            "name": "Standing Military Press",
+            "exerciseId": "Standing_Military_Press",
+            "primaryMuscles": [
+              "shoulders"
+            ],
+            "secondaryMuscles": [
+              "triceps"
+            ],
+            "sets": 3,
+            "reps": "6-10"
+          },
+          {
+            "name": "Incline Dumbbell Press",
+            "exerciseId": "Incline_Dumbbell_Press",
+            "primaryMuscles": [
+              "chest"
+            ],
+            "secondaryMuscles": [
+              "shoulders",
+              "triceps"
+            ],
+            "sets": 3,
+            "reps": "8-12"
+          },
+          {
+            "name": "Triceps Pushdown",
+            "exerciseId": "Triceps_Pushdown",
+            "primaryMuscles": [
+              "triceps"
+            ],
+            "secondaryMuscles": [],
+            "sets": 3,
+            "reps": "10-15"
+          },
+          {
+            "name": "Side Lateral Raise",
+            "exerciseId": "Side_Lateral_Raise",
+            "primaryMuscles": [
+              "shoulders"
+            ],
+            "secondaryMuscles": [],
+            "sets": 3,
+            "reps": "12-20"
+          }
+        ]
+      },
+      {
+        "dayTitle": "Legs B",
+        "primaryMuscles": [
+          "Quads",
+          "Hamstrings",
+          "Calves"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Squat",
+            "exerciseId": "Barbell_Squat",
+            "primaryMuscles": [
+              "quadriceps"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "hamstrings",
+              "lower back"
+            ],
+            "sets": 4,
+            "reps": "5-8"
+          },
+          {
+            "name": "Romanian Deadlift",
+            "exerciseId": "Romanian_Deadlift",
+            "primaryMuscles": [
+              "hamstrings"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "lower back"
+            ],
+            "sets": 3,
+            "reps": "8-10"
+          },
+          {
+            "name": "Leg Press",
+            "exerciseId": "Leg_Press",
+            "primaryMuscles": [
+              "quadriceps"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "hamstrings"
+            ],
+            "sets": 3,
+            "reps": "10-15"
+          },
+          {
+            "name": "Lying Leg Curls",
+            "exerciseId": "Lying_Leg_Curls",
+            "primaryMuscles": [
+              "hamstrings"
+            ],
+            "secondaryMuscles": [],
+            "sets": 3,
+            "reps": "10-15"
+          },
+          {
+            "name": "Standing Calf Raises",
+            "exerciseId": "Standing_Calf_Raises",
+            "primaryMuscles": [
+              "calves"
+            ],
+            "secondaryMuscles": [],
+            "sets": 4,
+            "reps": "10-15"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "upper-lower-strength",
+    "name": "Upper / Lower (strength + size)",
+    "description": "4 days a week: heavy compound work early in the session, hypertrophy accessories after.",
+    "days": [
+      {
+        "dayTitle": "Upper A",
+        "primaryMuscles": [
+          "Chest",
+          "Back",
+          "Shoulders"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Bench Press - Medium Grip",
+            "exerciseId": "Barbell_Bench_Press_-_Medium_Grip",
+            "primaryMuscles": [
+              "chest"
+            ],
+            "secondaryMuscles": [
+              "shoulders",
+              "triceps"
+            ],
+            "sets": 4,
+            "reps": "5-6"
+          },
+          {
+            "name": "Bent Over Barbell Row",
+            "exerciseId": "Bent_Over_Barbell_Row",
+            "primaryMuscles": [
+              "middle back"
+            ],
+            "secondaryMuscles": [
+              "biceps",
+              "lats",
+              "shoulders"
+            ],
+            "sets": 4,
+            "reps": "5-6"
+          },
+          {
+            "name": "Standing Military Press",
+            "exerciseId": "Standing_Military_Press",
+            "primaryMuscles": [
+              "shoulders"
+            ],
+            "secondaryMuscles": [
+              "triceps"
+            ],
+            "sets": 3,
+            "reps": "8-10"
+          },
+          {
+            "name": "Wide-Grip Lat Pulldown",
+            "exerciseId": "Wide-Grip_Lat_Pulldown",
+            "primaryMuscles": [
+              "lats"
+            ],
+            "secondaryMuscles": [
+              "biceps",
+              "middle back",
+              "shoulders"
+            ],
+            "sets": 3,
+            "reps": "8-12"
+          },
+          {
+            "name": "Triceps Pushdown",
+            "exerciseId": "Triceps_Pushdown",
+            "primaryMuscles": [
+              "triceps"
+            ],
+            "secondaryMuscles": [],
+            "sets": 3,
+            "reps": "10-12"
+          },
+          {
+            "name": "Dumbbell Bicep Curl",
+            "exerciseId": "Dumbbell_Bicep_Curl",
+            "primaryMuscles": [
+              "biceps"
+            ],
+            "secondaryMuscles": [
+              "forearms"
+            ],
+            "sets": 3,
+            "reps": "10-12"
+          }
+        ]
+      },
+      {
+        "dayTitle": "Lower A",
+        "primaryMuscles": [
+          "Quads",
+          "Hamstrings",
+          "Calves"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Squat",
+            "exerciseId": "Barbell_Squat",
+            "primaryMuscles": [
+              "quadriceps"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "hamstrings",
+              "lower back"
+            ],
+            "sets": 4,
+            "reps": "5-6"
+          },
+          {
+            "name": "Romanian Deadlift",
+            "exerciseId": "Romanian_Deadlift",
+            "primaryMuscles": [
+              "hamstrings"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "lower back"
+            ],
+            "sets": 3,
+            "reps": "8-10"
+          },
+          {
+            "name": "Leg Press",
+            "exerciseId": "Leg_Press",
+            "primaryMuscles": [
+              "quadriceps"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "hamstrings"
+            ],
+            "sets": 3,
+            "reps": "10-12"
+          },
+          {
+            "name": "Lying Leg Curls",
+            "exerciseId": "Lying_Leg_Curls",
+            "primaryMuscles": [
+              "hamstrings"
+            ],
+            "secondaryMuscles": [],
+            "sets": 3,
+            "reps": "10-12"
+          },
+          {
+            "name": "Standing Calf Raises",
+            "exerciseId": "Standing_Calf_Raises",
+            "primaryMuscles": [
+              "calves"
+            ],
+            "secondaryMuscles": [],
+            "sets": 4,
+            "reps": "12-15"
+          }
+        ]
+      },
+      {
+        "dayTitle": "Upper B",
+        "primaryMuscles": [
+          "Chest",
+          "Back",
+          "Shoulders"
+        ],
+        "exercises": [
+          {
+            "name": "Standing Military Press",
+            "exerciseId": "Standing_Military_Press",
+            "primaryMuscles": [
+              "shoulders"
+            ],
+            "secondaryMuscles": [
+              "triceps"
+            ],
+            "sets": 4,
+            "reps": "5-6"
+          },
+          {
+            "name": "Pullups",
+            "exerciseId": "Pullups",
+            "primaryMuscles": [
+              "lats"
+            ],
+            "secondaryMuscles": [
+              "biceps",
+              "middle back"
+            ],
+            "sets": 4,
+            "reps": "6-10"
+          },
+          {
+            "name": "Incline Dumbbell Press",
+            "exerciseId": "Incline_Dumbbell_Press",
+            "primaryMuscles": [
+              "chest"
+            ],
+            "secondaryMuscles": [
+              "shoulders",
+              "triceps"
+            ],
+            "sets": 3,
+            "reps": "8-12"
+          },
+          {
+            "name": "Seated Cable Rows",
+            "exerciseId": "Seated_Cable_Rows",
+            "primaryMuscles": [
+              "middle back"
+            ],
+            "secondaryMuscles": [
+              "biceps",
+              "lats",
+              "shoulders"
+            ],
+            "sets": 3,
+            "reps": "10-12"
+          },
+          {
+            "name": "Side Lateral Raise",
+            "exerciseId": "Side_Lateral_Raise",
+            "primaryMuscles": [
+              "shoulders"
+            ],
+            "secondaryMuscles": [],
+            "sets": 3,
+            "reps": "12-15"
+          },
+          {
+            "name": "Hammer Curls",
+            "exerciseId": "Hammer_Curls",
+            "primaryMuscles": [
+              "biceps"
+            ],
+            "secondaryMuscles": [],
+            "sets": 3,
+            "reps": "10-12"
+          }
+        ]
+      },
+      {
+        "dayTitle": "Lower B",
+        "primaryMuscles": [
+          "Hamstrings",
+          "Quads",
+          "Glutes"
+        ],
+        "exercises": [
+          {
+            "name": "Barbell Deadlift",
+            "exerciseId": "Barbell_Deadlift",
+            "primaryMuscles": [
+              "lower back"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "forearms",
+              "glutes",
+              "hamstrings",
+              "lats",
+              "middle back",
+              "quadriceps",
+              "traps"
+            ],
+            "sets": 3,
+            "reps": "5"
+          },
+          {
+            "name": "Barbell Lunge",
+            "exerciseId": "Barbell_Lunge",
+            "primaryMuscles": [
+              "quadriceps"
+            ],
+            "secondaryMuscles": [
+              "calves",
+              "glutes",
+              "hamstrings"
+            ],
+            "sets": 3,
+            "reps": "8-10"
+          },
+          {
+            "name": "Leg Extensions",
+            "exerciseId": "Leg_Extensions",
+            "primaryMuscles": [
+              "quadriceps"
+            ],
+            "secondaryMuscles": [],
+            "sets": 3,
+            "reps": "12-15"
+          },
+          {
+            "name": "Seated Leg Curl",
+            "exerciseId": "Seated_Leg_Curl",
+            "primaryMuscles": [
+              "hamstrings"
+            ],
+            "secondaryMuscles": [],
+            "sets": 3,
+            "reps": "10-12"
+          },
+          {
+            "name": "Seated Calf Raise",
+            "exerciseId": "Seated_Calf_Raise",
+            "primaryMuscles": [
+              "calves"
+            ],
+            "secondaryMuscles": [],
+            "sets": 4,
+            "reps": "12-15"
+          }
+        ]
+      }
+    ]
+  }
+]

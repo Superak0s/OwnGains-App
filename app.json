@@ -1,0 +1,101 @@
+{
+  "expo": {
+    "name": "OwnGains",
+    "slug": "owngains",
+    "version": "0.1.4",
+    "orientation": "portrait",
+    "icon": "./assets/adaptive-icon.png",
+    "scheme": "owngains",
+    "primaryColor": "#1E1E1E",
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/adaptive-icon-monochrome.png",
+          "color": "#1E1E1E",
+          "androidMode": "default",
+          "androidCollapsedTitle": "Supplement Reminder"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos for progress tracking",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera for progress photos"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to scan friend QR codes",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/adaptive-icon-foreground.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#1E1E1E"
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-secure-store",
+      "expo-status-bar",
+      "./plugins/withGradleTuning.js",
+      "./plugins/withDebugAppIdSuffix.js",
+      "./plugins/withAndroidPermissionPruning.js",
+      "./plugins/withAndroidNetworkSecurity.js",
+      "./plugins/withAbiSplits.js",
+      "expo-sqlite",
+      "expo-image",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "extraProguardRules": "-keep class com.balthazargronon.RCTZeroconf.** { *; }\n-keep class expo.modules.sqlite.** { *; }\n-keep class com.horcrux.svg.** { *; }\n-keep class expo.modules.** { *; }\n-keep class io.sentry.** { *; }\n-keepattributes LineNumberTable,SourceFile\n-keepclassmembers class * { @expo.modules.core.interfaces.ExpoProp *; }"
+          }
+        }
+      ],
+      [
+        "@sentry/react-native",
+        {
+          "organization": "superak0s",
+          "project": "owngains-app",
+          "url": "https://glitchtip.superak0s.com/"
+        }
+      ],
+      "expo-sharing",
+      "expo-iap"
+    ],
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "versionCode": 5,
+      "allowBackup": false,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
+        "monochromeImage": "./assets/adaptive-icon-monochrome.png",
+        "backgroundColor": "#1E1E1E"
+      },
+      "permissions": [
+        "POST_NOTIFICATIONS",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "SCHEDULE_EXACT_ALARM",
+        "INTERNET",
+        "ACCESS_WIFI_STATE",
+        "CHANGE_WIFI_MULTICAST_STATE"
+      ],
+      "package": "com.owngains.app"
+    },
+    "owner": "superak0s"
+  }
+}
