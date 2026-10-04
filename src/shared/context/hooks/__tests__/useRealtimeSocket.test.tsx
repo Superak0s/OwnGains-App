@@ -12,6 +12,9 @@ jest.mock("../../../services/config", () => ({
   assertSecureTransport: () => {},
 }));
 
+const jwtExpiringAt = (expMs: number): string =>
+  `h.${btoa(JSON.stringify({ exp: Math.floor(expMs / 1000) }))}.s`;
+
 class FakeSocket {
   static CONNECTING = 0;
   static OPEN = 1;
@@ -178,6 +181,37 @@ describe("useRealtimeSocket", () => {
 
     expect(seen.current?.authError).toBe(false);
     expect(FakeSocket.instances).toHaveLength(2);
+  });
+
+  it("waits for a refresh instead of connecting with an expired token", async () => {
+    await mount({ token: jwtExpiringAt(Date.now() - 60_000) });
+
+    expect(FakeSocket.instances).toHaveLength(0);
+    expect(seen.current?.authError).toBe(false);
+
+    const fresh = jwtExpiringAt(Date.now() + 15 * 60_000);
+    await rerender({ token: fresh });
+
+    expect(FakeSocket.instances).toHaveLength(1);
+    act(() => FakeSocket.instances[0].open());
+    expect(JSON.parse(FakeSocket.instances[0].sent[0]).token).toBe(fresh);
+  });
+
+  it("does not report an auth error when the server rejects a token that has since expired", async () => {
+    const nowSpy = jest.spyOn(Date, "now");
+    const issuedAt = 1_700_000_000_000;
+    nowSpy.mockReturnValue(issuedAt);
+    const token = jwtExpiringAt(issuedAt + 60_000);
+    await mount({ token });
+    const [ws] = FakeSocket.instances;
+    act(() => ws.open());
+
+    nowSpy.mockReturnValue(issuedAt + 120_000);
+    act(() => ws.close(4001, "Unauthorized: Token expired"));
+
+    expect(seen.current?.authError).toBe(false);
+    expect(seen.current?.connectionFailed).toBe(false);
+    expect(FakeSocket.instances).toHaveLength(1);
   });
 
   it("disconnects when the token is cleared", async () => {

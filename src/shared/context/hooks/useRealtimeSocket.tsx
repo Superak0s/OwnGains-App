@@ -10,6 +10,7 @@ import {
   onAppModeChange,
 } from "../../services/appMode"
 import { metric, log } from "../../services/crashReporting"
+import { accessTokenExpiresAt } from "../../services/jwt"
 
 const BASE_RETRY_MS = 1_000
 const MAX_RETRY_MS = 30_000
@@ -26,6 +27,11 @@ const HEALTHY_AFTER_MS = 10_000
 // shows up in the close reason, so back off at least this long.
 const REFUSED_UPGRADE_RETRY_MS = 15_000
 const REFUSED_UPGRADE = /\b(429|503)\b/
+
+const isExpired = (token: string | null): boolean => {
+  const expiresAt = token ? accessTokenExpiresAt(token) : null
+  return expiresAt != null && expiresAt <= Date.now()
+}
 
 export interface WebSocketMessage {
   type: string
@@ -183,6 +189,12 @@ export function useRealtimeSocket({
       console.debug("[WS_SKIP_KNOWN_BAD_TOKEN]")
       return
     }
+    // After a long suspension the token has expired and AuthContext's refresh
+    // is still in flight. Its new token reconnects through the token effect.
+    if (isExpired(tokenRef.current)) {
+      console.debug("[WS_SKIP_EXPIRED_TOKEN]")
+      return
+    }
 
     // Connect without the token in the URL. Send it as the first message
     // after the handshake completes so it never appears in access logs.
@@ -274,6 +286,8 @@ export function useRealtimeSocket({
           return
         }
         authFailedTokenRef.current = tokenRef.current
+        // An expired token is waiting on a refresh, not a sign of a dead session.
+        if (isExpired(tokenRef.current)) return
         setAuthError(true)
         console.warn("[WS_AUTH_FAILED]", e.code, e.reason)
         log.error("ws.auth_failed", { code: e.code })

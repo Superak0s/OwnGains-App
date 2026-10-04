@@ -6,6 +6,12 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-10-04
+
+### Fixed
+
+- Opening the app after a long time no longer shows "Live features are offline" when the server is running. Live features reconnect once your session is renewed.
+
 ## [0.1.5] - 2026-10-04
 
 ### Added
