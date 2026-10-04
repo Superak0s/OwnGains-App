@@ -8,7 +8,12 @@ import type {
   SetTiming,
   WorkoutSession,
   FullSessionWithGroups,
+  WorkoutData,
 } from "@shared/types";
+import {
+  demoDays,
+  type DemoFillResult,
+} from "@features/settings/utils/demoData";
 
 export interface SessionHistoryPage {
   sessions: WorkoutSession[];
@@ -349,6 +354,17 @@ export const makeWorkoutApi = (http: HttpFetch) => {
           res.status,
         ),
       );
+    },
+
+    fillDemoData: async (
+      program: WorkoutData,
+      split: string,
+    ): Promise<DemoFillResult> => {
+      const res = await sendJson("/api/sessions/demo", "POST", {
+        split,
+        days: demoDays(program, split),
+      });
+      return parseApiResponse<DemoFillResult>(res);
     },
 
     clearDemoSessions: async (): Promise<unknown> => {

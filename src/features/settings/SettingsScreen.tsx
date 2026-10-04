@@ -83,8 +83,8 @@ import { programApi } from "@features/plan/services/index";
 import {
   DEMO_SPLIT,
   buildDemoProgram,
-  fillDemoSessions,
 } from "./utils/demoData";
+import { clearDemoTracking, fillDemoTracking } from "./utils/demoTracking";
 import { authService } from "@features/auth/services/index";
 import { TERMS_VERSION } from "@features/auth/termsAcceptance";
 import { passwordPolicyError } from "@features/auth/utils/passwordPolicy";
@@ -623,7 +623,7 @@ export default function SettingsScreen(): React.JSX.Element {
         split = Object.keys(program.days[0].split ?? {})[0] ?? DEMO_SPLIT;
       }
 
-      // Checked before the split is persisted: fillDemoSessions throws on a
+      // Checked before the split is persisted: the fill throws on a
       // split with no exercises, and there is nothing to roll the change back.
       const hasExercises = (program.days ?? []).some(
         (day) => (day.split?.[split as string]?.exercises?.length ?? 0) > 0,
@@ -635,12 +635,21 @@ export default function SettingsScreen(): React.JSX.Element {
       }
       if (split !== selectedSplit) await saveSelectedSplit(split);
 
-      const { sessions, sets } = await fillDemoSessions(program, split);
+      const { sessions, sets, friends, tracking } = await workoutApi.fillDemoData(
+        program,
+        split,
+      );
+      const tracked =
+        tracking + (await fillDemoTracking(user?.id ?? null, user?.heightCm));
       if (!isMountedRef.current) return;
       await syncFromServer();
+      const extras = [
+        friends ? `${friends} demo friends` : null,
+        tracked ? `${tracked} tracking and supplement entries` : null,
+      ].filter(Boolean);
       alert(
         "Demo Data Added",
-        `${sessions} sessions and ${sets} sets spread over the last five weeks. Pull to refresh a screen to see them.`,
+        `${sessions} sessions and ${sets} sets spread over the last five weeks${extras.length ? `, plus ${extras.join(" and ")}` : ""}. Pull to refresh a screen to see them.`,
         [{ text: "OK" }],
         "success",
       );
@@ -661,8 +670,8 @@ export default function SettingsScreen(): React.JSX.Element {
     alert(
       "Fill Demo Data?",
       workoutData?.days?.length
-        ? "Adds about five weeks of generated sessions to your current program so every screen has something to show."
-        : "Creates a sample program and adds about five weeks of generated sessions to it.",
+        ? "Adds about five weeks of generated sessions to your current program, plus demo friends, tracking and supplement entries, so every screen has something to show. Earlier demo data is replaced."
+        : "Creates a sample program and adds about five weeks of generated sessions to it, plus demo friends, tracking and supplement entries.",
       [
         { text: "Cancel", style: "cancel" },
         { text: "Fill", onPress: runDemoFill },
@@ -723,7 +732,7 @@ export default function SettingsScreen(): React.JSX.Element {
   const handleRemoveDemoData = () => {
     alert(
       "Remove Demo Data?",
-      "Deletes every session tagged as demo data. Real sessions are kept.",
+      "Deletes every demo session, demo friend, tracking entry and supplement created by Fill Demo Data. Your own data is kept.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -734,12 +743,18 @@ export default function SettingsScreen(): React.JSX.Element {
             try {
               const result = (await workoutApi.clearDemoSessions()) as {
                 deletedCount?: number;
+                deletedFriends?: number;
+                deletedTracking?: number;
               } | null;
+              const tracked =
+                (result?.deletedTracking ?? 0) +
+                (await clearDemoTracking(user?.id ?? null));
               await syncFromServer();
-              const deleted = result?.deletedCount ?? 0;
+              const sessions = result?.deletedCount ?? 0;
+              const friends = result?.deletedFriends ?? 0;
               showToast(
-                deleted
-                  ? `${deleted} demo session(s) deleted.`
+                sessions || friends || tracked
+                  ? `Deleted ${sessions} session(s), ${friends} friend(s) and ${tracked} tracking entries.`
                   : "There was no demo data to remove.",
               );
             } catch (error) {

@@ -544,8 +544,7 @@ function PhotosComparisonModal({
   const authToken = useAuthToken();
   const { photos, loading, loadAll } = usePhotoPages();
   const trackingStyles = useMemo(() => makeTrackingStyles(colors), [colors]);
-  const [selectedDate1, setSelectedDate1] = useState<string | null>(null);
-  const [selectedDate2, setSelectedDate2] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
   const [muscleFilter, setMuscleFilter] = useState<MuscleGroup | null>(null);
   const [muscleSearch, setMuscleSearch] = useState("");
   const [rangeFilter, setRangeFilter] = useState<"all" | "7" | "30" | "90">(
@@ -592,26 +591,57 @@ function PhotosComparisonModal({
     [filteredPhotos],
   );
 
-  const photosForDate1 = useMemo(
-    () => filteredPhotos.filter((p) => photoDateKey(p) === selectedDate1),
-    [filteredPhotos, selectedDate1],
+  const autoPicked = useRef(false);
+  useEffect(() => {
+    if (!visible) {
+      autoPicked.current = false;
+      return;
+    }
+    if (autoPicked.current || availableDates.length < 2) return;
+    autoPicked.current = true;
+    setSelected([
+      availableDates[availableDates.length - 1][0],
+      availableDates[0][0],
+    ]);
+  }, [visible, availableDates]);
+
+  const picked = selected.filter((d) =>
+    availableDates.some(([date]) => date === d),
+  );
+  const [beforeDate, afterDate] = [...picked].sort();
+
+  const photosForBefore = useMemo(
+    () => filteredPhotos.filter((p) => photoDateKey(p) === beforeDate),
+    [filteredPhotos, beforeDate],
   );
 
-  const photosForDate2 = useMemo(
-    () => filteredPhotos.filter((p) => photoDateKey(p) === selectedDate2),
-    [filteredPhotos, selectedDate2],
+  const photosForAfter = useMemo(
+    () => filteredPhotos.filter((p) => photoDateKey(p) === afterDate),
+    [filteredPhotos, afterDate],
   );
 
   const pickDate = (date: string) => {
-    if (selectedDate1 && selectedDate2) {
-      setSelectedDate1(date);
-      setSelectedDate2(null);
-    } else if (selectedDate1) {
-      setSelectedDate2(date);
-    } else {
-      setSelectedDate1(date);
-    }
+    setSelected(
+      picked.includes(date)
+        ? picked.filter((d) => d !== date)
+        : [...picked, date].slice(-2),
+    );
   };
+
+  const currentYear = new Date().getFullYear();
+  const shortDate = (date: string) =>
+    formatDate(date, {
+      month: "short",
+      day: "numeric",
+      year: date.startsWith(String(currentYear)) ? undefined : "numeric",
+    });
+  const daysApart =
+    beforeDate && afterDate
+      ? Math.round(
+          (new Date(afterDate).getTime() - new Date(beforeDate).getTime()) /
+            86_400_000,
+        )
+      : 0;
 
   return (
     <ModalSheet
@@ -674,23 +704,84 @@ function PhotosComparisonModal({
           )}
 
           <SectionLabel>Dates</SectionLabel>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}
-          >
-            {availableDates.map(([date]) => (
-              <Chip
-                key={date}
-                label={formatDate(date, { month: "short", day: "numeric" })}
-                selected={selectedDate1 === date || selectedDate2 === date}
-                onPress={() => pickDate(date)}
-              />
-            ))}
-          </ScrollView>
+          {availableDates.length < 2 ? (
+            <Note>
+              {availableDates.length === 0
+                ? "No photos match these filters."
+                : "Only one day of photos matches. Widen the filters or take more photos to compare."}
+            </Note>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.dateCardRow}
+            >
+              {availableDates.map(([date, dayPhotos]) => {
+                const role =
+                  date === beforeDate
+                    ? "Before"
+                    : date === afterDate
+                      ? "After"
+                      : null;
+                return (
+                  <TouchableOpacity
+                    key={date}
+                    accessibilityRole='button'
+                    accessibilityState={{ selected: role !== null }}
+                    accessibilityLabel={`${shortDate(date)}, ${dayPhotos.length} photos${role ? `, ${role}` : ""}`}
+                    style={[
+                      styles.dateCard,
+                      {
+                        borderColor: role ? colors.accent : colors.separator,
+                      },
+                    ]}
+                    onPress={() => pickDate(date)}
+                  >
+                    <ProgressPhotoThumb
+                      photo={dayPhotos[0]}
+                      authToken={authToken}
+                      style={styles.dateCardImage}
+                    />
+                    {role && (
+                      <View
+                        style={[
+                          styles.dateCardBadge,
+                          { backgroundColor: colors.accent },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.dateCardBadgeText,
+                            { color: colors.textOnAccent },
+                          ]}
+                        >
+                          {role}
+                        </Text>
+                      </View>
+                    )}
+                    <Text
+                      style={[styles.photoCaption, { color: colors.textPrimary }]}
+                    >
+                      {shortDate(date)}
+                    </Text>
+                    <Text style={[styles.photoMeta, { color: colors.textMuted }]}>
+                      {dayPhotos.length}{" "}
+                      {dayPhotos.length === 1 ? "photo" : "photos"}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
 
-          {selectedDate1 && selectedDate2 ? (
+          {beforeDate && afterDate ? (
             <>
+              <Text
+                style={[styles.compareSummary, { color: colors.textPrimary }]}
+              >
+                {shortDate(beforeDate)} → {shortDate(afterDate)} ·{" "}
+                {daysApart === 1 ? "1 day" : `${daysApart} days`} apart
+              </Text>
               <View style={styles.headerAction}>
                 <Button
                   label='Open fullscreen'
@@ -701,14 +792,14 @@ function PhotosComparisonModal({
               </View>
               <View style={styles.comparisonRow}>
                 <ComparisonColumn
-                  label={new Date(selectedDate1).toLocaleDateString()}
-                  photos={photosForDate1}
+                  label={`Before · ${shortDate(beforeDate)}`}
+                  photos={photosForBefore}
                   authToken={authToken}
                   onPressPhoto={() => setFullscreenOpen(true)}
                 />
                 <ComparisonColumn
-                  label={new Date(selectedDate2).toLocaleDateString()}
-                  photos={photosForDate2}
+                  label={`After · ${shortDate(afterDate)}`}
+                  photos={photosForAfter}
                   authToken={authToken}
                   onPressPhoto={() => setFullscreenOpen(true)}
                 />
@@ -716,19 +807,21 @@ function PhotosComparisonModal({
               <FullscreenCompareViewer
                 visible={fullscreenOpen}
                 onClose={() => setFullscreenOpen(false)}
-                photosForDate1={photosForDate1}
-                photosForDate2={photosForDate2}
-                dateLabel1={new Date(selectedDate1).toLocaleDateString()}
-                dateLabel2={new Date(selectedDate2).toLocaleDateString()}
+                photosForDate1={photosForBefore}
+                photosForDate2={photosForAfter}
+                dateLabel1={`Before · ${shortDate(beforeDate)}`}
+                dateLabel2={`After · ${shortDate(afterDate)}`}
                 authToken={authToken}
               />
             </>
           ) : (
-            <Note>
-              {selectedDate1
-                ? "Pick a second date to compare against."
-                : "Pick two dates to compare."}
-            </Note>
+            availableDates.length >= 2 && (
+              <Note>
+                {beforeDate
+                  ? "Tap a second date. The earlier one is always Before."
+                  : "Tap two dates to compare. Tap a selected date to clear it."}
+              </Note>
+            )
           )}
         </>
       )}
@@ -876,6 +969,30 @@ const styles = StyleSheet.create({
   uploadText: { fontSize: 12 },
 
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+
+  dateCardRow: { flexDirection: "row", gap: space.sm, paddingBottom: space.sm },
+  dateCard: {
+    width: 92,
+    padding: 4,
+    borderWidth: 2,
+    borderRadius: radius.md,
+  },
+  dateCardImage: { width: "100%", height: 110, borderRadius: radius.sm },
+  dateCardBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+  },
+  dateCardBadgeText: { fontSize: 10, fontWeight: "700" },
+  compareSummary: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: space.md,
+    marginBottom: space.sm,
+  },
 
   comparisonRow: { flexDirection: "row", gap: space.md },
   comparisonColumn: { flex: 1 },

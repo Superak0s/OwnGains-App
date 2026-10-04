@@ -4,7 +4,6 @@ import { takeMigrationFailure } from "./storageMigrations";
 import {
   getStorageItemSync,
   setStorageItem,
-  removeStorageItem,
   setStorageErrorHandler,
 } from "./sqliteStorage";
 
@@ -18,8 +17,8 @@ export const CRASH_REPORTING_KEY = "@crash_reporting_enabled";
 export const TELEMETRY_KEY = "@telemetry_enabled";
 export const PRIVACY_CONSENT_KEY = "@privacy_consent_seen";
 
-// Consent is per account, not per device: a second user signing in on the same
-// phone has never answered the screen.
+// Terms are accepted per account, but the two diagnostics switches belong to
+// the device, so switching accounts doesn't ask for them again.
 const userKey = (key: string, userId: string | null): string =>
   userId ? `${key}_user_${userId}` : key;
 
@@ -27,8 +26,8 @@ const userKey = (key: string, userId: string | null): string =>
 export const hasPrivacyConsent = (userId: string | null = null): boolean =>
   getStorageItemSync(userKey(PRIVACY_CONSENT_KEY, userId)) === "true";
 
-/** True once the privacy screen has stored an explicit crash-reporting choice. */
-const hasCrashReportingPreference = (): boolean =>
+/** True once this device has stored an explicit crash-reporting choice. */
+export const hasCrashReportingPreference = (): boolean =>
   getStorageItemSync(CRASH_REPORTING_KEY) !== null;
 
 // Read synchronously at module load: initCrashReporting() runs before the
@@ -44,14 +43,8 @@ let telemetryEnabled = getStorageItemSync(TELEMETRY_KEY) === "true";
 export const isCrashReportingEnabled = (): boolean => crashReportingEnabled;
 export const isTelemetryEnabled = (): boolean => telemetryEnabled;
 
-let currentUserId: string | null = null;
-
-// The unscoped key is what the next cold start reads before anyone signs in.
-const storeChoice = async (key: string, enabled: boolean): Promise<void> => {
-  const value = enabled ? "true" : "false";
-  await setStorageItem(key, value);
-  if (currentUserId) await setStorageItem(userKey(key, currentUserId), value);
-};
+const storeChoice = (key: string, enabled: boolean): Promise<void> =>
+  setStorageItem(key, enabled ? "true" : "false");
 
 export const setCrashReportingEnabled = async (
   enabled: boolean,
@@ -68,30 +61,6 @@ export const setCrashReportingEnabled = async (
   }
 };
 
-/** Signing out: the next person to sign in on this device has not consented. */
-export const forgetPrivacyChoices = async (): Promise<void> => {
-  // Accounts from before per-account switches only have the device-wide answer.
-  if (currentUserId) {
-    for (const [key, value] of [
-      [CRASH_REPORTING_KEY, crashReportingEnabled],
-      [TELEMETRY_KEY, telemetryEnabled],
-    ] as const)
-      if (getStorageItemSync(userKey(key, currentUserId)) === null)
-        await setStorageItem(userKey(key, currentUserId), String(value));
-  }
-  const wasNative = crashReportingEnabled;
-  currentUserId = null;
-  crashReportingEnabled = false;
-  telemetryEnabled = false;
-  await removeStorageItem(CRASH_REPORTING_KEY);
-  await removeStorageItem(TELEMETRY_KEY);
-  // The native SDK keeps reporting until restarted without consent.
-  if (wasNative && sentryStarted) {
-    await Sentry.close();
-    startSentry();
-  }
-};
-
 export const setTelemetryEnabled = async (enabled: boolean): Promise<void> => {
   telemetryEnabled = enabled;
   await storeChoice(TELEMETRY_KEY, enabled);
@@ -102,26 +71,24 @@ export const recordPrivacyConsent = (
 ): Promise<void> => setStorageItem(userKey(PRIVACY_CONSENT_KEY, userId), "true");
 
 /**
- * Loads this account's own answers into the live consent flags and returns
- * whether it has answered the privacy screen. An account that hasn't sends
- * nothing until it does, whatever an earlier account on the device chose.
+ * Loads the device's diagnostics choices into the live flags and returns
+ * whether this account has answered the privacy screen.
  */
 export const applyPrivacyChoicesFor = (userId: string | null): boolean => {
-  currentUserId = userId;
-  if (userId && !hasPrivacyConsent(userId)) {
-    crashReportingEnabled = false;
-    telemetryEnabled = false;
-    return false;
-  }
-  // Accounts that consented before the switches were per account only have
-  // the device-wide answer.
-  const read = (key: string): string | null =>
-    getStorageItemSync(userKey(key, userId)) ?? getStorageItemSync(key);
+  // Earlier versions cleared the device answer on sign-out and kept a copy
+  // per account, so adopt that copy once.
+  const read = (key: string): string | null => {
+    const device = getStorageItemSync(key);
+    if (device !== null || !userId) return device;
+    const own = getStorageItemSync(userKey(key, userId));
+    if (own !== null) void setStorageItem(key, own).catch(captureException);
+    return own;
+  };
   const crash = read(CRASH_REPORTING_KEY);
   crashReportingEnabled = crash !== null && crash !== "false";
   telemetryEnabled = read(TELEMETRY_KEY) === "true";
   reportMigrationFailure();
-  return true;
+  return !userId || hasPrivacyConsent(userId);
 };
 
 const reporting = (): boolean => Boolean(dsn) && crashReportingEnabled;

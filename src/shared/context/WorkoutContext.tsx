@@ -148,10 +148,7 @@ interface WorkoutContextValue {
   toggleUseManualTime: (enabled: boolean) => Promise<void>;
   hasActiveSession: () => boolean;
   startWorkout: () => Promise<string | null>;
-  endWorkout: (
-    autoCompleted?: boolean,
-    options?: { lockDay?: boolean },
-  ) => Promise<boolean>;
+  endWorkout: (autoCompleted?: boolean) => Promise<boolean>;
   saveWeightUnit: (unit: "kg" | "lbs") => Promise<void>;
 
   saveSetDetails: (
@@ -1469,9 +1466,9 @@ export const WorkoutProvider = ({
   ]);
 
   const endWorkout = useCallback(
-    async (autoCompleted = false, options?: { lockDay?: boolean }) => {
+    async (autoCompleted = false) => {
       await learnRestFromSession();
-      const result = await sessionOps.endWorkout(autoCompleted, options);
+      const result = await sessionOps.endWorkout(autoCompleted);
       // Only when the session really ended: announcing an end that was refused
       // (a trainer write, a failed server call) leaves watchers looking at a
       // workout the owner is still logging into.

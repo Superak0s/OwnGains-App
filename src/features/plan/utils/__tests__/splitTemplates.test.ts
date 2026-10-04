@@ -1,6 +1,8 @@
 import {
   DEFAULT_SPLITS,
+  buildProgramFromTemplate,
   createCustomSplitTemplate,
+  findActiveTemplateId,
   insertTemplateIntoProgram,
 } from "../splitTemplates";
 import type { WorkoutData } from "@shared/types";
@@ -49,6 +51,32 @@ describe("insertTemplateIntoProgram", () => {
   it("fills every split when no target is given", () => {
     const inserted = insertTemplateIntoProgram(program, template).days[1];
     expect(inserted.split.Alex.exercises[0].sets).toBe(4);
+  });
+});
+
+describe("findActiveTemplateId", () => {
+  const ppl = DEFAULT_SPLITS.find((t) => t.id === "push-pull-legs-3-day")!;
+
+  it("matches a program built from a template", () => {
+    const built = buildProgramFromTemplate(ppl, ["Me"]);
+    expect(findActiveTemplateId(built, "Me")).toBe(ppl.id);
+  });
+
+  it("matches template days inserted into an existing program", () => {
+    const inserted = insertTemplateIntoProgram(program, ppl, ["Me"]);
+    expect(findActiveTemplateId(inserted, "Me")).toBe(ppl.id);
+    expect(findActiveTemplateId(inserted, "Alex")).toBeNull();
+  });
+
+  it("stops matching once a day's exercises change", () => {
+    const built = buildProgramFromTemplate(ppl, ["Me"]);
+    built.days[0].split.Me.exercises.pop();
+    expect(findActiveTemplateId(built, "Me")).toBeNull();
+  });
+
+  it("does not match a custom split", () => {
+    const custom = insertTemplateIntoProgram(program, template, ["Me"]);
+    expect(findActiveTemplateId(custom, "Me")).toBeNull();
   });
 });
 

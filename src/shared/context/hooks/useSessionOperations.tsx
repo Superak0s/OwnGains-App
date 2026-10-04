@@ -86,10 +86,7 @@ interface UseSessionOperationsReturn {
   updateLastActivityTime: () => Promise<void>;
   clearActiveWorkout: () => Promise<void>;
   startWorkout: () => Promise<string | null>;
-  endWorkout: (
-    autoCompleted?: boolean,
-    options?: { lockDay?: boolean },
-  ) => Promise<boolean>;
+  endWorkout: (autoCompleted?: boolean) => Promise<boolean>;
   saveSetDetails: (
     dayNumber: number,
     exerciseIndex: number,
@@ -406,10 +403,7 @@ export const useSessionOperations = ({
 
   /** Resolves true when the workout was actually ended, false when it failed. */
   const endWorkout = useCallback(
-    async (
-      autoCompleted: boolean = false,
-      { lockDay: shouldLockDay = true }: { lockDay?: boolean } = {},
-    ): Promise<boolean> => {
+    async (autoCompleted: boolean = false): Promise<boolean> => {
       try {
         const sessionIdToEnd = currentSessionId;
         const isLocal = isLocalSessionId(sessionIdToEnd);
@@ -436,7 +430,7 @@ export const useSessionOperations = ({
         // After the session end, not before: a trainee write refused offline
         // throws out of the branches above, and a day locked first would stay
         // locked over a workout that never ended.
-        if (shouldLockDay) await lockDay(currentDay);
+        await lockDay(currentDay);
         await clearActiveWorkout();
 
         if (!useManualTime && fetchAnalytics) {

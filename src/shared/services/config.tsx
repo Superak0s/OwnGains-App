@@ -2,7 +2,7 @@ import { getStorageItemSync, setStorageItem, removeStorageItem } from "@shared/s
 import { metric } from "@shared/services/crashReporting"
 
 const SERVER_URL_KEY = "@server_url"
-const DEFAULT_API_BASE_URL = "https://owngains.superak0s.com"
+const DEFAULT_API_BASE_URL = __DEV__ ? "http://192.168.10.243:5000" : "https://owngains.superak0s.com"
 
 function readStoredServerUrl(): string {
   try {

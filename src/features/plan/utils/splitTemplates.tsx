@@ -32,6 +32,36 @@ export interface SplitTemplate {
 export const DEFAULT_SPLITS: SplitTemplate[] =
   defaultSplitsJson
 
+const daySignature = (title: string, exerciseNames: string[]) =>
+  `${title}|${exerciseNames.join(",")}`
+
+// Derived from the program instead of stored, so editing, replacing or switching
+// the split drops the match without extra bookkeeping.
+export function findActiveTemplateId(
+  workoutData: WorkoutData | null | undefined,
+  splitName: string | null | undefined,
+): string | null {
+  if (!workoutData?.days?.length || !splitName) return null
+  const programKey = `\n${workoutData.days
+    .map((d) =>
+      daySignature(
+        d.dayTitle ?? "",
+        (d.split?.[splitName]?.exercises ?? []).map((e) => e.name),
+      ),
+    )
+    .join("\n")}\n`
+  const match = DEFAULT_SPLITS.find((t) =>
+    programKey.includes(
+      `\n${t.days
+        .map((d) =>
+          daySignature(d.dayTitle, (d.exercises ?? []).map((e) => e.name)),
+        )
+        .join("\n")}\n`,
+    ),
+  )
+  return match?.id ?? null
+}
+
 export function createCustomSplitTemplate(
   name: string,
   days: SplitDayTemplate[],

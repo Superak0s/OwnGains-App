@@ -9,7 +9,12 @@ import type {
   SetTiming,
   WorkoutSession,
   FullSessionWithGroups,
+  WorkoutData,
 } from "@shared/types";
+import {
+  fillDemoSessions,
+  type DemoFillResult,
+} from "@features/settings/utils/demoData";
 import type {
   RenameExerciseResult,
   UpdateSetParams,
@@ -382,6 +387,14 @@ export const workoutApi = {
     const session = await sessionsStore.getOne(sessionId);
     if (!session) throw new Error("Failed to get session: session not found");
     return toFullSession(session);
+  },
+
+  fillDemoData: async (
+    program: WorkoutData,
+    split: string,
+  ): Promise<DemoFillResult> => {
+    await workoutApi.clearDemoSessions();
+    return fillDemoSessions(workoutApi, program, split);
   },
 
   clearDemoSessions: async (): Promise<unknown> => {

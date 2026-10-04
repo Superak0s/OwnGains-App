@@ -46,6 +46,7 @@ import {
   DEFAULT_SPLITS,
   createCustomSplitTemplate,
   buildProgramFromTemplate,
+  findActiveTemplateId,
   insertTemplateIntoProgram,
   type SplitTemplate,
   type SplitDayTemplate,
@@ -1034,17 +1035,25 @@ Your program is untouched. Try again, or pick a different destination.`,
         {DEFAULT_SPLITS.map((template) => {
           const handlePress = () => handlePickDefaultSplit(template);
           const dayCount = `${template.days.length} day${template.days.length === 1 ? "" : "s"}`;
+          const isActive = template.id === activeTemplateId;
           return (
             <TouchableOpacity
               key={template.id}
-              style={styles.templateCard}
+              style={[styles.templateCard, isActive && styles.templateCardActive]}
               onPress={handlePress}
               disabled={isApplyingTemplate}
               accessibilityRole='button'
-              accessibilityLabel={`Use the ${template.name} split, ${dayCount}`}
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={`Use the ${template.name} split, ${dayCount}${isActive ? ", in use" : ""}`}
             >
               <View style={styles.templateCardTop}>
-                <Text style={styles.templateCardTitle} numberOfLines={1}>
+                <Text
+                  style={[
+                    styles.templateCardTitle,
+                    isActive && styles.templateCardTitleActive,
+                  ]}
+                  numberOfLines={1}
+                >
                   {template.name}
                 </Text>
                 <Text style={styles.templateCardCount}>{dayCount}</Text>
@@ -1157,6 +1166,14 @@ Your program is untouched. Try again, or pick a different destination.`,
     );
   };
 
+  const activeTemplateId = useMemo(
+    () =>
+      findActiveTemplateId(
+        workoutData,
+        selectedSplit ?? workoutData?.split?.[0],
+      ),
+    [workoutData, selectedSplit],
+  );
   const zeroRepWarnings = useMemo(
     () => zeroRepExercises(workoutData, selectedSplit),
     [workoutData, selectedSplit],
@@ -1683,6 +1700,13 @@ const makeStyles = (colors: ThemeColors) =>
       borderColor: colors.surfaceBorder,
       padding: 12,
     },
+    templateCardActive: {
+      backgroundColor: colors.infoLight,
+      borderColor: colors.info,
+      borderWidth: 2,
+      padding: 11,
+    },
+    templateCardTitleActive: { color: colors.info },
     templateCardTop: {
       flexDirection: "row",
       alignItems: "center",

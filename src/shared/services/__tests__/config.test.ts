@@ -20,7 +20,7 @@ jest.mock("@shared/services/sqliteStorage", () => ({
 
 import type * as ConfigModule from "@shared/services/config";
 
-const DEFAULT_URL = "https://owngains.superak0s.com";
+const DEFAULT_URL = __DEV__ ? "http://192.168.10.243:5000" : "https://owngains.superak0s.com";
 
 let config: typeof ConfigModule;
 

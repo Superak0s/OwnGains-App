@@ -1,5 +1,5 @@
 import type { WorkoutData } from "@shared/types";
-import { workoutApi } from "@features/workout/services/index";
+import type { WorkoutApi } from "@features/workout/services/workoutApiFactory";
 import {
   buildProgramFromTemplate,
   type SplitTemplate,
@@ -66,27 +66,62 @@ const toPlate = (kg: number): number => Math.round(kg / 2.5) * 2.5;
 export interface DemoFillResult {
   sessions: number;
   sets: number;
+  friends: number;
+  tracking: number;
 }
+
+export interface DemoDay {
+  dayNumber: number;
+  dayTitle: string;
+  primaryMuscles?: string[];
+  secondaryMuscles?: string[];
+  exercises: {
+    name: string;
+    sets: number;
+    primaryMuscles?: string[];
+    secondaryMuscles?: string[];
+  }[];
+}
+
+/** The program days that have exercises in `split`, in the shape POST /api/sessions/demo takes. */
+export const demoDays = (program: WorkoutData, split: string): DemoDay[] => {
+  const days = (program.days ?? [])
+    .filter((day) => (day.split?.[split]?.exercises?.length ?? 0) > 0)
+    .map((day) => ({
+      dayNumber: day.dayNumber,
+      dayTitle: day.dayTitle || `Day ${day.dayNumber}`,
+      primaryMuscles: day.primaryMuscles,
+      secondaryMuscles: day.secondaryMuscles,
+      exercises: day.split[split].exercises.map((exercise) => ({
+        name: exercise.name,
+        sets: exercise.sets,
+        primaryMuscles: exercise.primaryMuscles,
+        secondaryMuscles: exercise.secondaryMuscles,
+      })),
+    }));
+  if (days.length === 0) {
+    throw new Error(`No exercises found for split "${split}"`);
+  }
+  return days;
+};
+
+type SessionWriter = Pick<WorkoutApi, "startSession" | "recordSet" | "endSession">;
 
 /**
  * Seeds finished workout sessions spread backwards over ~5 weeks, one every
  * other day, cycling through the program's days with a small weekly weight
- * progression so charts and trends have something to show.
+ * progression so charts and trends have something to show. Used on-device
+ * only: online, the server generates the same data from one request.
  */
 export async function fillDemoSessions(
+  api: SessionWriter,
   program: WorkoutData,
   split: string,
   sessionCount: number = DEFAULT_SESSION_COUNT,
   now: number = Date.now(),
 ): Promise<DemoFillResult> {
-  const days = (program.days ?? []).filter(
-    (day) => (day.split?.[split]?.exercises?.length ?? 0) > 0,
-  );
-  if (days.length === 0) {
-    throw new Error(`No exercises found for split "${split}"`);
-  }
-
-  const result: DemoFillResult = { sessions: 0, sets: 0 };
+  const days = demoDays(program, split);
+  const result: DemoFillResult = { sessions: 0, sets: 0, friends: 0, tracking: 0 };
 
   for (let i = 0; i < sessionCount; i++) {
     const day = days[i % days.length];
@@ -94,7 +129,7 @@ export async function fillDemoSessions(
     const week = Math.floor((i * DAYS_BETWEEN_SESSIONS) / 7);
     let cursor = now - daysAgo * DAY_MS;
 
-    const sessionId = await workoutApi.startSession(
+    const sessionId = await api.startSession(
       split,
       day.dayNumber,
       day.dayTitle,
@@ -104,10 +139,10 @@ export async function fillDemoSessions(
       new Date(cursor).toISOString(),
     );
 
-    for (const exercise of day.split[split].exercises) {
+    for (const exercise of day.exercises) {
       for (let setIndex = 1; setIndex <= exercise.sets; setIndex++) {
         const setEnd = cursor + SET_MS;
-        await workoutApi.recordSet(sessionId, {
+        await api.recordSet(sessionId, {
           exerciseName: exercise.name,
           setIndex,
           startTime: new Date(cursor).toISOString(),
@@ -124,7 +159,7 @@ export async function fillDemoSessions(
       }
     }
 
-    await workoutApi.endSession(sessionId, new Date(cursor).toISOString());
+    await api.endSession(sessionId, new Date(cursor).toISOString());
     result.sessions += 1;
   }
 

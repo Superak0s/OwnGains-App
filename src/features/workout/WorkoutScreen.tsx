@@ -1549,13 +1549,6 @@ function WorkoutScreenBody({
       );
   };
 
-  // Without this the only way out of a session started by mistake is locking
-  // the day or waiting for the 30-minute inactivity sweep.
-  const confirmDiscardWorkout = async () => {
-    if (isInJointSession) await leaveJointSession?.();
-    await endWorkout(false, { lockDay: false });
-  };
-
   const handleCompleteWorkout = () => {
     if (isCurrentDayLocked) {
       alert(
@@ -1573,10 +1566,6 @@ function WorkoutScreenBody({
       getCompleteWorkoutMessage(done, total),
       [
         { text: "Cancel", style: "cancel" },
-        {
-          text: "End, don't lock",
-          onPress: confirmDiscardWorkout,
-        },
         {
           text: "Complete & Lock",
           onPress: confirmCompleteWorkout,
@@ -2044,7 +2033,6 @@ function WorkoutScreenBody({
             setPerformanceHistory(null);
           }}
           title='Set Details'
-          scrollable={true}
           showCancelButton={false}
           showConfirmButton={false}
         >
@@ -3281,6 +3269,7 @@ export const makeStyles = (colors: ThemeColors) => {
       marginTop: 10,
     },
     saveButtonDisabled: { opacity: 0.45 },
+    setFormBody: { flexShrink: 1 },
     saveButtonText: {
       color: colors.textOnAccent,
       fontSize: 18,

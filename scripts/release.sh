@@ -23,60 +23,59 @@ if grep -qi microsoft /proc/version 2>/dev/null; then
     fi
 fi
 
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+    B=$'\e[1m' DIM=$'\e[2m' RED=$'\e[31m' GRN=$'\e[32m' YEL=$'\e[33m' CYN=$'\e[36m' R=$'\e[0m'
+else
+    B='' DIM='' RED='' GRN='' YEL='' CYN='' R=''
+fi
+step() { printf '\n%s==> [%s] %s%s\n' "$B$CYN" "$1" "$2" "$R"; }
+ok()   { printf '%s  OK  %s%s\n' "$GRN" "$*" "$R"; }
+info() { printf '%s  ..  %s%s\n' "$DIM" "$*" "$R"; }
+warn() { printf '%s  !!  %s%s\n' "$YEL" "$*" "$R"; }
+err()  { printf '%s%sERROR:%s%s %s%s\n' "$B" "$RED" "$R" "$RED" "$*" "$R" >&2; }
+die()  { err "$@"; exit 1; }
+
 usage() {
-    cat <<'EOF'
-Usage: scripts/release.sh [debug] [apk] [aab] [wsl] [--options]
+    cat <<EOF
+${B}Usage:${R} scripts/release.sh [apk|aab|debug] [wsl] [options]
 
-Words pick what gets built and where; --options tune how.
+${B}Most common${R}
+  ${CYN}scripts/release.sh${R}                    Full release: APKs + AAB, commit, push, GitHub release
+  ${CYN}scripts/release.sh --bump=patch${R}       Same, without the version prompt
+  ${CYN}scripts/release.sh debug${R}              Debug APK into release/, nothing else
+  ${CYN}scripts/release.sh aab${R}                Play Store bundle only (no GitHub release)
+  ${CYN}scripts/release.sh --no-push --no-release${R}
+                                        Build everything, publish nothing
 
-What to build (default, or `apk aab`: a full release of both)
-  apk            Release the APKs only (no Play Store AAB).
-  aab            Release the AAB only. No GitHub release (it has nothing to
-                 attach), so --no-release/--draft/--prerelease don't apply.
-  debug          Build only a debug APK into release/ - no version bump,
-                 keystore check, verification, changelog, commit, push or
-                 GitHub release. Takes only --no-prebuild and --32bit.
+${B}What to build${R} ${DIM}(default: APKs and AAB)${R}
+  apk                 GitHub APKs only
+  aab                 Play Store AAB only, so no GitHub release
+  debug               Debug APK only. No bump, checks, commit or release.
+                      Accepts only --no-prebuild and --32bit.
+  wsl                 From Git Bash, re-run this inside WSL
 
-Where to build
-  wsl            From Git Bash/Windows, re-run this script inside WSL with the
-                 same other arguments. Ignored when already in WSL.
+${B}Faster builds${R}
+  --no-prebuild       Incremental prebuild. Unsafe after native deps, plugins/ or app.json change.
+  --32bit             Also build the armeabi-v7a APK (arm64-v8a only by default)
+  --no-test           Skip jest. Lint and typecheck still run.
 
-Pipeline (what a release does, in order)
-  [1] sync to WSL mirror -> [2] version bump + changelog -> [3] verify + prebuild
-  -> [4] build APKs + AAB -> [5] git commit/push -> [6] GitHub release
-  debug mode runs only install + prebuild + the debug APK, then stops.
+${B}Version${R}
+  --bump=X            patch, minor, keep or 1.2.3 (skips the prompt)
+  --no-version-code   Keep android.versionCode. Play rejects a reused code.
 
-Options for release and debug
-  --no-prebuild  Incremental `expo prebuild` instead of the default
-                 `--clean` one. Faster, but unsafe after adding or upgrading
-                 native deps or editing plugins/.
-  --32bit        Also build the armeabi-v7a APK. By default only arm64-v8a is
-                 built (roughly halves the native compile). The AAB always
-                 ships both ABIs, so this does nothing with `aab`.
+${B}Git and GitHub${R}
+  --message=MSG       Commit message (skips the prompt)
+  --no-push           No commit or push. The bump stays local.
+  --no-release        No GitHub release
+  --draft             GitHub release as a draft
+  --prerelease        GitHub release as a pre-release
 
-Options for releases only (rejected with `debug`)
-  Version        [2]
-    --bump=CHOICE   Skip the version prompt: patch, minor, keep, or X.Y.Z.
-    --no-version-code
-                    Leave android.versionCode as is instead of bumping it by 1.
-                    Play rejects an upload that reuses one.
-  Verification   [3]
-    --no-test       Skip jest. Lint and typecheck still run.
-    --no-sourcemaps Release without SENTRY_AUTH_TOKEN (otherwise the script
-                    stops: crash reports would be unreadable minified stacks).
-  Git            [5]
-    --no-push       Skip git add/commit/push; the bump stays local, uncommitted.
-    --message=MSG   Commit message. Unused with --no-push or --bump=keep.
-  GitHub release [6]
-    --no-release    Skip the GitHub release.
-    --draft         Create it as a draft.        (unused with --no-release)
-    --prerelease    Mark it as a pre-release.    (unused with --no-release)
+${B}Other${R}
+  --no-sourcemaps     Release without SENTRY_AUTH_TOKEN (unreadable crash reports)
+  -h, --help          Show this help
 
-Mutually exclusive
-  debug + aab, or debug + any release-only option
-  aab or --no-release + --draft/--prerelease     (no release is created)
-
-  -h, --help     Show this help.
+${DIM}Steps: [1] WSL sync, [2] version + changelog, [3] verify + prebuild,
+[4] build, [5] git commit/push, [6] GitHub release. A failed build reverts the bump.${R}
 EOF
 }
 
@@ -114,7 +113,7 @@ for arg in "$@"; do
         --draft) GH_RELEASE_FLAGS+=(--draft) ;;
         --prerelease) GH_RELEASE_FLAGS+=(--prerelease) ;;
         -h|--help) usage; exit 0 ;;
-        *) echo "Unknown option: $arg" >&2; usage >&2; exit 1 ;;
+        *) err "Unknown option: $arg"; echo "Run scripts/release.sh -h for the list." >&2; exit 1 ;;
     esac
 done
 
@@ -122,15 +121,15 @@ if [ "$DEBUG_ONLY" = true ]; then
     if [ -n "$BUMP_ARG$COMMIT_MSG" ] || [ "$SKIP_PUSH" = true ] || [ "$SKIP_TESTS" = true ] || [ "$BUMP_CODE" = false ] \
         || [ "$WANT_AAB" = true ] || [ "$ALLOW_NO_SOURCEMAPS" = true ] \
         || [ "$SKIP_RELEASE" = true ] || [ ${#GH_RELEASE_FLAGS[@]} -gt 0 ]; then
-        echo "ERROR: debug only takes --no-prebuild and --32bit. The rest apply to releases." >&2
-        exit 1
+        die "debug only takes --no-prebuild and --32bit. The rest apply to releases."
     fi
 fi
 
 if [ "$USE_WSL" = true ] && [ "$ENV_NAME" = native ]; then
-    command -v wsl.exe >/dev/null || { echo "ERROR: wsl needs wsl.exe on PATH." >&2; exit 1; }
-    echo "Re-running inside WSL..."
-    MSYS_NO_PATHCONV=1 wsl.exe -e bash -lc 'cd "$(wslpath -a "$1")" && shift && exec bash scripts/release.sh "$@"' _ "$(cygpath -w "$SRC")" "${PASS_ARGS[@]}"
+    command -v wsl.exe >/dev/null || die "wsl needs wsl.exe on PATH."
+    info "Re-running inside WSL..."
+    # -i so ~/.bashrc (nvm, ANDROID_HOME, JAVA_HOME, tokens) loads past its non-interactive early return.
+    MSYS_NO_PATHCONV=1 wsl.exe -e bash -ilc 'cd "$(wslpath -a "$1")" && shift && exec bash scripts/release.sh "$@"' _ "$(cygpath -w "$SRC")" "${PASS_ARGS[@]}"
     exit $?
 fi
 
@@ -142,17 +141,37 @@ fi
 [ "$BUILD_APK" = true ] || SKIP_RELEASE=true
 
 if [ "$SKIP_RELEASE" = true ] && [ ${#GH_RELEASE_FLAGS[@]} -gt 0 ]; then
-    echo "ERROR: --draft/--prerelease have no effect when no GitHub release is created." >&2
-    exit 1
+    die "--draft/--prerelease have no effect when no GitHub release is created."
 fi
 
-echo "=== OwnGains App Release Script ==="
-echo "Environment: $ENV_NAME"
-echo ""
+yn() { [ "$1" = true ] && printf '%syes%s' "$GRN" "$R" || printf '%sno%s' "$YEL" "$R"; }
+# nvm is usually loaded from ~/.bashrc, which returns early in non-interactive shells.
+if ! command -v node >/dev/null && [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]; then
+    # shellcheck disable=SC1091
+    . "${NVM_DIR:-$HOME/.nvm}/nvm.sh"
+fi
+command -v node >/dev/null || die "node not found on PATH ($ENV_NAME). Install Node or load nvm first."
+if [ -z "${ANDROID_HOME:-}${ANDROID_SDK_ROOT:-}" ] && [ ! -f android/local.properties ]; then
+    die "Android SDK not found ($ENV_NAME). Export ANDROID_HOME (e.g. in ~/.profile or ~/.bashrc)."
+fi
+
+printf '%s=== OwnGains App Release ===%s\n' "$B$CYN" "$R"
+printf '  Environment   %s\n' "$ENV_NAME"
+if [ "$DEBUG_ONLY" = true ]; then
+    printf '  Mode          %sdebug APK only%s\n' "$YEL" "$R"
+else
+    what=""; [ "$BUILD_APK" = true ] && what="APK"; [ "$BUILD_AAB" = true ] && what="${what:+$what + }AAB"
+    printf '  Build         %s\n' "$what"
+    printf '  Tests         %s\n' "$(yn "$([ "$SKIP_TESTS" = true ] && echo false || echo true)")"
+    printf '  Commit+push   %s\n' "$(yn "$([ "$SKIP_PUSH" = true ] && echo false || echo true)")"
+    printf '  GitHub rel.   %s %s\n' "$(yn "$([ "$SKIP_RELEASE" = true ] && echo false || echo true)")" "${GH_RELEASE_FLAGS[*]}"
+fi
+printf '  Prebuild      %s\n' "$([ "$DO_CLEAN" = true ] && echo clean || echo incremental)"
+printf '  ABIs          %s\n' "$([ "$SKIP_32BIT" = true ] && echo arm64-v8a || echo 'arm64-v8a + armeabi-v7a')"
 
 # [1/6] Mirror to the native filesystem (WSL only)
 if [ "$BUILD" != "$SRC" ]; then
-    echo "[1/6] Syncing project to $BUILD..."
+    step 1/6 "Syncing project to $BUILD"
     rsync -a --delete \
       --exclude='node_modules' \
       --exclude='/android' \
@@ -165,9 +184,9 @@ if [ "$BUILD" != "$SRC" ]; then
       --exclude='.scannerwork' \
       --exclude='.sonarlint' \
       "$SRC/" "$BUILD/"
-    echo "Sync complete."
+    ok "Sync complete"
 else
-    echo "[1/6] Building in place, no sync needed."
+    step 1/6 "Building in place, no sync needed"
 fi
 
 cd "$BUILD"
@@ -181,8 +200,9 @@ if [ -f "$BUILD/.env" ]; then
     set +a
 fi
 if [ "$DEBUG_ONLY" = true ]; then
-    echo "[debug] npm install + prebuild + debug APK only."
+    step debug "npm install"
     npm install --legacy-peer-deps
+    step debug "Prebuild ($([ "$DO_CLEAN" = true ] && echo clean || echo incremental))"
     if [ "$DO_CLEAN" = true ]; then
         npx expo prebuild --platform android --clean
     else
@@ -190,6 +210,7 @@ if [ "$DEBUG_ONLY" = true ]; then
     fi
     sed -i 's/signingConfig = signingConfigs\.debug/signingConfig signingConfigs.debug/' "$BUILD/android/app/build.gradle"
     rm -f "$BUILD"/android/app/build/outputs/apk/debug/*.apk "$SRC"/release/OwnGains-debug-*.apk
+    step debug "Building debug APK"
     if [ "$SKIP_32BIT" = true ]; then
         ORG_GRADLE_PROJECT_reactNativeArchitectures=arm64-v8a npx local-expo-build build android --apk --debug --no-sync --no-bump --no-prebuild --no-clean
     else
@@ -201,18 +222,19 @@ if [ "$DEBUG_ONLY" = true ]; then
         [ -f "$apk" ] || continue
         out="$SRC/release/OwnGains-debug-$(basename "$apk")"
         cp "$apk" "$out"
-        echo "$(basename "$out"): $(du -h "$out" | cut -f1)"
+        ok "$(basename "$out"): $(du -h "$out" | cut -f1)"
         found=true
     done
-    [ "$found" = true ] || { echo "ERROR: no debug APK found." >&2; exit 1; }
+    [ "$found" = true ] || die "no debug APK found."
+    printf '\n%s=== Done! Debug APK in release/ ===%s\n' "$B$GRN" "$R"
     exit 0
 fi
 
 if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
     if [ "$ALLOW_NO_SOURCEMAPS" = true ]; then
-        echo "WARNING: SENTRY_AUTH_TOKEN unset, so this release will have no readable stack traces (--no-sourcemaps)."
+        warn "SENTRY_AUTH_TOKEN unset, so this release will have no readable stack traces (--no-sourcemaps)."
     else
-        echo "ERROR: SENTRY_AUTH_TOKEN unset. Crash reports from this release would be unreadable." >&2
+        err "SENTRY_AUTH_TOKEN unset. Crash reports from this release would be unreadable."
         echo "Set it in .env or the environment, or pass --no-sourcemaps to release anyway." >&2
         exit 1
     fi
@@ -221,19 +243,18 @@ fi
 # A wrong password or alias otherwise surfaces only after the full Gradle build.
 check_keystore() {
     local props="$BUILD/keystore.properties" file pass alias type
-    [ -f "$props" ] || { echo "ERROR: keystore.properties missing. Run: npx local-expo-build keystore import" >&2; exit 1; }
-    command -v keytool >/dev/null || { echo "ERROR: keytool (JDK) is needed to verify the keystore." >&2; exit 1; }
+    [ -f "$props" ] || die "keystore.properties missing. Run: npx local-expo-build keystore import"
+    command -v keytool >/dev/null || die "keytool (JDK) is needed to verify the keystore."
     prop() { grep -m1 "^$1=" "$props" | cut -d= -f2- | tr -d '\r'; }
     file="$(prop storeFile)"; pass="$(prop storePassword)"; alias="$(prop keyAlias)"
     [ -n "$file" ] && [ -n "$pass" ] && [ -n "$alias" ] && [ -n "$(prop keyPassword)" ] \
-        || { echo "ERROR: keystore.properties needs storeFile, storePassword, keyAlias and keyPassword." >&2; exit 1; }
+        || die "keystore.properties needs storeFile, storePassword, keyAlias and keyPassword."
     for f in "$BUILD/$file" "$BUILD/android/app/$file"; do [ -f "$f" ] && break; done
-    [ -f "$f" ] || { echo "ERROR: keystore file '$file' not found next to keystore.properties." >&2; exit 1; }
+    [ -f "$f" ] || die "keystore file '$file' not found next to keystore.properties."
     case "$file" in *.p12|*.pfx) type=PKCS12 ;; *) type=JKS ;; esac
     command -v cygpath >/dev/null && f="$(cygpath -w "$f")"
     if ! KS_PASS="$pass" keytool -list -keystore "$f" -storetype "$type" -storepass:env KS_PASS -alias "$alias" >/dev/null 2>&1; then
-        echo "ERROR: cannot open $file with the configured storePassword/keyAlias. Wrong password or alias." >&2
-        exit 1
+        die "cannot open $file with the configured storePassword/keyAlias. Wrong password or alias."
     fi
     # -list never reads the private key. Copying it to a scratch store does, so it needs keyPassword.
     local scratch rc=0
@@ -244,66 +265,60 @@ check_keystore() {
         -deststoretype PKCS12 -deststorepass:env KS_PASS >/dev/null 2>&1 || rc=$?
     rm -rf "$scratch"
     if [ $rc -ne 0 ]; then
-        echo "ERROR: $file opens, but alias '$alias' cannot be read with the configured keyPassword. Fix keyPassword in keystore.properties." >&2
-        exit 1
+        die "$file opens, but alias '$alias' cannot be read with the configured keyPassword. Fix keyPassword in keystore.properties."
     fi
-    echo "Keystore OK ($file, alias $alias)."
+    ok "Keystore ($file, alias $alias)"
 }
 check_keystore
 
 # [2/6] Version bump
-echo ""
-echo "[2/6] Version management..."
+step 2/6 "Version"
 
 CURRENT_VERSION=$(node -p "require('./package.json').version")
 IFS='.' read -r CUR_MAJOR CUR_MINOR CUR_PATCH <<< "$CURRENT_VERSION"
 AUTO_PATCH_VERSION="$CUR_MAJOR.$CUR_MINOR.$((CUR_PATCH + 1))"
 AUTO_MINOR_VERSION="$CUR_MAJOR.$((CUR_MINOR + 1)).0"
 
-echo "Current version: $CURRENT_VERSION"
-echo ""
-echo "[1] Increment patch to $AUTO_PATCH_VERSION"
-echo "[2] Increment minor to $AUTO_MINOR_VERSION (resets patch to 0)"
-echo "[3] Enter custom version"
-echo "[4] Keep current version ($CURRENT_VERSION)"
-echo ""
 KEEP_VERSION=false
 case "$BUMP_ARG" in
     patch) VERSION_CHOICE=1 ;;
     minor) VERSION_CHOICE=2 ;;
     keep) VERSION_CHOICE=4 ;;
-    "") read -rp "Choose (1-4, default=1): " VERSION_CHOICE ;;
+    "")
+        echo "Current version: ${B}$CURRENT_VERSION${R}"
+        echo "  [1] Patch  -> $AUTO_PATCH_VERSION ${DIM}(default)${R}"
+        echo "  [2] Minor  -> $AUTO_MINOR_VERSION"
+        echo "  [3] Custom"
+        echo "  [4] Keep $CURRENT_VERSION"
+        read -rp "${B}Choose 1-4:${R} " VERSION_CHOICE ;;
     *) VERSION_CHOICE=3; NEW_VERSION="$BUMP_ARG" ;;
 esac
 
 case "${VERSION_CHOICE:-1}" in
     2) NEW_VERSION="$AUTO_MINOR_VERSION" ;;
-    3) [ -n "$BUMP_ARG" ] || read -rp "Enter custom version (e.g. 2.0.0): " NEW_VERSION ;;
+    3) [ -n "$BUMP_ARG" ] || read -rp "${B}Custom version (e.g. 2.0.0):${R} " NEW_VERSION ;;
     4) NEW_VERSION="$CURRENT_VERSION"; KEEP_VERSION=true ;;
     *) NEW_VERSION="$AUTO_PATCH_VERSION" ;;
 esac
 
 # gradle's versionName and scripts/bump-version.js both assume a plain x.y.z.
 if ! [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo "ERROR: '$NEW_VERSION' is not a valid x.y.z version."
-    exit 1
+    die "'$NEW_VERSION' is not a valid x.y.z version."
 fi
 
 if ! node scripts/release-changelog.js check; then
-    echo "NOTE: CHANGELOG.md has nothing under [Unreleased], releasing without changelog entries."
+    warn "CHANGELOG.md has nothing under [Unreleased], releasing without changelog entries."
 fi
 
 # Known now so the changelog links can point at the tag [6/6] creates.
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 TAG="v${NEW_VERSION}-${TIMESTAMP}"
 
-echo "Updating version to: $NEW_VERSION"
-
 # Asked up front so the rest of the run is unattended.
 # Keeping the version amends the existing commit, so no message is needed.
 # Skipped entirely with --no-push since nothing will be committed.
 if [ "$KEEP_VERSION" = false ] && [ "$SKIP_PUSH" = false ]; then
-    [ -n "$COMMIT_MSG" ] || read -rp "Commit message (Enter for 'Release v$NEW_VERSION'): " COMMIT_MSG
+    [ -n "$COMMIT_MSG" ] || read -rp "${B}Commit message${R} (Enter for 'Release v$NEW_VERSION'): " COMMIT_MSG
     COMMIT_MSG="${COMMIT_MSG:-Release v$NEW_VERSION}"
 fi
 
@@ -333,7 +348,7 @@ node scripts/release-changelog.js stamp "$NEW_VERSION" "$(date +%Y-%m-%d)" "$TAG
 if [ "$BUILD" != "$SRC" ]; then
     cp "$BUILD/package.json" "$BUILD/app.json" "$BUILD/CHANGELOG.md" "$SRC/"
 fi
-echo "Version updated to $NEW_VERSION (versionCode $(node -p 'require("./app.json").expo.android.versionCode'))"
+ok "Version $CURRENT_VERSION -> ${B}$NEW_VERSION${R}${GRN} (versionCode $(node -p 'require("./app.json").expo.android.versionCode'))"
 
 # Only the GitHub APKs get the Ko-fi link. Play's Payments policy bans it in the
 # AAB. Rewriting a source file (rather than an env var) changes its content
@@ -343,12 +358,11 @@ KOFI_URL="https://ko-fi.com/superak0s"
 DISTRIBUTION_FILE="$BUILD/src/shared/distribution.ts"
 set_kofi_url() {
     sed -i "s#^export const KOFI_URL: string | null = .*;#export const KOFI_URL: string | null = $1;#" "$DISTRIBUTION_FILE"
-    grep -q "= $1;" "$DISTRIBUTION_FILE" || { echo "ERROR: could not set KOFI_URL in $DISTRIBUTION_FILE" >&2; exit 1; }
+    grep -q "= $1;" "$DISTRIBUTION_FILE" || die "could not set KOFI_URL in $DISTRIBUTION_FILE"
 }
 require_release_signed() {
     if ! grep -q 'signingConfigs\.release' "$BUILD/android/app/build.gradle"; then
-        echo "ERROR: android/app/build.gradle signs the release build with the debug key. The keystore was not injected. Run: npx local-expo-build keystore import" >&2
-        exit 1
+        die "android/app/build.gradle signs the release build with the debug key. The keystore was not injected. Run: npx local-expo-build keystore import"
     fi
 }
 
@@ -360,7 +374,7 @@ aab_is_debug_signed() {
 
 bundle_has_kofi() {
     local py archive="$1" rc=0
-    py="$(command -v python || command -v python3)" || { echo "ERROR: python is needed to check the release bundles." >&2; exit 1; }
+    py="$(command -v python || command -v python3)" || die "python is needed to check the release bundles."
     # Windows Python can't open Git Bash's /c/... paths.
     command -v cygpath >/dev/null && archive="$(cygpath -w "$archive")"
     "$py" - "$archive" "$2" "$KOFI_URL" <<'PY' || rc=$?
@@ -371,23 +385,22 @@ PY
     case $rc in
         0) return 0 ;;
         10) return 1 ;;
-        *) echo "ERROR: could not read $2 from $1." >&2; exit 1 ;;
+        *) die "could not read $2 from $1." ;;
     esac
 }
 
-trap 'echo ""; echo "Build failed, reverting version bump and changelog."; git -C "$SRC" checkout -- package.json app.json; cp "$CHANGELOG_BACKUP" "$SRC/CHANGELOG.md"' ERR
+trap 'echo ""; err "Build failed, reverting version bump and changelog."; git -C "$SRC" checkout -- package.json app.json; cp "$CHANGELOG_BACKUP" "$SRC/CHANGELOG.md"' ERR
 
 # [3/6] Install dependencies, verify, prebuild
-echo ""
-echo "[3/6] Installing dependencies and running prebuild..."
+step 3/6 "Install, verify, prebuild"
 
+info "npm install"
 npm install --legacy-peer-deps
 
-echo ""
 if [ "$SKIP_TESTS" = true ]; then
-    echo "Verifying before build (lint + a11y lint + typecheck, tests skipped by --no-test)..."
+    info "Verifying: lint, a11y lint, typecheck (tests skipped by --no-test)"
 else
-    echo "Verifying before build (lint + a11y lint + typecheck + tests)..."
+    info "Verifying: lint, a11y lint, typecheck, tests"
 fi
 VERIFY_LOGS="$(mktemp -d)"
 declare -A VERIFY_PIDS
@@ -405,9 +418,9 @@ fi
 VERIFY_FAILED=false
 for name in "${!VERIFY_PIDS[@]}"; do
     if wait "${VERIFY_PIDS[$name]}"; then
-        echo "  $name: ok"
+        ok "$name"
     else
-        echo "  $name: FAILED"
+        printf '%s  XX  %s FAILED%s\n' "$RED$B" "$name" "$R"
         cat "$VERIFY_LOGS/$name.log"
         VERIFY_FAILED=true
     fi
@@ -420,16 +433,13 @@ fi
 # xlsx is pinned to a SheetJS CDN tarball rather than the npm registry, so
 # `npm audit` never sees it and a published security fix goes unnoticed.
 # SheetJS publishes no version endpoint, so this prompts a look rather than checking.
-echo "REMINDER: xlsx is pinned to $(grep -o 'xlsx-[0-9.]*' "$BUILD/package.json" | head -1), invisible to 'npm audit' - check https://cdn.sheetjs.com/ for a newer release."
-
-echo "Verification passed."
-echo ""
+warn "xlsx is pinned to $(grep -o 'xlsx-[0-9.]*' "$BUILD/package.json" | head -1), invisible to 'npm audit'. Check https://cdn.sheetjs.com/ for a newer release."
 
 if [ "$DO_CLEAN" = true ]; then
-    echo "Running full clean prebuild..."
+    info "Running full clean prebuild"
     npx expo prebuild --platform android --clean
 else
-    echo "Running incremental prebuild (--no-prebuild set)..."
+    info "Running incremental prebuild (--no-prebuild set)"
     npx expo prebuild --platform android
 fi
 
@@ -448,19 +458,18 @@ sed -i 's/signingConfig = signingConfigs\.debug/signingConfig signingConfigs.deb
 #
 # One-time setup required before this works (not part of the script):
 #   cd "$BUILD" && npx local-expo-build keystore import /path/to/your.jks
-echo ""
 trap 'set_kofi_url null' EXIT
 OUT_DIR="$SRC/release"
 mkdir -p "$OUT_DIR"
 APK_OUTS=()
 if [ "$BUILD_APK" = true ]; then
-    echo "[4/6] Building release APK via local-expo-build..."
+    step 4/6 "Building release APK"
     set_kofi_url "\"$KOFI_URL\""
     # Stale per-ABI APKs survive an incremental prebuild and would be released as this version.
     rm -f "$BUILD"/android/app/build/outputs/apk/release/*.apk
     # ORG_GRADLE_PROJECT_* overrides gradle.properties. The AAB call below doesn't see it.
     if [ "$SKIP_32BIT" = true ]; then
-        echo "Building arm64-v8a only (pass --32bit for armeabi-v7a too)."
+        info "arm64-v8a only (pass --32bit for armeabi-v7a too)"
         ORG_GRADLE_PROJECT_reactNativeArchitectures=arm64-v8a npx local-expo-build build android --apk --no-sync --no-bump --no-prebuild --no-clean
     else
         npx local-expo-build build android --apk --no-sync --no-bump --no-prebuild --no-clean
@@ -476,55 +485,47 @@ if [ "$BUILD_APK" = true ]; then
         abi="${abi#app-}"
         out="$OUT_DIR/OwnGains-v$NEW_VERSION-$abi.apk"
         cp "$apk" "$out"
-        echo "$(basename "$out"): $(du -h "$out" | cut -f1)"
+        ok "$(basename "$out"): $(du -h "$out" | cut -f1)"
         APK_OUTS+=("$out")
     done
 
     if [ ${#APK_OUTS[@]} -eq 0 ]; then
-        echo "ERROR: no APK found in $APK_DIR"
-        exit 1
+        die "no APK found in $APK_DIR"
     fi
     for old in "$OUT_DIR"/*.apk; do
-        [[ " ${APK_OUTS[*]} " == *" $old "* ]] || { rm -f "$old" && echo "Removed old $(basename "$old")"; }
+        [[ " ${APK_OUTS[*]} " == *" $old "* ]] || { rm -f "$old" && info "Removed old $(basename "$old")"; }
     done
     if ! bundle_has_kofi "${APK_OUTS[0]}" assets/index.android.bundle; then
-        echo "ERROR: the GitHub APK has no Ko-fi link. It would offer Play tips that can't work outside Play." >&2
-        exit 1
+        die "the GitHub APK has no Ko-fi link. It would offer Play tips that can't work outside Play."
     fi
     set_kofi_url null
 else
-    echo "aab only, skipping the APK."
+    info "aab only, skipping the APK"
 fi
 
 AAB_OUT=""
 if [ "$BUILD_AAB" = true ]; then
-    echo ""
-    echo "[4/6] Building release AAB via local-expo-build..."
+    step 4/6 "Building release AAB"
     npx local-expo-build build android --aab --no-sync --no-bump --no-prebuild --no-clean
     AAB_SRC="$BUILD/android/app/build/outputs/bundle/release/app-release.aab"
-    if [ ! -f "$AAB_SRC" ]; then
-        echo "ERROR: no AAB found at $AAB_SRC"
-        exit 1
-    fi
+    [ -f "$AAB_SRC" ] || die "no AAB found at $AAB_SRC"
     if aab_is_debug_signed "$AAB_SRC"; then
-        echo "ERROR: the AAB is debug-signed or unsigned - Play would reject it." >&2
-        exit 1
+        die "the AAB is debug-signed or unsigned. Play would reject it."
     fi
     if bundle_has_kofi "$AAB_SRC" base/assets/index.android.bundle; then
-        echo "ERROR: the AAB still contains the Ko-fi link - Play would reject it under the Payments policy." >&2
-        exit 1
+        die "the AAB still contains the Ko-fi link. Play would reject it under the Payments policy."
     fi
     # "Keep current version" still bumps versionCode, and Play only accepts
     # each code once, so the code is what tells two bundles apart.
     VERSION_CODE=$(node -p 'require("./app.json").expo.android.versionCode')
     AAB_OUT="$OUT_DIR/OwnGains-v$NEW_VERSION-$VERSION_CODE.aab"
     cp "$AAB_SRC" "$AAB_OUT"
-    echo "$(basename "$AAB_OUT"): $(du -h "$AAB_OUT" | cut -f1)"
+    ok "$(basename "$AAB_OUT"): $(du -h "$AAB_OUT" | cut -f1)"
     for old in "$OUT_DIR"/*.aab; do
-        [ "$old" = "$AAB_OUT" ] || { rm -f "$old" && echo "Removed old $(basename "$old")"; }
+        [ "$old" = "$AAB_OUT" ] || { rm -f "$old" && info "Removed old $(basename "$old")"; }
     done
 else
-    echo "apk only, skipping the AAB."
+    info "apk only, skipping the AAB"
 fi
 
 trap - ERR
@@ -536,17 +537,16 @@ rm -f "$CHANGELOG_BACKUP"
 # left as-is (including the local, uncommitted version bump).
 # gh in [6/6] needs the git repo too, and the WSL mirror has no .git.
 cd "$SRC"
-echo ""
 if [ "$SKIP_PUSH" = true ]; then
-    echo "[5/6] --no-push set, skipping git add/commit/push."
+    step 5/6 "Git: skipped (--no-push)"
 else
-    echo "[5/6] Pushing source code to GitHub..."
+    step 5/6 "Git commit and push"
     git add .
 
     if git diff --cached --quiet; then
-        echo "Nothing to commit, skipping push."
+        info "Nothing to commit, skipping push"
     elif [ "$KEEP_VERSION" = true ]; then
-        echo "Version unchanged, amending the last commit."
+        warn "Version unchanged, amending the last commit and force-pushing"
         git commit --amend --no-edit
         git push --force-with-lease origin main
     else
@@ -555,14 +555,20 @@ else
     fi
 fi
 
-# [6/6] Push to GitHub Releases
-echo ""
-if [ "$SKIP_RELEASE" = true ]; then
-    echo "[6/6] --no-release set, skipping GitHub release."
-    [ -n "$AAB_OUT" ] && echo "Play Store bundle: $AAB_OUT"
+finish() {
+    printf '\n%s=== Done! v%s ===%s\n' "$B$GRN" "$NEW_VERSION" "$R"
+    [ -n "$1" ] && printf '  GitHub release  %s\n' "$1"
+    for apk in "${APK_OUTS[@]}"; do printf '  APK             %s\n' "$apk"; done
+    [ -n "$AAB_OUT" ] && printf '  Play bundle     %s\n' "$AAB_OUT"
     exit 0
+}
+
+# [6/6] Push to GitHub Releases
+if [ "$SKIP_RELEASE" = true ]; then
+    step 6/6 "GitHub release: skipped"
+    finish ""
 fi
-echo "[6/6] Creating GitHub release..."
+step 6/6 "Creating GitHub release $TAG"
 
 NOTES_FILE="$(mktemp)"
 if ! node scripts/release-changelog.js notes "$NEW_VERSION" > "$NOTES_FILE" \
@@ -579,11 +585,7 @@ gh release create "$TAG" "${APK_OUTS[@]}" \
     --notes-file "$NOTES_FILE" "${GH_RELEASE_FLAGS[@]}"
 rm -f "$NOTES_FILE"
 
-echo ""
-echo "=== Done! APK released as $TAG ==="
-if [ -n "$AAB_OUT" ]; then
-    echo "Play Store bundle: $AAB_OUT"
-fi
+finish "$TAG"
 
 # Without this bash reads on past the group and mis-seeks in the file.
 exit 0

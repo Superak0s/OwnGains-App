@@ -35,7 +35,7 @@ export const BODYFAT_WIDGET_REGISTRY: Record<
 
 export const DEFAULT_BODYFAT_WIDGETS = toDefaultWidgets(
   BODYFAT_WIDGET_REGISTRY,
-  ["bodyfat_height", "bodyfat_calendar", "bodyfat_latest"],
+  ["bodyfat_latest", "bodyfat_height", "bodyfat_calendar"],
 );
 
 export const BODYFAT_TAB_CONFIG = {

@@ -6,13 +6,32 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-10-04
+
+### Added
+
+- The "Before you start" screen has an "Allow both and continue" button that turns on crash reports and usage metrics in one tap.
+- Fill Demo Data also adds demo friends (with shared workout history and one pending request), body tracking entries, placeholder progress photos (three per muscle for ten muscles, each naming its muscle in a different font so you can try comparing), a height for body fat when none is set, and supplements with dose logs. Remove Demo Data deletes all of it.
+
 ### Changed
 
+- Crash reports and usage metrics are asked once per device. Signing out or switching accounts keeps your choice, and you can still change it in Settings → Privacy and Data.
 - The web account-deletion page also explains how to delete your data while keeping the account.
+- The Macros tab now shows Today's Macros first and the Body Fat tab shows Body Fat % first. Boards you have already rearranged keep your order.
+- Fill Demo Data sends one request to the server instead of one per set, so it no longer runs into rate limits. Filling again replaces the earlier demo data instead of adding a second copy.
 - The "this server doesn't store your data" notice on Supplements now has a close button, hides itself after a few seconds, and stops appearing after you've seen it three times. Tracking now shows the same notice when the server doesn't store body tracking.
+- The ready-made splits in Plan are replaced with seven complete programs (Beginner Full Body, Dumbbell Full Body for home, Tiered Linear Progression, Upper / Lower, Push Pull Legs in 6 and 3 days, Body Part Split). Each day comes filled with exercises, sets, reps and a progression note. The template your current split was built from is highlighted in blue, and the highlight goes away once you switch splits, start a different one or change its exercises.
+- The move arrows on widgets in edit mode are larger, outlined buttons in the accent color, so they are easier to spot and tap.
+- Compare Photos opens with your earliest and latest days already selected. Each day is shown as a card with a thumbnail, its date (with the year when it isn't this year) and its photo count. The earlier pick is always labeled Before, tapping a selected day clears it, and a summary shows how many days apart the two are.
+
+### Removed
+
+- The "End, don't lock" choice when completing a workout. Ending a workout always locks the day.
 
 ### Fixed
 
+- An expired session from before refresh tokens now renews or signs you out, instead of every screen failing to load while you still appear signed in.
+- The Save Set button in Set Details now stays pinned at the bottom of the sheet, so you no longer have to scroll down to reach it.
 - The dashed outline around widgets no longer stays after tapping Done when editing widgets.
 - When a trainer opens a session for a trainee who has no program yet, the screen now says the trainee hasn't set one up (instead of telling the trainer to upload a file), and the session bar no longer slides under the status bar or shows a useless Day picker.
 - Syncing a large offline backlog now pauses when the server says "too many requests" and resumes later, instead of failing the rest of the queue.
@@ -20,11 +39,14 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 ### Internal
 
 - `release.sh debug` builds only a debug APK (no bump, checks, commit, push or release).
-- `release.sh` takes words for what/where (`apk`, `aab`, `debug`, `wsl`, with `apk`/`aab` replacing `--no-aab`/`--no-apk`) and `--options` for how. `-h` groups them by pipeline step and conflicting combinations now error.
+- `release.sh` takes words for what/where (`apk`, `aab`, `debug`, `wsl`, with `apk`/`aab` replacing `--no-aab`/`--no-apk`) and `--options` for how. `-h` leads with common commands and groups options by purpose, conflicting combinations now error, and output is colored with a plan summary up front and a final list of artifacts (`NO_COLOR` disables color).
 - `release.sh` builds only the arm64-v8a APK by default (`--32bit` adds armeabi-v7a, replacing `--no-32bit`) and deletes older APKs/AABs from `release/` after a successful build.
-- `release.sh wsl` re-runs the script inside WSL from Git Bash.
+- `release.sh wsl` re-runs the script inside WSL from Git Bash in an interactive shell, so `~/.bashrc` (nvm, `ANDROID_HOME`, tokens) loads as it does in a terminal. The script stops up front when no Android SDK is configured.
 - Removed unused scripts: `wsl-build.sh`, `reset-changelog.js`, `find_emojis.py`.
 - Rate-limit (HTTP 429) responses are no longer sent as crash reports.
+- Debug builds default to the LAN dev server `http://192.168.10.243:5000`.
+- Demo fill moved into the workout service (`fillDemoData`, `POST /api/sessions/demo` online, which also seeds tracking and supplements the server stores) plus a local seeder for local-only features that records what it created for removal.
+- Added `expo-asset` as a direct dependency to load the bundled demo photos.
 
 ## [0.1.4] - 2026-10-02
 

@@ -198,18 +198,15 @@ export default function WidgetsPanel<T extends string>({
                       onPress={() => next && onReorder(next)}
                       disabled={!next}
                       hitSlop={12}
-                      style={styles.moveButton}
+                      style={[
+                        styles.moveButton,
+                        !next && styles.moveButtonDisabled,
+                      ]}
                       accessibilityRole='button'
                       accessibilityState={{ disabled: !next }}
                       accessibilityLabel={ARROW_LABEL[dir]}
                     >
-                      <Text
-                        style={[
-                          styles.moveButtonText,
-                          headerTextStyle,
-                          !next && styles.moveButtonTextDisabled,
-                        ]}
-                      >
+                      <Text style={[styles.moveButtonText, headerTextStyle]}>
                         {ARROW[dir]}
                       </Text>
                     </TouchableOpacity>
@@ -296,15 +293,22 @@ const makeStyles = (colors: ThemeColors) =>
       marginBottom: 8,
     },
     moveButton: {
-      paddingHorizontal: 8,
-      paddingVertical: 2,
+      width: 30,
+      height: 28,
+      marginHorizontal: 2,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    moveButtonDisabled: {
+      opacity: 0.25,
     },
     moveButtonText: {
-      fontSize: 13,
-      color: colors.textSecondary,
-    },
-    moveButtonTextDisabled: {
-      opacity: 0.25,
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.accent,
     },
     sizeButton: {
       marginRight: 4,

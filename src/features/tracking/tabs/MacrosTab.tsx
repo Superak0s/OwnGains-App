@@ -24,8 +24,8 @@ export const MACROS_WIDGET_REGISTRY: Record<
 };
 
 export const DEFAULT_MACROS_WIDGETS = toDefaultWidgets(MACROS_WIDGET_REGISTRY, [
-  "macros_calendar",
   "macros_today",
+  "macros_calendar",
 ]);
 
 export const MACROS_TAB_CONFIG = {

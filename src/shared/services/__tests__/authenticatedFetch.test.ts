@@ -111,15 +111,26 @@ describe("authenticatedFetch 401 handling", () => {
     expect(refresher).not.toHaveBeenCalled()
   })
 
-  it("does not refresh or clear the token without a refresh token", async () => {
-    const refresher = jest.fn()
+  it("refreshes with the bearer but keeps it without a refresh token", async () => {
+    const refresher = jest.fn(async () => "rejected" as const)
     setSessionRefresher(refresher)
     refreshGet.mockResolvedValue(null)
     fetchMock.mockResolvedValue(respond(401))
 
     await expect(authenticatedFetch("/api/program")).rejects.toThrow("SESSION_EXPIRED")
-    expect(refresher).not.toHaveBeenCalled()
+    expect(refresher).toHaveBeenCalledTimes(1)
     expect(clearAccess).not.toHaveBeenCalled()
+  })
+
+  it("does not refresh a request that carried no credential", async () => {
+    const refresher = jest.fn()
+    setSessionRefresher(refresher)
+    refreshGet.mockResolvedValue(null)
+    accessToken = null
+    fetchMock.mockResolvedValue(respond(401))
+
+    await expect(authenticatedFetch("/api/program")).rejects.toThrow("SESSION_EXPIRED")
+    expect(refresher).not.toHaveBeenCalled()
   })
 })
 

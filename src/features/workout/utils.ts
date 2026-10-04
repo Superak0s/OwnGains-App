@@ -85,7 +85,6 @@ export function activeMachine(exercise: {
   return exercise.selectedMachine ?? exercise.defaultMachine ?? null;
 }
 
-
 /** Move a machine's note/pin to its new name. An empty entry drops it. */
 export function editMachineMeta(
   meta: Record<string, MachineMeta> | undefined,
@@ -140,8 +139,8 @@ export function getEmptyStateInfo(
       icon: "📁",
       title: "No Workout Plan",
       text: "Upload a workout file to get started.",
-      actionLabel: "Go to Home",
-      actionTab: "Home",
+      actionLabel: "Go to Plan Screen",
+      actionTab: "Plan",
     };
   }
   if (!selectedSplit) {
@@ -178,9 +177,7 @@ export function getDayOverviewTint(
   let base = colors.accent;
   if (isCurrentDayLocked) base = colors.textSecondary;
   else if (setsCompleteAndUnlocked) base = colors.success;
-  return isDarkColor(colors.background)
-    ? darken(base, DARK_TINT_AMOUNT)
-    : base;
+  return isDarkColor(colors.background) ? darken(base, DARK_TINT_AMOUNT) : base;
 }
 
 /** Text/foreground color that remains legible on getDayOverviewTint's fill. */
@@ -216,7 +213,6 @@ export function checkIsSelectedSetAssisted(
   const exercise = dayWorkout.exercises[selectedSet.exerciseIndex];
   return !!exercise && isAssistedExercise(exercise.name);
 }
-
 
 type PerformanceEntry = {
   date: Date;
@@ -344,8 +340,7 @@ function collectSessionTimings(
       const timingName = t.exerciseName || exerciseName || "";
       return (
         getCanonicalName(timingName, allExerciseNames).toLowerCase() ===
-          canonicalName.toLowerCase() &&
-        matchesMachine(t.machineName, machine)
+          canonicalName.toLowerCase() && matchesMachine(t.machineName, machine)
       );
     })
     .map((t) =>
@@ -360,7 +355,10 @@ function collectSessionTimings(
 }
 
 export async function getServerHistoryEntries(
-  fetchSessionHistory: (limit: number, flag: boolean) => Promise<WorkoutSession[]>,
+  fetchSessionHistory: (
+    limit: number,
+    flag: boolean,
+  ) => Promise<WorkoutSession[]>,
   exerciseName: string,
   canonicalName: string,
   allExerciseNames: string[],
@@ -421,7 +419,6 @@ export function pickBestPerformanceSummary(history: PerformanceEntry[]): {
   );
   return { last, best, totalAttempts: prev.length };
 }
-
 
 function getPartnerExerciseLabel(progress: PartnerProgress): string {
   if (progress.exerciseName) return progress.exerciseName;
@@ -485,7 +482,11 @@ export function suggestNextSetLoad(
   }
 
   const ceiling = targetRepCeiling(targetReps);
-  if (ceiling !== null && last.reps >= ceiling && (rir === undefined || rir >= 2))
+  if (
+    ceiling !== null &&
+    last.reps >= ceiling &&
+    (rir === undefined || rir >= 2)
+  )
     return {
       weightKg: last.weight + step,
       reps: ceiling,

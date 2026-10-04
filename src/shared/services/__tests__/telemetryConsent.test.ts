@@ -84,7 +84,7 @@ describe("telemetry consent defaults", () => {
 });
 
 describe("applyPrivacyChoicesFor", () => {
-  it("sends nothing for a second account until it answers, whatever the first chose", async () => {
+  it("keeps the device's choices for a second account, which still owes the terms", async () => {
     const { crashReporting } = load();
     crashReporting.applyPrivacyChoicesFor("1");
     await crashReporting.setCrashReportingEnabled(true);
@@ -92,35 +92,22 @@ describe("applyPrivacyChoicesFor", () => {
     await crashReporting.recordPrivacyConsent("1");
 
     expect(crashReporting.applyPrivacyChoicesFor("2")).toBe(false);
-    expect(crashReporting.isCrashReportingEnabled()).toBe(false);
-    expect(crashReporting.isTelemetryEnabled()).toBe(false);
-  });
-
-  it("restores each account's own answers when it signs back in", async () => {
-    const { crashReporting } = load();
-    crashReporting.applyPrivacyChoicesFor("1");
-    await crashReporting.setTelemetryEnabled(true);
-    await crashReporting.setCrashReportingEnabled(true);
-    await crashReporting.recordPrivacyConsent("1");
-    crashReporting.applyPrivacyChoicesFor("2");
-    await crashReporting.setTelemetryEnabled(false);
-    await crashReporting.setCrashReportingEnabled(false);
-    await crashReporting.recordPrivacyConsent("2");
-
-    expect(crashReporting.applyPrivacyChoicesFor("1")).toBe(true);
-    expect(crashReporting.isTelemetryEnabled()).toBe(true);
     expect(crashReporting.isCrashReportingEnabled()).toBe(true);
+    expect(crashReporting.isTelemetryEnabled()).toBe(true);
+    expect(crashReporting.hasCrashReportingPreference()).toBe(true);
   });
 
-  it("falls back to the device-wide answer for an account that consented before", async () => {
+  it("adopts an account's own answer stored by an earlier version", () => {
     stored["@privacy_consent_seen_user_1"] = "true";
-    stored["@telemetry_enabled"] = "true";
-    stored["@crash_reporting_enabled"] = "true";
+    stored["@telemetry_enabled_user_1"] = "true";
+    stored["@crash_reporting_enabled_user_1"] = "false";
     const { crashReporting } = load();
 
     expect(crashReporting.applyPrivacyChoicesFor("1")).toBe(true);
     expect(crashReporting.isTelemetryEnabled()).toBe(true);
-    expect(crashReporting.isCrashReportingEnabled()).toBe(true);
+    expect(crashReporting.isCrashReportingEnabled()).toBe(false);
+    expect(stored["@telemetry_enabled"]).toBe("true");
+    expect(stored["@crash_reporting_enabled"]).toBe("false");
   });
 });
 

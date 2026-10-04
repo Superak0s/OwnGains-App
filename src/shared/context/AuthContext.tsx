@@ -23,7 +23,6 @@ import { accessTokenExpiresAt, accessTokenLifetimeMs } from "../services/jwt";
 import { hasAcceptedCurrentTerms } from "@features/auth/termsAcceptance";
 import {
   applyPrivacyChoicesFor,
-  forgetPrivacyChoices,
   setUserContext,
   metric,
   log,
@@ -168,7 +167,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       captureException(error, { stage: "logout" });
     } finally {
       clearSession();
-      await forgetPrivacyChoices().catch(captureException);
     }
   }, [clearSession, user?.id]);
 

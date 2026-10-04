@@ -165,7 +165,9 @@ const fetchAuthenticated = async (
   // the bearer token itself was rejected, regardless of the message body.
   if (status === 401 && toOwnServer) {
     const hasRefreshToken = !!(await refreshTokenStorage.get())
-    if (mayRefresh && hasRefreshToken && route !== SIGNOUT_ROUTE) {
+    // A session without a refresh token still refreshes with its bearer, and a
+    // refusal there is what logs it out instead of failing every request.
+    if (mayRefresh && (hasRefreshToken || token) && route !== SIGNOUT_ROUTE) {
       const current = await tokenStorage.get()
       // Another request may already have refreshed while this one was in flight.
       const outcome =

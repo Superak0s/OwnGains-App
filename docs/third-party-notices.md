@@ -9073,7 +9073,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## expo-camera@57.0.5
+## expo-camera@57.0.6
 
 License: MIT
 
@@ -9101,7 +9101,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## expo-constants@57.0.19
+## expo-constants@57.0.20
 
 License: MIT
 
@@ -9269,7 +9269,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## expo-document-picker@57.0.2
+## expo-document-picker@57.0.3
 
 License: MIT
 
@@ -9633,7 +9633,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## expo-modules-core@57.0.19
+## expo-modules-core@57.0.20
 
 License: MIT
 
@@ -9689,7 +9689,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## expo-navigation-bar@57.0.2
+## expo-navigation-bar@57.0.3
 
 License: MIT
 
@@ -9969,7 +9969,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## expo@57.0.25
+## expo@57.0.26
 
 License: MIT
 

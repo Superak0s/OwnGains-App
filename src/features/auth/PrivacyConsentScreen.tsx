@@ -1,6 +1,6 @@
-// Shown after the first sign-in in either app mode, before anything is sent,
-// and again whenever the Terms change. Every switch and box starts off for a
-// new account: a pre-ticked box is not affirmative consent under GDPR.
+// Shown after an account's first sign-in in either app mode, and again whenever
+// the Terms change. The diagnostics switches are asked once per device. Every
+// switch and box starts off: a pre-ticked box is not affirmative consent under GDPR.
 
 import React, { useCallback, useMemo, useState } from "react";
 import {
@@ -22,6 +22,7 @@ import {
   captureException,
   isCrashReportingEnabled,
   isTelemetryEnabled,
+  hasCrashReportingPreference,
 } from "@shared/services/crashReporting";
 import { restartOnboarding } from "@shared/services/appMode";
 import { getServerUrl } from "@shared/services/config";
@@ -62,8 +63,7 @@ export default function PrivacyConsentScreen({
   const userId = user?.id == null ? null : String(user.id);
   const termsChanged = userId !== null && hasAcceptedEarlierTerms(userId);
   const healthRequired = needsHealthConsent();
-  // applyPrivacyChoicesFor has already loaded this account's own answers, or
-  // all-off for an account that never answered.
+  const [askDiagnostics] = useState(() => !hasCrashReportingPreference());
   const [crashReports, setCrashReports] = useState(isCrashReportingEnabled);
   const [telemetry, setTelemetry] = useState(isTelemetryEnabled);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -82,12 +82,16 @@ export default function PrivacyConsentScreen({
     ...(serverFeatures ?? []).map((f) => HEALTH_FEATURE_DATA[f] ?? f),
   ].join(", plus ");
 
-  const confirm = useCallback(async (): Promise<void> => {
+  const confirm = useCallback(async (allowBoth = false): Promise<void> => {
     setSaving(true);
     setFailed(false);
+    if (allowBoth) {
+      setCrashReports(true);
+      setTelemetry(true);
+    }
     try {
-      await setCrashReportingEnabled(crashReports);
-      await setTelemetryEnabled(telemetry);
+      await setCrashReportingEnabled(allowBoth || crashReports);
+      await setTelemetryEnabled(allowBoth || telemetry);
       // Last: a failed write above must leave the screen reachable again.
       await authService.recordConsent(TERMS_VERSION, healthConsent);
       if (userId) await recordTermsAcceptance(userId, healthConsent);
@@ -131,6 +135,8 @@ export default function PrivacyConsentScreen({
             Please read and accept the new version to keep using OwnGains.
           </Text>
         )}
+        {askDiagnostics && (
+        <>
         <Text style={styles.tagline}>
           OwnGains can send diagnostics to the developer's self-hosted crash-report
           server so bugs get found and fixed. This applies in offline mode too.
@@ -173,6 +179,8 @@ export default function PrivacyConsentScreen({
             accessibilityLabel='Send usage metrics and diagnostics'
           />
         </View>
+        </>
+        )}
 
         {checkbox(
           termsAccepted,
@@ -236,6 +244,25 @@ export default function PrivacyConsentScreen({
             <Text style={styles.buttonText}>Continue</Text>
           )}
         </TouchableOpacity>
+
+        {askDiagnostics && (
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.buttonSecondary,
+              (saving || !canContinue) && styles.buttonDisabled,
+            ]}
+            onPress={() => void confirm(true)}
+            disabled={saving || !canContinue}
+            accessibilityRole='button'
+            accessibilityLabel='Allow crash reports and usage metrics, then continue'
+            accessibilityState={{ disabled: saving || !canContinue }}
+          >
+            <Text style={[styles.buttonText, styles.buttonSecondaryText]}>
+              Allow both and continue
+            </Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           onPress={() => navigation.navigate("PrivacyPolicy")}
@@ -326,6 +353,12 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: 14,
     },
     buttonDisabled: { opacity: 0.6 },
+    buttonSecondary: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.accent,
+    },
+    buttonSecondaryText: { color: colors.accent },
     error: {
       fontSize: 13,
       lineHeight: 19,

@@ -115,309 +115,315 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
     onSave({ weight, reps, note: setNote, isWarmup: isWarmupSet, rir });
 
   return (
-    <>
-      {loadingHistory && (
-        <View style={styles.historyLoading}>
-          <Text style={styles.historyLoadingText}>Loading history...</Text>
-        </View>
-      )}
-      {!loadingHistory && performanceHistory && (
-        <View style={styles.performanceSection}>
-          <Text style={styles.performanceSectionTitle}>
-            📊 Performance History
-          </Text>
-          <View style={styles.performanceCard}>
-            <View style={styles.performanceCardHeader}>
-              <Text style={styles.performanceCardTitle}>🕐 Last Time</Text>
-              <Text style={styles.performanceCardDate}>
-                {formatDate(performanceHistory.last.date)}
-              </Text>
-            </View>
-            <View style={styles.performanceStats}>
-              <View style={styles.performanceStat}>
-                {/* History is stored in kg, display in chosen unit */}
-                <Text style={styles.performanceStatValue}>
-                  {kgToDisplay(performanceHistory.last.weight, weightUnit)}
-                  {weightUnit}
-                </Text>
-                <Text style={styles.performanceStatLabel}>Weight</Text>
-              </View>
-              <View style={styles.performanceStat}>
-                <Text style={styles.performanceStatValue}>
-                  {performanceHistory.last.reps}
-                </Text>
-                <Text style={styles.performanceStatLabel}>Reps</Text>
-              </View>
-              <View style={styles.performanceStat}>
-                <Text style={styles.performanceStatValue}>
-                  {kgToDisplay(
-                    performanceHistory.last.oneRepMax,
-                    weightUnit,
-                  )}
-                  {weightUnit}
-                </Text>
-                <Text style={styles.performanceStatLabel}>Est. 1RM</Text>
-              </View>
-            </View>
+    <View style={styles.setFormBody}>
+      <ScrollView
+        showsVerticalScrollIndicator
+        keyboardShouldPersistTaps='handled'
+        bounces={false}
+      >
+        {loadingHistory && (
+          <View style={styles.historyLoading}>
+            <Text style={styles.historyLoadingText}>Loading history...</Text>
           </View>
-          <View
-            style={[styles.performanceCard, styles.bestPerformanceCard]}
-          >
-            <View style={styles.performanceCardHeader}>
-              <Text style={styles.performanceCardTitle}>
-                🏆 Best Performance
-              </Text>
-              <Text style={styles.performanceCardDate}>
-                {formatDate(performanceHistory.best.date)}
-              </Text>
-            </View>
-            <View style={styles.performanceStats}>
-              <View style={styles.performanceStat}>
-                <Text
-                  style={[
-                    styles.performanceStatValue,
-                    styles.bestStatValue,
-                  ]}
-                >
-                  {kgToDisplay(performanceHistory.best.weight, weightUnit)}
-                  {weightUnit}
+        )}
+        {!loadingHistory && performanceHistory && (
+          <View style={styles.performanceSection}>
+            <Text style={styles.performanceSectionTitle}>
+              📊 Performance History
+            </Text>
+            <View style={styles.performanceCard}>
+              <View style={styles.performanceCardHeader}>
+                <Text style={styles.performanceCardTitle}>🕐 Last Time</Text>
+                <Text style={styles.performanceCardDate}>
+                  {formatDate(performanceHistory.last.date)}
                 </Text>
-                <Text style={styles.performanceStatLabel}>Weight</Text>
               </View>
-              <View style={styles.performanceStat}>
-                <Text
-                  style={[
-                    styles.performanceStatValue,
-                    styles.bestStatValue,
-                  ]}
-                >
-                  {performanceHistory.best.reps}
-                </Text>
-                <Text style={styles.performanceStatLabel}>Reps</Text>
-              </View>
-              <View style={styles.performanceStat}>
-                <Text
-                  style={[
-                    styles.performanceStatValue,
-                    styles.bestStatValue,
-                  ]}
-                >
-                  {kgToDisplay(
-                    performanceHistory.best.oneRepMax,
-                    weightUnit,
-                  )}
-                  {weightUnit}
-                </Text>
-                <Text style={styles.performanceStatLabel}>Est. 1RM</Text>
+              <View style={styles.performanceStats}>
+                <View style={styles.performanceStat}>
+                  {/* History is stored in kg, display in chosen unit */}
+                  <Text style={styles.performanceStatValue}>
+                    {kgToDisplay(performanceHistory.last.weight, weightUnit)}
+                    {weightUnit}
+                  </Text>
+                  <Text style={styles.performanceStatLabel}>Weight</Text>
+                </View>
+                <View style={styles.performanceStat}>
+                  <Text style={styles.performanceStatValue}>
+                    {performanceHistory.last.reps}
+                  </Text>
+                  <Text style={styles.performanceStatLabel}>Reps</Text>
+                </View>
+                <View style={styles.performanceStat}>
+                  <Text style={styles.performanceStatValue}>
+                    {kgToDisplay(
+                      performanceHistory.last.oneRepMax,
+                      weightUnit,
+                    )}
+                    {weightUnit}
+                  </Text>
+                  <Text style={styles.performanceStatLabel}>Est. 1RM</Text>
+                </View>
               </View>
             </View>
-          </View>
-          <Text style={styles.performanceTotalAttempts}>
-            Total attempts: {performanceHistory.totalAttempts}
-          </Text>
-        </View>
-      )}
-      {!loadingHistory && !performanceHistory && (
-        <View style={styles.noHistoryContainer}>
-          <Text style={styles.noHistoryText}>
-            No previous data for this exercise
-          </Text>
-        </View>
-      )}
-
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>
-          Weight ({weightUnit}), leave 0 for bodyweight
-        </Text>
-        <TextInput
-          style={styles.input}
-          value={weight}
-          onChangeText={setWeight}
-          keyboardType='decimal-pad'
-          placeholder='0'
-          placeholderTextColor={colors.textMuted}
-          accessibilityLabel={`Weight in ${weightUnit}, leave zero for bodyweight`}
-        />
-        {weightError && (
-          <Text style={styles.inputError}>{weightError}</Text>
-        )}
-      </View>
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Reps</Text>
-        <TextInput
-          style={styles.input}
-          value={reps}
-          onChangeText={setReps}
-          keyboardType='number-pad'
-          placeholder='0'
-          placeholderTextColor={colors.textMuted}
-          accessibilityLabel='Reps'
-        />
-        {!hasValidReps && (
-          <Text style={styles.inputHint}>
-            Enter at least 1 rep to save.
-          </Text>
-        )}
-        {liveOneRepMax > 0 && (
-          <Text style={styles.oneRepMaxHint}>
-            Est. 1RM {kgToDisplay(liveOneRepMax, weightUnit)}
-            {weightUnit}
-          </Text>
-        )}
-      </View>
-
-      {progression && !isWarmupSet && (
-        <View style={styles.progressionPrompt}>
-          <Text style={styles.progressionPromptText}>
-            {PROGRESSION_ICON[progression.direction]} {progression.reason}.
-            Try {kgToDisplay(progression.weightKg, weightUnit)}
-            {weightUnit} × {progression.reps}?
-          </Text>
-          <View style={styles.progressionPromptActions}>
-            <TouchableOpacity
-              style={styles.progressionApplyButton}
-              accessibilityRole='button'
-              accessibilityLabel={`Use ${kgToDisplay(progression.weightKg, weightUnit)} ${weightUnit} for ${progression.reps} reps`}
-              onPress={() => {
-                setWeight(kgToDisplay(progression.weightKg, weightUnit));
-                setReps(String(progression.reps));
-                onDismissProgression();
-              }}
+            <View
+              style={[styles.performanceCard, styles.bestPerformanceCard]}
             >
-              <Text style={styles.progressionApplyText}>Use it</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.progressionDismissButton}
-              accessibilityRole='button'
-              accessibilityLabel='Dismiss progression suggestion'
-              onPress={onDismissProgression}
-            >
-              <Text style={styles.progressionDismissText}>✕</Text>
-            </TouchableOpacity>
+              <View style={styles.performanceCardHeader}>
+                <Text style={styles.performanceCardTitle}>
+                  🏆 Best Performance
+                </Text>
+                <Text style={styles.performanceCardDate}>
+                  {formatDate(performanceHistory.best.date)}
+                </Text>
+              </View>
+              <View style={styles.performanceStats}>
+                <View style={styles.performanceStat}>
+                  <Text
+                    style={[
+                      styles.performanceStatValue,
+                      styles.bestStatValue,
+                    ]}
+                  >
+                    {kgToDisplay(performanceHistory.best.weight, weightUnit)}
+                    {weightUnit}
+                  </Text>
+                  <Text style={styles.performanceStatLabel}>Weight</Text>
+                </View>
+                <View style={styles.performanceStat}>
+                  <Text
+                    style={[
+                      styles.performanceStatValue,
+                      styles.bestStatValue,
+                    ]}
+                  >
+                    {performanceHistory.best.reps}
+                  </Text>
+                  <Text style={styles.performanceStatLabel}>Reps</Text>
+                </View>
+                <View style={styles.performanceStat}>
+                  <Text
+                    style={[
+                      styles.performanceStatValue,
+                      styles.bestStatValue,
+                    ]}
+                  >
+                    {kgToDisplay(
+                      performanceHistory.best.oneRepMax,
+                      weightUnit,
+                    )}
+                    {weightUnit}
+                  </Text>
+                  <Text style={styles.performanceStatLabel}>Est. 1RM</Text>
+                </View>
+              </View>
+            </View>
+            <Text style={styles.performanceTotalAttempts}>
+              Total attempts: {performanceHistory.totalAttempts}
+            </Text>
           </View>
+        )}
+        {!loadingHistory && !performanceHistory && (
+          <View style={styles.noHistoryContainer}>
+            <Text style={styles.noHistoryText}>
+              No previous data for this exercise
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>
+            Weight ({weightUnit}), leave 0 for bodyweight
+          </Text>
+          <TextInput
+            style={styles.input}
+            value={weight}
+            onChangeText={setWeight}
+            keyboardType='decimal-pad'
+            placeholder='0'
+            placeholderTextColor={colors.textMuted}
+            accessibilityLabel={`Weight in ${weightUnit}, leave zero for bodyweight`}
+          />
+          {weightError && (
+            <Text style={styles.inputError}>{weightError}</Text>
+          )}
         </View>
-      )}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Reps</Text>
+          <TextInput
+            style={styles.input}
+            value={reps}
+            onChangeText={setReps}
+            keyboardType='number-pad'
+            placeholder='0'
+            placeholderTextColor={colors.textMuted}
+            accessibilityLabel='Reps'
+          />
+          {!hasValidReps && (
+            <Text style={styles.inputHint}>
+              Enter at least 1 rep to save.
+            </Text>
+          )}
+          {liveOneRepMax > 0 && (
+            <Text style={styles.oneRepMaxHint}>
+              Est. 1RM {kgToDisplay(liveOneRepMax, weightUnit)}
+              {weightUnit}
+            </Text>
+          )}
+        </View>
 
-      <View style={styles.warmupToggle}>
-        <Text style={styles.warmupToggleText}>
-          {isWarmupSet ? "🔥 " : ""}Warm-up set
-        </Text>
-        <Switch
-          value={isWarmupSet}
-          onValueChange={setIsWarmupSet}
-          trackColor={{
-            false: colors.surfaceBorder,
-            true: colors.warning,
-          }}
-          thumbColor={isWarmupSet ? colors.textOnAccent : colors.textMuted}
-          accessibilityLabel='Warm-up set'
-        />
-      </View>
-
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Effort (optional)</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyboardShouldPersistTaps='handled'
-          contentContainerStyle={styles.chipRow}
-        >
-          {RIR_SCALE.map((value) => {
-            const selected = rir === value;
-            return (
+        {progression && !isWarmupSet && (
+          <View style={styles.progressionPrompt}>
+            <Text style={styles.progressionPromptText}>
+              {PROGRESSION_ICON[progression.direction]} {progression.reason}.
+              Try {kgToDisplay(progression.weightKg, weightUnit)}
+              {weightUnit} × {progression.reps}?
+            </Text>
+            <View style={styles.progressionPromptActions}>
               <TouchableOpacity
-                key={value}
-                style={[styles.chip, selected && styles.chipActive]}
-                accessibilityRole='radio'
-                accessibilityLabel={`${value} ${value === 1 ? "rep" : "reps"} in reserve`}
-                accessibilityState={{ selected }}
-                onPress={() => setRir(selected ? null : value)}
+                style={styles.progressionApplyButton}
+                accessibilityRole='button'
+                accessibilityLabel={`Use ${kgToDisplay(progression.weightKg, weightUnit)} ${weightUnit} for ${progression.reps} reps`}
+                onPress={() => {
+                  setWeight(kgToDisplay(progression.weightKg, weightUnit));
+                  setReps(String(progression.reps));
+                  onDismissProgression();
+                }}
               >
-                <Text
-                  style={[
-                    styles.chipText,
-                    selected && styles.chipTextActive,
-                  ]}
-                >
-                  {value}
-                </Text>
+                <Text style={styles.progressionApplyText}>Use it</Text>
               </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-        <Text style={styles.inputHint}>
-          {rir === null
-            ? "Reps in reserve: how many more could you have done?"
-            : repsInReserveLabel(rir)}
-        </Text>
-      </View>
-      {isAssisted && (
-        <View style={styles.assistedInfoBox}>
-          <Text style={styles.assistedInfoText}>
-            🤝 Assisted Exercise: Weight represents assistance from the
-            machine. Lower = harder.
+              <TouchableOpacity
+                style={styles.progressionDismissButton}
+                accessibilityRole='button'
+                accessibilityLabel='Dismiss progression suggestion'
+                onPress={onDismissProgression}
+              >
+                <Text style={styles.progressionDismissText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        <View style={styles.warmupToggle}>
+          <Text style={styles.warmupToggleText}>
+            {isWarmupSet ? "🔥 " : ""}Warm-up set
+          </Text>
+          <Switch
+            value={isWarmupSet}
+            onValueChange={setIsWarmupSet}
+            trackColor={{
+              false: colors.surfaceBorder,
+              true: colors.warning,
+            }}
+            thumbColor={isWarmupSet ? colors.textOnAccent : colors.textMuted}
+            accessibilityLabel='Warm-up set'
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Effort (optional)</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps='handled'
+            contentContainerStyle={styles.chipRow}
+          >
+            {RIR_SCALE.map((value) => {
+              const selected = rir === value;
+              return (
+                <TouchableOpacity
+                  key={value}
+                  style={[styles.chip, selected && styles.chipActive]}
+                  accessibilityRole='radio'
+                  accessibilityLabel={`${value} ${value === 1 ? "rep" : "reps"} in reserve`}
+                  accessibilityState={{ selected }}
+                  onPress={() => setRir(selected ? null : value)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      selected && styles.chipTextActive,
+                    ]}
+                  >
+                    {value}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+          <Text style={styles.inputHint}>
+            {rir === null
+              ? "Reps in reserve: how many more could you have done?"
+              : repsInReserveLabel(rir)}
           </Text>
         </View>
-      )}
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Notes (optional)</Text>
-        <TextInput
-          style={[styles.input, styles.notesInput]}
-          value={setNote}
-          onChangeText={setSetNote}
-          placeholder='e.g., felt strong'
-          placeholderTextColor={colors.textMuted}
-          accessibilityLabel='Set notes, optional'
-          multiline
-          numberOfLines={3}
-        />
-      </View>
-
-      <View style={styles.unitSelectorContainer}>
-        <Text style={styles.unitSelectorLabel}>
-          Weight unit (applies everywhere)
-        </Text>
-        <View style={styles.unitSelectorRow}>
-          <TouchableOpacity
-            style={[
-              styles.unitButton,
-              weightUnit === "kg" && styles.unitButtonActive,
-            ]}
-            accessibilityRole='radio'
-            accessibilityLabel='Kilograms'
-            accessibilityState={{ selected: weightUnit === "kg" }}
-            onPress={() => switchWeightUnit("kg")}
-          >
-            <Text
-              style={[
-                styles.unitButtonText,
-                weightUnit === "kg" && styles.unitButtonTextActive,
-              ]}
-            >
-              kg
+        {isAssisted && (
+          <View style={styles.assistedInfoBox}>
+            <Text style={styles.assistedInfoText}>
+              🤝 Assisted Exercise: Weight represents assistance from the
+              machine. Lower = harder.
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.unitButton,
-              weightUnit === "lbs" && styles.unitButtonActive,
-            ]}
-            accessibilityRole='radio'
-            accessibilityLabel='Pounds'
-            accessibilityState={{ selected: weightUnit === "lbs" }}
-            onPress={() => switchWeightUnit("lbs")}
-          >
-            <Text
-              style={[
-                styles.unitButtonText,
-                weightUnit === "lbs" && styles.unitButtonTextActive,
-              ]}
-            >
-              lbs
-            </Text>
-          </TouchableOpacity>
+          </View>
+        )}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Notes (optional)</Text>
+          <TextInput
+            style={[styles.input, styles.notesInput]}
+            value={setNote}
+            onChangeText={setSetNote}
+            placeholder='e.g., felt strong'
+            placeholderTextColor={colors.textMuted}
+            accessibilityLabel='Set notes, optional'
+            multiline
+            numberOfLines={3}
+          />
         </View>
-      </View>
+
+        <View style={styles.unitSelectorContainer}>
+          <Text style={styles.unitSelectorLabel}>
+            Weight unit (applies everywhere)
+          </Text>
+          <View style={styles.unitSelectorRow}>
+            <TouchableOpacity
+              style={[
+                styles.unitButton,
+                weightUnit === "kg" && styles.unitButtonActive,
+              ]}
+              accessibilityRole='radio'
+              accessibilityLabel='Kilograms'
+              accessibilityState={{ selected: weightUnit === "kg" }}
+              onPress={() => switchWeightUnit("kg")}
+            >
+              <Text
+                style={[
+                  styles.unitButtonText,
+                  weightUnit === "kg" && styles.unitButtonTextActive,
+                ]}
+              >
+                kg
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.unitButton,
+                weightUnit === "lbs" && styles.unitButtonActive,
+              ]}
+              accessibilityRole='radio'
+              accessibilityLabel='Pounds'
+              accessibilityState={{ selected: weightUnit === "lbs" }}
+              onPress={() => switchWeightUnit("lbs")}
+            >
+              <Text
+                style={[
+                  styles.unitButtonText,
+                  weightUnit === "lbs" && styles.unitButtonTextActive,
+                ]}
+              >
+                lbs
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
       <TouchableOpacity
         style={[
           styles.saveButton,
@@ -438,6 +444,6 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
           <Text style={styles.saveButtonText}>Save Set</Text>
         )}
       </TouchableOpacity>
-    </>
+    </View>
   );
 });
