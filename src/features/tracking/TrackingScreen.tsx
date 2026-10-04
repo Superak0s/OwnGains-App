@@ -141,11 +141,7 @@ import {
   Row,
   SectionLabel,
 } from "./ui";
-import {
-  captureException,
-  metric,
-  trackScreenView,
-} from "@shared/services/crashReporting";
+import { captureException, metric, trackScreenView, reportAndReturn } from "@shared/services/crashReporting";
 
 type TrackingWidgetType =
   | WeightWidgetType
@@ -496,7 +492,7 @@ export default function TrackingScreen({
     hydration: async () => {
       const [h, settings] = await Promise.all([
         hydrationApi.getHydrationHistory(200),
-        hydrationApi.getSettings().catch(() => null),
+        hydrationApi.getSettings().catch(reportAndReturn(null, { stage: "loadHydrationSettings" })),
       ]);
       _hydration.setHydrationEntries(h?.data ?? []);
       if (settings?.data?.goalMl) {

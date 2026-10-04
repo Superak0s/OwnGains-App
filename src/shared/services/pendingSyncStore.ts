@@ -1,3 +1,4 @@
+import { captureException } from "@shared/services/crashReporting";
 import type { PendingSync } from "../types";
 import {
   applyRecordChanges,
@@ -42,8 +43,9 @@ export const loadPendingSyncs = async (
   for (const value of values) {
     try {
       syncs.push(JSON.parse(value) as PendingSync);
-    } catch {
+    } catch (error) {
       // One unreadable op shouldn't hold back the rest of the queue.
+      captureException(error, { stage: "readPendingSync" });
     }
   }
   return syncs.reverse();

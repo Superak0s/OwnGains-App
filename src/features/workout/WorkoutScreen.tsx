@@ -904,6 +904,7 @@ function WorkoutScreenBody({
       if (previousBest <= 0 || current <= previousBest) return;
       if (!(await isPrefEnabled(STORAGE_KEYS.PR_CELEBRATION))) return;
       celebratedBestRef.current[exerciseName] = current;
+      metric.count("workout.pr", 1, { attributes: { bodyweight } });
       if (!isMountedRef.current) return;
       setPrCelebration({
         exerciseName,

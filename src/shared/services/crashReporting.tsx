@@ -1,5 +1,7 @@
 import * as Sentry from "@sentry/react-native";
-import { ApiError } from "./apiError";
+import { AppState } from "react-native";
+import { GITHUB_BUILD } from "../distribution";
+import { ApiError, ServerUnreachableError } from "./apiError";
 import { takeMigrationFailure } from "./storageMigrations";
 import {
   getStorageItemSync,
@@ -16,6 +18,9 @@ const forceEnabled = process.env.EXPO_PUBLIC_SENTRY_FORCE_ENABLE === "true";
 export const CRASH_REPORTING_KEY = "@crash_reporting_enabled";
 export const TELEMETRY_KEY = "@telemetry_enabled";
 export const PRIVACY_CONSENT_KEY = "@privacy_consent_seen";
+export const DIAGNOSTICS_PROMPT_KEY = "@diagnostics_prompt_version";
+// Bumping this asks every device about diagnostics once more.
+const DIAGNOSTICS_PROMPT_VERSION = "2";
 
 // Terms are accepted per account, but the two diagnostics switches belong to
 // the device, so switching accounts doesn't ask for them again.
@@ -25,6 +30,12 @@ const userKey = (key: string, userId: string | null): string =>
 /** False until this user has answered the post-login privacy screen. */
 export const hasPrivacyConsent = (userId: string | null = null): boolean =>
   getStorageItemSync(userKey(PRIVACY_CONSENT_KEY, userId)) === "true";
+
+export const needsDiagnosticsPrompt = (): boolean =>
+  getStorageItemSync(DIAGNOSTICS_PROMPT_KEY) !== DIAGNOSTICS_PROMPT_VERSION;
+
+export const recordDiagnosticsPrompt = (): Promise<void> =>
+  setStorageItem(DIAGNOSTICS_PROMPT_KEY, DIAGNOSTICS_PROMPT_VERSION);
 
 /** True once this device has stored an explicit crash-reporting choice. */
 export const hasCrashReportingPreference = (): boolean =>
@@ -49,16 +60,19 @@ const storeChoice = (key: string, enabled: boolean): Promise<void> =>
 export const setCrashReportingEnabled = async (
   enabled: boolean,
 ): Promise<void> => {
-  const withdrawn = crashReportingEnabled && !enabled;
   crashReportingEnabled = enabled;
   reportMigrationFailure();
   await storeChoice(CRASH_REPORTING_KEY, enabled);
-  // The native SDK was started with consent and never sees beforeSend, so a
-  // withdrawal restarts the client without it.
-  if (withdrawn && sentryStarted) {
-    await Sentry.close();
-    startSentry();
-  }
+  await matchNativeToConsent();
+};
+
+// The native SDK never sees beforeSend and is only configured at init, so a
+// consent change restarts the client: a withdrawal must stop native reports,
+// and a grant should catch Java/NDK crashes and ANRs from now on.
+const matchNativeToConsent = async (): Promise<void> => {
+  if (!sentryStarted || nativeEnabled === crashReportingEnabled) return;
+  await Sentry.close();
+  startSentry();
 };
 
 export const setTelemetryEnabled = async (enabled: boolean): Promise<void> => {
@@ -72,7 +86,7 @@ export const recordPrivacyConsent = (
 
 /**
  * Loads the device's diagnostics choices into the live flags and returns
- * whether this account has answered the privacy screen.
+ * whether this account has answered the current privacy screen.
  */
 export const applyPrivacyChoicesFor = (userId: string | null): boolean => {
   // Earlier versions cleared the device answer on sign-out and kept a copy
@@ -88,7 +102,8 @@ export const applyPrivacyChoicesFor = (userId: string | null): boolean => {
   crashReportingEnabled = crash !== null && crash !== "false";
   telemetryEnabled = read(TELEMETRY_KEY) === "true";
   reportMigrationFailure();
-  return !userId || hasPrivacyConsent(userId);
+  void matchNativeToConsent().catch(captureException);
+  return !userId || (hasPrivacyConsent(userId) && !needsDiagnosticsPrompt());
 };
 
 const reporting = (): boolean => Boolean(dsn) && crashReportingEnabled;
@@ -208,6 +223,7 @@ const EXTRA_ALLOWED_KEYS = new Set([
   "depth",
   "attempts",
   "migration",
+  "code",
   "componentStack",
 ]);
 const MAX_EXTRA_LENGTH = 100;
@@ -267,7 +283,38 @@ export const scrubEvent = <T extends Sentry.Event>(
   return withoutIp({ ...event, extra, exception, message });
 };
 
+const capturedErrors = new WeakSet<object>();
+
+// Most catch blocks only log, so logged errors are reported. Deferred so a
+// catch block's own captureException, which carries its labels, runs first and
+// this copy is skipped. Warnings count only with an Error attached, since most
+// string-only warnings are status lines. A server that is merely down is
+// demoted to debug instead, or every screen would show a dev red box.
+const routeConsole = (method: "error" | "warn"): void => {
+  const original = console[method];
+  console[method] = (...args: unknown[]) => {
+    if (args.some((arg) => arg instanceof ServerUnreachableError)) {
+      console.debug(...args);
+      return;
+    }
+    original(...args);
+    const error =
+      args.find((arg) => arg instanceof Error) ??
+      (method === "error" && typeof args[0] === "string"
+        ? new Error(args[0])
+        : undefined);
+    if (!error) return;
+    setTimeout(
+      () =>
+        captureUnreported(error, { source: "console" }, method === "warn" ? "warning" : "error"),
+      0,
+    );
+  };
+};
+
 export const initCrashReporting = (): void => {
+  routeConsole("error");
+  routeConsole("warn");
   installUnhandledRejectionHandler();
   setStorageErrorHandler((error) => {
     metric.count("storage.error");
@@ -278,7 +325,12 @@ export const initCrashReporting = (): void => {
     return;
   }
   startSentry();
+  Sentry.setTag("channel", GITHUB_BUILD ? "github" : "play");
   reportMigrationFailure();
+  trackDailyOpen();
+  AppState.addEventListener("change", (state) => {
+    if (state === "active") trackDailyOpen();
+  });
 };
 
 const startSentry = (): void => {
@@ -289,21 +341,29 @@ const startSentry = (): void => {
     enableLogs: true,
     attachStacktrace: true,
     integrations: [navigationIntegration],
-    // The native SDK never sees beforeSend, so Java/NDK crashes and ANRs would
-    // bypass consent. They are only captured if consent was on at launch.
     enableNative: crashReportingEnabled,
     // Checked per event rather than at init so toggling the setting takes
-    // effect immediately. The `enable*` options are read once here, so those
-    // parts only change on the next launch.
+    // effect immediately.
     beforeSend: (event, hint) =>
       crashReportingEnabled ? scrubEvent(event, hint) : null,
     beforeSendLog: (log) => (telemetryEnabled ? scrubLog(log) : null),
     beforeSendTransaction: (event) =>
       telemetryEnabled ? scrubTransaction(event) : null,
-    beforeSendMetric: (metric) => (telemetryEnabled ? metric : null),
-    tracesSampleRate: 0.1,
+    tracesSampler: ({ attributes, inheritOrSampleWith }) => {
+      if (attributes?.[ALWAYS_SAMPLE]) return 1;
+      // The first screen load carries the app-start measurement, so every
+      // launch's cold-start time is kept.
+      if (!firstLoadSampled) {
+        firstLoadSampled = true;
+        return 1;
+      }
+      return inheritOrSampleWith(TRACE_SAMPLE_RATE);
+    },
     // The backend is GlitchTip, which has no session tracking.
     enableAutoSessionTracking: false,
+    // Logged errors are reported too, so a burst (a whole sync queue failing)
+    // must not crowd a crash out of the default 30-envelope buffer.
+    maxQueueSize: 100,
     enableUserInteractionTracing: telemetryEnabled,
     // Would send an event per failed request, carrying the full URL and
     // response body. Requests are instrumented explicitly instead.
@@ -320,9 +380,12 @@ const startSentry = (): void => {
         : breadcrumb,
   });
   sentryStarted = true;
+  nativeEnabled = crashReportingEnabled;
 };
 
 let sentryStarted = false;
+let nativeEnabled = false;
+let firstLoadSampled = false;
 
 function reportMigrationFailure(): void {
   if (!sentryStarted || !reporting()) return;
@@ -338,13 +401,32 @@ function reportMigrationFailure(): void {
 export const captureException = (
   error: unknown,
   attributes?: TelemetryAttributes,
+  level: Sentry.SeverityLevel = "error",
 ): void => {
+  if (typeof error === "object" && error !== null) capturedErrors.add(error);
   if (!reporting()) return;
-  if (error instanceof ApiError && error.status === 429) return;
-  Sentry.captureException(
-    error,
-    attributes ? { extra: attributes } : undefined,
-  );
+  // Rejected credentials (401/403) and conflicts such as a taken username (409)
+  // are the user's to fix, so they are not bugs wherever they are logged.
+  if (error instanceof ApiError && [401, 403, 409, 429].includes(error.status)) return;
+  if (error instanceof ServerUnreachableError) return;
+  Sentry.captureException(error, { level, ...(attributes && { extra: attributes }) });
+};
+
+/**
+ * A `.catch` handler that reports the error and resolves to `fallback`. A
+ * storage failure was already reported by the storage error handler.
+ */
+export const reportAndReturn =
+  <T,>(fallback: T, attributes?: TelemetryAttributes) =>
+  (error: unknown): T => {
+    captureUnreported(error, attributes);
+    return fallback;
+  };
+
+/** Skips an error a catch block has already reported with its own labels. */
+export const captureUnreported: typeof captureException = (error, ...rest) => {
+  if (typeof error === "object" && error !== null && capturedErrors.has(error)) return;
+  captureException(error, ...rest);
 };
 
 /**
@@ -365,19 +447,52 @@ interface MetricOptions {
   attributes?: TelemetryAttributes;
 }
 
+const ALWAYS_SAMPLE = "owngains.always_sample";
+// Every trace is kept while the app is in closed testing and volume is small.
+const TRACE_SAMPLE_RATE = 1;
+
+/**
+ * GlitchTip ignores Sentry.metrics (`trace_metric` envelope items), but it
+ * groups transactions by name and reports their count and duration
+ * percentiles, so counts and timings are sent as root transactions named after
+ * the metric (plus its `outcome`, the one label worth splitting on).
+ */
+const recordTransaction = (
+  name: string,
+  attributes: TelemetryAttributes = {},
+  startedAt?: number,
+): void => {
+  if (!telemetry()) return;
+  const label = attributes.outcome === undefined ? name : `${name}:${attributes.outcome}`;
+  Sentry.startSpan(
+    {
+      name: label,
+      op: "count",
+      parentSpan: null,
+      startTime: startedAt,
+      attributes: { ...attributes, [ALWAYS_SAMPLE]: true },
+    },
+    () => undefined,
+  );
+};
+
+// Values that are not durations have no transaction to ride on, so they are
+// kept as logs, searchable by name with the number in `value`.
+const logValue = (name: string, value: number, options?: MetricOptions): void => {
+  if (telemetry()) Sentry.logger.info(name, { ...options?.attributes, value });
+};
+
 export const metric = {
   count: (name: string, value = 1, options?: MetricOptions): void => {
-    if (telemetry()) Sentry.metrics.count(name, value, options);
+    recordTransaction(name, { ...options?.attributes, ...(value !== 1 && { value }) });
   },
-  gauge: (name: string, value: number, options?: MetricOptions): void => {
-    if (telemetry()) Sentry.metrics.gauge(name, value, options);
-  },
-  distribution: (
-    name: string,
-    value: number,
-    options?: MetricOptions,
-  ): void => {
-    if (telemetry()) Sentry.metrics.distribution(name, value, options);
+  gauge: logValue,
+  distribution: (name: string, value: number, options?: MetricOptions): void => {
+    if (options?.unit === "millisecond") {
+      recordTransaction(name, options.attributes, Date.now() - value);
+    } else {
+      logValue(name, value, options);
+    }
   },
 };
 
@@ -387,32 +502,73 @@ export const trackFeature = (
   op: string,
   attributes?: TelemetryAttributes,
 ): void => {
-  metric.count("feature.used", 1, { attributes: { ...attributes, feature, op } });
+  recordTransaction(`feature:${feature}.${op}`, attributes);
 };
 
 /** Exact screen-view counts, because navigation traces are sampled and too thin for that. */
 export const trackScreenView = (screen: string): void => {
-  metric.count("screen.view", 1, { attributes: { screen } });
+  recordTransaction(`screen:${screen}`);
 };
 
-/** Times `fn` as a span and records it as a `<op>.duration` distribution. */
-export const trackSpan = async <T,>(
+const LAST_OPEN_DAY_KEY = "@telemetry_last_open_day";
+const LAST_WORKOUT_KEY = "@telemetry_last_workout_at";
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Ranges rather than exact days, as the privacy policy describes.
+export const daysSinceBucket = (lastAt: number | null, now: number): string => {
+  if (lastAt === null || Number.isNaN(lastAt)) return "never";
+  const days = Math.floor((now - lastAt) / DAY_MS);
+  if (days <= 0) return "0";
+  if (days === 1) return "1";
+  if (days <= 3) return "2-3";
+  if (days <= 7) return "4-7";
+  if (days <= 14) return "8-14";
+  if (days <= 30) return "15-30";
+  return "30+";
+};
+
+const storedNumber = (key: string): number | null => {
+  const raw = getStorageItemSync(key);
+  return raw === null ? null : Number(raw);
+};
+
+/** Counts each calendar day the app is opened, for an estimate of daily active users. */
+export const trackDailyOpen = (now = Date.now()): void => {
+  if (!telemetry()) return;
+  const today = new Date(now).toDateString();
+  if (getStorageItemSync(LAST_OPEN_DAY_KEY) === today) return;
+  void setStorageItem(LAST_OPEN_DAY_KEY, today);
+  recordTransaction("app.daily_open", {
+    days_since_workout: daysSinceBucket(storedNumber(LAST_WORKOUT_KEY), now),
+  });
+};
+
+/** Spans the whole workout, so GlitchTip reports workout-length percentiles. */
+export const trackWorkoutCompleted = (
+  startedAt: number,
+  attributes: { sets: number; exercises: number; auto: boolean },
+): void => {
+  if (!telemetry() || Number.isNaN(startedAt)) return;
+  void setStorageItem(LAST_WORKOUT_KEY, String(Date.now()));
+  recordTransaction("workout.completed", attributes, startedAt);
+};
+
+/**
+ * Times `fn` as an always-sampled root transaction. As a child of the
+ * navigation transaction it would share that transaction's sampling.
+ */
+export const trackSpan = <T,>(
   name: string,
   op: string,
   fn: () => Promise<T>,
   attributes?: TelemetryAttributes,
-): Promise<T> => {
-  if (!telemetry()) return fn();
-  const started = Date.now();
-  try {
-    return await Sentry.startSpan({ name, op, attributes }, fn);
-  } finally {
-    metric.distribution(`${op}.duration`, Date.now() - started, {
-      unit: "millisecond",
-      attributes: { ...attributes, name },
-    });
-  }
-};
+): Promise<T> =>
+  telemetry()
+    ? Sentry.startSpan(
+        { name, op, parentSpan: null, attributes: { ...attributes, [ALWAYS_SAMPLE]: true } },
+        fn,
+      )
+    : fn();
 
 export interface SentryTestResult {
   dsn: boolean;
@@ -463,10 +619,8 @@ export const trackBreadcrumb = (
   if (reporting()) Sentry.addBreadcrumb({ category, message, data });
 };
 
-// Sentry's own rejection tracker only attaches once Sentry.init() runs (i.e.
-// only when a DSN is configured), so unhandled rejections would otherwise go
-// completely unlogged whenever the DSN is missing. Hermes' native tracker is
-// a backstop that always logs, independent of Sentry being configured.
+// Sentry.init() replaces this tracker with its own, so it only runs in builds
+// without a DSN, where unhandled rejections would otherwise go unlogged.
 function installUnhandledRejectionHandler(): void {
   const hermesInternal = (globalThis as Record<string, unknown>)
     .HermesInternal as

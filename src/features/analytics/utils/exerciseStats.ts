@@ -1,6 +1,6 @@
 import { estimateOneRepMax } from "@utils/oneRepMax";
 import { RECORD_REP_LIMIT } from "@utils/recordSets";
-import { formatDate, parseDate } from "@utils/format";
+import { formatDate, parseDate, toDateString } from "@utils/format";
 import { REST_WINDOW_MAX_SEC, REST_WINDOW_MIN_SEC } from "@utils/session";
 import type {
   FullSessionWithGroups,
@@ -608,7 +608,7 @@ export function computeExerciseStats(
 
   return {
     totalSets: entries.length,
-    totalWorkouts: new Set(entries.map((e) => e.date.toLocaleDateString()))
+    totalWorkouts: new Set(entries.map((e) => toDateString(e.date)))
       .size,
     extremeWeight: isAssisted ? Math.min(...weights) : Math.max(...weights),
     extremeWeightLabel: isAssisted ? "Least Assistance" : "Max Weight",
@@ -625,6 +625,7 @@ const NO_CHART_DATA: ChartData = {
   datasets: [{ data: [0] }],
 };
 const MAX_CHART_LABELS = 8;
+const MAX_CHART_POINTS = 60;
 
 export function buildProgressChartData(
   entries: ExerciseHistoryEntry[] | null,
@@ -634,17 +635,15 @@ export function buildProgressChartData(
 
   const byDate = new Map<string, ExerciseHistoryEntry[]>();
   entries.forEach((entry) => {
-    const key = entry.date.toLocaleDateString();
+    const key = toDateString(entry.date);
     const bucket = byDate.get(key);
     if (bucket) bucket.push(entry);
     else byDate.set(key, [entry]);
   });
 
-  const chartSessions = [...byDate.values()].sort(
+  const allSessions = [...byDate.values()].sort(
     (a, b) => a[0].date.getTime() - b[0].date.getTime(),
   );
-  const labelInterval = Math.ceil(chartSessions.length / MAX_CHART_LABELS);
-
   const value = (session: ExerciseHistoryEntry[]): number => {
     switch (metric) {
       case "weight":
@@ -658,13 +657,34 @@ export function buildProgressChartData(
     }
   };
 
+  const allPoints = allSessions.map((session) => ({
+    date: session[0].date,
+    value: round(value(session)),
+  }));
+  const points = downsample(allPoints, MAX_CHART_POINTS);
+  const labelInterval = Math.ceil(points.length / MAX_CHART_LABELS);
+
   return {
-    labels: chartSessions.map((session, index) =>
-      chartSessions.length <= MAX_CHART_LABELS || index % labelInterval === 0
-        ? formatDate(session[0].date, { month: "short", day: "numeric" })
+    labels: points.map((point, index) =>
+      points.length <= MAX_CHART_LABELS || index % labelInterval === 0
+        ? formatDate(point.date, { month: "short", day: "numeric" })
         : "",
     ),
-    datasets: [{ data: chartSessions.map((session) => round(value(session))) }],
+    datasets: [{ data: points.map((point) => point.value) }],
   };
+}
+
+/** Every chart point is an SVG node, so render cost would otherwise grow with history. */
+function downsample<T extends { value: number }>(points: T[], max: number): T[] {
+  if (points.length <= max) return points;
+  const step = Math.ceil(points.length / (max - 2));
+  let peak = 0;
+  points.forEach((point, index) => {
+    if (point.value > points[peak].value) peak = index;
+  });
+  return points.filter(
+    (_, index) =>
+      index % step === 0 || index === peak || index === points.length - 1,
+  );
 }
 

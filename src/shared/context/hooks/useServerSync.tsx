@@ -184,6 +184,7 @@ export const useServerSync = ({
           log.warn("sync.program_push_failed", {
             reason: (err as Error).message,
           });
+          captureException(err, { stage: "programPush" });
         }
         return null;
       }
@@ -214,7 +215,7 @@ export const useServerSync = ({
     } catch (programErr) {
       console.warn(
         "Could not refresh program from server:",
-        (programErr as Error).message,
+        programErr,
       );
       log.warn("sync.program_refresh_failed", {
         reason: (programErr as Error).message,
@@ -384,14 +385,22 @@ export const useServerSync = ({
 
       preserveLocalSets(newCompletedDays);
 
-      await saveToStorage(
-        STORAGE_KEYS.COMPLETED_DAYS,
-        newCompletedDays,
-        userId,
-      );
-      await saveToStorage(STORAGE_KEYS.LOCKED_DAYS, newLockedDays, userId);
-      setCompletedDays(newCompletedDays);
-      setLockedDays(newLockedDays);
+      // A key-order mismatch only costs one redundant write.
+      if (
+        JSON.stringify(newCompletedDays) !==
+        JSON.stringify(completedDaysRef.current)
+      ) {
+        await saveToStorage(
+          STORAGE_KEYS.COMPLETED_DAYS,
+          newCompletedDays,
+          userId,
+        );
+        setCompletedDays(newCompletedDays);
+      }
+      if (JSON.stringify(newLockedDays) !== JSON.stringify(lockedDays)) {
+        await saveToStorage(STORAGE_KEYS.LOCKED_DAYS, newLockedDays, userId);
+        setLockedDays(newLockedDays);
+      }
 
       console.info(
         "✅ Sync complete:",
@@ -411,7 +420,7 @@ export const useServerSync = ({
         } catch (err) {
           console.warn(
             "Failed to clear locally-active workout after remote end:",
-            (err as Error).message,
+            err,
           );
           captureException(err, { stage: "clearActiveWorkout" });
         }
@@ -427,6 +436,7 @@ export const useServerSync = ({
   }, [
     userId,
     selectedSplit,
+    lockedDays,
     setWorkoutData,
     setCompletedDays,
     setLockedDays,

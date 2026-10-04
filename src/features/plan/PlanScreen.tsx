@@ -26,7 +26,7 @@ import type { UnresolvedExercise } from "./utils/matchProgram";
 import MatchReviewModal from "./components/MatchReviewModal";
 import { workoutApi } from "@features/workout/services/index";
 import { programApi } from "@features/plan/services/index";
-import { log, metric, trackSpan } from "@shared/services/crashReporting";
+import { log, metric, trackSpan, captureException } from "@shared/services/crashReporting";
 import { useWidgets, useWidgetBoard } from "@shared/context/hooks/useWidgets";
 import WidgetGallery from "@shared/components/widgets/WidgetGallery";
 import WidgetEditButton from "@shared/components/widgets/WidgetEditButton";
@@ -111,6 +111,7 @@ const reportProgramSyncFailure = (op: string, err: unknown): void => {
     op,
     reason: (err as Error).message,
   });
+  captureException(err, { stage: "programSync", op }, "warning");
 };
 
 const syncProgram = async (
@@ -319,6 +320,7 @@ export default function PlanScreen({
       );
       setShowColumnPicker(true);
     } catch (error) {
+      captureException(error, { stage: "readWorkoutFile" });
       alert(
         "Error",
         (error instanceof Error ? error.message : null) ??
@@ -378,6 +380,7 @@ export default function PlanScreen({
       );
       resetColumnPicker();
     } catch (error) {
+      captureException(error, { stage: "importWorkoutFile" });
       alert(
         "Couldn't import that file",
         `${(error instanceof Error ? error.message : null) ?? "The file couldn't be read."}

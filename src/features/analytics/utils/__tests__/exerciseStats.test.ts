@@ -1,4 +1,5 @@
 import {
+  buildProgressChartData,
   computeExerciseInsights,
   sessionOneRepMaxes,
   workingSets,
@@ -241,5 +242,27 @@ describe("computeExerciseInsights", () => {
     ])
     expect(insights.sessionsPerWeek).toBe(1.5)
     expect(insights.medianDaysBetween).toBe(7)
+  })
+})
+
+describe("buildProgressChartData", () => {
+  it("caps a long history at 60 points, keeping the peak and the latest", () => {
+    const entries = Array.from({ length: 300 }, (_, i) =>
+      entry({ date: daysAgo(300 - i), weight: i === 137 ? 999 : 50 + (i % 10) }),
+    )
+    const data = buildProgressChartData(entries, "weight").datasets[0].data
+
+    expect(data.length).toBeLessThanOrEqual(60)
+    expect(data).toContain(999)
+    expect(data.at(-1)).toBe(50 + (299 % 10))
+  })
+
+  it("keeps every point of a short history, one per training day", () => {
+    const entries = [
+      entry({ date: daysAgo(2, 9), weight: 80 }),
+      entry({ date: daysAgo(2, 18), weight: 100 }),
+      entry({ date: daysAgo(1), weight: 110 }),
+    ]
+    expect(buildProgressChartData(entries, "weight").datasets[0].data).toEqual([90, 110])
   })
 })

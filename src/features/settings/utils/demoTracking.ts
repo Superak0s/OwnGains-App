@@ -182,7 +182,7 @@ export async function clearDemoTracking(userId: string | null): Promise<number> 
     try {
       await DELETE[record[0]](record[1] as never);
     } catch (error) {
-      console.warn(`Could not delete demo ${record[0]}:`, (error as Error).message);
+      console.warn(`Could not delete demo ${record[0]}:`, error);
       failed.push(record);
     }
   }

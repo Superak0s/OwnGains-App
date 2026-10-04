@@ -26,8 +26,6 @@ module.exports = [
       // not HTML, so an apostrophe is just an apostrophe.
       "react/no-unescaped-entities": "off",
 
-      // App.tsx calls initCrashReporting() between its imports on purpose, to
-      // mark it as the first thing that runs.
       "import/first": "off",
 
     },

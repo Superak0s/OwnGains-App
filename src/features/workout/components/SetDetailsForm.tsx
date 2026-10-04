@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import { formatDate } from "@utils/format";
+import { trackFeature } from "@shared/services/crashReporting";
 import { estimateOneRepMax } from "@utils/oneRepMax";
 import {
   KG_TO_LBS,
@@ -286,6 +287,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
                 onPress={() => {
                   setWeight(kgToDisplay(progression.weightKg, weightUnit));
                   setReps(String(progression.reps));
+                  trackFeature("progression", "apply", { direction: progression.direction });
                   onDismissProgression();
                 }}
               >
@@ -295,7 +297,10 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
                 style={styles.progressionDismissButton}
                 accessibilityRole='button'
                 accessibilityLabel='Dismiss progression suggestion'
-                onPress={onDismissProgression}
+                onPress={() => {
+                  trackFeature("progression", "dismiss", { direction: progression.direction });
+                  onDismissProgression();
+                }}
               >
                 <Text style={styles.progressionDismissText}>✕</Text>
               </TouchableOpacity>

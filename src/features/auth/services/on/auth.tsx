@@ -10,7 +10,7 @@ import { assertSecureTransport, getServerUrl } from "@shared/services/config"
 import { refreshTokenStorage, tokenStorage } from "@shared/services/tokenStorage"
 import { buildDeviceBackup } from "@utils/deviceBackup"
 import { apiCall, isCredentialRejection, parseApiResponse } from "@shared/services/apiClient"
-import { ApiError } from "@shared/services/apiError"
+import { ApiError, ServerUnreachableError } from "@shared/services/apiError"
 import type { AuthResponse, AuthUser, ProfileUpdate } from "../../types"
 import { parseStoredUser } from "../../types"
 import { captureException, log, metric } from "@shared/services/crashReporting"
@@ -51,13 +51,12 @@ async function unauthenticatedCall<T>(path: string, options?: RequestInit): Prom
   const controller = new AbortController()
   const timeoutHandle = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   try {
-    const response = await fetch(url, { ...options, signal: controller.signal })
+    const response = await fetch(url, { ...options, signal: controller.signal }).catch(
+      () => {
+        throw new ServerUnreachableError()
+      },
+    )
     return await parseApiResponse<T>(response)
-  } catch (error) {
-    if ((error as Error).name === "AbortError") {
-      throw new Error(`Request timed out after ${FETCH_TIMEOUT_MS}ms`)
-    }
-    throw error
   } finally {
     clearTimeout(timeoutHandle)
   }
@@ -159,7 +158,12 @@ export const authService = {
       })
 
       const newToken = data.token || data.accessToken
-      if (!newToken) return null
+      if (!newToken) {
+        captureException(new Error("Token refresh succeeded without a token"), {
+          stage: "refreshToken",
+        })
+        return null
+      }
       // Rotation: the presented token is dead server-side, so the replacement
       // has to land before the new access token is used for anything.
       if (
@@ -176,7 +180,7 @@ export const authService = {
       return newToken
     } catch (error) {
       // Only an explicit refusal says anything about the token's validity. An
-      // unreachable or failing server is reported to the user rather than reported as one.
+      // unreachable or failing server is rethrown rather than treated as one.
       if (!isCredentialRejection(error)) throw error
       console.warn("Error refreshing token:", error)
       metric.count("auth.token_refresh_failed")

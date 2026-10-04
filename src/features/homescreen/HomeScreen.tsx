@@ -601,6 +601,8 @@ export default function HomeScreen(): React.JSX.Element {
         ],
         "warning",
       );
+    } else {
+      captureException(error, { stage: "loadSessionHistory" });
     }
   }
 

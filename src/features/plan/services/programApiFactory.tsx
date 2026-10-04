@@ -33,7 +33,7 @@ export const makeProgramApi = (http: HttpFetch) => {
         return await parseApiResponse(response)
       } catch (error) {
         if ((error as Error).message === "SESSION_EXPIRED") throw error
-        console.warn("Could not fetch saved program:", (error as Error).message)
+        console.warn("Could not fetch saved program:", error)
         metric.count("program.fetch_failed")
         log.warn("program.fetch_failed")
         return null

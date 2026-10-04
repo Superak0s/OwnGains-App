@@ -39,7 +39,7 @@ export const programApi = {
     } catch (error) {
       console.warn(
         "programApi.saveProgram (offline) failed:",
-        (error as Error).message,
+        error,
       )
       reportFailure("saveProgram", error)
       throw error
@@ -94,7 +94,7 @@ export const programApi = {
     } catch (error) {
       console.warn(
         "programApi.renameExercise (offline) failed:",
-        (error as Error).message,
+        error,
       )
       reportFailure("renameExercise", error)
       throw error
@@ -123,7 +123,7 @@ export const programApi = {
     } catch (error) {
       console.warn(
         "programApi.updateExerciseMachines (offline) failed:",
-        (error as Error).message,
+        error,
       )
       reportFailure("updateExerciseMachines", error)
       throw error
@@ -159,7 +159,7 @@ export const programApi = {
     } catch (error) {
       console.warn(
         "programApi.addExercise (offline) failed:",
-        (error as Error).message,
+        error,
       )
       reportFailure("addExercise", error)
       throw error
@@ -198,7 +198,7 @@ export const programApi = {
     } catch (error) {
       console.warn(
         "programApi.patchExerciseSets (offline) failed:",
-        (error as Error).message,
+        error,
       )
       reportFailure("patchExerciseSets", error)
       throw error

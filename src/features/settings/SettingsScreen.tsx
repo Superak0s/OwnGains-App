@@ -18,6 +18,7 @@ import {
   Linking,
 } from "react-native";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import Constants from "expo-constants";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as DocumentPicker from "expo-document-picker";
@@ -453,6 +454,7 @@ export default function SettingsScreen(): React.JSX.Element {
     on: boolean,
   ) => {
     setter(on);
+    trackFeature("settings", "toggle", { setting: key, on });
     void saveToStorage(key, on, user?.id ?? null);
   };
 
@@ -509,10 +511,7 @@ export default function SettingsScreen(): React.JSX.Element {
         lockedCount: lockedDaysSeen.size,
       });
     } catch (error) {
-      console.error(
-        "Error loading server progress:",
-        error instanceof Error ? error.message : error,
-      );
+      console.error("Error loading server progress:", error);
       setServerProgress(null);
       setProgressError(true);
     } finally {
@@ -550,8 +549,8 @@ export default function SettingsScreen(): React.JSX.Element {
 
   const handleShowImportError = useCallback(
     (error: unknown) => {
-      if (!isMountedRef.current) return;
       console.error("Error importing CSV:", error);
+      if (!isMountedRef.current) return;
       alert(
         "Import Failed",
         userFacingError(error, "Failed to import the CSV file."),
@@ -616,7 +615,7 @@ export default function SettingsScreen(): React.JSX.Element {
         } catch (error) {
           console.warn(
             "Could not sync demo program to server:",
-            (error as Error).message,
+            error,
           );
         }
       } else if (!split) {
@@ -2784,6 +2783,77 @@ ${photosOmitted} progress photo${photosOmitted === 1 ? " was" : "s were"} too la
           </View>
 
           <View style={styles.section}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => {
+                trackFeature("tip", KOFI_URL ? "kofi_open" : "jar_open");
+                if (KOFI_URL) void Linking.openURL(KOFI_URL);
+                else setShowTipJar(true);
+              }}
+              accessibilityRole={KOFI_URL ? "link" : "button"}
+              accessibilityLabel={
+                KOFI_URL
+                  ? "Support development on Ko-fi"
+                  : "Support development with a tip"
+              }
+            >
+              <LinearGradient
+                colors={["#db2777", "#e11d48", "#ea580c"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.supportButton}
+              >
+                <Text style={styles.supportEmoji}>❤️</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.supportTitle}>Support Development</Text>
+                  <Text style={styles.supportSubtitle}>
+                    Help keep OwnGains and its official server running
+                  </Text>
+                </View>
+                <Text style={styles.supportCta}>
+                  {KOFI_URL ? "Ko-fi ↗" : "Tip"}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={{ marginTop: 12 }}
+              onPress={() =>
+                void Linking.openURL(
+                  `mailto:kostissuperak0s@gmail.com?subject=${encodeURIComponent(
+                    `OwnGains feedback (v${Constants.expoConfig?.version ?? "?"})`,
+                  )}`,
+                ).catch(() =>
+                  alert(
+                    "No email app",
+                    "Send your feedback to kostissuperak0s@gmail.com.",
+                  ),
+                )
+              }
+              accessibilityRole="link"
+              accessibilityLabel="Give feedback by email"
+            >
+              <LinearGradient
+                colors={["#2563eb", "#7c3aed", "#9333ea"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.supportButton}
+              >
+                <Text style={styles.supportEmoji}>💬</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.supportTitle}>Give Feedback</Text>
+                  <Text style={styles.supportSubtitle}>
+                    Report a bug or suggest an idea
+                  </Text>
+                </View>
+                <Text style={[styles.supportCta, { color: "#7c3aed" }]}>
+                  Email ↗
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.section}>
             <Text
               style={styles.sectionTitle}
               accessibilityRole="header"
@@ -2872,6 +2942,7 @@ ${photosOmitted} progress photo${photosOmitted === 1 ? " was" : "s were"} too la
                 <Switch
                   value={useManualTime}
                   onValueChange={(on) => {
+                    trackFeature("settings", "toggle", { setting: "manual_time", on });
                     if (on) confirmEnableManualTime();
                     else void toggleUseManualTime(false);
                   }}
@@ -3253,8 +3324,9 @@ ${photosOmitted} progress photo${photosOmitted === 1 ? " was" : "s were"} too la
                 <View style={{ flex: 1 }}>
                   <Text style={styles.settingLabel}>Usage Metrics</Text>
                   <Text style={styles.settingDescription}>
-                    Share which screens and features you use, plus performance
-                    traces and diagnostic logs, never what you log
+                    Share which screens and features you use, workout length and
+                    set counts, plus performance traces and diagnostic logs. Never
+                    exercise names, weights or notes
                   </Text>
                 </View>
                 <Switch
@@ -3415,7 +3487,10 @@ ${photosOmitted} progress photo${photosOmitted === 1 ? " was" : "s were"} too la
               <View style={styles.divider} />
               <TouchableOpacity
                 style={styles.settingRow}
-                onPress={() => setShowChangelog(true)}
+                onPress={() => {
+                  trackFeature("settings", "changelog_open");
+                  setShowChangelog(true);
+                }}
                 accessibilityRole="button"
                 accessibilityLabel="What's new in this version"
               >
@@ -3442,55 +3517,6 @@ ${photosOmitted} progress photo${photosOmitted === 1 ? " was" : "s were"} too la
                   </Text>
                 </View>
                 <Text style={styles.settingValue}>Open</Text>
-              </TouchableOpacity>
-              <View style={styles.divider} />
-              <TouchableOpacity
-                style={styles.settingRow}
-                onPress={() =>
-                  void Linking.openURL(
-                    `mailto:kostissuperak0s@gmail.com?subject=${encodeURIComponent(
-                      `OwnGains feedback (v${Constants.expoConfig?.version ?? "?"})`,
-                    )}`,
-                  ).catch(() =>
-                    alert(
-                      "No email app",
-                      "Send your feedback to kostissuperak0s@gmail.com.",
-                    ),
-                  )
-                }
-                accessibilityRole="link"
-                accessibilityLabel="Give feedback by email"
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Give Feedback</Text>
-                  <Text style={styles.settingDescription}>
-                    Report a bug or suggest an idea
-                  </Text>
-                </View>
-                <Text style={styles.settingValue}>Email ↗</Text>
-              </TouchableOpacity>
-              <View style={styles.divider} />
-              <TouchableOpacity
-                style={styles.settingRow}
-                onPress={() =>
-                  KOFI_URL ? void Linking.openURL(KOFI_URL) : setShowTipJar(true)
-                }
-                accessibilityRole={KOFI_URL ? "link" : "button"}
-                accessibilityLabel={
-                  KOFI_URL
-                    ? "Support development on Ko-fi"
-                    : "Support development with a tip"
-                }
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Support Development</Text>
-                  <Text style={styles.settingDescription}>
-                    Help keep OwnGains and its official server running
-                  </Text>
-                </View>
-                <Text style={styles.settingValue}>
-                  {KOFI_URL ? "Ko-fi ↗" : "Tip"}
-                </Text>
               </TouchableOpacity>
               <View style={styles.divider} />
               <TouchableOpacity
@@ -3564,6 +3590,27 @@ const makeStyles = (colors: ThemeColors) =>
     contentContainer: { paddingBottom: 120 },
     content: { padding: 16, paddingTop: 8 },
     section: { marginBottom: 24 },
+    supportButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      paddingVertical: 20,
+      paddingHorizontal: 18,
+      borderRadius: 18,
+    },
+    supportEmoji: { fontSize: 32 },
+    supportTitle: { fontSize: 19, fontWeight: "800", color: "#fff" },
+    supportSubtitle: { fontSize: 13, color: "#fff", opacity: 0.92, marginTop: 2 },
+    supportCta: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: "#e11d48",
+      backgroundColor: "#fff",
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      borderRadius: 999,
+      overflow: "hidden",
+    },
     screenTitle: {
       fontSize: 28,
       fontWeight: "800",

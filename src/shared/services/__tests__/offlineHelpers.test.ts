@@ -27,11 +27,7 @@ jest.mock("@shared/services/sqliteStorage", () => ({
     const values = desc(rowsOf(c)).map((r) => r.value)
     return limit == null ? values : values.slice(0, limit)
   }),
-  listRecordsSince: jest.fn(async (c: string, since: string) =>
-    desc(rowsOf(c))
-      .filter((r) => r.sortKey >= since)
-      .map((r) => r.value),
-  ),
+  getRecordsVersion: jest.fn(() => Math.random()),
   putRecord: jest.fn(
     async (c: string, id: string, sortKey: string, value: string) => {
       const rows = rowsOf(c)
@@ -221,6 +217,45 @@ describe("createRecordStore", () => {
     await store.put(entry(2, "2024-02-01"))
     await stale
     expect((await store.getAll()).map((e) => e.id)).toEqual([2, 1])
+  })
+
+  describe("parsed-row cache", () => {
+    const version = sqlite.getRecordsVersion as jest.Mock
+    let current = 0
+    beforeEach(() => version.mockImplementation(() => current))
+    afterEach(() => version.mockImplementation(() => Math.random()))
+
+    it("serves warm reads without touching SQLite until a write", async () => {
+      const store = makeStore()
+      await store.put(entry(1, "2024-01-01"))
+      await store.getAll()
+      ;(sqlite.listRecords as jest.Mock).mockClear()
+
+      await store.getAll()
+      expect((await store.getSince("2024-01-01")).map((e) => e.id)).toEqual([1])
+      expect(sqlite.listRecords).not.toHaveBeenCalled()
+
+      await store.put(entry(2, "2024-02-01"))
+      expect((await store.getAll()).map((e) => e.id)).toEqual([2, 1])
+    })
+
+    it("drops the cache on a write made outside the store", async () => {
+      const store = makeStore()
+      await store.put(entry(1, "2024-01-01"))
+      await store.getAll()
+
+      collections.entries.push({ id: "9", sortKey: "2024-09-01", value: JSON.stringify(entry(9, "2024-09-01")) })
+      current++
+      expect((await store.getAll()).map((e) => e.id)).toEqual([9, 1])
+    })
+
+    it("hands each caller its own array", async () => {
+      const store = makeStore()
+      await store.put(entry(1, "2024-01-01"))
+      await store.put(entry(2, "2024-02-01"))
+      ;(await store.getAll()).reverse()
+      expect((await store.getAll()).map((e) => e.id)).toEqual([2, 1])
+    })
   })
 })
 

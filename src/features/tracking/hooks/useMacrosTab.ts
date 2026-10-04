@@ -9,6 +9,7 @@ import { isoToLocalDateStr, toNumberOrUndefined } from "../utils";
 import { toDateString , generateId } from "@utils/format";
 
 import { loadFromStorage, saveToStorage, STORAGE_KEYS } from "@shared/services/storage";
+import { captureException } from "@shared/services/crashReporting";
 import { useAuth } from "@shared/context/AuthContext";
 
 interface MacrosStat {
@@ -100,7 +101,7 @@ export function useMacrosTab(deps: UseMacrosTabDeps) {
           calories: saved.calories ?? current.calories,
         })),
       )
-      .catch(() => {});
+      .catch((error) => captureException(error, { stage: "loadMacrosGoals" }));
   }, [user?.id]);
 
   const handleDeleteMacro = createDeleteHandler(

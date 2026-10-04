@@ -326,6 +326,10 @@ export const useSyncManager = ({
             reason: "invalid_set",
           });
           noteDropped("recordSet", "invalid_set");
+          captureException(new Error("Dropped invalid queued set"), {
+            stage: "syncPendingData",
+            reason: "invalid_set",
+          });
           return;
         }
 
@@ -439,7 +443,7 @@ export const useSyncManager = ({
         retryKey: string,
         previous: { count: number; rejections: number } | undefined,
       ): void => {
-        console.error(`Failed to sync ${sync.type}:`, (error as Error).message);
+        console.error(`Failed to sync ${sync.type}:`, error);
         const rejected = isDefinitiveRejection(error);
         metric.count("sync.op", 1, {
           attributes: {
@@ -542,6 +546,10 @@ export const useSyncManager = ({
                 reason: "unknown_type",
               });
               noteDropped(String((sync as PendingSync).type), "unknown_type");
+              captureException(new Error("Dropped queued sync of unknown type"), {
+                stage: "syncPendingData",
+                type: String((sync as PendingSync).type),
+              });
           }
           retryStateRef.current.delete(retryKey);
         } catch (error) {
@@ -664,6 +672,10 @@ export const useSyncManager = ({
         count: removed.length,
       });
       metric.count("sync.cleanup.removed", removed.length);
+      captureException(new Error("Dropped queued syncs for an unknown local session"), {
+        stage: "cleanupInvalidSyncs",
+        count: removed.length,
+      });
       setDroppedSyncs((prev) => [...prev, ...removed]);
     }
   }, [writeQueue]);

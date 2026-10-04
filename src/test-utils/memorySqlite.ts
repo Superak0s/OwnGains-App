@@ -63,11 +63,9 @@ export const listRecords = jest.fn(async (c: string, limit?: number) => {
   return limit == null ? values : values.slice(0, limit)
 })
 
-export const listRecordsSince = jest.fn(async (c: string, since: string) =>
-  newestFirst(rowsOf(c))
-    .filter((r) => r.sortKey >= since)
-    .map((r) => r.value),
-)
+let versionReads = 0
+// A fresh value per call keeps the record store's parsed cache cold, as no write here bumps it.
+export const getRecordsVersion = jest.fn(() => ++versionReads)
 
 export const listRecordsBefore = jest.fn(
   async (c: string, before: { sortKey: string; id: string } | null, limit: number) =>

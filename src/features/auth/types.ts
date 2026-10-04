@@ -30,8 +30,8 @@ export const parseStoredUser = (raw: string | null): AuthUser | null => {
   if (!raw) return null
   try {
     return JSON.parse(raw) as AuthUser
-  } catch {
-    console.warn("Stored user is corrupt, ignoring it")
+  } catch (error) {
+    console.warn("Stored user is corrupt, ignoring it", error)
     metric.count("auth.stored_user_corrupt")
     log.warn("auth.stored_user_corrupt")
     return null

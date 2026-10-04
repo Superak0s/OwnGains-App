@@ -184,7 +184,7 @@ export default function SignupScreen({
     } catch (error) {
       if (isMountedRef.current) {
         setIsLoading(false);
-        captureException(error);
+        captureException(error, { stage: "signupScreen" });
 
         alert(
           "Error",

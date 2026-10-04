@@ -75,7 +75,8 @@ ${B}Other${R}
   -h, --help          Show this help
 
 ${DIM}Steps: [1] WSL sync, [2] version + changelog, [3] verify + prebuild,
-[4] build, [5] git commit/push, [6] GitHub release. A failed build reverts the bump.${R}
+[4] build, [5] git commit/push, [6] GitHub release. A failed or Ctrl+C'd build
+reverts the bump. Ctrl+C also deletes the WSL mirror.${R}
 EOF
 }
 
@@ -168,6 +169,32 @@ else
 fi
 printf '  Prebuild      %s\n' "$([ "$DO_CLEAN" = true ] && echo clean || echo incremental)"
 printf '  ABIs          %s\n' "$([ "$SKIP_32BIT" = true ] && echo arm64-v8a || echo 'arm64-v8a + armeabi-v7a')"
+
+# BACKUP_DIR is set from the version bump until the build succeeds. Any exit in
+# that window restores it. Ctrl+C also deletes the WSL mirror.
+ABORTED=false
+BACKUP_DIR=""
+APK_OUTS=()
+AAB_OUT=""
+cleanup() {
+    local rc=$?
+    set +e
+    [ "$ABORTED" = true ] && kill $(jobs -p) 2>/dev/null
+    [ -f "${DISTRIBUTION_FILE:-}" ] && set_kofi_url null
+    if [ -n "$BACKUP_DIR" ]; then
+        if [ $rc -ne 0 ]; then
+            err "Release did not finish, reverting version bump, changelog and new release/ files."
+            cp "$BACKUP_DIR"/* "$SRC/"
+            rm -f "${APK_OUTS[@]}" ${AAB_OUT:+"$AAB_OUT"}
+        fi
+        rm -rf "$BACKUP_DIR"
+    fi
+    if [ "$ABORTED" = true ] && [ "$BUILD" != "$SRC" ]; then
+        cd "$SRC" && rm -rf "$BUILD" && info "Deleted mirror $BUILD"
+    fi
+}
+trap cleanup EXIT
+trap 'echo ""; ABORTED=true; err "Aborted."; exit 130' INT TERM
 
 # [1/6] Mirror to the native filesystem (WSL only)
 if [ "$BUILD" != "$SRC" ]; then
@@ -322,6 +349,10 @@ if [ "$KEEP_VERSION" = false ] && [ "$SKIP_PUSH" = false ]; then
     COMMIT_MSG="${COMMIT_MSG:-Release v$NEW_VERSION}"
 fi
 
+# Restored from copies, not git, since these usually hold uncommitted work.
+BACKUP_DIR="$(mktemp -d)"
+cp "$SRC/package.json" "$SRC/app.json" "$SRC/CHANGELOG.md" "$BACKUP_DIR/"
+
 NEW_VERSION="$NEW_VERSION" BUMP_CODE="$BUMP_CODE" node -e '
 const fs = require("fs");
 const v = process.env.NEW_VERSION;
@@ -339,10 +370,7 @@ fs.writeFileSync("./app.json", JSON.stringify(app, null, 2) + "\n");
 '
 
 # Stamped before the build because the app bundles CHANGELOG.md for Settings ->
-# What's New, which looks up the installed version's heading. Restored from a
-# copy on failure, not git, since [Unreleased] is usually uncommitted work.
-CHANGELOG_BACKUP="$(mktemp)"
-cp "$SRC/CHANGELOG.md" "$CHANGELOG_BACKUP"
+# What's New, which looks up the installed version's heading.
 node scripts/release-changelog.js stamp "$NEW_VERSION" "$(date +%Y-%m-%d)" "$TAG"
 
 if [ "$BUILD" != "$SRC" ]; then
@@ -388,8 +416,6 @@ PY
         *) die "could not read $2 from $1." ;;
     esac
 }
-
-trap 'echo ""; err "Build failed, reverting version bump and changelog."; git -C "$SRC" checkout -- package.json app.json; cp "$CHANGELOG_BACKUP" "$SRC/CHANGELOG.md"' ERR
 
 # [3/6] Install dependencies, verify, prebuild
 step 3/6 "Install, verify, prebuild"
@@ -458,10 +484,8 @@ sed -i 's/signingConfig = signingConfigs\.debug/signingConfig signingConfigs.deb
 #
 # One-time setup required before this works (not part of the script):
 #   cd "$BUILD" && npx local-expo-build keystore import /path/to/your.jks
-trap 'set_kofi_url null' EXIT
 OUT_DIR="$SRC/release"
 mkdir -p "$OUT_DIR"
-APK_OUTS=()
 if [ "$BUILD_APK" = true ]; then
     step 4/6 "Building release APK"
     set_kofi_url "\"$KOFI_URL\""
@@ -492,9 +516,6 @@ if [ "$BUILD_APK" = true ]; then
     if [ ${#APK_OUTS[@]} -eq 0 ]; then
         die "no APK found in $APK_DIR"
     fi
-    for old in "$OUT_DIR"/*.apk; do
-        [[ " ${APK_OUTS[*]} " == *" $old "* ]] || { rm -f "$old" && info "Removed old $(basename "$old")"; }
-    done
     if ! bundle_has_kofi "${APK_OUTS[0]}" assets/index.android.bundle; then
         die "the GitHub APK has no Ko-fi link. It would offer Play tips that can't work outside Play."
     fi
@@ -503,7 +524,6 @@ else
     info "aab only, skipping the APK"
 fi
 
-AAB_OUT=""
 if [ "$BUILD_AAB" = true ]; then
     step 4/6 "Building release AAB"
     npx local-expo-build build android --aab --no-sync --no-bump --no-prebuild --no-clean
@@ -521,15 +541,19 @@ if [ "$BUILD_AAB" = true ]; then
     AAB_OUT="$OUT_DIR/OwnGains-v$NEW_VERSION-$VERSION_CODE.aab"
     cp "$AAB_SRC" "$AAB_OUT"
     ok "$(basename "$AAB_OUT"): $(du -h "$AAB_OUT" | cut -f1)"
-    for old in "$OUT_DIR"/*.aab; do
-        [ "$old" = "$AAB_OUT" ] || { rm -f "$old" && info "Removed old $(basename "$old")"; }
-    done
 else
     info "apk only, skipping the AAB"
 fi
 
-trap - ERR
-rm -f "$CHANGELOG_BACKUP"
+# Old outputs go only once both builds succeeded, so an abort can still restore release/.
+for old in "$OUT_DIR"/*.apk "$OUT_DIR"/*.aab; do
+    [ -f "$old" ] || continue
+    [[ " ${APK_OUTS[*]} $AAB_OUT " == *" $old "* ]] || { rm -f "$old" && info "Removed old $(basename "$old")"; }
+done
+
+# Past this point a commit or push may exist, so nothing is reverted any more.
+rm -rf "$BACKUP_DIR"
+BACKUP_DIR=""
 
 # [5/6] Push source to GitHub
 # Runs only after a successful build, so a bumped-but-broken version never

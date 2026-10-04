@@ -1,5 +1,4 @@
 import {
-  initCrashReporting,
   captureException,
   navigationIntegration,
   wrapRoot,
@@ -7,9 +6,6 @@ import {
   metric,
   trackScreenView,
 } from "./src/shared/services/crashReporting";
-
-initCrashReporting();
-
 import React, {
   useState,
   useEffect,
@@ -205,7 +201,7 @@ const hideNavBar = async () => {
     try {
       NavigationBar.setHidden(true);
     } catch (error) {
-      console.warn("Failed to hide navigation bar:", (error as Error).message);
+      console.warn("Failed to hide navigation bar:", error);
     }
   }
 };
@@ -216,7 +212,7 @@ const showNavBarTemporarily = async (ms = 3000) => {
     NavigationBar.setHidden(false);
     setTimeout(() => void hideNavBar(), ms);
   } catch (error) {
-    console.warn("Failed to show navigation bar:", (error as Error).message);
+    console.warn("Failed to show navigation bar:", error);
   }
 };
 
@@ -461,6 +457,8 @@ const TAB_COMPONENTS = Object.fromEntries(
   ).map(([name, Screen]) => [name, withTabBoundary(name, Screen)]),
 ) as Record<TabName, React.ComponentType>;
 
+const FROZEN_WHEN_BLURRED = new Set<TabName>(["Settings", "Analytics", "Plan"]);
+
 const TAB_ICONS = Object.fromEntries(
   DEFAULT_TAB_ORDER.map((name) => [
     name,
@@ -582,9 +580,9 @@ function MainTabs() {
               component={TAB_COMPONENTS[name]}
               options={{
                 tabBarIcon: TAB_ICONS[name],
-                // Only Settings: the other tabs run effects (rest reminders,
-                // live sessions) that must run while the tab is in the background.
-                freezeOnBlur: name === "Settings",
+                // The other tabs run effects (rest reminders, live sessions)
+                // that must run while the tab is in the background.
+                freezeOnBlur: FROZEN_WHEN_BLURRED.has(name),
               }}
             />
           ))}

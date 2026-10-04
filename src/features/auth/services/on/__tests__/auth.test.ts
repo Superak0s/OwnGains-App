@@ -1,4 +1,5 @@
 import { authService } from "../auth"
+import { ServerUnreachableError } from "@shared/services/apiError"
 import { refreshTokenStorage, tokenStorage } from "@shared/services/tokenStorage"
 import {
   getStorageItem,
@@ -69,11 +70,11 @@ describe("authService signin/signup network flow", () => {
     expect(setTokenMock).not.toHaveBeenCalled()
   })
 
-  it("propagates a network failure without storing anything", async () => {
+  it("turns a network failure into ServerUnreachableError without storing anything", async () => {
     ;(globalThis.fetch as jest.Mock).mockRejectedValue(new Error("Network request failed"))
 
-    await expect(authService.signin("tester", "pw")).rejects.toThrow(
-      "Network request failed",
+    await expect(authService.signin("tester", "pw")).rejects.toBeInstanceOf(
+      ServerUnreachableError,
     )
     expect(setTokenMock).not.toHaveBeenCalled()
   })
@@ -94,11 +95,11 @@ describe("authService signin/signup network flow", () => {
     expect(setTokenMock).toHaveBeenCalledWith("xyz789")
   })
 
-  it("propagates a network failure on signup without storing anything", async () => {
+  it("turns a network failure on signup into ServerUnreachableError without storing anything", async () => {
     ;(globalThis.fetch as jest.Mock).mockRejectedValue(new Error("Network request failed"))
 
-    await expect(authService.signup("newbie", "n@e.com", "pw")).rejects.toThrow(
-      "Network request failed",
+    await expect(authService.signup("newbie", "n@e.com", "pw")).rejects.toBeInstanceOf(
+      ServerUnreachableError,
     )
     expect(setTokenMock).not.toHaveBeenCalled()
   })

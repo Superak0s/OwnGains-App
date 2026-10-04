@@ -90,6 +90,20 @@ function serializeRead<T>(task: () => Promise<T>): Promise<T> {
   return result;
 }
 
+let recordsVersion = 0;
+
+/**
+ * Changes whenever any kv_records write is queued. Bumped at enqueue, not on
+ * completion: a read issued earlier is then already stale, and one issued later
+ * waits for the write anyway.
+ */
+export const getRecordsVersion = (): number => recordsVersion;
+
+function serializeRecordWrite<T>(task: () => Promise<T>): Promise<T> {
+  recordsVersion++;
+  return serializeWrite(task);
+}
+
 // Above this a batch runs on its own connection with the async API: the
 // synchronous one blocks the JS thread for the whole transaction.
 const ASYNC_BATCH_THRESHOLD = 200;
@@ -229,7 +243,7 @@ export const importAll = (
   snapshot: StorageSnapshot,
   mode: ImportMode = "replace",
 ): Promise<void> =>
-  serializeWrite(async () => {
+  serializeRecordWrite(async () => {
     try {
       await inExclusiveTransaction(async (txn) => {
         if (mode === "replace") {
@@ -324,18 +338,6 @@ export const listRecords = (
     return rows.map((r) => r.value);
   });
 
-export const listRecordsSince = (
-  collection: string,
-  sinceSortKey: string,
-): Promise<string[]> =>
-  serializeRead(async () => {
-    const rows = await readDb.getAllAsync<{ value: string }>(
-      "SELECT value FROM kv_records WHERE collection = ? AND sort_key >= ? ORDER BY sort_key DESC",
-      [collection, sinceSortKey],
-    );
-    return rows.map((r) => r.value);
-  });
-
 export interface RecordCursor {
   sortKey: string;
   id: string;
@@ -391,7 +393,7 @@ export const putRecord = (
   sortKey: string,
   value: string,
 ): Promise<void> =>
-  serializeWrite(async () => {
+  serializeRecordWrite(async () => {
     db.runSync(upsertRecordSql, [collection, id, sortKey, value]);
   });
 
@@ -405,7 +407,7 @@ export const putRecords = (
   collection: string,
   records: RecordWrite[],
 ): Promise<void> =>
-  serializeWrite(() => writeBatch([upsertsOf(collection, records)]));
+  serializeRecordWrite(() => writeBatch([upsertsOf(collection, records)]));
 
 const upsertsOf = (
   collection: string,
@@ -421,7 +423,7 @@ export const applyRecordChanges = (
   puts: RecordWrite[],
   deleteIds: string[],
 ): Promise<void> =>
-  serializeWrite(() =>
+  serializeRecordWrite(() =>
     writeBatch([
       upsertsOf(collection, puts),
       {
@@ -436,7 +438,7 @@ export const replaceCollection = (
   collection: string,
   records: RecordWrite[],
 ): Promise<void> =>
-  serializeWrite(() =>
+  serializeRecordWrite(() =>
     writeBatch([
       {
         sql: "DELETE FROM kv_records WHERE collection = ?",
@@ -447,7 +449,7 @@ export const replaceCollection = (
   );
 
 export const deleteRecord = (collection: string, id: string): Promise<void> =>
-  serializeWrite(async () => {
+  serializeRecordWrite(async () => {
     db.runSync("DELETE FROM kv_records WHERE collection = ? AND id = ?", [
       collection,
       id,
@@ -458,7 +460,7 @@ export const deleteRecords = (
   collection: string,
   ids: string[],
 ): Promise<void> =>
-  serializeWrite(async () => {
+  serializeRecordWrite(async () => {
     if (ids.length === 0) return;
     const placeholders = ids.map(() => "?").join(", ");
     db.runSync(
@@ -472,7 +474,7 @@ export const deleteRecords = (
  * written before record collections were namespaced per user.
  */
 export const renameCollection = (from: string, to: string): Promise<void> =>
-  serializeWrite(async () => {
+  serializeRecordWrite(async () => {
     db.runSync(
       "UPDATE OR REPLACE kv_records SET collection = ? WHERE collection = ?",
       [to, from],
@@ -489,7 +491,7 @@ export const renameCollection = (from: string, to: string): Promise<void> =>
  * escaping.
  */
 export const clearUserData = (userId: string): Promise<void> =>
-  serializeWrite(async () => {
+  serializeRecordWrite(async () => {
     syncCache.clear();
     const suffix = `_user_${userId}`;
     db.runSync("DELETE FROM kv_store WHERE substr(key, -length(?)) = ?", [
@@ -511,7 +513,7 @@ export const renameUserData = (
   fromUserId: string,
   toUserId: string,
 ): Promise<void> =>
-  serializeWrite(async () => {
+  serializeRecordWrite(async () => {
     syncCache.clear();
     const from = `_user_${fromUserId}`;
     const to = `_user_${toUserId}`;
@@ -528,6 +530,6 @@ export const renameUserData = (
   });
 
 export const clearCollection =(collection: string): Promise<void> =>
-  serializeWrite(async () => {
+  serializeRecordWrite(async () => {
     db.runSync("DELETE FROM kv_records WHERE collection = ?", [collection]);
   });

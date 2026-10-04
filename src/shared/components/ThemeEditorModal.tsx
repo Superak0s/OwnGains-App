@@ -1,3 +1,4 @@
+import { captureException } from "@shared/services/crashReporting"
 import { Fragment, useState } from "react"
 import {
   View,
@@ -622,7 +623,8 @@ export default function ThemeEditorModal({
         [{ text: "🎉 Awesome" }],
         "success",
       )
-    } catch {
+    } catch (error) {
+      captureException(error, { stage: "saveTheme" })
       alert(
         "Could not save theme",
         "Something went wrong saving your theme. Please try again.",
@@ -646,7 +648,8 @@ export default function ThemeEditorModal({
           text: "Delete",
           style: "destructive",
           onPress: () => {
-            deleteCustomTheme(theme.id).catch(() => {
+            deleteCustomTheme(theme.id).catch((error) => {
+              captureException(error, { stage: "deleteTheme" })
               alert(
                 "Couldn't delete theme",
                 "The theme is still saved on this device. Please try again.",

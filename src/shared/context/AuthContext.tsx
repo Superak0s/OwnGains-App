@@ -21,13 +21,7 @@ import { Alert, AppState } from "react-native";
 import { refreshTokenStorage, tokenStorage } from "../services/tokenStorage";
 import { accessTokenExpiresAt, accessTokenLifetimeMs } from "../services/jwt";
 import { hasAcceptedCurrentTerms } from "@features/auth/termsAcceptance";
-import {
-  applyPrivacyChoicesFor,
-  setUserContext,
-  metric,
-  log,
-  captureException,
-} from "../services/crashReporting";
+import { applyPrivacyChoicesFor, setUserContext, metric, log, captureException, reportAndReturn } from "../services/crashReporting";
 import { setRecordStoreUser } from "../services/offlineHelpers";
 import type { ProfileUpdate } from "@features/auth/types";
 import type { User } from "../types";
@@ -85,7 +79,8 @@ export const useAuth = (): AuthContextValue => {
 const readStoredToken = async (): Promise<string> => {
   try {
     return (await tokenStorage.get()) ?? "";
-  } catch {
+  } catch (error) {
+    captureException(error, { stage: "readStoredToken" });
     return "";
   }
 };
@@ -128,7 +123,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const id = next?.id == null ? null : String(next.id);
     setUserContext(id);
     setRecordStoreUser(id);
-    setUser(next);
+    // A fresh but identical object would re-render the whole tree.
+    setUser((prev) =>
+      JSON.stringify(prev) === JSON.stringify(next) ? prev : next,
+    );
   }, []);
 
   // Bumped on every session boundary so a refresh that resolves after the user
@@ -177,7 +175,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
    */
   const autoConnectOffline = useCallback(async (): Promise<void> => {
     try {
-      const stored = await authService.getStoredUser().catch(() => null);
+      const stored = await authService
+        .getStoredUser()
+        .catch(reportAndReturn(null, { stage: "getStoredUser" }));
       const data = (await authService.signin(stored?.username ?? "Me", "")) as {
         success: boolean;
         user?: User;
@@ -231,7 +231,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return "rejected";
     } catch (error) {
       if (!isCredentialRejection(error)) {
-        console.warn("⚠️ Token refresh unreachable, keeping session");
+        console.warn("⚠️ Token refresh unreachable, keeping session", error);
         metric.count("auth.token_refresh", 1, {
           attributes: { outcome: "unreachable" },
         });
@@ -326,7 +326,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Offline mode is documented as zero-backend. A live server
           // credential must not sit in SecureStore for the whole of it. The
           // proxy already routes offline, so revoke through the online service.
-          await onlineAuthService.logout().catch(() => undefined);
+          await onlineAuthService
+            .logout()
+            .catch(reportAndReturn(undefined, { stage: "revokeOnSwitch" }));
           await refreshTokenStorage.clear();
           await autoConnectOffline();
         })();
@@ -358,6 +360,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       seatUser(currentUser);
       setIsAuthenticated(true);
     } catch (error) {
+      if (!isCredentialRejection(error))
+        captureException(error, { stage: "reloadUserAfterRefresh" }, "warning");
       if (!isCredentialRejection(error) && (await restoreCachedSession())) return;
       await logout();
     }
@@ -388,6 +392,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       startSession(currentUser, await readStoredToken());
       console.info("✅ Valid session restored for:", currentUser.username);
     } catch (error) {
+      if (!isCredentialRejection(error))
+        captureException(error, { stage: "restoreSession" }, "warning");
       if (!isCredentialRejection(error) && (await restoreCachedSession())) return;
       await recoverSession();
     }
@@ -401,7 +407,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const currentUser = await authService.getCurrentUser();
       if (generation === sessionGenerationRef.current) seatUser(currentUser);
     } catch (error) {
-      if (!isCredentialRejection(error)) return;
+      if (!isCredentialRejection(error)) {
+        captureException(error, { stage: "revalidateSession" }, "warning");
+        return;
+      }
       if (generation === sessionGenerationRef.current) await recoverSession();
     }
   }, [recoverSession, seatUser]);
@@ -411,11 +420,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // The persisted app mode must be loaded before deciding whether this is
       // a serverless session, which never shows a login screen.
       await getAppMode();
-      const isAuth = await authService.isAuthenticated();
-      const storedUser = isAuth
-        ? await authService.getStoredUser().catch(() => null)
-        : null;
-      const storedToken = storedUser ? await readStoredToken() : "";
+      const [isAuth, maybeUser, maybeToken] = await Promise.all([
+        authService.isAuthenticated(),
+        authService
+          .getStoredUser()
+          .catch(reportAndReturn(null, { stage: "getStoredUser" })),
+        readStoredToken(),
+      ]);
+      const storedUser = isAuth ? maybeUser : null;
+      const storedToken = storedUser ? maybeToken : "";
       if (storedUser && storedToken) {
         startSession(storedUser, storedToken);
         void revalidateSession();
@@ -461,6 +474,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Restoring the session from the token already in SecureStore would bind
           // it to whichever account signed in last.
           metric.count("auth.signup", 1, { attributes: { outcome: "no_token" } });
+          captureException(new Error("Signup succeeded without a token"), { stage: "signup" });
           return { success: false, error: "The server did not return a sign-in token." };
         }
         metric.count("auth.signup", 1, { attributes: { outcome: "rejected" } });
@@ -497,6 +511,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         if (data.success && !data.token) {
           metric.count("auth.signin", 1, { attributes: { outcome: "no_token" } });
+          captureException(new Error("Signin succeeded without a token"), { stage: "signin" });
           return { success: false, error: "The server did not return a sign-in token." };
         }
         metric.count("auth.signin", 1, { attributes: { outcome: "rejected" } });

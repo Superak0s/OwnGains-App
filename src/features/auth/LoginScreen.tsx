@@ -203,7 +203,7 @@ export default function LoginScreen({
         );
       })
       .catch((error) => {
-        console.warn("LAN server scan failed:", error);
+        console.log("LAN server scan failed:", error);
         metric.count("lan.scan_failed");
         log.warn("lan.scan_failed");
       })

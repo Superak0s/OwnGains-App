@@ -1,9 +1,9 @@
 {
   "name": "owngains-app",
   "description": "Offline-first fitness tracker: build splits, log workouts, track your body and supplements, and analyze progress with no account or server required.",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "license": "MIT",
-  "main": "node_modules/expo/AppEntry.js",
+  "main": "index.ts",
   "scripts": {
     "start": "expo start",
     "android": "expo prebuild --platform android --clean && expo run:android --app-id com.owngains.app.debug",

@@ -1,3 +1,4 @@
+import { captureUnreported } from "@shared/services/crashReporting";
 import type { UseAlertReturn } from "@shared/components/CustomAlert";
 import type { DayModalState } from "./types";
 
@@ -23,6 +24,9 @@ const ERROR_COPY: Record<string, string> = {
 };
 
 export function describeError(err: unknown): string {
+  // Every caller is a catch block that only shows this text, so this is
+  // where those errors get reported.
+  captureUnreported(err);
   const code = (err as { code?: string })?.code;
   if (code && ERROR_COPY[code]) return ERROR_COPY[code];
 

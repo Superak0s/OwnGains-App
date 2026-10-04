@@ -24,7 +24,7 @@ import {
 } from "react-native-gesture-handler"
 import ModalSheet from "./ModalSheet"
 import { useAlert } from "./CustomAlert"
-import { log } from "@shared/services/crashReporting"
+import { log, captureException } from "@shared/services/crashReporting"
 import { tutorialAnchor } from "@features/tutorial/anchors"
 
 interface TabItem {
@@ -251,7 +251,8 @@ export default function ScrollTabBar({
   const persist = useCallback(
     (next: TabConfig[]) => {
       writeJSON(storageKey, next).catch((e) => {
-        log.warn("ScrollTabBar: failed to persist tab config", e)
+        log.warn("ScrollTabBar: failed to persist tab config")
+        captureException(e, { stage: "persistTabConfig" })
       })
     },
     [storageKey],

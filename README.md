@@ -247,7 +247,7 @@ The file is bundled into the app and shown under Settings → About → What's N
 
 ## Support
 
-OwnGains and the official server are built and run by one developer. If the app is useful to you, you can support development on [Ko-fi](https://ko-fi.com/superak0s), or with a one-time tip from Settings → About → Support Development in the Google Play version. The GitHub release APKs link to Ko-fi from the same spot.
+OwnGains and the official server are built and run by one developer. If the app is useful to you, you can support development on [Ko-fi](https://ko-fi.com/superak0s), or with a one-time tip from Settings → Support Development in the Google Play version. The GitHub release APKs link to Ko-fi from the same spot, at the top of Settings.
 
 ## App identity
 

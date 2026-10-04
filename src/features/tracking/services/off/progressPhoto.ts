@@ -2,6 +2,7 @@ import * as FileSystem from "expo-file-system/legacy"
 import { generateId } from "@utils/format"
 import { compressImageForUpload, makeThumbnail } from "@utils/compressImage"
 import { createRecordStore } from "@shared/services/offlineHelpers"
+import { reportAndReturn } from "@shared/services/crashReporting"
 import type {
   ProgressPhotoMuscle,
   LogProgressPhotoParams,
@@ -34,7 +35,7 @@ const saveThumbnail = async (from: string, to: string): Promise<string | undefin
   if (!thumb) return undefined
   const saved = await FileSystem.copyAsync({ from: thumb, to }).then(
     () => to,
-    () => undefined,
+    reportAndReturn(undefined, { stage: "saveThumbnail" }),
   )
   await deleteFiles([thumb])
   return saved

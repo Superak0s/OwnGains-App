@@ -2,6 +2,7 @@ import { apiCall } from "./apiClient"
 import { isServerless } from "./appMode"
 import { getServerUrl, onServerUrlChange } from "./config"
 import { loadFromStorage, saveToStorage } from "./storage"
+import { setTelemetryTag } from "./crashReporting"
 
 const STORAGE_KEY = "@local_only_features"
 const UNREACHABLE_RETRY_MS = 60_000
@@ -37,6 +38,11 @@ interface StoredList {
 export interface LocalOnlyChange {
   nowLocal: string[]
   nowOnServer: string[]
+}
+
+const adopt = (features: string[]): void => {
+  cached = features
+  setTelemetryTag("local_only", features.join(",") || "none")
 }
 
 let pendingChange: LocalOnlyChange | null = null
@@ -85,7 +91,7 @@ export const refreshLocalOnlyFeatures = async (): Promise<string[] | null> => {
     // describes the previous one, so it must not be adopted or persisted.
     if (getServerUrl() !== url) return null
     if (cached !== null) announceChange(cached, features)
-    cached = features
+    adopt(features)
     await saveToStorage(STORAGE_KEY, { url, features })
     return features
   } catch {
@@ -104,7 +110,7 @@ export const markFeatureLocal = async (feature: string): Promise<void> => {
   if (cached === null || cached.includes(feature)) return
   const next = [...cached, feature]
   announceChange(cached, next)
-  cached = next
+  adopt(next)
   await saveToStorage(STORAGE_KEY, { url: getServerUrl(), features: next })
   void refreshLocalOnlyFeatures()
 }
@@ -115,7 +121,7 @@ const prime = (): Promise<void> =>
     // Pinned to the server it came from, since another server has its own config,
     // and assuming this one's answer would route data to the wrong place.
     if (stored?.url === getServerUrl()) {
-      cached = stored.features
+      adopt(stored.features)
       void refreshLocalOnlyFeatures()
       return
     }

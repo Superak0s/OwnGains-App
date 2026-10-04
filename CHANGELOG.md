@@ -6,6 +6,39 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-10-04
+
+### Fixed
+
+- When the server can't be reached, the app shows "Couldn't reach the server" instead of the raw connection error, and no longer files a crash report for it.
+- Crash reports now include errors the app recovered from, such as a screen that failed to load, a sync step that failed, a tip that didn't go through, a set that couldn't be saved, offline workout data that had to be discarded, a session that couldn't be restored, a workout program that didn't sync, a friend's analytics that failed to load or an action that showed an error message, not only crashes.
+- Tapping Join on an expired joint-session invite now removes the invite instead of leaving it on screen to fail again.
+- Errors that happen while the app is starting up are now included in crash reports.
+- Turning on crash reports now also covers crashes inside Android itself right away, not only after the app is restarted.
+
+### Changed
+
+- The "Before you start" screen asks about crash reports and usage metrics with "Accept all", "Necessary only" (crash reports) and "Reject all" buttons. Tap Settings to choose each one separately. Existing users see this question once more after updating, without having to accept the Terms again.
+- Support Development and Give Feedback are now large, colorful buttons at the top of Settings instead of rows under About.
+- The app opens faster in online mode: your saved day and progress appear right away, and the server's current day is checked in the background.
+- Offline Analytics and Tracking screens load faster after the first visit.
+- Long exercise progress charts show at most 60 points (always including your best and latest), so they draw faster.
+- The Analytics and Plan tabs no longer re-render while you are on another tab.
+
+### Security
+
+- With usage metrics switched on, the app also reports how long each workout lasted and how many sets and exercises it had, which days you open the app, and how many days since your last workout (as a range), plus which settings, tutorial steps and suggestions you use. Exercise names, weights, reps and notes are never sent. The privacy policy and the consent screen describe this.
+
+### Internal
+
+- Release builds enable R8 optimized resource shrinking (`android.r8.optimizedResourceShrinking`).
+- Usage counters, feature uses and sub-tab views are also sent as always-sampled transactions, because GlitchTip drops Sentry metrics. Events are tagged with the server's local-only features and the release channel (GitHub or Play), and the first screen load of each launch is always sampled so cold-start time is kept.
+- Server sync skips writing completed and locked days when nothing changed, startup auth reads run in parallel, and an identical signed-in user no longer re-renders the whole app. Tests cover the record cache, chart downsampling and the unchanged-sync path.
+- The app entry point is now `index.ts`, which starts crash reporting before `App.tsx` and its imports load. The Sentry envelope buffer is raised to 100.
+- A rejected password, an expired session (HTTP 401/403) or a conflict such as a taken username (HTTP 409) is not sent as a crash report, wherever it is logged. Sign-in and sign-up network failures count as an unreachable server, LAN scan failures are no longer reported, and every report is labelled with a `stage`.
+- Telemetry no longer calls `Sentry.metrics`, which GlitchTip ignores (`trace_metric`). Counts and millisecond timings (sync runs, API requests, LAN scans) are sent as transactions, other values (sync queue depth, match confidence, imported days) as `info` logs with a `value` attribute, and API retries as a log. Screen-load timings (`trackSpan`) are always their own transaction, so they are no longer sampled with the screen they belong to. Navigation and HTTP traces are sampled at 100% (was 10%) during closed testing.
+- `scripts/release.sh`: Ctrl+C before the push reverts the version bump, changelog and new `release/` files, and deletes the WSL mirror
+
 ## [0.1.6] - 2026-10-04
 
 ### Fixed

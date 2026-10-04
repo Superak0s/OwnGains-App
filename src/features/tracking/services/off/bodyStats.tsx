@@ -122,7 +122,8 @@ export const getCurrentBodyWeight = async (
   try {
     const { entry } = await bodyTrackingApi.getCurrentWeight()
     return entry ? entry.weightKg : null
-  } catch {
+  } catch (error) {
+    captureException(error, { stage: "getCurrentBodyWeight" })
     return null
   }
 }

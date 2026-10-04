@@ -1,3 +1,4 @@
+import { captureException } from "@shared/services/crashReporting";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   View,
@@ -363,7 +364,8 @@ export default function LiveSessionTab({
       setLiveData(live);
       setWatchedSessionId(String(active.sessionId));
       setPhase("watching");
-    } catch {
+    } catch (error) {
+      captureException(error, { stage: "loadLiveSession" });
       setPhase("error");
     }
   }, [friend?.id]);

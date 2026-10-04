@@ -86,7 +86,7 @@ export default function OnboardingScreen({
         // Local storage is unreachable, which breaks far more than onboarding.
         // Remain here so the tap can be retried, and say so. This is the first
         // screen of the app, with nothing else on it to fall back to.
-        captureException(error);
+        captureException(error, { stage: "onboardingSaveMode" });
         setFailed(true);
       } finally {
         setPending(null);

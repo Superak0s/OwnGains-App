@@ -3,6 +3,7 @@ import { sharingApi } from "@features/friends/services/index"
 import { normalizeExerciseName } from "@utils/exerciseMatching"
 import type { RealtimeSocket, WebSocketMessage } from "./useRealtimeSocket"
 import { captureException, log, metric } from "../../services/crashReporting"
+import { ApiError } from "../../services/apiError"
 
 const SYNC_PULSE_MS = 1_500
 const WATCH_POLL_MS = 10_000
@@ -371,6 +372,9 @@ export const useJointSession = ({
       try {
         const res = await sharingApi.sendJointInvite({ toUserId })
         if (!(res as AcceptInviteResponse)?.inviteId) {
+          captureException(new Error("Joint invite sent without an inviteId"), {
+            stage: "sendJointInvite",
+          })
           setInviteStatus("error")
           return false
         }
@@ -402,9 +406,10 @@ export const useJointSession = ({
         inviteId,
       )) as AcceptInviteResponse
       if (!res?.jointSession) {
-        // Expired or already answered, so clear it so the button stops looking live.
-        setPendingInvite(null)
-        setInviteStatus("declined")
+        captureException(new Error("Joint invite accepted without a session"), {
+          stage: "acceptJointInvite",
+        })
+        setInviteStatus("error")
         return false
       }
       setPendingInvite(null)
@@ -414,6 +419,13 @@ export const useJointSession = ({
       metric.count("joint.invite_accepted", 1, { attributes: { outcome: "ok" } })
       return true
     } catch (err) {
+      // The server answers an expired or withdrawn invite with 404. Clear it so
+      // the button stops looking live.
+      if (err instanceof ApiError && err.status === 404) {
+        setPendingInvite(null)
+        setInviteStatus("declined")
+        return false
+      }
       console.error("Failed to accept joint invite:", err)
       metric.count("joint.invite_accepted", 1, {
         attributes: { outcome: "failed" },
@@ -431,8 +443,9 @@ export const useJointSession = ({
     declineInviteInFlightRef.current = true
     try {
       await sharingApi.declineJointInvite(pendingInvite.inviteId as string)
-    } catch {
+    } catch (error) {
       // The invite is dropped locally either way.
+      captureException(error, { stage: "declineJointInvite" })
     }
     setPendingInvite(null)
     declineInviteInFlightRef.current = false
@@ -446,8 +459,9 @@ export const useJointSession = ({
       socket?.send({ type: "leave_joint_session", jointSessionId: id })
       try {
         await sharingApi.leaveJointSession(id)
-      } catch {
+      } catch (error) {
         // The socket leave already went out, so local teardown proceeds regardless.
+        captureException(error, { stage: "leaveJointSession" })
       }
     }
     leaveSessionInFlightRef.current = false
@@ -487,7 +501,7 @@ export const useJointSession = ({
         try {
           await sharingApi.pushJointProgress(id, progress)
         } catch (err) {
-          console.warn("Failed to push joint progress:", (err as Error).message)
+          console.warn("Failed to push joint progress:", err)
           metric.count("joint.progress_push_failed")
           log.warn("joint.progress_push_failed", {
             reason: (err as Error).message,
@@ -517,7 +531,9 @@ export const useJointSession = ({
     if (socket?.connected) {
       socket.send({ type: "push_joint_progress", jointSessionId: id, progress })
     } else {
-      sharingApi.pushJointProgress(id, progress).catch(() => {})
+      sharingApi.pushJointProgress(id, progress).catch((error) =>
+        captureException(error, { stage: "pushJointProgress" }),
+      )
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- one push per exercise-name change, guarded by lastPushedKeyRef
   }, [isInJointSession, myExerciseNamesKey])
@@ -556,7 +572,7 @@ export const useJointSession = ({
         metric.count("watch.started", 1, { attributes: { outcome: "ok" } })
         return true
       } catch (err) {
-        console.error("Failed to start watching:", (err as Error).message)
+        console.error("Failed to start watching:", err)
         metric.count("watch.started", 1, { attributes: { outcome: "failed" } })
         captureException(err, { stage: "startWatching" })
         if (!isCurrent()) return false
@@ -586,7 +602,7 @@ export const useJointSession = ({
           }
           setWatchSession(live)
         })
-        .catch(() => {})
+        .catch((error) => captureException(error, { stage: "pollWatch" }))
     }, WATCH_POLL_MS)
     return () => clearInterval(timer)
   }, [watchTarget])

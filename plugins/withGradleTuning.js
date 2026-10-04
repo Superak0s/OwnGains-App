@@ -19,6 +19,7 @@ const FORCED_PROPERTIES = {
   "org.gradle.configureondemand": "true",
   "kotlin.daemon.jvm.options": `-Xmx${kotlinHeapGb}g`,
   "android.enableR8.fullMode": "true",
+  "android.r8.optimizedResourceShrinking": "true",
   // x86_64 is emulator-only weight. Dropping armeabi-v7a excludes every 32-bit
   // device, so only release.sh narrows it: arm64-v8a for the APKs unless
   // `--32bit` is passed, and never for the AAB.

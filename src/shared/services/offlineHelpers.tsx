@@ -8,7 +8,7 @@ import {
   getRecord,
   listRecords,
   listRecordsBefore,
-  listRecordsSince,
+  getRecordsVersion,
   listRecordsWhere,
   type RecordCursor,
   type RecordFilter,
@@ -104,30 +104,49 @@ export function createRecordStore<T>(
   }
 
   const inFlightReads = new Map<number | undefined, Promise<T[]>>()
+  // Parsing every session ever logged on each read grows with history, so the
+  // full parsed collection is kept until any record write is queued.
+  let parsed: { version: number; rows: T[] } | null = null
 
   recordStoreResets.push(() => {
     col = getUserKey(collection, activeUserId)
     migration = null
     inFlightReads.clear()
+    parsed = null
   })
 
+  const warmRows = (): T[] | null =>
+    parsed?.version === getRecordsVersion() ? parsed.rows : null
+
   const read = (limit?: number): Promise<T[]> => {
+    const warm = warmRows()
+    if (warm) return Promise.resolve(limit == null ? [...warm] : warm.slice(0, limit))
     const existing = inFlightReads.get(limit)
-    if (existing) return existing
+    if (existing) return existing.then((rows) => [...rows])
+    const version = getRecordsVersion()
     const pending: Promise<T[]> = listRecords(col, limit)
-      .then((rows) => rows.map((v) => JSON.parse(v) as T))
+      .then((rows) => {
+        const records = rows.map((v) => JSON.parse(v) as T)
+        if (limit == null && inFlightReads.get(limit) === pending) {
+          parsed = { version, rows: records }
+        }
+        return records
+      })
       .finally(() => {
         // Only clear our own entry: an invalidateReads in between will have
         // replaced it with a newer read that is still in flight.
         if (inFlightReads.get(limit) === pending) inFlightReads.delete(limit)
       })
     inFlightReads.set(limit, pending)
-    return pending
+    return pending.then((rows) => [...rows])
   }
 
   // A read already in flight was queued before this write, so its result no
   // longer reflects the collection and must not be handed to later callers.
-  const invalidateReads = (): void => inFlightReads.clear()
+  const invalidateReads = (): void => {
+    inFlightReads.clear()
+    parsed = null
+  }
 
   return {
     async getAll() {
@@ -140,8 +159,8 @@ export function createRecordStore<T>(
     },
     async getSince(sinceSortKey) {
       await ensureMigrated()
-      const rows = await listRecordsSince(col, sinceSortKey)
-      return rows.map((v) => JSON.parse(v) as T)
+      const rows = await read()
+      return rows.filter((record) => sortKeyOf(record) >= sinceSortKey)
     },
     async getWhere(where, limit) {
       await ensureMigrated()

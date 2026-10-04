@@ -16,7 +16,7 @@ jest.mock("@shared/services/tokenStorage", () => ({
 }))
 
 import { refreshTokenStorage, tokenStorage } from "@shared/services/tokenStorage"
-import { ApiError } from "../apiError"
+import { ApiError, ServerUnreachableError, userFacingError } from "../apiError"
 import { authenticatedFetch, setSessionRefresher } from "../authenticatedFetch"
 
 const tokenGet = tokenStorage.get as jest.Mock
@@ -96,7 +96,7 @@ describe("authenticatedFetch 401 handling", () => {
     fetchMock.mockResolvedValue(respond(401))
 
     const error = await authenticatedFetch("/api/program").catch((e: unknown) => e)
-    expect(error).not.toBeInstanceOf(ApiError)
+    expect(error).toBeInstanceOf(ServerUnreachableError)
     expect(clearAccess).not.toHaveBeenCalled()
   })
 
@@ -173,5 +173,23 @@ describe("authenticatedFetch token scoping", () => {
     expect(refresher).not.toHaveBeenCalled()
     expect(clearAccess).not.toHaveBeenCalled()
     setSessionRefresher(null)
+  })
+})
+
+describe("authenticatedFetch unreachable server", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    globalThis.fetch = fetchMock
+  })
+
+  it("hides the platform transport error behind ServerUnreachableError", async () => {
+    fetchMock.mockRejectedValue(
+      new TypeError("fetch failed: java.net.ConnectException: Failed to connect to /192.168.10.243:5000"),
+    )
+
+    const error = await authenticatedFetch("/api/sessions").catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(ServerUnreachableError)
+    expect((error as Error).message).not.toMatch(/java|192\.168/)
+    expect(userFacingError(error, "fallback")).toBe((error as Error).message)
   })
 })

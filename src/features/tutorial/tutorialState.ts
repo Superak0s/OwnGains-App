@@ -1,5 +1,6 @@
 import { getStorageItemSync, setStorageItem } from "@shared/services/sqliteStorage";
 import type { AppMode } from "@shared/services/appMode";
+import { trackFeature } from "@shared/services/crashReporting";
 
 export type Role = "user" | "trainer" | "both";
 export type PickerMode = "firstRun" | "onlineTour" | "change";
@@ -74,10 +75,12 @@ export function updateTutorialState(
   return run;
 }
 
-export const markChapterCompleted = (id: string) =>
-  updateTutorialState((s) =>
+export const markChapterCompleted = (id: string) => {
+  trackFeature("tutorial", "chapter_completed", { chapter: id });
+  return updateTutorialState((s) =>
     s.completed.includes(id) ? s : { ...s, completed: [...s.completed, id] },
   );
+};
 
 export const markFirstRunDone = (mode: AppMode) =>
   updateTutorialState((s) => ({
@@ -90,8 +93,10 @@ export const markFirstRunDone = (mode: AppMode) =>
 export const markOnlineTourOffered = () =>
   updateTutorialState((s) => ({ ...s, onlineTourOffered: true }));
 
-export const setTutorialRole = (role: Role) =>
-  updateTutorialState((s) => ({ ...s, role }));
+export const setTutorialRole = (role: Role) => {
+  trackFeature("tutorial", "role", { role });
+  return updateTutorialState((s) => ({ ...s, role }));
+};
 
 export function gateAction(
   s: TutorialState,

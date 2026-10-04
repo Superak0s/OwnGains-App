@@ -1,3 +1,5 @@
+import { captureUnreported } from "./crashReporting"
+
 export const OFFLINE_UNAVAILABLE_MESSAGE =
   "This needs a server. Switch to online mode in Settings to use it."
 
@@ -25,6 +27,14 @@ export class ApiError extends Error {
     this.details = details
     this.code = code
     this.retryAfterMs = retryAfterMs
+  }
+}
+
+/** No answer from the server (refused, unroutable or timed out). Expected while it is down, so not a crash. */
+export class ServerUnreachableError extends Error {
+  constructor() {
+    super("Couldn't reach the server. Check your connection and try again.")
+    this.name = "ServerUnreachableError"
   }
 }
 
@@ -74,6 +84,10 @@ export function messageForCode(
  * and 5xx errors get plain wording, and anything else falls back.
  */
 export function userFacingError(error: unknown, fallback: string): string {
+  // Every caller is a catch block that only shows this text, so this is
+  // where those errors get reported.
+  captureUnreported(error)
+  if (error instanceof ServerUnreachableError) return error.message
   if (error instanceof ApiError) {
     const coded = messageForCode(error.code, error.retryAfterMs)
     if (coded) return coded

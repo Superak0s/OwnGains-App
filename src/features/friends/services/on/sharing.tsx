@@ -1,5 +1,6 @@
 import { apiCall, parseApiResponse } from "@shared/services/apiClient"
 import { authenticatedFetch } from "@shared/services/authenticatedFetch"
+import { reportAndReturn } from "@shared/services/crashReporting"
 import type {
   PermissionType,
   GrantedPermission,
@@ -74,7 +75,7 @@ export const sharingApi = {
         .map(async (p) => {
           p.payload = await sharingApi
             .getPermissionPayload(p.id)
-            .catch(() => null)
+            .catch(reportAndReturn(null, { stage: "permissionPayload" }))
         }),
     )
     return permissions

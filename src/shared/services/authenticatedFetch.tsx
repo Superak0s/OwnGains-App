@@ -1,7 +1,7 @@
 import { refreshTokenStorage, tokenStorage } from "./tokenStorage"
 import { assertSecureTransport, getServerUrl } from "./config"
 import { metric, log, trackBreadcrumb } from "./crashReporting"
-import { ApiError } from "./apiError"
+import { ApiError, ServerUnreachableError } from "./apiError"
 
 const DEFAULT_TIMEOUT_MS = 15000
 const RETRY_BASE_MS = 300
@@ -46,24 +46,18 @@ const fetchWithRetry = async (
         throw error
       }
       if ((error as Error).name === "AbortError") {
-        metric.count("api.request", 1, {
-          attributes: { method, route, outcome: "timeout" },
-        })
         log.warn("api.timeout", { method, route, timeoutMs })
-        throw new Error(`Request timed out after ${timeoutMs}ms`)
+        throw new ServerUnreachableError()
       }
       if (attempt === attempts - 1) {
-        metric.count("api.request", 1, {
-          attributes: { method, route, outcome: "transport_error" },
-        })
         log.warn("api.transport_error", {
           method,
           route,
           reason: (error as Error).message,
         })
-        throw error
+        throw new ServerUnreachableError()
       }
-      metric.count("api.retry", 1, { attributes: { method, route } })
+      log.warn("api.retry", { method, route })
       console.debug(`[API] Retrying after transport error: ${url}`)
       await new Promise((resolve) =>
         setTimeout(resolve, RETRY_BASE_MS + Math.random() * RETRY_BASE_MS),
@@ -151,9 +145,6 @@ const fetchAuthenticated = async (
   const status = response.status
   metric.distribution("api.request.duration", durationMs, {
     unit: "millisecond",
-    attributes: { method, route, status },
-  })
-  metric.count("api.request", 1, {
     attributes: { method, route, status, outcome: response.ok ? "ok" : "http_error" },
   })
   trackBreadcrumb("api", `${method} ${route}`, { status, durationMs })
@@ -176,7 +167,7 @@ const fetchAuthenticated = async (
           : await (sessionRefresher?.() ?? Promise.resolve("rejected" as const))
       if (outcome === "refreshed") return fetchAuthenticated(url, options, false)
       if (outcome === "unreachable") {
-        throw new Error("Server unreachable while refreshing the session")
+        throw new ServerUnreachableError()
       }
     }
     console.warn("Token rejected, clearing access token")

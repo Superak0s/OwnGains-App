@@ -10,7 +10,12 @@ import { workoutApi as defaultWorkoutApi } from "@features/workout/services/inde
 import type { WorkoutApi } from "@features/workout/services/workoutApiFactory";
 import type { WorkoutData, PendingSync } from "../../types";
 import type { CompletedDays, LockedDays } from "../../../utils/dayCompletion";
-import { metric, log, captureException } from "../../services/crashReporting";
+import {
+  metric,
+  log,
+  captureException,
+  trackWorkoutCompleted,
+} from "../../services/crashReporting";
 import { userFacingError } from "../../services/apiError";
 
 export const TRAINEE_WRITE_REFUSED_MESSAGE =
@@ -432,6 +437,14 @@ export const useSessionOperations = ({
         // locked over a workout that never ended.
         await lockDay(currentDay);
         await clearActiveWorkout();
+        if (workoutStartTime) {
+          const exercises = Object.values(completedDays[currentDay] ?? {});
+          trackWorkoutCompleted(Date.parse(workoutStartTime), {
+            sets: exercises.reduce((n, sets) => n + Object.keys(sets).length, 0),
+            exercises: exercises.filter((sets) => Object.keys(sets).length > 0).length,
+            auto: autoCompleted,
+          });
+        }
 
         if (!useManualTime && fetchAnalytics) {
           await fetchAnalytics();
@@ -464,6 +477,8 @@ export const useSessionOperations = ({
     [
       currentDay,
       currentSessionId,
+      workoutStartTime,
+      completedDays,
       pendingSyncs,
       addPendingSync,
       lockDay,
@@ -548,6 +563,11 @@ export const useSessionOperations = ({
         optimisticallyCompleted = true;
         if (!savedLocally) {
           log.error("workout.set_persist_failed", { dayNumber, setIndex });
+          captureException(new Error("Set could not be saved to device storage"), {
+            stage: "recordSet",
+            dayNumber,
+            setIndex,
+          });
           Alert.alert(
             "Set may not be saved",
             "This set couldn't be written to this device's storage. It's on screen for now, but may be missing if the app restarts.",

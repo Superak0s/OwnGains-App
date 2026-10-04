@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { trackScreenView } from "@shared/services/crashReporting";
+import { trackScreenView, captureException, reportAndReturn } from "@shared/services/crashReporting";
 import {
   View,
   Text,
@@ -144,7 +144,7 @@ function fetchFriendSessionStatuses(
       sharingApi
         .getFriendSessionStatus(f.id)
         .then((r) => ({ id: f.id, active: !!r?.hasActiveSession }))
-        .catch(() => ({ id: f.id, active: false })),
+        .catch(reportAndReturn({ id: f.id, active: false }, { stage: "friendSessionStatus" })),
     ).then((results) => {
       const map: Record<string | number, boolean> = {};
       results.forEach((r) => {
@@ -163,7 +163,10 @@ function fetchFriendSessionStatuses(
     .then((maps) =>
       maps.includes(null) ? perFriend() : Object.assign({}, ...maps),
     )
-    .catch(() => perFriend());
+    .catch((error) => {
+      captureException(error, { stage: "friendSessionStatuses" });
+      return perFriend();
+    });
   sharedStatuses = { key, fetchedAt: Date.now(), statuses };
   return statuses;
 }
@@ -865,7 +868,8 @@ export default function FriendsScreen({
           "info",
         );
       }
-    } catch {
+    } catch (error) {
+      captureException(error, { stage: "loadLiveSession" });
       alertError("Could not load the live session. Try again.");
     } finally {
       setCheckingActiveSession(false);
@@ -879,10 +883,10 @@ export default function FriendsScreen({
 
   const loadPermissions = useCallback(async () => {
     const [granted, received] = await Promise.all([
-      sharingApi.getGrantedPermissions().catch(() => [] as GrantedPermission[]),
+      sharingApi.getGrantedPermissions().catch(reportAndReturn([] as GrantedPermission[], { stage: "loadPermissions" })),
       sharingApi
         .getReceivedPermissions()
-        .catch(() => [] as ReceivedPermission[]),
+        .catch(reportAndReturn([] as ReceivedPermission[], { stage: "loadPermissions" })),
     ]);
     setGrantedPermissions(granted);
     setReceivedPermissions(received);
@@ -899,7 +903,8 @@ export default function FriendsScreen({
     try {
       await Promise.all([loadFriends(), loadPermissions()]);
       setLoadFailed(false);
-    } catch {
+    } catch (error) {
+      captureException(error, { stage: "loadFriendsData" });
       setLoadFailed(true);
       if (friends.length > 0) alertError("Failed to load friends data");
     } finally {
@@ -952,7 +957,8 @@ export default function FriendsScreen({
     try {
       const results = await friendsApi.searchUsers(searchQuery.trim(), 20);
       if (seq === searchSeqRef.current) setSearchResults(results || []);
-    } catch {
+    } catch (error) {
+      captureException(error, { stage: "searchUsers" });
       if (seq === searchSeqRef.current) alertError("Failed to search users");
     } finally {
       if (seq === searchSeqRef.current) setSearching(false);
@@ -1211,7 +1217,8 @@ export default function FriendsScreen({
         const sessions = await sharingApi.getFriendSessions(friend.id, 60);
         if (seq !== friendLoadSeqRef.current) return;
         setFriendSessionHistory((sessions || []) as SessionRecord[]);
-      } catch {
+      } catch (error) {
+        captureException(error, { stage: "loadFriendHistory" });
         if (seq !== friendLoadSeqRef.current) return;
         alertError("Failed to load friend's workout history");
         setFriendSessionHistory([]);
@@ -1232,7 +1239,7 @@ export default function FriendsScreen({
     try {
       const batched = await sharingApi
         .getFriendSessionsWithTimings(friend.id, sessions.length)
-        .catch(() => null);
+        .catch(reportAndReturn(null, { stage: "friendSessionTimings" }));
       const detailed = batched ?? await mapWithConcurrency(
         sessions,
         FRIEND_FETCH_CONCURRENCY,
@@ -1240,12 +1247,12 @@ export default function FriendsScreen({
           sharingApi
             .getFriendSessionDetails(friend.id, s.id)
             .then((d) => d ?? { ...s, setTimings: [] })
-            .catch(() => ({ ...s, setTimings: [] })),
+            .catch(reportAndReturn({ ...s, setTimings: [] }, { stage: "friendSessionDetails" })),
       );
       if (seq === friendLoadSeqRef.current)
         setFriendSessionsWithTimings(detailed as SessionRecord[]);
-    } catch {
-      // Per-session fetches fall back individually, so there is nothing left to report.
+    } catch (error) {
+      captureException(error, { stage: "friendAnalytics" });
     } finally {
       setLoadingAnalytics(false);
     }
@@ -1316,7 +1323,8 @@ export default function FriendsScreen({
       setSelectedSession(details);
       setSelectedDate(null);
       setShowSessionDetails(true);
-    } catch {
+    } catch (error) {
+      captureException(error, { stage: "loadFriendSessionDetails" });
       alertError("Failed to load session details");
     }
   };

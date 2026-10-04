@@ -20,7 +20,7 @@ jest.mock("@shared/services/sqliteStorage", () => ({
   removeStorageItems: jest.fn(async () => {}),
   getRecord: jest.fn(),
   listRecords: jest.fn(),
-  listRecordsSince: jest.fn(),
+  getRecordsVersion: jest.fn(() => Math.random()),
   putRecord: jest.fn(),
   putRecords: jest.fn(),
   deleteRecord: jest.fn(),

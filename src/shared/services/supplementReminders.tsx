@@ -56,8 +56,8 @@ export const readSupplementReminderConfigs = async (
   try {
     const parsed = JSON.parse(raw) as SupplementReminderConfig[];
     return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    console.warn("Supplement reminder configs are corrupt, ignoring them");
+  } catch (error) {
+    console.warn("Supplement reminder configs are corrupt, ignoring them", error);
     return [];
   }
 };

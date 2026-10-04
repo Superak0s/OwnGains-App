@@ -35,7 +35,7 @@ import type {
   PendingSync,
   Exercise,
 } from "@shared/types";
-import { captureException, log, metric } from "@shared/services/crashReporting";
+import { captureException, log, metric, reportAndReturn } from "@shared/services/crashReporting";
 
 import {
   STORAGE_KEYS,
@@ -396,6 +396,10 @@ export const WorkoutProvider = ({
   const [dayOverride, setDayOverride] = useState<DayOverride | null>(null);
   const [selectedSplit, setSelectedSplit] = useState<string | null>(null);
   const [currentDay, setCurrentDay] = useState(1);
+  const currentDayRef = useRef(currentDay);
+  currentDayRef.current = currentDay;
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
   const [completedDays, setCompletedDays] = useState<CompletedDays>({});
   const [lockedDays, setLockedDays] = useState<LockedDays>({});
   const [unlockedOverrides, setUnlockedOverrides] = useState<
@@ -670,6 +674,7 @@ export const WorkoutProvider = ({
         }
       } catch (error) {
         log.warn("workout.session_relabel_failed", { error: String(error) });
+        captureException(error, { stage: "relabelSession" });
       }
     },
     [api, workoutData, addPendingSync],
@@ -714,6 +719,7 @@ export const WorkoutProvider = ({
         await api.programApi.setCurrentDay(day);
       } catch (error) {
         log.warn("program.current_day_push_failed", { error: String(error) });
+        captureException(error, { stage: "pushCurrentDay" });
       }
     },
     [api, userId, currentDay, workoutStartTime, moveSessionToDay],
@@ -930,6 +936,7 @@ export const WorkoutProvider = ({
       }
     } catch (error) {
       if ((error as Error)?.message === "SESSION_EXPIRED") await logout();
+      else captureException(error, { stage: "fetchSavedProgram" });
     }
     return null;
   }, [userId, logout, api]);
@@ -943,6 +950,7 @@ export const WorkoutProvider = ({
         if (recent?.split) return recent.split;
       } catch (error) {
         log.warn("trainer.split_lookup_failed", { error: String(error) });
+        captureException(error, { stage: "trainerSplitLookup" });
       }
       return (
         data?.split?.[0] ?? Object.keys(data?.days?.[0]?.split ?? {})[0] ?? null
@@ -1014,10 +1022,10 @@ export const WorkoutProvider = ({
       const setEndTime = str(STORAGE_KEYS.LAST_SET_END_TIME);
       const weightUnitLoaded = str(STORAGE_KEYS.WEIGHT_UNIT);
 
+      const serverless = await isServerless();
       const storedSessionId = str(STORAGE_KEYS.CURRENT_SESSION_ID);
       const sessionIdUsable =
-        !storedSessionId ||
-        isSessionIdForMode(storedSessionId, await isServerless());
+        !storedSessionId || isSessionIdForMode(storedSessionId, serverless);
       // The app mode changed while this session was open. Its id belongs to the
       // other store, so every set logged against it would fail. Drop the whole
       // active session rather than restore one that cannot be written to.
@@ -1031,18 +1039,10 @@ export const WorkoutProvider = ({
       }
 
       applyIfSet(split, setSelectedSplit);
-      const remoteDay = (await isServerless())
-        ? null
-        : await api.programApi.getCurrentDay().catch(() => null);
-      if (remoteDay !== null) {
-        setCurrentDay(remoteDay);
-        await saveToStorage(
-          STORAGE_KEYS.CURRENT_DAY,
-          remoteDay.toString(),
-          userId,
-        );
-      } else {
-        applyIfSet(day, (v) => applyIfSet(intOrNull(v), setCurrentDay));
+      const localDay = day ? intOrNull(day) : null;
+      if (localDay !== null) {
+        currentDayRef.current = localDay;
+        setCurrentDay(localDay);
       }
       applyIfSet(completed, setCompletedDays);
       applyIfSet(locked, setLockedDays);
@@ -1067,6 +1067,30 @@ export const WorkoutProvider = ({
           str(STORAGE_KEYS.LAST_RESET_DATE),
           !!startTimeUsable,
         );
+      }
+
+      // Kept off the loading path: on a bad signal this waits out the full
+      // request timeout. A late answer must not undo a day the user picked since.
+      if (!serverless) {
+        const dayAtLoad = localDay ?? currentDayRef.current;
+        void api.programApi
+          .getCurrentDay()
+          .then(async (remoteDay) => {
+            if (
+              remoteDay === null ||
+              remoteDay === dayAtLoad ||
+              userIdRef.current !== userId ||
+              currentDayRef.current !== dayAtLoad
+            )
+              return;
+            setCurrentDay(remoteDay);
+            await saveToStorage(
+              STORAGE_KEYS.CURRENT_DAY,
+              remoteDay.toString(),
+              userId,
+            );
+          })
+          .catch(reportAndReturn(null, { stage: "loadCurrentDay" }));
       }
     } catch (error) {
       console.error("Error loading saved data:", error);

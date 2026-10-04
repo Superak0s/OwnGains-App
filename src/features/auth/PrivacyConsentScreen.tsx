@@ -1,6 +1,6 @@
-// Shown after an account's first sign-in in either app mode, and again whenever
-// the Terms change. The diagnostics switches are asked once per device. Every
-// switch and box starts off: a pre-ticked box is not affirmative consent under GDPR.
+// Shown after an account's first sign-in in either app mode, whenever the Terms
+// change, and once per device for each diagnostics prompt version. A switch starts
+// on only if the user turned it on before: a pre-ticked box is not consent under GDPR.
 
 import React, { useCallback, useMemo, useState } from "react";
 import {
@@ -22,12 +22,14 @@ import {
   captureException,
   isCrashReportingEnabled,
   isTelemetryEnabled,
-  hasCrashReportingPreference,
+  needsDiagnosticsPrompt,
+  recordDiagnosticsPrompt,
 } from "@shared/services/crashReporting";
 import { restartOnboarding } from "@shared/services/appMode";
 import { getServerUrl } from "@shared/services/config";
 import { getServerStoredFeatures } from "@shared/services/localOnlyFeatures";
 import {
+  hasAcceptedCurrentTerms,
   hasAcceptedEarlierTerms,
   needsHealthConsent,
   recordTermsAcceptance,
@@ -61,14 +63,22 @@ export default function PrivacyConsentScreen({
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { user, logout } = useAuth();
   const userId = user?.id == null ? null : String(user.id);
-  const termsChanged = userId !== null && hasAcceptedEarlierTerms(userId);
-  const healthRequired = needsHealthConsent();
-  const [askDiagnostics] = useState(() => !hasCrashReportingPreference());
+  const [termsNeeded] = useState(
+    () =>
+      userId === null ||
+      !hasAcceptedCurrentTerms(userId, user?.termsVersion, user?.healthConsentAt),
+  );
+  const termsChanged =
+    termsNeeded && userId !== null && hasAcceptedEarlierTerms(userId);
+  const healthRequired = termsNeeded && needsHealthConsent();
+  const [askDiagnostics] = useState(needsDiagnosticsPrompt);
+  const [showSettings, setShowSettings] = useState(false);
   const [crashReports, setCrashReports] = useState(isCrashReportingEnabled);
   const [telemetry, setTelemetry] = useState(isTelemetryEnabled);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [healthConsent, setHealthConsent] = useState(false);
-  const canContinue = termsAccepted && (healthConsent || !healthRequired);
+  const canContinue =
+    !termsNeeded || (termsAccepted && (healthConsent || !healthRequired));
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const serverHost = getServerUrl().replace(/^\w+:\/\//, "").replace(/\/.*$/, "");
@@ -82,27 +92,32 @@ export default function PrivacyConsentScreen({
     ...(serverFeatures ?? []).map((f) => HEALTH_FEATURE_DATA[f] ?? f),
   ].join(", plus ");
 
-  const confirm = useCallback(async (allowBoth = false): Promise<void> => {
+  const confirm = useCallback(async (
+    preset?: { crash: boolean; telemetry: boolean },
+  ): Promise<void> => {
     setSaving(true);
     setFailed(false);
-    if (allowBoth) {
-      setCrashReports(true);
-      setTelemetry(true);
+    if (preset) {
+      setCrashReports(preset.crash);
+      setTelemetry(preset.telemetry);
     }
     try {
-      await setCrashReportingEnabled(allowBoth || crashReports);
-      await setTelemetryEnabled(allowBoth || telemetry);
+      await setCrashReportingEnabled(preset?.crash ?? crashReports);
+      await setTelemetryEnabled(preset?.telemetry ?? telemetry);
       // Last: a failed write above must leave the screen reachable again.
-      await authService.recordConsent(TERMS_VERSION, healthConsent);
-      if (userId) await recordTermsAcceptance(userId, healthConsent);
+      if (termsNeeded) {
+        await authService.recordConsent(TERMS_VERSION, healthConsent);
+        if (userId) await recordTermsAcceptance(userId, healthConsent);
+      }
+      if (askDiagnostics) await recordDiagnosticsPrompt();
       await recordPrivacyConsent(userId);
       onDone();
     } catch (error) {
-      captureException(error);
+      captureException(error, { stage: "savePrivacyConsent" });
       setFailed(true);
       setSaving(false);
     }
-  }, [crashReports, telemetry, healthConsent, onDone, userId]);
+  }, [crashReports, telemetry, healthConsent, onDone, userId, termsNeeded, askDiagnostics]);
 
   const checkbox = (
     checked: boolean,
@@ -127,7 +142,11 @@ export default function PrivacyConsentScreen({
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.logo}>🔒</Text>
         <Text style={styles.title}>
-          {termsChanged ? "Updated terms" : "Before you start"}
+          {termsChanged
+            ? "Updated terms"
+            : termsNeeded
+              ? "Before you start"
+              : "Help improve OwnGains"}
         </Text>
         {termsChanged && (
           <Text style={styles.tagline}>
@@ -141,9 +160,11 @@ export default function PrivacyConsentScreen({
           OwnGains can send diagnostics to the developer's self-hosted crash-report
           server so bugs get found and fixed. This applies in offline mode too.
           Nothing here includes your workouts, notes, email or server address,
-          and you can change either switch later in Settings → Privacy and Data.
+          and you can change either choice later in Settings → Privacy and Data.
         </Text>
 
+        {showSettings && (
+        <>
         <View style={styles.card}>
           <View style={styles.cardTextWrap}>
             <Text style={styles.cardTitle}>Crash reports</Text>
@@ -168,7 +189,8 @@ export default function PrivacyConsentScreen({
             <Text style={styles.cardBody}>
               Counters, timings, performance traces and diagnostic logs: which
               screens and features you open, which are slow, whether syncs
-              succeed. Never what you log. Off unless you turn it on.
+              succeed, how long your workouts last and how many sets they have.
+              Never exercise names, weights or notes. Off unless you turn it on.
             </Text>
           </View>
           <Switch
@@ -181,8 +203,11 @@ export default function PrivacyConsentScreen({
         </View>
         </>
         )}
+        </>
+        )}
 
-        {checkbox(
+        {termsNeeded &&
+          checkbox(
           termsAccepted,
           setTermsAccepted,
           "I am 16 or older and agree to the Terms of Service",
@@ -227,40 +252,77 @@ export default function PrivacyConsentScreen({
           </Text>
         )}
 
-        <TouchableOpacity
-          style={[
-            styles.button,
-            (saving || !canContinue) && styles.buttonDisabled,
-          ]}
-          onPress={() => void confirm()}
-          disabled={saving || !canContinue}
-          accessibilityRole='button'
-          accessibilityLabel='Save these choices and continue'
-          accessibilityState={{ disabled: saving || !canContinue }}
-        >
-          {saving ? (
-            <ActivityIndicator color={colors.surface} />
-          ) : (
-            <Text style={styles.buttonText}>Continue</Text>
-          )}
-        </TouchableOpacity>
+        {saving && <ActivityIndicator color={colors.accent} />}
 
         {askDiagnostics && (
+          <>
+            {/* A refusal that is hard to see invalidates consent, so every choice stays a full-size, readable button. */}
+            {(
+              [
+                [true, true, "Accept all", "Allow crash reports and usage metrics, then continue", null],
+                [true, false, "Necessary only", "Allow crash reports only, then continue", "outline"],
+                [false, false, "Reject all", "Turn off crash reports and usage metrics, then continue", "neutral"],
+              ] as const
+            ).map(([crash, metrics, text, label, variant]) => (
+              <TouchableOpacity
+                key={text}
+                style={[
+                  styles.button,
+                  variant === "outline" && styles.buttonSecondary,
+                  variant === "neutral" && styles.buttonNeutral,
+                  (saving || !canContinue) && styles.buttonDisabled,
+                ]}
+                onPress={() => void confirm({ crash, telemetry: metrics })}
+                disabled={saving || !canContinue}
+                accessibilityRole='button'
+                accessibilityLabel={label}
+                accessibilityState={{ disabled: saving || !canContinue }}
+              >
+                <Text
+                  style={[
+                    styles.buttonText,
+                    variant === "outline" && styles.buttonSecondaryText,
+                    variant === "neutral" && styles.buttonNeutralText,
+                  ]}
+                >
+                  {text}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+
+        {(!askDiagnostics || showSettings) && (
           <TouchableOpacity
             style={[
               styles.button,
-              styles.buttonSecondary,
+              askDiagnostics && styles.buttonSecondary,
               (saving || !canContinue) && styles.buttonDisabled,
             ]}
-            onPress={() => void confirm(true)}
+            onPress={() => void confirm()}
             disabled={saving || !canContinue}
             accessibilityRole='button'
-            accessibilityLabel='Allow crash reports and usage metrics, then continue'
+            accessibilityLabel='Save these choices and continue'
             accessibilityState={{ disabled: saving || !canContinue }}
           >
-            <Text style={[styles.buttonText, styles.buttonSecondaryText]}>
-              Allow both and continue
+            <Text
+              style={[
+                styles.buttonText,
+                askDiagnostics && styles.buttonSecondaryText,
+              ]}
+            >
+              {askDiagnostics ? "Save my choices" : "Continue"}
             </Text>
+          </TouchableOpacity>
+        )}
+
+        {askDiagnostics && !showSettings && (
+          <TouchableOpacity
+            onPress={() => setShowSettings(true)}
+            accessibilityRole='button'
+            accessibilityLabel='Choose crash reports and usage metrics separately'
+          >
+            <Text style={styles.policyLink}>Settings</Text>
           </TouchableOpacity>
         )}
 
@@ -282,13 +344,15 @@ export default function PrivacyConsentScreen({
             </Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity
-          onPress={() => void logout()}
-          accessibilityRole='button'
-          accessibilityLabel="I don't agree, sign out"
-        >
-          <Text style={styles.policyLink}>I don't agree, sign out</Text>
-        </TouchableOpacity>
+        {termsNeeded && (
+          <TouchableOpacity
+            onPress={() => void logout()}
+            accessibilityRole='button'
+            accessibilityLabel="I don't agree, sign out"
+          >
+            <Text style={styles.policyLink}>I don't agree, sign out</Text>
+          </TouchableOpacity>
+        )}
         {termsChanged && healthRequired && (
           <Text style={styles.footnote}>
             Signing out leaves your account as it is. To get a copy of your
@@ -353,6 +417,12 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: 14,
     },
     buttonDisabled: { opacity: 0.6 },
+    buttonNeutral: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    buttonNeutralText: { color: colors.textPrimary },
     buttonSecondary: {
       backgroundColor: colors.surface,
       borderWidth: 1,

@@ -74,7 +74,7 @@ export const getCurrentBodyWeight = async (
   } catch (err) {
     console.warn(
       "Failed to get current weight from server:",
-      (err as Error).message,
+      err,
     )
     metric.count("tracking.current_weight_fetch_failed")
     log.warn("tracking.current_weight_fetch_failed")

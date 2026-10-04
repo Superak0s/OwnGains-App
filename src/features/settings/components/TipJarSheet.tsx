@@ -15,7 +15,7 @@ import {
 } from "expo-iap";
 import ModalSheet from "@shared/components/ModalSheet";
 import { showToast } from "@shared/components/toast";
-import { captureException } from "@shared/services/crashReporting";
+import { captureException, metric } from "@shared/services/crashReporting";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { TIP_PRODUCT_IDS, sortTips, tipsToConsume } from "../utils/tipJar";
 
@@ -30,7 +30,7 @@ const consume = async (purchase: Purchase): Promise<void> => {
   try {
     await finishTransaction({ purchase, isConsumable: true });
   } catch (error) {
-    captureException(error, { area: "tip_jar_consume" });
+    captureException(error, { stage: "tipJarConsume" });
   }
 };
 
@@ -41,6 +41,9 @@ function TipOptions({ styles }: { readonly styles: Styles }) {
   const { connected, products, fetchProducts, requestPurchase } = useIAP({
     onPurchaseSuccess: (purchase) => {
       setBuying(null);
+      metric.count("tip.purchased", 1, {
+        attributes: { product: purchase.productId, pending: purchase.purchaseState === "pending" },
+      });
       if (purchase.purchaseState === "pending") {
         showToast("Thanks! Your tip will go through once the payment clears.");
         return;
@@ -51,6 +54,7 @@ function TipOptions({ styles }: { readonly styles: Styles }) {
     onPurchaseError: (error) => {
       setBuying(null);
       if (error.code === ErrorCode.UserCancelled) return;
+      captureException(error, { stage: "tipJarPurchase", code: String(error.code) });
       showToast("The tip didn't go through. You haven't been charged.");
     },
   });
@@ -61,7 +65,7 @@ function TipOptions({ styles }: { readonly styles: Styles }) {
     getAvailablePurchases()
       .then((purchases) => Promise.all(tipsToConsume(purchases).map(consume)))
       .catch((error: unknown) =>
-        captureException(error, { area: "tip_jar_restore" }),
+        captureException(error, { stage: "tipJarRestore" }),
       );
   }, [connected, fetchProducts]);
 

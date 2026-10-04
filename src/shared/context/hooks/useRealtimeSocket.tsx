@@ -9,7 +9,7 @@ import {
   isServerless,
   onAppModeChange,
 } from "../../services/appMode"
-import { metric, log } from "../../services/crashReporting"
+import { metric, log, captureException } from "../../services/crashReporting"
 import { accessTokenExpiresAt } from "../../services/jwt"
 
 const BASE_RETRY_MS = 1_000
@@ -202,7 +202,7 @@ export function useRealtimeSocket({
     try {
       url = wsUrl()
     } catch (error) {
-      console.error("[WS_BAD_URL]", (error as Error).message)
+      console.error("[WS_BAD_URL]", error)
       metric.count("ws.bad_url", 1)
       setConnectionFailed(true)
       return
@@ -246,10 +246,11 @@ export function useRealtimeSocket({
             handler(msg)
           } catch (e) {
             log.warn("ws.subscriber_error", { reason: (e as Error).message })
+            captureException(e, { stage: "wsSubscriber" })
           }
         }
       } catch (e) {
-        console.warn("[WS_PARSE_ERROR]", (e as Error).message)
+        console.warn("[WS_PARSE_ERROR]", e)
         log.warn("ws.parse_error", { reason: (e as Error).message })
       }
     }

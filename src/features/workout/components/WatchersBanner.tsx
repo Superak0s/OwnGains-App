@@ -1,3 +1,4 @@
+import { captureException } from "@shared/services/crashReporting";
 import React from "react";
 import { View, Text, Pressable } from "react-native";
 import { useTheme } from "@shared/context/ThemeContext";
@@ -33,14 +34,15 @@ export function WatchersBanner({
             accessibilityLabel={`Stop ${w.username} watching`}
             hitSlop={8}
             onPress={() =>
-              onBlock(w.id).catch(() =>
+              onBlock(w.id).catch((error) => {
+                captureException(error, { stage: "blockWatcher" });
                 alert(
                   "Couldn't stop watching",
                   "Check your connection and try again.",
                   undefined,
                   "error",
-                ),
-              )
+                );
+              })
             }
           >
             <Text style={[styles.name, { color: colors.error }]}>Stop</Text>

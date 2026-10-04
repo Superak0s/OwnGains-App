@@ -123,7 +123,7 @@ export const useProgramOperations = ({
         } catch (err) {
           console.warn(
             "Could not sync exercise rename to server:",
-            (err as Error).message,
+            err,
           );
           log.warn("program.server_sync_failed", {
             op: "renameExercise",
@@ -176,7 +176,7 @@ export const useProgramOperations = ({
         } catch (err) {
           console.warn(
             "Could not sync machine settings to server:",
-            (err as Error).message,
+            err,
           );
           log.warn("program.server_sync_failed", {
             op: "updateMachines",
@@ -236,7 +236,7 @@ export const useProgramOperations = ({
         } catch (err) {
           console.warn(
             "Could not sync set count change to server:",
-            (err as Error).message,
+            err,
           );
           log.warn("program.server_sync_failed", {
             op: "patchExerciseSets",
@@ -312,7 +312,7 @@ export const useProgramOperations = ({
         } catch (err) {
           console.warn(
             "Could not sync new exercise to server:",
-            (err as Error).message,
+            err,
           );
           log.warn("program.server_sync_failed", {
             op: "addExercise",
