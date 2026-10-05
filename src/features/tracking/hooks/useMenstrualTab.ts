@@ -1,21 +1,19 @@
 import type { UseAlertReturn } from "@shared/components/CustomAlert";
 import { useState, useCallback, useMemo } from "react";
 import { menstrualApi } from "../services";
-import type { CycleEntry, CycleStats, MenstrualPrefs } from "../services/types";
+import type { MenstrualEntry, CycleStats, MenstrualPrefs } from "../services/types";
 import {
   saveToStorage,
   loadFromStorage,
   STORAGE_KEYS,
 } from "@shared/services/storage";
 import {
-  parseSafeDate,
-  getCycleStartIso,
   getCycleDuration,
   computeUpcomingPredictedDays,
   daysSinceLocal,
   isoToLocalDateStr,
 } from "../utils";
-import { toDateString, formatDate } from "@utils/format";
+import { toDateString, formatDate, parseDate } from "@utils/format";
 import { createDeleteHandler, withConfirm, describeError } from "../helpers";
 import type { DayModalState } from "../types";
 import { captureException } from "@shared/services/crashReporting";
@@ -29,7 +27,7 @@ interface UseMenstrualTabDeps {
 export function useMenstrualTab(deps: UseMenstrualTabDeps) {
   const { alert, user, setDayModal } = deps;
 
-  const [cycleEntries, setCycleEntries] = useState<CycleEntry[]>([]);
+  const [cycleEntries, setCycleEntries] = useState<MenstrualEntry[]>([]);
   const [menstrualPrefs, setMenstrualPrefs] = useState<MenstrualPrefs>({
     cycleLengthDays: 28,
     periodLengthDays: 5,
@@ -53,8 +51,8 @@ export function useMenstrualTab(deps: UseMenstrualTabDeps) {
       const cyclesResp = await menstrualApi.getMenstrualHistory(24);
       const cycles = [...(cyclesResp?.data || [])]
         .sort((a, b) => {
-          const bStart = parseSafeDate(getCycleStartIso(b))?.getTime() ?? 0;
-          const aStart = parseSafeDate(getCycleStartIso(a))?.getTime() ?? 0;
+          const bStart = parseDate(b.cycleStart)?.getTime() ?? 0;
+          const aStart = parseDate(a.cycleStart)?.getTime() ?? 0;
           return bStart - aStart;
         });
       setCycleEntries(cycles);
@@ -124,15 +122,15 @@ export function useMenstrualTab(deps: UseMenstrualTabDeps) {
         };
 
         cycles.forEach((c) => {
-          const startIso = getCycleStartIso(c);
+          const startIso = c.cycleStart;
           if (!startIso) return;
-          const start = parseSafeDate(startIso);
+          const start = parseDate(startIso);
           if (!start) return;
           addRangeToSet(start, getCycleDuration(c, pd), actualSet);
         });
 
         const mostRecentStartIso =
-          cycles.length > 0 ? getCycleStartIso(cycles[0]) : null;
+          cycles.length > 0 ? cycles[0].cycleStart : null;
         setCycleActualDays(actualSet);
         setCyclePredictedDays(
           new Set(
@@ -157,7 +155,7 @@ export function useMenstrualTab(deps: UseMenstrualTabDeps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- menstrualPrefs is set here, so depending on it would re-trigger the load effect forever
   }, [user]);
 
-  const runDeleteCycleEntry = createDeleteHandler<CycleEntry & { id: number }>(
+  const runDeleteCycleEntry = createDeleteHandler<MenstrualEntry & { id: number }>(
     "menstrual",
     (id) => menstrualApi.deleteMenstrualEntry(id),
     (updater) => setCycleEntries((prev) => updater(prev)),
@@ -165,10 +163,10 @@ export function useMenstrualTab(deps: UseMenstrualTabDeps) {
     alert,
   );
 
-  const deleteCycleEntry = withConfirm<CycleEntry & { id: number }>(
+  const deleteCycleEntry = withConfirm<MenstrualEntry & { id: number }>(
     alert,
     (entry) => {
-      const start = parseSafeDate(getCycleStartIso(entry));
+      const start = parseDate(entry.cycleStart);
       return `Delete the period starting ${start ? formatDate(start) : "on this day"}?`;
     },
     runDeleteCycleEntry,
@@ -202,7 +200,7 @@ export function useMenstrualTab(deps: UseMenstrualTabDeps) {
   const isOnPeriod = useMemo(() => {
     const latest = cycleEntries[0];
     if (!latest || latest.cycleEnd) return false;
-    const start = parseSafeDate(getCycleStartIso(latest));
+    const start = parseDate(latest.cycleStart);
     if (!start) return false;
     const daysSince = daysSinceLocal(start);
     return daysSince >= 0 && daysSince < menstrualPrefs.periodLengthDays;

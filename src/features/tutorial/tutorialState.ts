@@ -1,6 +1,8 @@
 import { getStorageItemSync, setStorageItem } from "@shared/services/sqliteStorage";
 import type { AppMode } from "@shared/services/appMode";
 import { trackFeature } from "@shared/services/crashReporting";
+import { withLock } from "@shared/services/offlineHelpers";
+import { createEmitter } from "@utils/emitter";
 
 export type Role = "user" | "trainer" | "both";
 export type PickerMode = "firstRun" | "onlineTour" | "change";
@@ -48,32 +50,17 @@ export function parseTutorialState(raw: string | null): TutorialState {
 export const readTutorialState = (): TutorialState =>
   parseTutorialState(getStorageItemSync(TUTORIAL_KEY));
 
-const listeners: Array<(s: TutorialState) => void> = [];
-export const onTutorialStateChange = {
-  subscribe: (fn: (s: TutorialState) => void) => {
-    listeners.push(fn);
-    return () => {
-      const idx = listeners.lastIndexOf(fn);
-      if (idx > -1) listeners.splice(idx, 1);
-    };
-  },
-};
+export const onTutorialStateChange = createEmitter<TutorialState>();
 
-// Chained so two updates fired in the same tick each read the other's write.
-let chain: Promise<unknown> = Promise.resolve();
-
-export function updateTutorialState(
+const updateTutorialState = (
   fn: (s: TutorialState) => TutorialState,
-): Promise<TutorialState> {
-  const run = chain.then(async () => {
+): Promise<TutorialState> =>
+  withLock(TUTORIAL_KEY, async () => {
     const next = fn(readTutorialState());
     await setStorageItem(TUTORIAL_KEY, JSON.stringify(next));
-    [...listeners].forEach((l) => l(next));
+    onTutorialStateChange.trigger(next);
     return next;
   });
-  chain = run.catch(() => undefined);
-  return run;
-}
 
 export const markChapterCompleted = (id: string) => {
   trackFeature("tutorial", "chapter_completed", { chapter: id });

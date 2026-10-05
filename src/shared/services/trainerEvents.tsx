@@ -1,3 +1,4 @@
+import { createEmitter } from "@utils/emitter"
 import { loadFromStorage, saveToStorage } from "./storage"
 
 export const ACTIVE_TRAINEE_KEY = "@active_trainee"
@@ -35,15 +36,7 @@ export const isTrainerEvent = (msg: unknown): msg is TrainerEvent => {
   )
 }
 
-// ponytail: inline pub/sub, same pattern as appMode's
-const listeners: ((e: TrainerEvent) => void)[] = []
-export const onTrainerEvent = {
-  subscribe: (fn: (e: TrainerEvent) => void) => {
-    listeners.push(fn)
-    return () => { listeners.splice(listeners.indexOf(fn), 1) }
-  },
-  trigger: (e: TrainerEvent) => listeners.forEach(fn => fn(e)),
-}
+export const onTrainerEvent = createEmitter<TrainerEvent>()
 
 export interface TraineeOption {
   userId: string
@@ -52,11 +45,12 @@ export interface TraineeOption {
 
 let activeTrainee: TraineeOption | null = null
 let traineeOwnerId: string | null = null
-const traineeListeners = new Set<(t: TraineeOption | null) => void>()
+const traineeChange = createEmitter<TraineeOption | null>()
+export const onActiveTraineeChange = { subscribe: traineeChange.subscribe }
 
 const emitTrainee = (trainee: TraineeOption | null): void => {
   activeTrainee = trainee
-  traineeListeners.forEach(fn => fn(trainee))
+  traineeChange.trigger(trainee)
 }
 
 export const getActiveTrainee = (): TraineeOption | null => activeTrainee
@@ -77,11 +71,4 @@ export const restoreActiveTrainee = async (
       ? await loadFromStorage<TraineeOption>(ACTIVE_TRAINEE_KEY, userId)
       : null,
   )
-}
-
-export const onActiveTraineeChange = {
-  subscribe: (fn: (t: TraineeOption | null) => void) => {
-    traineeListeners.add(fn)
-    return () => { traineeListeners.delete(fn) }
-  },
 }

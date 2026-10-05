@@ -10,7 +10,6 @@ import {
   compareVersions,
   checkServerVersion,
   getServerVersionStatus,
-  resetServerVersionStatus,
 } from "../serverVersion";
 import { apiCall } from "../apiClient";
 import { isServerless } from "../appMode";
@@ -86,11 +85,12 @@ describe("checkServerVersion", () => {
 });
 
 describe("getServerVersionStatus", () => {
+  let run = 0;
   beforeEach(() => {
     mockApiCall.mockReset();
     mockIsServerless.mockResolvedValue(false);
-    resetServerVersionStatus();
-    (getServerUrl as jest.Mock).mockReturnValue("https://example.test");
+    // The check is cached per server URL, so a fresh URL starts each test uncached.
+    (getServerUrl as jest.Mock).mockReturnValue(`https://run${++run}.test`);
   });
 
   it("asks each server once per run", async () => {

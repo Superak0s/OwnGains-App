@@ -77,11 +77,6 @@ export const progressPhotoApi = {
     return { success: true, data: photo }
   },
 
-  getAllPhotos: async (limit: number = 100): Promise<ApiResponse<ProgressPhotoMuscle[]>> => {
-    const data = await store.getRecent(limit)
-    return { success: true, data }
-  },
-
   getPhotoPage: async (cursor: PhotoCursor | null, limit: number): Promise<PhotoPage> => {
     const data = await store.getPageBefore(
       cursor && { sortKey: cursor.before, id: cursor.beforeId },

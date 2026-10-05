@@ -1,10 +1,10 @@
 import {
   apiCall,
   fetchIdempotent,
-  newIdempotencyKey,
   parseApiResponse,
 } from "@shared/services/apiClient"
 import { authenticatedFetch } from "@shared/services/authenticatedFetch"
+import { generateId } from "@utils/format"
 import { DEFAULT_HYDRATION_SETTINGS } from "../types"
 import type { ApiResponse, HydrationEntry, HydrationSettings } from "../types"
 
@@ -13,7 +13,7 @@ export const hydrationApi = {
     amountMl: number,
     note?: string,
     loggedAt: string | null = null,
-    idempotencyKey: string = newIdempotencyKey(),
+    idempotencyKey: string = generateId("idem"),
   ): Promise<ApiResponse<{ id: number }>> => {
     // Two drinks at the same measuredAt are two entries, so only the key stops a resend from double-logging.
     const res = await fetchIdempotent(

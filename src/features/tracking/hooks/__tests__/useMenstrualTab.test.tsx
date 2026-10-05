@@ -3,7 +3,7 @@ import { create, act } from "react-test-renderer";
 import { useMenstrualTab } from "../useMenstrualTab";
 import { menstrualApi } from "../../services";
 import { toDateString } from "@utils/format";
-import type { CycleEntry } from "../../services/types";
+import type { MenstrualEntry } from "../../services/types";
 
 jest.mock("../../services", () => ({
   menstrualApi: {
@@ -38,7 +38,7 @@ const daysAgo = (n: number) => {
   return toDateString(d);
 };
 
-async function load(cycles: CycleEntry[]) {
+async function load(cycles: MenstrualEntry[]) {
   api.getMenstrualHistory.mockResolvedValue({ data: cycles });
   const controlRef: React.MutableRefObject<Control | null> = { current: null };
   await act(async () => {
@@ -60,8 +60,8 @@ beforeEach(() => {
 describe("useMenstrualTab", () => {
   it("marks each logged period across its days, using the server's period length for open cycles", async () => {
     const controlRef = await load([
-      { id: 1, cycleStart: "2026-08-01", cycleEnd: "2026-08-02" } as CycleEntry,
-      { id: 2, cycleStart: "2026-09-01" } as CycleEntry,
+      { id: 1, cycleStart: "2026-08-01", cycleEnd: "2026-08-02" } as MenstrualEntry,
+      { id: 2, cycleStart: "2026-09-01" } as MenstrualEntry,
     ]);
     const { cycleActualDays, cycleEntries, menstrualPrefs } = controlRef.current!;
 
@@ -79,16 +79,16 @@ describe("useMenstrualTab", () => {
   });
 
   it("is on a period only while the latest open cycle is within the period length", async () => {
-    expect((await load([{ id: 1, cycleStart: daysAgo(2) } as CycleEntry])).current!.isOnPeriod).toBe(true);
-    expect((await load([{ id: 1, cycleStart: daysAgo(6) } as CycleEntry])).current!.isOnPeriod).toBe(false);
+    expect((await load([{ id: 1, cycleStart: daysAgo(2) } as MenstrualEntry])).current!.isOnPeriod).toBe(true);
+    expect((await load([{ id: 1, cycleStart: daysAgo(6) } as MenstrualEntry])).current!.isOnPeriod).toBe(false);
     expect(
-      (await load([{ id: 1, cycleStart: daysAgo(1), cycleEnd: daysAgo(0) } as CycleEntry])).current!
+      (await load([{ id: 1, cycleStart: daysAgo(1), cycleEnd: daysAgo(0) } as MenstrualEntry])).current!
         .isOnPeriod,
     ).toBe(false);
   });
 
   it("ends the latest cycle today and reloads", async () => {
-    const controlRef = await load([{ id: 7, cycleStart: daysAgo(1) } as CycleEntry]);
+    const controlRef = await load([{ id: 7, cycleStart: daysAgo(1) } as MenstrualEntry]);
     await act(async () => {
       await controlRef.current!.markPeriodOver();
     });
@@ -98,7 +98,7 @@ describe("useMenstrualTab", () => {
 
   it("keeps the history when the settings call fails", async () => {
     api.getSettings.mockRejectedValue(new Error("offline"));
-    const controlRef = await load([{ id: 1, cycleStart: "2026-09-01" } as CycleEntry]);
+    const controlRef = await load([{ id: 1, cycleStart: "2026-09-01" } as MenstrualEntry]);
     expect(controlRef.current!.cycleEntries).toHaveLength(1);
     expect(controlRef.current!.menstrualPrefs).toEqual({ cycleLengthDays: 28, periodLengthDays: 5 });
   });

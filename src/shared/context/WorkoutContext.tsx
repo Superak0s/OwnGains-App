@@ -109,6 +109,7 @@ import {
 import type { SetDetailsOptions } from "./hooks/useSessionOperations";
 import { useProgramOperations } from "./hooks/useProgramOperations";
 import type { MachinePatch } from "@features/plan/types";
+import { createEmitter } from "@utils/emitter";
 import { useServerSync } from "./hooks/useServerSync";
 import { JointSessionProvider } from "./JointSessionContext";
 
@@ -253,17 +254,14 @@ interface WorkoutStore {
 
 const createWorkoutStore = (initial: WorkoutContextValue): WorkoutStore => {
   let current = initial;
-  const listeners = new Set<() => void>();
+  const changes = createEmitter();
   return {
     get: () => current,
     set: (value) => {
       current = value;
-      listeners.forEach((listener) => listener());
+      changes.trigger();
     },
-    subscribe: (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
+    subscribe: changes.subscribe,
   };
 };
 

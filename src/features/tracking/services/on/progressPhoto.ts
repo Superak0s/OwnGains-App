@@ -85,11 +85,6 @@ export const progressPhotoApi = {
     }
   },
 
-  getAllPhotos: async (limit: number = 100): Promise<ApiResponse<ProgressPhotoMuscle[]>> => {
-    const res = await apiCall<ApiResponse<ProgressPhotoMuscle[]>>(`/api/tracking/photos/muscle?limit=${limit}`);
-    return { ...res, data: res.data?.map(withAbsoluteUri) };
-  },
-
   getPhotoPage: async (cursor: PhotoCursor | null, limit: number): Promise<PhotoPage> => {
     const params = new URLSearchParams({ limit: String(limit) });
     if (cursor) {

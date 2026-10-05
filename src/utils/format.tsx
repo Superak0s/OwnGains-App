@@ -17,23 +17,21 @@ const CLOCK_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
   minute: "2-digit",
 }
 
-/** undefined = the device locale, so month order and 12/24h follow the user. */
-const LOCALE = undefined
-
+// An undefined locale is the device's, so month order and 12/24h follow the user.
 export const formatDate = (
   input: DateInput,
   options: Intl.DateTimeFormatOptions = DATE_OPTIONS,
-): string => parseDate(input)?.toLocaleDateString(LOCALE, options) ?? "—"
+): string => parseDate(input)?.toLocaleDateString(undefined, options) ?? "—"
 
 export const formatDateTime = (
   input: DateInput,
   options: Intl.DateTimeFormatOptions = DATE_TIME_OPTIONS,
-): string => parseDate(input)?.toLocaleString(LOCALE, options) ?? "—"
+): string => parseDate(input)?.toLocaleString(undefined, options) ?? "—"
 
 export const formatClockTime = (
   input: DateInput,
   options: Intl.DateTimeFormatOptions = CLOCK_TIME_OPTIONS,
-): string => parseDate(input)?.toLocaleTimeString(LOCALE, options) ?? "—"
+): string => parseDate(input)?.toLocaleTimeString(undefined, options) ?? "—"
 
 // Not cryptographically strong. For client-side entities that are later
 // reconciled with the server.

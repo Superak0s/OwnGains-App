@@ -635,28 +635,21 @@ class ErrorBoundary extends React.Component<
 }
 
 // The themed fallback needs ThemeProvider, so it can't render for a crash in
-// the providers themselves. This one uses literal colours only.
-function RootErrorFallback({ resetError }: { readonly resetError: () => void }) {
-  return (
-    <View style={[styles.loadingContainer, { backgroundColor: "#ffffff" }]}>
-      <Text style={styles.loadingText}>⚠️</Text>
-      <Text style={[styles.errorTitle, { color: "#1a1a1a" }]}>
-        Something went wrong
-      </Text>
-      <TouchableOpacity
-        style={[styles.errorButton, { backgroundColor: "#667eea" }]}
-        onPress={resetError}
-      >
-        <Text style={[styles.errorButtonText, { color: "#ffffff" }]}>
-          Try Again
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
+// the providers themselves. That one gets these literal colours.
+const ROOT_FALLBACK_COLORS = {
+  background: "#ffffff",
+  textPrimary: "#1a1a1a",
+  accent: "#667eea",
+  surface: "#ffffff",
+};
 
-function ErrorFallback({ resetError }: { readonly resetError: () => void }) {
-  const { colors } = useTheme();
+function ErrorFallbackView({
+  resetError,
+  colors,
+}: {
+  readonly resetError: () => void;
+  readonly colors: typeof ROOT_FALLBACK_COLORS;
+}) {
   return (
     <View
       style={[styles.loadingContainer, { backgroundColor: colors.background }]}
@@ -675,6 +668,11 @@ function ErrorFallback({ resetError }: { readonly resetError: () => void }) {
       </TouchableOpacity>
     </View>
   );
+}
+
+function ErrorFallback({ resetError }: { readonly resetError: () => void }) {
+  const { colors } = useTheme();
+  return <ErrorFallbackView resetError={resetError} colors={colors} />;
 }
 
 function AppNavigator() {
@@ -784,7 +782,7 @@ function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ErrorBoundary
         renderFallback={(resetError) => (
-          <RootErrorFallback resetError={resetError} />
+          <ErrorFallbackView resetError={resetError} colors={ROOT_FALLBACK_COLORS} />
         )}
       >
         <SafeAreaProvider>

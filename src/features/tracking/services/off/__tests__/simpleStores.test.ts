@@ -149,7 +149,6 @@ describe("injuries", () => {
     expect(
       (await injuryApi.getInjuriesByMuscle("Chest")).data!.map((i) => i.note),
     ).toEqual(["sharp"]);
-    expect((await injuryApi.getActiveInjuries()).data).toHaveLength(2);
   });
 });
 

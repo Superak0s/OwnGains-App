@@ -4,9 +4,9 @@ import { useSyncManager } from "../useSyncManager";
 import { workoutApi } from "@features/workout/services/index";
 import { ApiError } from "@shared/services/apiError";
 import type { PendingSync } from "../../../types";
-import type {
-  PendingSyncRow,
-  PendingSyncStore,
+import {
+  pendingSyncStore,
+  type PendingSyncRow,
 } from "@shared/services/pendingSyncStore";
 
 jest.mock("@features/workout/services/index", () => ({
@@ -37,22 +37,29 @@ function fakeStore() {
   const put = (list: PendingSyncRow[]) =>
     list.forEach((r) => rows.set(r.id, r.value));
   const store = {
-    load: jest.fn(async () => []),
-    replace: jest.fn(async (_userId: string | null, list: PendingSyncRow[]) => {
-      rows.clear();
-      put(list);
-      depths.push(rows.size);
-    }),
-    apply: jest.fn(
-      async (_userId: string | null, puts: PendingSyncRow[], ids: string[]) => {
+    replace: jest
+      .spyOn(pendingSyncStore, "replace")
+      .mockReset()
+      .mockImplementation(async (_userId, list) => {
+        rows.clear();
+        put(list);
+        depths.push(rows.size);
+      }),
+    apply: jest
+      .spyOn(pendingSyncStore, "apply")
+      .mockReset()
+      .mockImplementation(async (_userId, puts, ids) => {
         put(puts);
         ids.forEach((id) => rows.delete(id));
         depths.push(rows.size);
-      },
-    ),
-  } satisfies PendingSyncStore;
+      }),
+  };
   return { store, rows, depths };
 }
+
+beforeEach(() => {
+  fakeStore();
+});
 
 type Control = {
   syncPendingData: () => Promise<void>;
@@ -66,11 +73,9 @@ type Control = {
 function Harness({
   initialSyncs,
   controlRef,
-  queueStore = fakeStore().store,
 }: {
   initialSyncs: PendingSync[];
   controlRef: React.MutableRefObject<Control | null>;
-  queueStore?: PendingSyncStore;
 }) {
   const [pendingSyncs, setPendingSyncs] = useState(initialSyncs);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -85,7 +90,6 @@ function Harness({
     saveToStorage: jest.fn().mockResolvedValue(true),
     STORAGE_KEYS: { PENDING_SYNCS: "pending", CURRENT_SESSION_ID: "session" },
     useManualTime: true,
-    queueStore,
   });
   controlRef.current = {
     syncPendingData: sync.syncPendingData,
@@ -416,7 +420,6 @@ describe("useSyncManager isSyncing lifecycle", () => {
         <Harness
           initialSyncs={[makeSync("t1"), makeSync("t2")]}
           controlRef={controlRef}
-          queueStore={store}
         />,
       );
     });
@@ -490,7 +493,7 @@ describe("useSyncManager queue rows", () => {
     const { store, rows } = fakeStore();
     const controlRef: React.MutableRefObject<Control | null> = { current: null };
     act(() => {
-      create(<Harness initialSyncs={[]} controlRef={controlRef} queueStore={store} />);
+      create(<Harness initialSyncs={[]} controlRef={controlRef} />);
     });
 
     await act(async () => {
@@ -569,7 +572,7 @@ describe("useSyncManager replay ordering and durability", () => {
   it("persists the shrinking queue every 10 ops and once at the end", async () => {
     startSession.mockResolvedValue(999);
     recordSet.mockResolvedValue(undefined);
-    const { store, depths } = fakeStore();
+    const { depths } = fakeStore();
     const controlRef: React.MutableRefObject<Control | null> = { current: null };
     const sets = Array.from({ length: 11 }, (_, i) =>
       localSet("local_1", `t${String(i + 2).padStart(2, "0")}`),
@@ -580,7 +583,6 @@ describe("useSyncManager replay ordering and durability", () => {
         <Harness
           initialSyncs={[localStart("local_1", "t01"), ...sets]}
           controlRef={controlRef}
-          queueStore={store}
         />,
       );
     });
@@ -596,7 +598,7 @@ describe("useSyncManager replay ordering and durability", () => {
   it("caps a long backlog replay at about ten queue writes", async () => {
     startSession.mockResolvedValue(999);
     recordSet.mockResolvedValue(undefined);
-    const { store, depths } = fakeStore();
+    const { depths } = fakeStore();
     const controlRef: React.MutableRefObject<Control | null> = { current: null };
     const sets = Array.from({ length: 499 }, (_, i) =>
       localSet("local_1", `t${String(i + 2).padStart(4, "0")}`),
@@ -607,7 +609,6 @@ describe("useSyncManager replay ordering and durability", () => {
         <Harness
           initialSyncs={[localStart("local_1", "t0001"), ...sets]}
           controlRef={controlRef}
-          queueStore={store}
         />,
       );
     });

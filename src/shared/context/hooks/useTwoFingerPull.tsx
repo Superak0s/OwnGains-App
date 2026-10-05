@@ -6,7 +6,7 @@ import { useRef, useState } from "react"
 import { PanResponder, type GestureResponderEvent } from "react-native"
 
 // px of downward travel needed to fire onTrigger
-export const TRIGGER_DISTANCE = 90
+const TRIGGER_DISTANCE = 90
 
 type PullPhase = "idle" | "pulling" | "armed"
 

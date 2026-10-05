@@ -7,19 +7,9 @@ module.exports = function (api) {
   return {
     presets: ["babel-preset-expo"],
     plugins: [
-      [
-        "module-resolver",
-        {
-          root: ["./src"],
-          alias: {
-            "@features": "./src/features",
-            "@shared": "./src/shared",
-            "@utils": "./src/utils",
-          },
-        },
-      ],
       // Strips debug/info/log from release builds. Error/warn stay so crash
-      // triage still works.
+      // triage still works. Not Metro's drop_console: Hermes release builds
+      // skip Metro minification, so that option never runs.
       isProduction && [
         "transform-remove-console",
         { exclude: ["error", "warn"] },

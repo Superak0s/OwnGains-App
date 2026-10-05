@@ -43,19 +43,6 @@ export const injuryApi = {
     return { success: true, data };
   },
 
-  getActiveInjuries: async (): Promise<ApiResponse<InjuryRecord[]>> => {
-    // SQLite matches fields only by equality, so the non-recovered filter is
-    // two positive lookups merged here.
-    const active = await store.getWhere({ status: "active" });
-    const recovering = await store.getWhere({ status: "recovering" });
-    return {
-      success: true,
-      data: [...active, ...recovering].sort((a, b) =>
-        b.startDate.localeCompare(a.startDate),
-      ),
-    };
-  },
-
   updateInjury: async (
     id: number,
     updates: { painLevel?: number; status?: InjuryStatus; recoveryDate?: string; note?: string },

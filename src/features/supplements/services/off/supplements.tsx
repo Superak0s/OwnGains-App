@@ -1,7 +1,6 @@
 import {
   computeDailyStreak,
   nextId,
-  nowIso,
   readJSON,
   writeJSON,
   createRecordStore,
@@ -224,9 +223,9 @@ export const supplementsApi = {
       id: entryId,
       supplementId: id,
       amount: params.amount ?? stored.defaultAmount,
-      takenAt: params.takenAt ?? nowIso(),
+      takenAt: params.takenAt ?? new Date().toISOString(),
       note: params.note ?? null,
-      createdAt: nowIso(),
+      createdAt: new Date().toISOString(),
     }
     await entryStoreFor(id).put(entry)
 

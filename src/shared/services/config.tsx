@@ -1,5 +1,6 @@
 import { getStorageItemSync, setStorageItem, removeStorageItem } from "@shared/services/sqliteStorage"
 import { metric } from "@shared/services/crashReporting"
+import { createEmitter } from "@utils/emitter"
 
 const SERVER_URL_KEY = "@server_url"
 const DEFAULT_API_BASE_URL = __DEV__ ? "http://192.168.10.243:5000" : "https://owngains.superak0s.com"
@@ -20,19 +21,9 @@ function readStoredServerUrl(): string {
 // server and cache the wrong local-only feature list.
 let currentServerUrl = readStoredServerUrl()
 
-// ponytail: inline pub/sub, no abstraction needed for one event
-const listeners: ((v: string) => void)[] = []
-export const onServerUrlChange = (callback: (v: string) => void): (() => void) => {
-  listeners.push(callback)
-  return () => {
-    const idx = listeners.lastIndexOf(callback)
-    if (idx > -1) listeners.splice(idx, 1)
-  }
-}
-
-// Snapshot: a listener that unsubscribes from inside its own callback would
-// otherwise shift the array mid-iteration and skip the next one.
-const notify = (url: string): void => { [...listeners].forEach((cb) => cb(url)) }
+const serverUrlChange = createEmitter<string>()
+export const onServerUrlChange = serverUrlChange.subscribe
+const notify = serverUrlChange.trigger
 
 export const getServerUrl = (): string => currentServerUrl
 

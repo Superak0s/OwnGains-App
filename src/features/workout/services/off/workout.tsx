@@ -1,7 +1,6 @@
 import * as DocumentPicker from "expo-document-picker";
 import {
   nextId,
-  nowIso,
   createRecordStore,
   withLock,
 } from "@shared/services/offlineHelpers";
@@ -155,7 +154,7 @@ export const workoutApi = {
       split: split ?? DEFAULT_SPLIT,
       dayNumber,
       dayTitle,
-      startTime: startTime ?? nowIso(),
+      startTime: startTime ?? new Date().toISOString(),
       endTime: null,
       setTimings: [],
       isDemo,
@@ -304,7 +303,7 @@ export const workoutApi = {
       const session = await sessionsStore.getOne(sessionId);
       if (!session) throw new Error("Failed to end session: session not found");
 
-      session.endTime = endTime ?? nowIso();
+      session.endTime = endTime ?? new Date().toISOString();
       await sessionsStore.put(session);
       return toPublicSession(session, true);
     }),

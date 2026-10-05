@@ -6,14 +6,12 @@ import {
   getCycleDuration,
   getCyclePhaseInfo,
   getCyclePhaseLabel,
-  getCycleStartIso,
   isValidTime,
   isoToLocalDateStr,
   maskTimeInput,
-  parseSafeDate,
   toNumberOrUndefined,
 } from "../utils";
-import type { CycleEntry } from "../services/types";
+import type { MenstrualEntry } from "../services/types";
 import { describeError } from "../helpers";
 
 describe("daysSinceLocal", () => {
@@ -61,16 +59,6 @@ describe("isoToLocalDateStr", () => {
   });
 });
 
-describe("parseSafeDate", () => {
-  it("returns a Date for a parseable value and null otherwise", () => {
-    expect(parseSafeDate("2026-08-25")?.getTime()).toBe(
-      Date.parse("2026-08-25"),
-    );
-    expect(parseSafeDate("nope")).toBeNull();
-    expect(parseSafeDate(null)).toBeNull();
-  });
-});
-
 describe("formatDateLabel", () => {
   it("formats a real date and labels the rest as unknown", () => {
     const date = new Date(2026, 7, 25);
@@ -96,33 +84,24 @@ describe("buildLocalISOForDate", () => {
   });
 });
 
-describe("getCycleStartIso", () => {
-  it("is null when the entry has no start", () => {
-    expect(getCycleStartIso({ cycleStart: "2026-08-25" } as CycleEntry)).toBe(
-      "2026-08-25",
-    );
-    expect(getCycleStartIso({} as CycleEntry)).toBeNull();
-  });
-});
-
 describe("getCycleDuration", () => {
   it("counts both end dates of a closed period", () => {
     expect(
       getCycleDuration({
         cycleStart: "2024-03-01",
         cycleEnd: "2024-03-04",
-      } as CycleEntry),
+      } as MenstrualEntry),
     ).toBe(4);
   });
 
   it("falls back while the period is still open or the dates are unusable", () => {
-    expect(getCycleDuration({ cycleStart: "2024-03-01" } as CycleEntry)).toBe(5);
-    expect(getCycleDuration({} as CycleEntry, 7)).toBe(7);
+    expect(getCycleDuration({ cycleStart: "2024-03-01" } as MenstrualEntry)).toBe(5);
+    expect(getCycleDuration({} as MenstrualEntry, 7)).toBe(7);
     expect(
       getCycleDuration({
         cycleStart: "2024-03-01",
         cycleEnd: "nonsense",
-      } as CycleEntry),
+      } as MenstrualEntry),
     ).toBe(5);
   });
 });

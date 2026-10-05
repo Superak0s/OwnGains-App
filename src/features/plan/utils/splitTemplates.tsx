@@ -4,6 +4,7 @@ import type {
   SplitWorkout,
   ExerciseWithSets,
 } from "@shared/types"
+import { generateId } from "@utils/format"
 import defaultSplitsJson from "./defaultSplits.json"
 
 interface SplitDayTemplateExercise {
@@ -67,7 +68,7 @@ export function createCustomSplitTemplate(
   days: SplitDayTemplate[],
 ): SplitTemplate {
   return {
-    id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: generateId("custom"),
     name: name.trim() || "Custom Split",
     description: "Custom split",
     days: days.map((d) => ({

@@ -6,22 +6,11 @@ import {
   replaceCollection,
 } from "./sqliteStorage";
 import { getUserKey, STORAGE_KEYS } from "./storage";
-import { pendingSyncSortKey } from "./pendingSyncRows";
 
 export interface PendingSyncRow {
   id: string;
   sortKey: string;
   value: string;
-}
-
-export interface PendingSyncStore {
-  load: (userId: string | null) => Promise<PendingSync[]>;
-  replace: (userId: string | null, rows: PendingSyncRow[]) => Promise<void>;
-  apply: (
-    userId: string | null,
-    puts: PendingSyncRow[],
-    deleteIds: string[],
-  ) => Promise<void>;
 }
 
 const collectionOf = (userId: string | null) =>
@@ -31,7 +20,8 @@ export const toPendingSyncRow = (
   sync: PendingSync & { syncId: string },
 ): PendingSyncRow => ({
   id: sync.syncId,
-  sortKey: pendingSyncSortKey(sync),
+  // The sync id breaks ties between ops logged with the same timestamp.
+  sortKey: `${sync.timestamp ?? ""}|${sync.syncId}`,
   value: JSON.stringify(sync),
 });
 
@@ -51,9 +41,9 @@ export const loadPendingSyncs = async (
   return syncs.reverse();
 };
 
-export const pendingSyncStore: PendingSyncStore = {
-  load: loadPendingSyncs,
-  replace: (userId, rows) => replaceCollection(collectionOf(userId), rows),
-  apply: (userId, puts, deleteIds) =>
+export const pendingSyncStore = {
+  replace: (userId: string | null, rows: PendingSyncRow[]) =>
+    replaceCollection(collectionOf(userId), rows),
+  apply: (userId: string | null, puts: PendingSyncRow[], deleteIds: string[]) =>
     applyRecordChanges(collectionOf(userId), puts, deleteIds),
 };

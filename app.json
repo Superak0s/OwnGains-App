@@ -45,7 +45,6 @@
       "expo-status-bar",
       "./plugins/withGradleTuning.js",
       "./plugins/withDebugAppIdSuffix.js",
-      "./plugins/withAndroidPermissionPruning.js",
       "./plugins/withAndroidNetworkSecurity.js",
       "./plugins/withAbiSplits.js",
       "expo-sqlite",
@@ -93,6 +92,16 @@
         "INTERNET",
         "ACCESS_WIFI_STATE",
         "CHANGE_WIFI_MULTICAST_STATE"
+      ],
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION"
       ],
       "package": "com.owngains.app"
     },

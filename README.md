@@ -170,7 +170,7 @@ The web copies of the legal text are generated from the in-app screens: [privacy
 - **Widget system** (`src/shared/context/hooks/useWidgets.tsx`): a shared placement/drag engine. Each screen defines its own registry, defaults, and storage key. A two-finger pull opens the gallery (a dev-only button does the same on emulators, which can't produce the gesture).
 - **Storage migrations** (`src/shared/services/storageMigrations.ts`): versioned, append-only rewrites of persisted data, run once each against SQLite's `user_version`, each in its own transaction.
 - **Backup** (`src/utils/deviceBackup.ts` + `src/utils/exportEncryption.ts`): exports the whole SQLite store plus base64 progress photos to one passphrase-encrypted file, and re-points photo URIs on restore so images still load after a reinstall.
-- **Expo config plugins** (applied during prebuild): `withGradleTuning` (JVM tuning), `withAndroidPermissionPruning` (`tools:node="remove"` on unused permissions), `withDebugAppIdSuffix` (debug build installs side by side with the release build), `withAndroidNetworkSecurity` (cleartext to a self-hosted LAN server), `withAbiSplits` (one release APK per CPU architecture instead of one universal APK. The AAB is unaffected).
+- **Expo config plugins** (applied during prebuild): `withGradleTuning` (JVM tuning), `withDebugAppIdSuffix` (debug build installs side by side with the release build), `withAndroidNetworkSecurity` (cleartext to a self-hosted LAN server), `withAbiSplits` (one release APK per CPU architecture instead of one universal APK. The AAB is unaffected).
 - **Local native module** (`modules/exact-alarms`): checks Android's exact-alarm permission and opens its settings page, so next-dose reminders fire on time.
 
 ### Main screens
@@ -179,7 +179,7 @@ Home · Workout · Plan · Progress (Analytics) · Track (Weight / Photos / Macr
 
 ### Path aliases
 
-`@features`, `@shared`, `@utils` (via `babel-plugin-module-resolver`).
+`@features`, `@shared`, `@utils`, declared once in `tsconfig.json` `paths` (Metro reads them natively) and mirrored in the Jest `moduleNameMapper`.
 
 ---
 

@@ -68,7 +68,6 @@ import {
   createRecordStore,
   setRecordStoreUser,
   nextLocalId,
-  nowIso,
   computeDailyStreak,
 } from "@shared/services/offlineHelpers"
 
@@ -265,12 +264,6 @@ describe("nextLocalId", () => {
     const b = nextLocalId()
     expect(b).toBe(a + 1)
     expect(a).toBeGreaterThan(1_600_000_000_000)
-  })
-})
-
-describe("nowIso", () => {
-  it("returns a parseable ISO timestamp", () => {
-    expect(Number.isNaN(Date.parse(nowIso()))).toBe(false)
   })
 })
 

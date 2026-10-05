@@ -242,10 +242,6 @@ export function nextId(counterKey: string): Promise<number> {
   })
 }
 
-export function nowIso(): string {
-  return new Date().toISOString()
-}
-
 export function computeDailyStreak(timestamps: string[]): number {
   if (timestamps.length === 0) return 0
 
@@ -267,5 +263,3 @@ export function computeDailyStreak(timestamps: string[]): number {
   }
   return streak
 }
-
-

@@ -1,20 +1,17 @@
 const FIVE_BAND = ["#6BCB77", "#FFD93D", "#FFA94D", "#FF8787", "#FF6B6B"] as const;
 const THREE_BAND = ["#6BCB77", "#FFD93D", "#FF6B6B"] as const;
 
-/**
- * Maps a 0-10 severity/pain/intensity value to a green-to-red color.
- * `bands` selects the number of color stops used across the app: 5 stops (soreness/intensity
- * screens) or 3 stops (pain-level screens).
- */
-/** Every severity stop is a light/mid hue, so only dark ink remains legible on top of one. */
-export const SEVERITY_INK = "#1b1b1f";
-
 export const SEVERITY_STOPS = {
   good: THREE_BAND[0],
   warn: THREE_BAND[1],
   bad: THREE_BAND[2],
 } as const;
 
+/**
+ * Maps a 0-10 severity/pain/intensity value to a green-to-red color.
+ * `bands` selects the number of color stops used across the app: 5 stops (soreness/intensity
+ * screens) or 3 stops (pain-level screens).
+ */
 export function getSeverityColor(value: number, bands: 3 | 5 = 5): string {
   // Every `value <= n` is false for NaN, so an unset intensity would otherwise
   // reach the worst band and report maximum severity.

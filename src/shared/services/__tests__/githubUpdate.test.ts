@@ -2,16 +2,7 @@ jest.mock("@shared/services/sqliteStorage", () =>
   require("test-utils/memorySqlite"),
 );
 
-import { checkForGitHubUpdate, isNewerVersion } from "../githubUpdate";
-
-describe("isNewerVersion", () => {
-  it("compares numerically, ignoring a v prefix and pre-release suffix", () => {
-    expect(isNewerVersion("v0.10.0", "0.9.9")).toBe(true);
-    expect(isNewerVersion("v1.0.0", "1.0.0")).toBe(false);
-    expect(isNewerVersion("v1.0", "1.0.1")).toBe(false);
-    expect(isNewerVersion("v1.2.0-beta", "1.1.9")).toBe(true);
-  });
-});
+import { checkForGitHubUpdate } from "../githubUpdate";
 
 describe("checkForGitHubUpdate", () => {
   const release = { tag_name: "v2.0.0", html_url: "https://github.com/r/2" };

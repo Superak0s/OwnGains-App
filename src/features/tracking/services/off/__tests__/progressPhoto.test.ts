@@ -50,7 +50,7 @@ describe("offline progressPhotoApi", () => {
     const { data } = await upload();
 
     expect(data?.thumbUri).toBeUndefined();
-    expect((await progressPhotoApi.getAllPhotos()).data).toHaveLength(1);
+    expect((await progressPhotoApi.getPhotoPage(null, 100)).data).toHaveLength(1);
   });
 
   it("still saves the photo when copying the thumbnail fails", async () => {
@@ -85,7 +85,7 @@ describe("offline progressPhotoApi", () => {
 
     const deleted = mockDelete.mock.calls.map(([uri]) => uri);
     expect(deleted).toEqual([data?.uri, data?.thumbUri]);
-    expect((await progressPhotoApi.getAllPhotos()).data).toEqual([]);
+    expect((await progressPhotoApi.getPhotoPage(null, 100)).data).toEqual([]);
   });
 
   it("pages through every photo, including ones that share a timestamp", async () => {

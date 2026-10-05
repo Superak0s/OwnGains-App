@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import { newIdempotencyKey } from "@shared/services/apiClient";
+import { generateId } from "@utils/format";
 
 /**
  * An idempotency key that is kept after a failed submit, so tapping save again after
@@ -10,7 +10,7 @@ export function useRetryKey() {
 
   const keyFor = useCallback((signature: string): string => {
     if (ref.current?.signature !== signature)
-      ref.current = { signature, key: newIdempotencyKey() };
+      ref.current = { signature, key: generateId("idem") };
     return ref.current.key;
   }, []);
 

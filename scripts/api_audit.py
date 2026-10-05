@@ -60,7 +60,7 @@ def read_source(path: Path) -> str:
         return raw.decode("utf-8", errors="replace")
 
 APP_ROOT = Path(__file__).resolve().parents[1]
-SERVER_ROOT = APP_ROOT.parent / "OwnGains-Server"
+SERVER_ROOT = APP_ROOT.parent / "OwnGains-Server" / "src"
 
 METHODS = ("get", "post", "put", "patch", "delete")
 

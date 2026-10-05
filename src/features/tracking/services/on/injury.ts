@@ -19,9 +19,6 @@ export const injuryApi = {
   getInjuriesByMuscle: async (muscle: string): Promise<ApiResponse<InjuryRecord[]>> =>
     apiCall(`/api/tracking/injuries/muscle/${encodeURIComponent(muscle)}`),
 
-  getActiveInjuries: async (): Promise<ApiResponse<InjuryRecord[]>> =>
-    apiCall(`/api/tracking/injuries/active`),
-
   updateInjury: async (
     id: number,
     updates: { painLevel?: number; status?: InjuryStatus; recoveryDate?: string; note?: string },

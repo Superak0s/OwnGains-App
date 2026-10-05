@@ -34,8 +34,6 @@ export interface MenstrualEntry {
   updatedAt: string;
 }
 
-export type CycleEntry = MenstrualEntry;
-
 export interface CyclePhase {
   phase: "menstruation" | "follicular" | "ovulation" | "luteal";
   daysInPhase: number;

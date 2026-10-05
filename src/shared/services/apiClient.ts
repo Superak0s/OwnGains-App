@@ -85,9 +85,6 @@ export const responseCode = async (response: Response): Promise<string | undefin
   }
 }
 
-export const newIdempotencyKey = (): string =>
-  `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
-
 /**
  * Sends a write with an `Idempotency-Key`. A 409 IDEMPOTENCY_KEY_IN_FLIGHT means
  * the server is still running an earlier attempt with this key, so the same key

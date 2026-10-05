@@ -44,7 +44,7 @@ Four files, fixed layout. Get the layout right and the contract test enforces it
 3. **`services/off/<name>.tsx`**: same export name, same method names, same parameter
    lists, **same return types** including the `{ success: true, ... }` envelope. Build on
    `@shared/services/offlineHelpers` (`createRecordStore`, `readJSON`/`writeJSON`,
-   `nextId`, `nowIso`, `withLock`) rather than touching storage directly. All persistence
+   `nextId`, `withLock`) rather than touching storage directly. All persistence
    goes through `sqliteStorage` underneath, never
    `@react-native-async-storage/async-storage`.
 

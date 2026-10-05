@@ -1,4 +1,5 @@
 import { getStorageItem, setStorageItem } from "@shared/services/sqliteStorage";
+import { createEmitter } from "@utils/emitter";
 
 export const DEFAULT_TAB_ORDER = [
   "Home",
@@ -26,7 +27,7 @@ export const TAB_META: Record<TabName, { icon: string; label: string }> = {
 
 const TAB_ORDER_KEY = "@tab_order";
 
-const listeners: Array<(order: TabName[]) => void> = [];
+export const onTabOrderChange = createEmitter<TabName[]>();
 
 // A stored order can predate a tab being added or removed, so unknown names
 // are dropped and any missing tab is appended rather than disappearing.
@@ -57,18 +58,8 @@ export const loadTabOrder = async (): Promise<TabName[]> => {
 
 export const saveTabOrder = async (order: TabName[]): Promise<void> => {
   const normalized = normalizeTabOrder(order);
-  [...listeners].forEach((fn) => fn(normalized));
+  onTabOrderChange.trigger(normalized);
   await setStorageItem(TAB_ORDER_KEY, JSON.stringify(normalized));
-};
-
-export const onTabOrderChange = {
-  subscribe: (fn: (order: TabName[]) => void) => {
-    listeners.push(fn);
-    return () => {
-      const idx = listeners.lastIndexOf(fn);
-      if (idx > -1) listeners.splice(idx, 1);
-    };
-  },
 };
 
 export const moveTab = (

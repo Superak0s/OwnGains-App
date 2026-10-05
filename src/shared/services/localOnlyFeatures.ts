@@ -3,6 +3,7 @@ import { isServerless } from "./appMode"
 import { getServerUrl, onServerUrlChange } from "./config"
 import { loadFromStorage, saveToStorage } from "./storage"
 import { setTelemetryTag } from "./crashReporting"
+import { createEmitter } from "@utils/emitter"
 
 const STORAGE_KEY = "@local_only_features"
 const UNREACHABLE_RETRY_MS = 60_000
@@ -46,7 +47,7 @@ const adopt = (features: string[]): void => {
 }
 
 let pendingChange: LocalOnlyChange | null = null
-const changeListeners = new Set<(change: LocalOnlyChange) => void>()
+const localOnlyChange = createEmitter<LocalOnlyChange>()
 
 /**
  * Fires when the same server starts or stops storing a feature. Records logged
@@ -56,14 +57,12 @@ const changeListeners = new Set<(change: LocalOnlyChange) => void>()
 export const onLocalOnlyFeaturesChange = (
   listener: (change: LocalOnlyChange) => void,
 ): (() => void) => {
-  changeListeners.add(listener)
+  const unsubscribe = localOnlyChange.subscribe(listener)
   if (pendingChange) {
     listener(pendingChange)
     pendingChange = null
   }
-  return () => {
-    changeListeners.delete(listener)
-  }
+  return unsubscribe
 }
 
 const announceChange = (previous: string[], next: string[]): void => {
@@ -72,8 +71,8 @@ const announceChange = (previous: string[], next: string[]): void => {
     nowOnServer: previous.filter((feature) => !next.includes(feature)),
   }
   if (!change.nowLocal.length && !change.nowOnServer.length) return
-  if (changeListeners.size === 0) pendingChange = change
-  changeListeners.forEach((listener) => listener(change))
+  if (!localOnlyChange.hasListeners()) pendingChange = change
+  localOnlyChange.trigger(change)
 }
 
 /**

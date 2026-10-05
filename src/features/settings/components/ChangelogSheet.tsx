@@ -25,7 +25,7 @@ interface Props {
   readonly currentVersion: string | undefined;
 }
 
-export function currentRelease(version: string | undefined): Release | null {
+function currentRelease(version: string | undefined): Release | null {
   return findRelease(RELEASES, version) ?? RELEASES[0] ?? null;
 }
 

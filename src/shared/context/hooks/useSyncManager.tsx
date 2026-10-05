@@ -5,6 +5,7 @@ import {
   isLocalSessionId,
   isSessionGone,
 } from "@utils/session";
+import { generateId } from "@utils/format";
 import { metric, log, captureException } from "@shared/services/crashReporting";
 import { ApiError } from "@shared/services/apiError";
 import { IDEMPOTENCY_KEY_IN_FLIGHT } from "@shared/services/apiClient";
@@ -12,7 +13,6 @@ import type { PendingSync } from "../../types";
 import {
   pendingSyncStore,
   toPendingSyncRow,
-  type PendingSyncStore,
 } from "@shared/services/pendingSyncStore";
 
 interface UseSyncManagerOptions {
@@ -33,7 +33,6 @@ interface UseSyncManagerOptions {
   useManualTime: boolean;
   fetchAnalytics?: (() => Promise<void>) | null;
   workoutApi?: WorkoutApi;
-  queueStore?: PendingSyncStore;
 }
 
 export interface DroppedSync {
@@ -76,9 +75,6 @@ const isDefinitiveRejection = (error: unknown): boolean =>
   !TRANSIENT_HTTP_STATUSES.has(error.status) &&
   error.code !== IDEMPOTENCY_KEY_IN_FLIGHT;
 
-const newSyncId = (): string =>
-  `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-
 const retryKeyOf = (sync: PendingSync): string =>
   sync.syncId ?? `${sync.timestamp}:${sync.type}`;
 
@@ -94,7 +90,6 @@ export const useSyncManager = ({
   useManualTime,
   fetchAnalytics,
   workoutApi = defaultWorkoutApi,
-  queueStore = pendingSyncStore,
 }: UseSyncManagerOptions): UseSyncManagerReturn => {
   const retryStateRef = useRef(
     new Map<
@@ -146,7 +141,7 @@ export const useSyncManager = ({
   const writeQueue = useCallback(
     async (queue: PendingSync[]): Promise<void> => {
       const next = queue.map((sync) =>
-        sync.syncId ? sync : { ...sync, syncId: newSyncId() },
+        sync.syncId ? sync : { ...sync, syncId: generateId("sync") },
       );
       queueRef.current = next;
       ownWritesRef.current.add(next);
@@ -161,13 +156,13 @@ export const useSyncManager = ({
       try {
         if (known) {
           const liveIds = new Set(rows.map((r) => r.id));
-          await queueStore.apply(
+          await pendingSyncStore.apply(
             userId,
             rows.filter((r) => known.get(r.id) !== r.value),
             [...known.keys()].filter((id) => !liveIds.has(id)),
           );
         } else {
-          await queueStore.replace(userId, rows);
+          await pendingSyncStore.replace(userId, rows);
         }
         persistedRef.current = new Map(rows.map((r) => [r.id, r.value]));
       } catch (error) {
@@ -177,7 +172,7 @@ export const useSyncManager = ({
         captureException(error, { stage: "writeQueue", depth: next.length });
       }
     },
-    [setPendingSyncs, userId, queueStore],
+    [setPendingSyncs, userId],
   );
 
   const addPendingSync = useCallback(
@@ -185,7 +180,7 @@ export const useSyncManager = ({
       try {
         const withId = syncData.syncId
           ? syncData
-          : { ...syncData, syncId: newSyncId() };
+          : { ...syncData, syncId: generateId("sync") };
         // A set logged after its session's startSession already replayed would
         // otherwise carry a `local_` id no later run can resolve, and get
         // dropped by cleanupInvalidSyncs.
@@ -241,7 +236,7 @@ export const useSyncManager = ({
       // retryKeyOf falls back to timestamp+type without a syncId, which two
       // legacy entries of the same type can share. Stamp the live queue in
       // place so every key below is unique, and the next persist includes it.
-      for (const sync of startingQueue) sync.syncId ??= newSyncId();
+      for (const sync of startingQueue) sync.syncId ??= generateId("sync");
       const workingSyncs: PendingSync[] = structuredClone(startingQueue);
 
       const failedSyncs: PendingSync[] = [];

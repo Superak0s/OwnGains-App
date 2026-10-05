@@ -4,23 +4,12 @@ import Constants from "expo-constants";
 import { GITHUB_BUILD } from "@shared/distribution";
 import { getStorageItem, setStorageItem } from "@shared/services/sqliteStorage";
 import { useAlert } from "@shared/components/CustomAlert";
+import { compareVersions } from "@shared/services/serverVersion";
 
 const LATEST_RELEASE_URL =
   "https://api.github.com/repos/Superak0s/OwnGains-App/releases/latest";
 const LAST_CHECK_KEY = "@github_update_last_check";
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
-
-export function isNewerVersion(latest: string, current: string): boolean {
-  const parse = (v: string) =>
-    v.replace(/^v/, "").split("-")[0].split(".").map((n) => Number(n) || 0);
-  const a = parse(latest);
-  const b = parse(current);
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    const diff = (a[i] ?? 0) - (b[i] ?? 0);
-    if (diff !== 0) return diff > 0;
-  }
-  return false;
-}
 
 export async function checkForGitHubUpdate(
   current: string,
@@ -37,8 +26,9 @@ export async function checkForGitHubUpdate(
     tag_name?: string;
     html_url?: string;
   };
-  if (!tag_name || !html_url || !isNewerVersion(tag_name, current)) return null;
-  return { version: tag_name.replace(/^v/, ""), url: html_url };
+  const version = tag_name?.replace(/^v/, "");
+  if (!version || !html_url || compareVersions(version, current) <= 0) return null;
+  return { version, url: html_url };
 }
 
 // Play bans apps updating themselves outside Play, so this only runs in the GitHub APK build.

@@ -73,10 +73,6 @@ export const getServerVersionStatus =
     return cachedCheck.result;
   };
 
-export const resetServerVersionStatus = (): void => {
-  cachedCheck = null;
-};
-
 /** The outdated-server check for the signed-in session, or null when the server is current or unknown. */
 export function useOutdatedServer(
   sessionKey: string | number | null | undefined,

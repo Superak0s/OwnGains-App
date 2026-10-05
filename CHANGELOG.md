@@ -6,6 +6,21 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Internal
+
+- Unused Android permissions are blocked through `android.blockedPermissions` in `app.json`, replacing the `withAndroidPermissionPruning` config plugin.
+- Path aliases are declared once in `tsconfig.json` `paths` (Metro reads them natively) and mirrored in the Jest `moduleNameMapper`, replacing `babel-plugin-module-resolver`.
+- The Babel config is cached per `NODE_ENV`, and the console-stripping plugin keeps a note on why Metro's `drop_console` can't replace it under Hermes.
+- One shared `createEmitter` (`src/utils/emitter.ts`) replaces the hand-rolled pub/sub copies in app mode, onboarding, server URL, tab order, tutorial, trainer, local-only features, exercise selection and the workout store. It also stops a double unsubscribe from removing another listener.
+- Tutorial state updates are serialized with the existing `withLock` instead of their own promise chain.
+- The pending sync store loses its single-implementation interface and injection prop. Tests spy on the real store instead.
+- Sync ids, idempotency keys and custom split ids come from the existing `generateId` instead of three inline copies.
+- `githubUpdate` reuses `compareVersions` from `serverVersion` instead of its own version parser.
+- Body weight lookup goes through the tracking dispatch proxy like every other tracking call.
+- The two root error fallbacks share one view with a colour argument.
+- Removed dead code: `exerciseGuides`, the tracking hooks barrel, `pendingSyncRows`, `getActiveInjuries`, `getAllPhotos`, `resetServerVersionStatus`, `parseSafeDate`, `getCycleStartIso`, the `CycleEntry` alias, `nowIso`, `SEVERITY_INK`, the `LOCALE` constant, unused `React` imports and five exports only used in their own file.
+- `scripts/api_audit.py` reads the server routes from `OwnGains-Server/src/`, where they moved.
+
 ## [0.1.7] - 2026-10-04
 
 ### Fixed

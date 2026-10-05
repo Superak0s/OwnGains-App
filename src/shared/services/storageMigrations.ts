@@ -20,7 +20,7 @@ export const takeMigrationFailure = (): {
   return failure;
 };
 
-export const readSchemaVersion = (db: MigrationDb): number =>
+const readSchemaVersion = (db: MigrationDb): number =>
   db.getFirstSync<{ user_version: number }>("PRAGMA user_version")
     ?.user_version ?? 0;
 

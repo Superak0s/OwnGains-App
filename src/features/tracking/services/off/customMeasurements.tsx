@@ -1,7 +1,6 @@
 import {
   createRecordStore,
   nextLocalId,
-  nowIso,
 } from "@shared/services/offlineHelpers"
 import type { CustomMeasurementType, CustomMeasurementValue } from "../../types"
 
@@ -38,8 +37,8 @@ export const customMeasurementsApi = {
       keyName,
       label,
       unit: unit ?? null,
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }
     await typeStore.put(type)
     return type
@@ -59,7 +58,7 @@ export const customMeasurementsApi = {
       id: nextLocalId(),
       keyName,
       value,
-      measuredAt: measuredAt || nowIso(),
+      measuredAt: measuredAt || new Date().toISOString(),
       note: note || null,
     }
     await valueStore.put(entry)

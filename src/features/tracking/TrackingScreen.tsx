@@ -103,8 +103,8 @@ import type {
   BodyFatEntryWithFields,
 } from "./types";
 import type {
-  CycleEntry,
   HydrationEntry,
+  MenstrualEntry,
   MeasurementEntry,
   SorenessEntry,
 } from "./services/types";
@@ -118,7 +118,6 @@ import { useMenstrualTab } from "./hooks/useMenstrualTab";
 import {
   buildLocalISOForDate,
   isoToLocalDateStr,
-  getCycleStartIso,
   getCycleDuration,
   formatDateLabel,
 } from "./utils";
@@ -609,7 +608,7 @@ export default function TrackingScreen({
           break;
         case "menstrual":
           existingEntries = menstrual.entries.filter((e) => {
-            const start = new Date(getCycleStartIso(e) ?? "");
+            const start = new Date(e.cycleStart);
             if (Number.isNaN(start.getTime())) return false;
             const days = getCycleDuration(e, menstrual.prefs.periodLengthDays);
             for (let d = 0; d < days; d++) {
@@ -785,7 +784,7 @@ export default function TrackingScreen({
       }));
     } else if (tab === "menstrual") {
       heading = "Period logged";
-      rows = (existingEntries as CycleEntry[]).map((entry, i) => ({
+      rows = (existingEntries as MenstrualEntry[]).map((entry, i) => ({
         key: entry.id ?? i,
         title: `Period started ${formatDateLabel(entry.cycleStart)}`,
         meta: entry.symptoms?.length ? entry.symptoms.join(", ") : undefined,

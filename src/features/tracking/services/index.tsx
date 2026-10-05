@@ -1,6 +1,4 @@
 import { createDispatchProxy } from "@shared/services/dispatchProxy";
-import { isServerless } from "@shared/services/appMode";
-import { isFeatureLocal } from "@shared/services/localOnlyFeatures";
 import * as bodyStatsOn from "./on/bodyStats";
 import * as bodyStatsOff from "./off/bodyStats";
 import * as macrosOn from "./on/macros";
@@ -40,10 +38,11 @@ export const bodyMeasurementsApi = dispatch("measurements", bodyMeasurementsOn.b
 export const menstrualApi = dispatch("menstrual", menstrualOn.menstrualApi, menstrualOff.menstrualApi);
 export const customMeasurementsApi = dispatch("custom_measurements", customMeasurementsOn.customMeasurementsApi, customMeasurementsOff.customMeasurementsApi);
 
-export const getCurrentBodyWeight = async (userId?: string | null) =>
-  (await isServerless()) || (await isFeatureLocal("tracking"))
-    ? bodyStatsOff.getCurrentBodyWeight(userId)
-    : bodyStatsOn.getCurrentBodyWeight(userId);
+export const { getCurrentBodyWeight } = dispatch(
+  "body",
+  { getCurrentBodyWeight: bodyStatsOn.getCurrentBodyWeight },
+  { getCurrentBodyWeight: bodyStatsOff.getCurrentBodyWeight },
+);
 
 export type {
   CustomMeasurementType,

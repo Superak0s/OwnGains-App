@@ -67,7 +67,7 @@ const getKnownMuscles = (): Set<string> =>
 
 // A label the database has no muscle for ("Push", "Upper") says nothing about
 // the exercise, so it must not filter anything out.
-export const targetMuscles = (
+const targetMuscles = (
   muscleGroup: string | undefined,
 ): string[] | null => {
   const key = muscleGroup?.trim().toLowerCase();

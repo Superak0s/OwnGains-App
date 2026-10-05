@@ -4,6 +4,7 @@ import {
   setStorageItem,
 } from "@shared/services/sqliteStorage"
 import { setTelemetryTag, metric } from "@shared/services/crashReporting"
+import { createEmitter } from "@utils/emitter"
 
 const APP_MODE_KEY = "appMode"
 export type AppMode = "online" | "offline"
@@ -48,20 +49,7 @@ export const setAppMode = async (mode: AppMode): Promise<boolean> => {
 export const isServerless = async (): Promise<boolean> =>
   (await getAppMode()) === "offline"
 
-// ponytail: inline pub/sub, no abstraction needed for one event
-const modeListeners: ((v: AppMode) => void)[] = []
-export const onAppModeChange = {
-  subscribe: (fn: (v: AppMode) => void) => {
-    modeListeners.push(fn)
-    return () => {
-      const idx = modeListeners.lastIndexOf(fn)
-      if (idx > -1) modeListeners.splice(idx, 1)
-    }
-  },
-  // Snapshot: a listener that unsubscribes from inside its own callback would
-  // otherwise shift the array mid-iteration and skip the next one.
-  trigger: (v: AppMode) => [...modeListeners].forEach(fn => fn(v)),
-}
+export const onAppModeChange = createEmitter<AppMode>()
 
 // Onboarding is the only place the mode is chosen. The login screen and
 // Settings clear this flag to send the user back there.
@@ -79,14 +67,4 @@ export const setOnboardingComplete = async (done: boolean): Promise<void> => {
 
 export const restartOnboarding = (): Promise<void> => setOnboardingComplete(false)
 
-const onboardingListeners: ((done: boolean) => void)[] = []
-export const onOnboardingChange = {
-  subscribe: (fn: (done: boolean) => void) => {
-    onboardingListeners.push(fn)
-    return () => {
-      const idx = onboardingListeners.lastIndexOf(fn)
-      if (idx > -1) onboardingListeners.splice(idx, 1)
-    }
-  },
-  trigger: (done: boolean) => [...onboardingListeners].forEach(fn => fn(done)),
-}
+export const onOnboardingChange = createEmitter<boolean>()

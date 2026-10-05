@@ -39,6 +39,12 @@
     ],
     "transform": {
       "\\.md$": "<rootDir>/jest.markdownTransform.js"
+    },
+    "moduleNameMapper": {
+      "^@features/(.*)$": "<rootDir>/src/features/$1",
+      "^@shared/(.*)$": "<rootDir>/src/shared/$1",
+      "^@utils/(.*)$": "<rootDir>/src/utils/$1",
+      "^test-utils/(.*)$": "<rootDir>/src/test-utils/$1"
     }
   },
   "dependencies": {

@@ -36,7 +36,7 @@ export function getDayExerciseList<Ex extends ProgramExerciseLike>(
 }
 
 /** A program without reps leaves them blank, but an explicit 0 is a mistake to warn about. */
-export function repsLabel(reps: string | number | undefined): string | null {
+function repsLabel(reps: string | number | undefined): string | null {
   const text = String(reps ?? "").trim();
   if (!text || Number(text) === 0) return null;
   return `${text} reps`;

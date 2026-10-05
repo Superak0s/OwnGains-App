@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { createEmitter } from "@utils/emitter";
 
 // The analytics widgets are independent component instances once they're
 // spread over other boards (each foreign widget mounts its own
@@ -12,18 +13,13 @@ interface ExerciseSelection {
 
 let selection: ExerciseSelection = { exercise: null, muscleGroup: null };
 let autoSelected = false;
-const listeners = new Set<() => void>();
+const selectionChange = createEmitter();
 
-export const subscribe = (listener: () => void): (() => void) => {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-};
+export const subscribe = selectionChange.subscribe;
 
 const emit = (next: ExerciseSelection): void => {
   selection = next;
-  listeners.forEach((listener) => listener());
+  selectionChange.trigger();
 };
 
 export const getSelection = (): ExerciseSelection => selection;

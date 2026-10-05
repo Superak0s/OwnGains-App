@@ -1,5 +1,5 @@
-import type { CycleEntry } from "./services/types";
-import { toDateString, formatDate } from "@utils/format";
+import type { MenstrualEntry } from "./services/types";
+import { toDateString, formatDate, parseDate } from "@utils/format";
 
 export function isoToLocalDateStr(isoStr: string | null | undefined): string {
   if (!isoStr) return "";
@@ -9,14 +9,8 @@ export function isoToLocalDateStr(isoStr: string | null | undefined): string {
   return toDateString(d);
 }
 
-export function parseSafeDate(isoStr: string | null | undefined): Date | null {
-  if (!isoStr) return null;
-  const date = new Date(isoStr);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
 export function formatDateLabel(isoStr: string | null | undefined): string {
-  const date = parseSafeDate(isoStr);
+  const date = parseDate(isoStr);
   return date ? formatDate(date) : "Unknown date";
 }
 
@@ -27,14 +21,10 @@ export function buildLocalISOForDate(date: Date, timeStr = "09:00"): string {
 
 const MONTHS_TO_PREDICT = 12;
 
-export function getCycleStartIso(entry: CycleEntry): string | null {
-  return entry.cycleStart ?? null;
-}
-
 // cycleEnd is the last day of the period, so the duration counts both ends.
-export function getCycleDuration(entry: CycleEntry, fallback: number = 5): number {
-  const start = parseSafeDate(entry.cycleStart)?.getTime();
-  const end = parseSafeDate(entry.cycleEnd)?.getTime();
+export function getCycleDuration(entry: MenstrualEntry, fallback: number = 5): number {
+  const start = parseDate(entry.cycleStart)?.getTime();
+  const end = parseDate(entry.cycleEnd)?.getTime();
   if (start == null || end == null) return fallback;
   const days = Math.round((end - start) / 86400000) + 1;
   return days > 0 ? days : fallback;
@@ -83,7 +73,7 @@ export function getCyclePhaseLabel(
   periodLengthDays: number,
   cycleLengthDays: number,
 ): string | null {
-  const start = parseSafeDate(startIso);
+  const start = parseDate(startIso);
   if (!start) return null;
 
   const diffDays = daysSinceLocal(start);
@@ -98,7 +88,7 @@ export function computeUpcomingPredictedDays(
   periodLengthDays: number,
 ): Set<string> {
   const predicted = new Set<string>();
-  const start = parseSafeDate(lastCycleStartIso);
+  const start = parseDate(lastCycleStartIso);
   if (!start) return predicted;
 
   const cLen = cycleLengthDays > 0 ? cycleLengthDays : 28;

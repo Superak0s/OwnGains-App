@@ -5,18 +5,17 @@ import { Text, View } from "react-native";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import { CycleSettingsWidget } from "../tabs/MenstrualTab";
 import {
-  getCycleStartIso,
   getCycleDuration,
   getCyclePhaseLabel,
   computeUpcomingPredictedDays,
   formatDateLabel,
 } from "../utils";
 import { toDateString } from "@utils/format";
-import type { CycleEntry } from "../services/types";
+import type { MenstrualEntry } from "../services/types";
 import { Button, Metric, Note, Placeholder, Row, space, useUi } from "../ui";
 
 interface MenstrualRenderCtx {
-  entries: CycleEntry[];
+  entries: MenstrualEntry[];
   prefs: { periodLengthDays: number; cycleLengthDays: number };
   setPrefs: (p: { periodLengthDays: number; cycleLengthDays: number }) => void;
   actualDays: Set<string>;
@@ -37,7 +36,7 @@ function MenstrualHistoryList({
   prefs,
   isOnPeriod,
 }: {
-  readonly entries: CycleEntry[];
+  readonly entries: MenstrualEntry[];
   readonly prefs: MenstrualRenderCtx["prefs"];
   readonly isOnPeriod: boolean;
 }) {
@@ -63,7 +62,7 @@ function MenstrualHistoryList({
       {entries.map((c, i) => {
         const entryKey = String(c.id ?? i);
         const isExpanded = expandedCycleIds.has(entryKey);
-        const startIso = getCycleStartIso(c);
+        const startIso = c.cycleStart;
         const startDateLabel = formatDateLabel(startIso);
         const stillOngoing = i === 0 && isOnPeriod;
         const durationLabel = `${getCycleDuration(c)} days`;
@@ -150,7 +149,7 @@ export function renderMenstrualWidget(
             action={{ label: "Log cycle", onPress: openLog, tone }}
           />
         );
-      const lastStartIso = getCycleStartIso(entries[0]);
+      const lastStartIso = entries[0].cycleStart;
       const lastPhase =
         getCyclePhaseLabel(
           lastStartIso,
@@ -219,7 +218,7 @@ export function renderMenstrualWidget(
             onSettingsUpdate={({ periodDays, cycleLengthDays }) => {
               setPrefs({ periodLengthDays: periodDays, cycleLengthDays });
               const mostRecentStartIso =
-                entries.length > 0 ? getCycleStartIso(entries[0]) : null;
+                entries.length > 0 ? entries[0].cycleStart : null;
               setPredictedDays(
                 computeUpcomingPredictedDays(
                   mostRecentStartIso,
