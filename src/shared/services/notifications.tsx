@@ -3,6 +3,7 @@ import { Linking, Platform } from "react-native";
 import ExactAlarms from "../../../modules/exact-alarms";
 import type { UseAlertReturn } from "../components/CustomAlert";
 import { captureException, metric } from "./crashReporting";
+import { withLock } from "./offlineHelpers";
 
 const isExpoGo =
   Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
@@ -44,6 +45,34 @@ export async function cancelNotification(identifier: string): Promise<void> {
   if (!Notifications) return;
   await Notifications.cancelScheduledNotificationAsync(identifier);
 }
+
+type ReminderOptions = Omit<
+  Parameters<NotificationsModule["scheduleNotificationAsync"]>[0],
+  "identifier"
+>;
+
+const reminderLock = (identifier: string) => `notification:${identifier}`;
+
+/**
+ * A fixed identifier lets the process that starts after the app was killed
+ * replace or cancel the alarm the previous process set. Calls for one identifier
+ * run in order, so an effect cleanup's cancel can't overtake the schedule that
+ * superseded it.
+ */
+export const scheduleReminder = (
+  identifier: string,
+  build: (Notifications: NotificationsModule) => Promise<ReminderOptions | null>,
+): Promise<void> =>
+  withLock(reminderLock(identifier), async () => {
+    const Notifications = await getNotifications();
+    const options = Notifications && (await build(Notifications));
+    if (options) await scheduleNotification({ ...options, identifier });
+  });
+
+export const cancelReminder = (identifier: string): Promise<void> =>
+  withLock(reminderLock(identifier), () =>
+    cancelNotification(identifier),
+  ).catch(() => {});
 
 // Without the exact-alarm grant (off by default on Android 14+), expo-notifications
 // falls back to an inexact alarm that Doze delays until the phone next wakes, so a

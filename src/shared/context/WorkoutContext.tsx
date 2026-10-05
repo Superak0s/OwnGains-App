@@ -86,9 +86,8 @@ import {
   WORKOUT_TIMER_CHANNEL,
 } from "@shared/services/supplementReminders";
 import {
-  cancelNotification,
-  getNotifications,
-  scheduleNotification,
+  cancelReminder,
+  scheduleReminder,
 } from "../services/notifications";
 
 import {
@@ -315,21 +314,19 @@ export const useWorkoutSyncStatus = (): WorkoutSyncStatus => {
   return context;
 };
 
-const scheduleInactivityWarning = async (
+const INACTIVITY_WARNING_ID = "workout-inactivity-warning";
+
+const scheduleInactivityWarning = (
   lastSetEndTime: string,
   warningMs: number,
-): Promise<string | null> => {
-  const fireAt = new Date(lastSetEndTime).getTime() + warningMs;
-  if (!Number.isFinite(fireAt) || fireAt <= Date.now()) return null;
-  try {
-    // No-op in Expo Go. The Notifications module is never loaded there.
-    const Notifications = await getNotifications();
-    if (!Notifications) return null;
-    const ready = await initializeSupplementNotifications(false);
-    if (!ready) return null;
+): Promise<void> =>
+  scheduleReminder(INACTIVITY_WARNING_ID, async (Notifications) => {
+    const fireAt = new Date(lastSetEndTime).getTime() + warningMs;
+    if (!Number.isFinite(fireAt) || fireAt <= Date.now()) return null;
+    if (!(await initializeSupplementNotifications(false))) return null;
 
     const minutes = Math.floor(warningMs / 60000);
-    return await scheduleNotification({
+    return {
       content: {
         title: `⚠️ Inactive workout detected`,
         body: `No sets logged in ${minutes} minutes. Your session will end in another ${minutes} minutes unless activity resumes.`,
@@ -343,15 +340,13 @@ const scheduleInactivityWarning = async (
         type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: fireAt,
       },
-    });
-  } catch (err) {
+    };
+  }).catch((err: unknown) => {
     console.warn("Failed to schedule inactivity warning:", err);
     log.warn("workout.inactivity_warning_failed", {
       reason: (err as Error).message,
     });
-    return null;
-  }
-};
+  });
 
 function applyIfSet<T>(value: T | null | undefined, set: (value: T) => void) {
   if (value) set(value);
@@ -1407,23 +1402,18 @@ export const WorkoutProvider = ({
   // Scheduled with the OS rather than from the interval above, which JS stops
   // running once the app is backgrounded, exactly when this warning matters.
   useEffect(() => {
-    if (!workoutStartTime || !currentSessionId || !lastSetEndTime || actAs)
+    if (actAs) return;
+    if (!workoutStartTime || !currentSessionId || !lastSetEndTime) {
+      void cancelReminder(INACTIVITY_WARNING_ID);
       return;
+    }
 
-    let cancelled = false;
-    let identifier: string | null = null;
-    void (async () => {
-      const id = await scheduleInactivityWarning(
-        lastSetEndTime,
-        Math.floor(INACTIVITY_THRESHOLD_MS / 2),
-      );
-      if (cancelled && id) await cancelNotification(id).catch(() => {});
-      else identifier = id;
-    })();
-
+    void scheduleInactivityWarning(
+      lastSetEndTime,
+      Math.floor(INACTIVITY_THRESHOLD_MS / 2),
+    );
     return () => {
-      cancelled = true;
-      if (identifier) void cancelNotification(identifier).catch(() => {});
+      void cancelReminder(INACTIVITY_WARNING_ID);
     };
   }, [workoutStartTime, currentSessionId, lastSetEndTime, actAs]);
 

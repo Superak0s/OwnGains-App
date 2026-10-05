@@ -15,6 +15,10 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 - Android 8.0 or later is required.
 
+### Fixed
+
+- Reopening OwnGains during a workout after Android closed it no longer sends a second rest reminder or inactivity warning, and logging a set or ending the workout after reopening it now cancels the reminder set before it closed.
+
 ### Security
 
 - The app can ask for read-only Health Connect access to weight, body fat, hydration, nutrition, steps, heart rate and sleep. It never writes to Health Connect.
