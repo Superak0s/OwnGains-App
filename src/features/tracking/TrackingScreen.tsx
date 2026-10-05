@@ -120,6 +120,7 @@ import {
   isoToLocalDateStr,
   getCycleDuration,
   formatDateLabel,
+  hasTapeMeasurements,
 } from "./utils";
 import { toDateString, formatDate } from "@utils/format";
 import { getUserKey, STORAGE_KEYS } from "@shared/services/storage";
@@ -738,13 +739,15 @@ export default function TrackingScreen({
         return {
           key: entry.id ?? i,
           title: `${Number(entry.percentage).toFixed(1)}%`,
-          meta: [
-            `Waist ${m?.waist == null ? "—" : Number(m.waist).toFixed(1)} cm`,
-            `Neck ${m?.neck == null ? "—" : Number(m.neck).toFixed(1)} cm`,
-            m?.hip != null && m.hip !== 0 ? `Hip ${Number(m.hip).toFixed(1)} cm` : null,
-          ]
-            .filter(Boolean)
-            .join(" · "),
+          meta: hasTapeMeasurements(entry)
+            ? [
+                `Waist ${m?.waist == null ? "—" : Number(m.waist).toFixed(1)} cm`,
+                `Neck ${m?.neck == null ? "—" : Number(m.neck).toFixed(1)} cm`,
+                m?.hip != null && m.hip !== 0 ? `Hip ${Number(m.hip).toFixed(1)} cm` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")
+            : "Health Connect",
           deleteLabel: "Delete body fat entry",
           onDelete: () => bodyFat.deleteBodyFatEntry(entry),
         };

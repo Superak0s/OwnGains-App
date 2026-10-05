@@ -107,3 +107,23 @@ describe("body fat logging", () => {
     expect((await bodyFatApi.getBodyFatHistory()).entries).toHaveLength(1);
   });
 });
+
+describe("body fat without tape measurements", () => {
+  it("stores a reading with no measurements as Health Connect", async () => {
+    await bodyFatApi.logBodyFat(21.4, null, null, "2024-03-01T07:00:00.000Z");
+    const { entries } = await bodyFatApi.getBodyFatHistory();
+    expect(entries[0]).toMatchObject({
+      percentage: 21.4,
+      measurements: null,
+      gender: null,
+      method: "health_connect",
+      calculatedAt: "2024-03-01T07:00:00.000Z",
+    });
+  });
+
+  it("keeps the US Navy method when measurements are given", async () => {
+    await bodyFatApi.logBodyFat(18, measurements, "male", "2024-03-01");
+    const { entries } = await bodyFatApi.getBodyFatHistory();
+    expect(entries[0]).toMatchObject({ method: "us_navy", gender: "male" });
+  });
+});

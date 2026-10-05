@@ -6,6 +6,20 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Added
+
+- Settings has a Health Connect section on Android. After you connect it, OwnGains imports your weight, body fat, hydration and nutrition from the last 30 days into your logs, again each time you open the app, or on demand with Sync Now. Entries you already have are not imported twice.
+- Steps, Heart Rate and Sleep widgets for Home on Android show today's steps and heart rate and last night's sleep from Health Connect. They read it live and store nothing.
+
+### Changed
+
+- Android 8.0 or later is required.
+
+### Security
+
+- The app can ask for read-only Health Connect access to weight, body fat, hydration, nutrition, steps, heart rate and sleep. It never writes to Health Connect.
+- The privacy policy describes what OwnGains reads from Health Connect and where it is kept.
+
 ### Internal
 
 - Unused Android permissions are blocked through `android.blockedPermissions` in `app.json`, replacing the `withAndroidPermissionPruning` config plugin.
@@ -20,6 +34,9 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The two root error fallbacks share one view with a colour argument.
 - Removed dead code: `exerciseGuides`, the tracking hooks barrel, `pendingSyncRows`, `getActiveInjuries`, `getAllPhotos`, `resetServerVersionStatus`, `parseSafeDate`, `getCycleStartIso`, the `CycleEntry` alias, `nowIso`, `SEVERITY_INK`, the `LOCALE` constant, unused `React` imports and five exports only used in their own file.
 - `scripts/api_audit.py` reads the server routes from `OwnGains-Server/src/`, where they moved.
+- Body fat entries can be stored without tape measurements, and `api-requests.md` specs the matching server change.
+- Added the `react-native-health-connect` dependency and the `withHealthConnectRationale` config plugin, which opens the privacy policy from the Health Connect permission screen.
+- Health Connect tests cover the importer's mapping, both dedup checks, failures, pruning, pagination, throttling and account switches, and the Home widget's foreground refresh.
 
 ## [0.1.7] - 2026-10-04
 

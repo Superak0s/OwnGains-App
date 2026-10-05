@@ -155,6 +155,7 @@ const ALERT_PREVIEWS: ReadonlyArray<{
 import TutorialMenuSheet from "@features/tutorial/TutorialMenuSheet";
 import { tutorialAnchor } from "@features/tutorial/anchors";
 import { friendsApi } from "@features/friends/services";
+import HealthConnectSection from "@features/healthConnect/HealthConnectSection";
 import type { BlockedUser } from "@features/friends/services";
 import {
   isCrashReportingEnabled,
@@ -199,7 +200,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { userFacingError } from "@shared/services/apiError";
 
-type SettingsStyles = ReturnType<typeof makeStyles>;
+export type SettingsStyles = ReturnType<typeof makeStyles>;
 
 const NO_LOCAL_PROGRESS_HINT = "No local progress on this device";
 
@@ -2922,6 +2923,7 @@ ${photosOmitted} progress photo${photosOmitted === 1 ? " was" : "s were"} too la
           </View>
 
           {renderSyncSection()}
+          <HealthConnectSection styles={styles} userId={user?.id ?? null} alert={alert} />
 
           <View style={styles.section}>
             <Text

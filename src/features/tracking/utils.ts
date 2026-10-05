@@ -1,4 +1,5 @@
 import type { MenstrualEntry } from "./services/types";
+import type { BodyFatEntryWithFields } from "./types";
 import { toDateString, formatDate, parseDate } from "@utils/format";
 
 export function isoToLocalDateStr(isoStr: string | null | undefined): string {
@@ -134,3 +135,6 @@ export function toFeetInches(cm: number): { feet: number; inches: number } {
     inches: Math.round(totalInches % 12),
   };
 }
+
+export const hasTapeMeasurements = (entry: BodyFatEntryWithFields): boolean =>
+  entry.measurements?.waist != null || entry.waistCm != null;

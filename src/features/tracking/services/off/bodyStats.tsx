@@ -34,10 +34,10 @@ interface WeightRecord {
 interface BodyFatRecord {
   id: string
   percentage: number
-  measurements: BodyFatMeasurements
-  gender: Gender
+  measurements: BodyFatMeasurements | null
+  gender: Gender | null
   calculatedAt: string
-  method: "us_navy"
+  method: "us_navy" | "health_connect"
 }
 
 const weightStore = createRecordStore<WeightRecord>(
@@ -131,8 +131,8 @@ export const getCurrentBodyWeight = async (
 export const bodyFatApi = {
   logBodyFat: async (
     percentage: number,
-    measurements: BodyFatMeasurements,
-    gender: Gender,
+    measurements: BodyFatMeasurements | null,
+    gender: Gender | null,
     date: string | null = null,
   ): Promise<unknown> => {
     try {
@@ -150,7 +150,7 @@ export const bodyFatApi = {
         measurements,
         gender,
         calculatedAt: calculatedAt,
-        method: "us_navy",
+        method: measurements ? "us_navy" : "health_connect",
       }
       await bodyFatStore.put(record)
       return { success: true, entry: record }

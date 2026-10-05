@@ -70,7 +70,7 @@ export interface BodyFatEntryWithFields extends BodyFatEntry {
     waist?: number;
     neck?: number;
     hip?: number;
-  };
+  } | null;
 }
 
 

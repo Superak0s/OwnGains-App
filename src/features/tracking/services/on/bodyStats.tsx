@@ -85,8 +85,8 @@ export const getCurrentBodyWeight = async (
 export const bodyFatApi = {
   logBodyFat: async (
     percentage: number,
-    measurements: BodyFatMeasurements,
-    gender: Gender,
+    measurements: BodyFatMeasurements | null,
+    gender: Gender | null,
     date: string | null = null,
   ): Promise<unknown> => {
     let measuredAt: string
@@ -102,7 +102,7 @@ export const bodyFatApi = {
       body: JSON.stringify({
         percentage,
         measurements,
-        bfFormulaSex: gender,
+        bfFormulaSex: gender ?? undefined,
         measuredAt,
       }),
     })

@@ -5,7 +5,7 @@ import { View } from "react-native";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import type { BodyFatEntryWithFields } from "../types";
 import { Button, Metric, Note, Placeholder, space } from "../ui";
-import { toFeetInches } from "../utils";
+import { hasTapeMeasurements, toFeetInches } from "../utils";
 
 interface BodyFatRenderCtx {
   history: BodyFatEntryWithFields[];
@@ -108,7 +108,7 @@ export function renderBodyFatWidget(
               latest.percentage ?? latest.bodyFatPercentage ?? 0,
             ).toFixed(1)}
             unit='%'
-            meta={`US Navy method · ${new Date(
+            meta={`${hasTapeMeasurements(latest) ? "US Navy method" : "Health Connect"} · ${new Date(
               latest.date ?? latest.recordedAt ?? latest.calculatedAt ?? "",
             ).toLocaleDateString()}`}
           />

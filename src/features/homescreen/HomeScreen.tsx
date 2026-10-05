@@ -47,6 +47,7 @@ import {
 } from "@shared/components/widgets/WidgetBoardChrome";
 import WidgetsPanel from "@shared/components/widgets/WidgetsPanel";
 import ForeignWidget from "./ForeignWidget";
+import HealthWidget from "@features/healthConnect/HealthWidget";
 import {
   HOME_WIDGET_REGISTRY,
   HOME_WIDGET_SOURCE,
@@ -579,6 +580,15 @@ export default function HomeScreen(): React.JSX.Element {
             hasSessionOnDate={hasSessionOnDate}
             onDatePress={setSelectedDate}
             styles={styles}
+          />
+        );
+      case "health_steps":
+      case "health_heart_rate":
+      case "health_sleep":
+        return (
+          <HealthWidget
+            type={instance.type}
+            onOpenSettings={() => navigation.navigate("Settings")}
           />
         );
       default:

@@ -134,5 +134,7 @@ export const STORAGE_KEYS = {
   PR_CELEBRATION: "prCelebration",
   AUTO_PROGRESSION: "autoProgression",
   PROGRAM_DIRTY: "programDirty",
+  HEALTH_CONNECT_IMPORTED: "healthConnectImported",
+  HEALTH_CONNECT_LAST_SYNC: "healthConnectLastSync",
 } as const
 

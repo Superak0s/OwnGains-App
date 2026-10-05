@@ -216,7 +216,7 @@ export interface BodyFatEntry {
   neckCm?: number;
   hipCm?: number;
   measurementUnit?: string;
-  gender?: string;
+  gender?: string | null;
   recordedAt?: string;
   calculatedAt?: string;
 }

@@ -47,6 +47,7 @@
       "./plugins/withDebugAppIdSuffix.js",
       "./plugins/withAndroidNetworkSecurity.js",
       "./plugins/withAbiSplits.js",
+      "./plugins/withHealthConnectRationale.js",
       "expo-sqlite",
       "expo-image",
       [
@@ -57,7 +58,8 @@
             "enableShrinkResourcesInReleaseBuilds": true,
             "compileSdkVersion": 36,
             "targetSdkVersion": 36,
-            "extraProguardRules": "-keep class com.balthazargronon.RCTZeroconf.** { *; }\n-keep class expo.modules.sqlite.** { *; }\n-keep class com.horcrux.svg.** { *; }\n-keep class expo.modules.** { *; }\n-keep class io.sentry.** { *; }\n-keepattributes LineNumberTable,SourceFile\n-keepclassmembers class * { @expo.modules.core.interfaces.ExpoProp *; }"
+            "minSdkVersion": 26,
+            "extraProguardRules": "-keep class com.balthazargronon.RCTZeroconf.** { *; }\n-keep class expo.modules.sqlite.** { *; }\n-keep class com.horcrux.svg.** { *; }\n-keep class expo.modules.** { *; }\n-keep class io.sentry.** { *; }\n-keepattributes LineNumberTable,SourceFile\n-keepclassmembers class * { @expo.modules.core.interfaces.ExpoProp *; }\n-keep class dev.matinzd.healthconnect.** { *; }"
           }
         }
       ],
@@ -91,7 +93,14 @@
         "SCHEDULE_EXACT_ALARM",
         "INTERNET",
         "ACCESS_WIFI_STATE",
-        "CHANGE_WIFI_MULTICAST_STATE"
+        "CHANGE_WIFI_MULTICAST_STATE",
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.READ_BODY_FAT",
+        "android.permission.health.READ_HYDRATION",
+        "android.permission.health.READ_NUTRITION",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_SLEEP"
       ],
       "blockedPermissions": [
         "android.permission.SYSTEM_ALERT_WINDOW",

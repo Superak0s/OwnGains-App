@@ -1,5 +1,10 @@
+import { Platform } from "react-native";
 import type { WidgetDefinition } from "@shared/types";
 import { toDefaultWidgets } from "@shared/types";
+import {
+  HEALTH_WIDGET_REGISTRY,
+  type HealthWidgetType,
+} from "@features/healthConnect/widgets";
 import {
   PLAN_WIDGET_REGISTRY,
   type PlanWidgetType,
@@ -121,7 +126,8 @@ export type HomeWidgetType =
   | MeasurementsWidgetType
   | HydrationWidgetType
   | SorenessWidgetType
-  | MenstrualWidgetType;
+  | MenstrualWidgetType
+  | HealthWidgetType;
 
 const WIDGET_SOURCES: [
   string,
@@ -142,6 +148,14 @@ const WIDGET_SOURCES: [
   ["Tracking", HYDRATION_WIDGET_REGISTRY, "Hydration"],
   ["Tracking", SORENESS_WIDGET_REGISTRY, "Soreness"],
   ["Tracking", MENSTRUAL_WIDGET_REGISTRY, "Menstrual"],
+  ...(Platform.OS === "android"
+    ? [
+        ["Health", HEALTH_WIDGET_REGISTRY] as [
+          string,
+          Record<string, WidgetDefinition<string>>,
+        ],
+      ]
+    : []),
 ];
 
 export const HOME_WIDGET_REGISTRY = Object.fromEntries(
