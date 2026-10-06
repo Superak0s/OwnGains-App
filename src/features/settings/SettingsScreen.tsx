@@ -3520,6 +3520,36 @@ ${photosOmitted} progress photo${photosOmitted === 1 ? " was" : "s were"} too la
                 </View>
                 <Text style={styles.settingValue}>Open</Text>
               </TouchableOpacity>
+              {[
+                {
+                  label: "App on GitHub",
+                  description: "Source code, releases and issues",
+                  url: "https://github.com/Superak0s/OwnGains-App",
+                },
+                {
+                  label: "Server on GitHub",
+                  description: "Self-host your own OwnGains Server",
+                  url: "https://github.com/Superak0s/OwnGains-Server",
+                },
+              ].map(({ label, description, url }) => (
+                <React.Fragment key={url}>
+                  <View style={styles.divider} />
+                  <TouchableOpacity
+                    style={styles.settingRow}
+                    onPress={() => void Linking.openURL(url)}
+                    accessibilityRole="link"
+                    accessibilityLabel={label}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.settingLabel}>{label}</Text>
+                      <Text style={styles.settingDescription}>
+                        {description}
+                      </Text>
+                    </View>
+                    <Text style={styles.settingValue}>View ↗</Text>
+                  </TouchableOpacity>
+                </React.Fragment>
+              ))}
               <View style={styles.divider} />
               <TouchableOpacity
                 style={styles.settingRow}

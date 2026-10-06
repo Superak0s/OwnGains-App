@@ -2,7 +2,7 @@
   "expo": {
     "name": "OwnGains",
     "slug": "owngains",
-    "version": "0.1.7",
+    "version": "0.2.0",
     "orientation": "portrait",
     "icon": "./assets/adaptive-icon.png",
     "scheme": "owngains",
@@ -79,7 +79,7 @@
       "**/*"
     ],
     "android": {
-      "versionCode": 8,
+      "versionCode": 9,
       "allowBackup": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon-foreground.png",

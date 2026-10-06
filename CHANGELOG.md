@@ -8,6 +8,12 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ### Added
 
+- Settings → About links to the GitHub pages of the app and of OwnGains Server.
+
+## [0.2.0] - 2026-10-06
+
+### Added
+
 - Settings has a Health Connect section on Android. After you connect it, OwnGains imports your weight, body fat, hydration and nutrition from the last 30 days into your logs, again each time you open the app, or on demand with Sync Now. Entries you already have are not imported twice.
 - Steps, Heart Rate and Sleep widgets for Home on Android show today's steps and heart rate and last night's sleep from Health Connect. They read it live and store nothing.
 - Hydration settings on Android can turn on a quick-log notification. It stays in the notification shade, shows today's water total and has buttons for your first three presets that log a drink without opening the app.
@@ -26,6 +32,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The privacy policy describes what OwnGains reads from Health Connect and where it is kept.
 
 ### Internal
+
 - Usage telemetry for Health Connect (connect, sync timing and counts, rejected imports) and the water quick-log notification (toggle, quick logs).
 
 - Unused Android permissions are blocked through `android.blockedPermissions` in `app.json`, replacing the `withAndroidPermissionPruning` config plugin.
