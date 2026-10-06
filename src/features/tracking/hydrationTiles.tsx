@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigation } from "@react-navigation/native";
 import { AppRegistry, Linking, Platform, ToastAndroid } from "react-native";
 import { authService } from "@features/auth/services";
 import { quickLogHydration } from "./hydrationNotification";
@@ -31,16 +32,21 @@ const isLogWaterUrl = (url: string | null): boolean =>
 /** Opens the log water sheet when the "Log water" tile launches the app. */
 export function HydrationTileModal({ onLogged }: { readonly onLogged: () => void }) {
   const [open, setOpen] = useState(false);
+  const navigation = useNavigation();
 
   useEffect(() => {
-    void Linking.getInitialURL().then((url) => {
-      if (isLogWaterUrl(url)) setOpen(true);
-    });
-    const sub = Linking.addEventListener("url", ({ url }) => {
-      if (isLogWaterUrl(url)) setOpen(true);
-    });
+    const openFromTile = (url: string | null) => {
+      if (!isLogWaterUrl(url)) return;
+      (navigation.navigate as unknown as (name: string, params: object) => void)("Main", {
+        screen: "Tracking",
+        params: { tab: "hydration" },
+      });
+      setOpen(true);
+    };
+    void Linking.getInitialURL().then(openFromTile);
+    const sub = Linking.addEventListener("url", ({ url }) => openFromTile(url));
     return () => sub.remove();
-  }, []);
+  }, [navigation]);
 
   return (
     <LogHydrationModal

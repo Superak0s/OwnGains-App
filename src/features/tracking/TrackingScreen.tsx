@@ -5,7 +5,7 @@ import React, {
   useRef,
   useMemo,
 } from "react";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import {
   View,
   Text,
@@ -297,9 +297,17 @@ export default function TrackingScreen({
   const [cycleModalOpen, setCycleModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState(() =>
-    embedWidget ? tabForWidget(embedWidget) : "weight",
+    embedWidget ? tabForWidget(embedWidget) : TRACKING_TABS[0].key,
   );
   const [refreshing, setRefreshing] = useState(false);
+  const navigation = useNavigation();
+  const requestedTab = (useRoute().params as { tab?: string } | undefined)?.tab;
+  useEffect(() => {
+    if (!requestedTab || embedWidget) return;
+    setActiveTab(requestedTab);
+    // Cleared so the next request for the same tab still switches to it.
+    navigation.setParams({ tab: undefined } as never);
+  }, [requestedTab, embedWidget, navigation]);
   const [dayModal, setDayModal] = useState<DayModalState | null>(null);
   const [selectedLogDate, setSelectedLogDate] = useState<Date | null>(null);
   const loadDataRef = useRef<() => Promise<void>>(async () => {});

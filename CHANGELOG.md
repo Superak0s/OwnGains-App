@@ -9,7 +9,11 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 ### Added
 
 - Settings → About links to the GitHub pages of the app and of OwnGains Server.
-- Quick Settings tiles on Android. Add Water +250 ml or Water +500 ml to the pull-down panel to log a drink with one tap without opening the app, or Log water to open the app straight to the log water sheet.
+- Quick Settings tiles on Android. Add Water +250 ml or Water +500 ml to the pull-down panel to log a drink with one tap without opening the app, or Log water to open the Hydration tab of the Tracking screen with the log water sheet.
+
+### Changed
+
+- Hydration is now the first tab on the Tracking screen and the one it opens on. If you have reordered your tracking tabs, your order is kept.
 
 ### Fixed
 
