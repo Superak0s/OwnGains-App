@@ -252,7 +252,7 @@ OwnGains and the official server are built and run by one developer. If the app 
 ## App identity
 
 - Name: **OwnGains** · slug `owngains` · package `com.owngains.app` (debug installs alongside as `com.owngains.app.debug`)
-- Android permissions: `POST_NOTIFICATIONS`, `VIBRATE`, `RECEIVE_BOOT_COMPLETED`, `SCHEDULE_EXACT_ALARM`, `INTERNET`, `ACCESS_WIFI_STATE`, `CHANGE_WIFI_MULTICAST_STATE`.
+- Android permissions: `POST_NOTIFICATIONS`, `VIBRATE`, `RECEIVE_BOOT_COMPLETED`, `SCHEDULE_EXACT_ALARM`, `INTERNET`, `ACCESS_WIFI_STATE`, `CHANGE_WIFI_MULTICAST_STATE`, `WAKE_LOCK`.
 
 ## License
 

@@ -4,6 +4,17 @@ const mockApiCall = jest.fn();
 const mockIsServerless = jest.fn(async () => false);
 const mockGetServerUrl = jest.fn(() => "https://gym.example");
 
+const mockAppState = { currentState: "active" };
+jest.mock("react-native", () =>
+  Object.defineProperty(jest.requireActual("react-native"), "AppState", {
+    value: {
+      get currentState() {
+        return mockAppState.currentState;
+      },
+      addEventListener: jest.fn(),
+    },
+  }),
+);
 jest.mock("@shared/services/apiClient", () => ({ apiCall: mockApiCall }));
 jest.mock("@shared/services/appMode", () => ({
   isServerless: mockIsServerless,
@@ -39,6 +50,7 @@ beforeEach(() => {
   mockIsServerless.mockResolvedValue(false);
   mockGetServerUrl.mockReturnValue("https://gym.example");
   mockApiCall.mockResolvedValue({ status: "OK" });
+  mockAppState.currentState = "active";
   load();
 });
 
@@ -228,4 +240,24 @@ describe("describeLocalOnlyFeatures", () => {
       mod.describeLocalOnlyFeatures(["tracking", "supplements", "photos"]),
     ).toBe("Body tracking, Supplements and photos");
   });
+});
+
+it("sends nothing from a headless run and goes by the stored list", async () => {
+  mockAppState.currentState = "background";
+  mockStore["@local_only_features"] = {
+    url: "https://gym.example",
+    features: ["tracking"],
+  };
+
+  expect(await mod.isFeatureLocal("tracking")).toBe(true);
+  await flush();
+  expect(mockApiCall).not.toHaveBeenCalled();
+});
+
+it("keeps health data on-device in a headless run with nothing stored", async () => {
+  mockAppState.currentState = "background";
+
+  expect(await mod.isFeatureLocal("tracking")).toBe(true);
+  await flush();
+  expect(mockApiCall).not.toHaveBeenCalled();
 });

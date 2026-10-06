@@ -1,3 +1,4 @@
+import { AppState } from "react-native"
 import { apiCall } from "./apiClient"
 import { isServerless } from "./appMode"
 import { getServerUrl, onServerUrlChange } from "./config"
@@ -119,8 +120,10 @@ const prime = (): Promise<void> =>
     const stored = await loadFromStorage<StoredList>(STORAGE_KEY)
     // Pinned to the server it came from, since another server has its own config,
     // and assuming this one's answer would route data to the wrong place.
-    if (stored?.url === getServerUrl()) {
-      adopt(stored.features)
+    if (stored?.url === getServerUrl()) adopt(stored.features)
+    // A headless run (water tile, notification button) is not an app open, so it sends nothing.
+    if (AppState.currentState !== "active") return
+    if (cached !== null) {
       void refreshLocalOnlyFeatures()
       return
     }
@@ -171,4 +174,8 @@ onServerUrlChange(() => {
   primed = null
   retryAfter = 0
   unreachableStreak = 0
+})
+
+AppState.addEventListener("change", (state) => {
+  if (state === "active") void refreshLocalOnlyFeatures()
 })

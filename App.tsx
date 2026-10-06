@@ -137,7 +137,11 @@ import { getNotifications } from "./src/shared/services/notifications";
 import { sweepStaleExports } from "./src/utils/writeJsonExport";
 import { useGitHubUpdateCheck } from "./src/shared/services/githubUpdate";
 import { useHealthConnectSync } from "./src/features/healthConnect/importer";
-import { useHydrationNotification } from "./src/features/tracking/hydrationNotification";
+import {
+  refreshHydrationNotification,
+  useHydrationNotification,
+} from "./src/features/tracking/hydrationNotification";
+import { HydrationTileModal } from "./src/features/tracking/hydrationTiles";
 
 interface TabIconProps {
   readonly icon: string;
@@ -591,6 +595,11 @@ function MainTabs() {
             />
           ))}
       </Tab.Navigator>
+      {user?.id != null && (
+        <HydrationTileModal
+          onLogged={() => void refreshHydrationNotification(String(user.id))}
+        />
+      )}
       {updateAlert}
     </View>
   );

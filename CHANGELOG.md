@@ -9,6 +9,21 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 ### Added
 
 - Settings → About links to the GitHub pages of the app and of OwnGains Server.
+- Quick Settings tiles on Android. Add Water +250 ml or Water +500 ml to the pull-down panel to log a drink with one tap without opening the app, or Log water to open the app straight to the log water sheet.
+
+### Fixed
+
+- Tracking widgets on the Home screen now show entries you log on the Tracking screen. They refresh each time you return to Home, and the Tracking screen likewise picks up entries logged elsewhere.
+- Logging water from the quick-log notification or a tile while the app is closed no longer contacts your server when it keeps that data on this phone. The app checks which features the server stores each time you open it or return to it, and keeps the last known answer while the server is unreachable.
+
+### Security
+
+- The app now declares the `WAKE_LOCK` permission so a tile tap can finish logging a drink while the app is closed. Android grants it at install without a prompt.
+
+### Internal
+
+- Moved `ApiError`/`ServerUnreachableError` into `apiErrorClasses.ts` to break the `crashReporting` and `apiError` require cycle.
+- New local native module `modules/hydration-tiles` with the tile services and a headless JS task. The notification buttons and the tiles share `quickLogHydration`.
 
 ## [0.2.0] - 2026-10-06
 

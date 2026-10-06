@@ -5,6 +5,7 @@ import React, {
   useRef,
   useMemo,
 } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   Text,
@@ -544,6 +545,16 @@ export default function TrackingScreen({
   const forceReloadActiveTab = useCallback(
     () => loadActiveTab(true),
     [loadActiveTab],
+  );
+
+  // Tab screens stay mounted, so entries logged on another screen (or the
+  // Home board embedding this one) would otherwise never appear here.
+  useFocusEffect(
+    useCallback(() => {
+      if (loadedTabsRef.current.has(activeTabRef.current)) {
+        void loadActiveTab(true);
+      }
+    }, [loadActiveTab]),
   );
 
   // The server can start or stop storing this feature's data while the app

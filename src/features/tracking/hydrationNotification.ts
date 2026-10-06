@@ -161,22 +161,40 @@ export const handleHydrationAction = async (
   );
   if (type !== DATA_TYPE || !userId) return;
   if (!response.actionIdentifier.startsWith(ACTION_PREFIX)) return;
-  const ml = Number(response.actionIdentifier.slice(ACTION_PREFIX.length));
-  if (!(ml > 0)) return;
+  await quickLogHydration(
+    userId,
+    Number(response.actionIdentifier.slice(ACTION_PREFIX.length)),
+    "notification",
+  );
+};
+
+/** Logs a drink outside the app's UI. Returns false when nothing was logged. */
+export const quickLogHydration = async (
+  userId: string,
+  ml: number,
+  source: "notification" | "tile",
+): Promise<boolean> => {
+  if (!(ml > 0)) return false;
 
   // A headless run starts with no account seated. One signed in as someone
   // else must not get this drink.
   const seated = getRecordStoreUser();
   if (seated === null) setRecordStoreUser(userId);
-  else if (seated !== userId) return;
+  else if (seated !== userId) return false;
 
+  let logged = false;
   try {
     await hydrationApi.logHydration(ml);
-    trackFeature("hydration", "quick_log", { foreground: AppState.currentState === "active" });
+    logged = true;
+    trackFeature("hydration", "quick_log", {
+      source,
+      foreground: AppState.currentState === "active",
+    });
   } catch (error) {
-    captureException(error, { stage: "hydrationQuickLog" });
+    captureException(error, { stage: "hydrationQuickLog", source });
   }
-  await present(userId);
+  await refreshHydrationNotification(userId);
+  return logged;
 };
 
 TaskManager.defineTask<NotificationResponse | Record<string, unknown>>(

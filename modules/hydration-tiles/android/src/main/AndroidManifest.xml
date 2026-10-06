@@ -1,0 +1,40 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- HeadlessJsTaskService holds a wake lock while the tile's log runs. -->
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+  <application>
+    <service
+        android:name=".HydrationTileTaskService"
+        android:exported="false" />
+    <service
+        android:name=".AddWater250TileService"
+        android:exported="true"
+        android:icon="@drawable/ic_tile_glass"
+        android:label="Water +250 ml"
+        android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+      <intent-filter>
+        <action android:name="android.service.quicksettings.action.QS_TILE" />
+      </intent-filter>
+    </service>
+    <service
+        android:name=".AddWater500TileService"
+        android:exported="true"
+        android:icon="@drawable/ic_tile_bottle"
+        android:label="Water +500 ml"
+        android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+      <intent-filter>
+        <action android:name="android.service.quicksettings.action.QS_TILE" />
+      </intent-filter>
+    </service>
+    <service
+        android:name=".LogWaterTileService"
+        android:exported="true"
+        android:icon="@drawable/ic_tile_log_water"
+        android:label="Log water"
+        android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+      <intent-filter>
+        <action android:name="android.service.quicksettings.action.QS_TILE" />
+      </intent-filter>
+    </service>
+  </application>
+</manifest>

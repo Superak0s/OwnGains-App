@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/react-native";
 import { AppState } from "react-native";
 import { GITHUB_BUILD } from "../distribution";
-import { ApiError, ServerUnreachableError } from "./apiError";
+import { ApiError, ServerUnreachableError } from "./apiErrorClasses";
 import { takeMigrationFailure } from "./storageMigrations";
 import {
   getStorageItemSync,
