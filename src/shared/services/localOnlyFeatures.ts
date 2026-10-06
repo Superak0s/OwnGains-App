@@ -165,7 +165,7 @@ export const isFeatureLocal = async (feature: string): Promise<boolean> =>
 export const describeLocalOnlyFeatures = (features: string[]): string => {
   const labels = features.map((feature) => LABELS[feature] ?? feature)
   if (labels.length < 2) return labels.join("")
-  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`
+  return `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`
 }
 
 onServerUrlChange(() => {

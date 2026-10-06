@@ -356,8 +356,6 @@ describe("useSyncManager local-to-server ID remapping on replay", () => {
       "ppl",
       2,
       "Pull",
-      undefined,
-      undefined,
       false,
       "2026-09-20T18:00:00.000+02:00",
       "sync-start",

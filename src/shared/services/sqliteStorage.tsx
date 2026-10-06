@@ -245,19 +245,17 @@ export const importAll = (
 ): Promise<void> =>
   serializeRecordWrite(async () => {
     try {
+      const recordRows = Object.entries(snapshot.records ?? {}).flatMap(
+        ([collection, rows]) =>
+          rows.map((row) => [collection, row.id, row.sortKey, row.value]),
+      );
       await inExclusiveTransaction(async (txn) => {
         if (mode === "replace") {
           await txn.runAsync("DELETE FROM kv_store");
           await txn.runAsync("DELETE FROM kv_records");
         }
         await runPrepared(txn, upsertKvSql, Object.entries(snapshot.kv ?? {}));
-        await runPrepared(
-          txn,
-          upsertRecordSql,
-          Object.entries(snapshot.records ?? {}).flatMap(([collection, rows]) =>
-            rows.map((row) => [collection, row.id, row.sortKey, row.value]),
-          ),
-        );
+        await runPrepared(txn, upsertRecordSql, recordRows);
       });
     } finally {
       // A render-path sync read during the import may have cached a pre-import value.

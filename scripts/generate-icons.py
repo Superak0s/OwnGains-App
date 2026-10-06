@@ -33,7 +33,7 @@ def key_layers(rgb, bg):
 
 
 def fit_transform(alpha, fit):
-    ys, xs = np.where(alpha > 0.5)
+    ys, xs = np.nonzero(alpha > 0.5)
     cx, cy = (xs.min() + xs.max()) / 2, (ys.min() + ys.max()) / 2
     radius = np.hypot(xs - cx, ys - cy).max()
     return cx, cy, fit * SIZE / radius

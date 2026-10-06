@@ -305,8 +305,6 @@ export const useSessionOperations = ({
           selectedSplit,
           currentDay,
           day.dayTitle,
-          day.primaryMuscles,
-          day.secondaryMuscles,
           false,
           startTime,
         );

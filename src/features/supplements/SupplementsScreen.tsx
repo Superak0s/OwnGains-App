@@ -841,14 +841,14 @@ function SupplementCard({
   const multiDose = s.dosesPerDay > 1;
   const done = allDosesTaken(s);
   const nextDose = nextDoseAt(s, now);
+  const intervalNote = s.doseIntervalMinutes
+    ? `, every ${formatInterval(s.doseIntervalMinutes)}`
+    : "";
   const doseSummary = multiDose
-    ? `${s.defaultAmount} ${s.unit} × ${s.dosesPerDay}/day${s.doseIntervalMinutes ? `, every ${formatInterval(s.doseIntervalMinutes)}` : ""}`
+    ? `${s.defaultAmount} ${s.unit} × ${s.dosesPerDay}/day${intervalNote}`
     : `${s.defaultAmount} ${s.unit}`;
-  const doneLabel = multiDose
-    ? `, ${s.dosesToday} of ${s.dosesPerDay} doses taken today`
-    : s.takenToday
-      ? ", taken today"
-      : "";
+  let doneLabel = s.takenToday ? ", taken today" : "";
+  if (multiDose) doneLabel = `, ${s.dosesToday} of ${s.dosesPerDay} doses taken today`;
 
   return (
     <View style={styles.card}>

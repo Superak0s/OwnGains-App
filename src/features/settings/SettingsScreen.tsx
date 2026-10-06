@@ -264,6 +264,21 @@ function UndertrainedExample({
   );
 }
 
+const SUPPORT_COPY = KOFI_URL
+  ? { role: "link", label: "Support development on Ko-fi", cta: "Ko-fi ↗" } as const
+  : { role: "button", label: "Support development with a tip", cta: "Tip" } as const;
+
+const PROFILE_COPY = {
+  section: "Profile",
+  editLabel: "Edit this device profile",
+  row: "This Device Profile",
+};
+const ACCOUNT_COPY = {
+  section: "Account",
+  editLabel: "Edit your account details",
+  row: "Account",
+};
+
 export default function SettingsScreen(): React.JSX.Element {
   const { colors } = useTheme();
   const switchThumbColor = (on: boolean) =>
@@ -626,7 +641,7 @@ export default function SettingsScreen(): React.JSX.Element {
       // Checked before the split is persisted: the fill throws on a
       // split with no exercises, and there is nothing to roll the change back.
       const hasExercises = (program.days ?? []).some(
-        (day) => (day.split?.[split as string]?.exercises?.length ?? 0) > 0,
+        (day) => (day.split?.[split]?.exercises?.length ?? 0) > 0,
       );
       if (!hasExercises) {
         throw new Error(
@@ -647,9 +662,10 @@ export default function SettingsScreen(): React.JSX.Element {
         friends ? `${friends} demo friends` : null,
         tracked ? `${tracked} tracking and supplement entries` : null,
       ].filter(Boolean);
+      const extrasNote = extras.length ? `, plus ${extras.join(" and ")}` : "";
       alert(
         "Demo Data Added",
-        `${sessions} sessions and ${sets} sets spread over the last five weeks${extras.length ? `, plus ${extras.join(" and ")}` : ""}. Pull to refresh a screen to see them.`,
+        `${sessions} sessions and ${sets} sets spread over the last five weeks${extrasNote}. Pull to refresh a screen to see them.`,
         [{ text: "OK" }],
         "success",
       );
@@ -697,10 +713,10 @@ export default function SettingsScreen(): React.JSX.Element {
         lines.push("", "Debug builds send nothing. Set EXPO_PUBLIC_SENTRY_FORCE_ENABLE=true in .env and rebuild, or test a release APK.");
       } else if (!result.crashReporting && !result.telemetry) {
         lines.push("", "Both consent switches are off, so nothing was sent. Turn one on under Privacy and Data.");
-      } else if (!result.flushed) {
-        lines.push("", "The event was queued but did not reach Sentry. Check connectivity.");
-      } else {
+      } else if (result.flushed) {
         lines.push("", "Look for 'OwnGains Sentry test event' in Sentry.");
+      } else {
+        lines.push("", "The event was queued but did not reach Sentry. Check connectivity.");
       }
       alert(
         "Sentry Test",
@@ -779,6 +795,7 @@ export default function SettingsScreen(): React.JSX.Element {
   const bothStores = isOffline
     ? "All of it is on this device and none of it can be recovered."
     : "Both local data and server data will be deleted. This cannot be undone.";
+  const accountCopy = isOffline ? PROFILE_COPY : ACCOUNT_COPY;
   const historyKept = isOffline
     ? "Your completed workout history stays on this device and remains visible in Analytics."
     : "Your completed workout history on the server will remain intact and visible in Analytics.";
@@ -1077,11 +1094,12 @@ ${photoNote} ${safetyNote}`,
     try {
       const { photosOmitted } = await restoreDeviceBackup(backup, mode);
       trackFeature("backup", "restore", { restore_mode: mode });
+      const photoNoun = photosOmitted === 1 ? "photo was" : "photos were";
       const photoNote =
         photosOmitted > 0
           ? `
 
-${photosOmitted} progress photo${photosOmitted === 1 ? " was" : "s were"} too large to fit in this backup and could not be restored. Those entries will show as missing images.`
+${photosOmitted} progress ${photoNoun} too large to fit in this backup and could not be restored. Those entries will show as missing images.`
           : "";
       alert(
         "Backup Restored",
@@ -2788,12 +2806,8 @@ ${photosOmitted} progress photo${photosOmitted === 1 ? " was" : "s were"} too la
                 if (KOFI_URL) void Linking.openURL(KOFI_URL);
                 else setShowTipJar(true);
               }}
-              accessibilityRole={KOFI_URL ? "link" : "button"}
-              accessibilityLabel={
-                KOFI_URL
-                  ? "Support development on Ko-fi"
-                  : "Support development with a tip"
-              }
+              accessibilityRole={SUPPORT_COPY.role}
+              accessibilityLabel={SUPPORT_COPY.label}
             >
               <LinearGradient
                 colors={["#db2777", "#e11d48", "#ea580c"]}
@@ -2809,7 +2823,7 @@ ${photosOmitted} progress photo${photosOmitted === 1 ? " was" : "s were"} too la
                   </Text>
                 </View>
                 <Text style={styles.supportCta}>
-                  {KOFI_URL ? "Ko-fi ↗" : "Tip"}
+                  {SUPPORT_COPY.cta}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -2855,25 +2869,19 @@ ${photosOmitted} progress photo${photosOmitted === 1 ? " was" : "s were"} too la
             <Text
               style={styles.sectionTitle}
               accessibilityRole="header"
-              accessibilityLabel={isOffline ? "Profile" : "Account"}
+              accessibilityLabel={accountCopy.section}
             >
-              👤 {isOffline ? "Profile" : "Account"}
+              👤 {accountCopy.section}
             </Text>
             <View style={styles.card}>
               <TouchableOpacity
                 style={styles.settingRow}
                 onPress={() => setShowAccountModal(true)}
                 accessibilityRole="button"
-                accessibilityLabel={
-                  isOffline
-                    ? "Edit this device profile"
-                    : "Edit your account details"
-                }
+                accessibilityLabel={accountCopy.editLabel}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>
-                    {isOffline ? "This Device Profile" : "Account"}
-                  </Text>
+                  <Text style={styles.settingLabel}>{accountCopy.row}</Text>
                   <Text style={styles.settingDescription}>
                     {user?.name ??
                       user?.username ??

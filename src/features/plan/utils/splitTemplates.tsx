@@ -165,10 +165,9 @@ export function insertTemplateIntoProgram(
 ): WorkoutData {
   const existingDays = workoutData?.days ?? []
   const existingSplits = workoutData?.split ?? []
-  const split =
-    existingSplits.length > 0
-      ? existingSplits
-      : (targetSplits?.length ? targetSplits : [DEFAULT_SPLIT_NAME])
+  let split = existingSplits
+  if (split.length === 0)
+    split = targetSplits?.length ? targetSplits : [DEFAULT_SPLIT_NAME]
 
   const maxDayNumber = existingDays.reduce(
     (max, d) => Math.max(max, d.dayNumber ?? 0),

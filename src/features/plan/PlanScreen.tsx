@@ -129,6 +129,17 @@ const syncProgram = async (
   }
 };
 
+const planSubtitle = (dayTotal: number | null, split: string | null | undefined): string => {
+  if (dayTotal === null) return "Start from a template, build your own, or import a spreadsheet.";
+  const days = `${dayTotal} ${dayTotal === 1 ? "day" : "days"}`;
+  return split ? `Training ${split}: ${days}` : `${days} ready. Pick a split to train.`;
+};
+
+const splitSubmitText = (editing: boolean, hasProgram: boolean): string => {
+  if (editing) return "Save changes";
+  return hasProgram ? "Start as new program" : "Create split";
+};
+
 export default function PlanScreen({
   embedWidget,
 }: {
@@ -567,7 +578,7 @@ Your current program is untouched. Check that you picked the right columns, or p
     const drop = () =>
       patchDraftSplitDay(idx, (day) => ({
         ...day,
-        exercises: day.exercises.filter((_, i) => i !== exIdx),
+        exercises: day.exercises.toSpliced(exIdx, 1),
       }));
     const name = draftSplitDays[idx]?.exercises[exIdx]?.name?.trim();
     if (!name) {
@@ -1356,18 +1367,11 @@ Your program is untouched. Try again, or pick a different destination.`,
     return <Text style={styles.widgetLineMuted}>Coming soon</Text>;
   };
 
-  const programDayTotal = wd?.totalDays ?? wd?.days?.length ?? 0;
-  const dayWord = programDayTotal === 1 ? "day" : "days";
-  let headerSubtitle =
-    "Start from a template, build your own, or import a spreadsheet.";
-  if (workoutData)
-    headerSubtitle = selectedSplit
-      ? `Training ${selectedSplit}: ${programDayTotal} ${dayWord}`
-      : `${programDayTotal} ${dayWord} ready. Pick a split to train.`;
-
-  let splitSubmitLabel = "Create split";
-  if (editingSplitName) splitSubmitLabel = "Save changes";
-  else if (workoutData) splitSubmitLabel = "Start as new program";
+  const headerSubtitle = planSubtitle(
+    workoutData ? (wd?.totalDays ?? wd?.days?.length ?? 0) : null,
+    selectedSplit,
+  );
+  const splitSubmitLabel = splitSubmitText(!!editingSplitName, !!workoutData);
 
   return (
     <SafeAreaView

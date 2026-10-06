@@ -110,7 +110,7 @@ interface DbEntry {
 export const columnName = (index: number): string => {
   let name = "";
   for (let n = index + 1; n > 0; n = Math.floor((n - 1) / 26)) {
-    name = String.fromCharCode(65 + ((n - 1) % 26)) + name;
+    name = String.fromCodePoint(65 + ((n - 1) % 26)) + name;
   }
   return name;
 };
@@ -132,12 +132,12 @@ const escapeXml = (text: string) =>
   text
     // eslint-disable-next-line no-control-regex -- stripping them is the point
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 
-const quoteSheet = (name: string) => `'${name.replace(/'/g, "''")}'`;
+const quoteSheet = (name: string) => `'${name.replaceAll("'", "''")}'`;
 
 const titleCase = (text: string) =>
   text.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
@@ -341,12 +341,11 @@ const buildProgramGrid = (
   return { grid, lastCol, lastRow: lastDataRow, setsCol, exerciseRanges, rows };
 };
 
-const statusText = (points: number, range: TargetRange) =>
-  points < range.min
-    ? "Below range"
-    : points > range.max
-      ? "Above range"
-      : `Within ${range.min}-${range.max}`;
+const statusText = (points: number, range: TargetRange) => {
+  if (points < range.min) return "Below range";
+  if (points > range.max) return "Above range";
+  return `Within ${range.min}-${range.max}`;
+};
 
 const buildMuscleSheet = (
   name: string,
@@ -494,8 +493,9 @@ const sheetXml = (sheet: SheetSpec): string => {
   const cols = sheet.widths
     .map((width, i) => `<col min="${i + 1}" max="${i + 1}" width="${width}" customWidth="1"/>`)
     .join("");
-  const merges = sheet.merges?.length
-    ? `<mergeCells count="${sheet.merges.length}">${sheet.merges.map((m) => `<mergeCell ref="${m}"/>`).join("")}</mergeCells>`
+  const mergeCells = (sheet.merges ?? []).map((m) => `<mergeCell ref="${m}"/>`);
+  const merges = mergeCells.length
+    ? `<mergeCells count="${mergeCells.length}">${mergeCells.join("")}</mergeCells>`
     : "";
   return (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
@@ -513,6 +513,8 @@ const sheetXml = (sheet: SheetSpec): string => {
 
 const solidFill = (rgb: string) =>
   `<fill><patternFill patternType="solid"><fgColor rgb="${rgb}"/><bgColor rgb="${rgb}"/></patternFill></fill>`;
+
+const BAND_DXFS = BANDS.map((b) => `<dxf>${solidFill(b.color)}</dxf>`).join("");
 
 const STYLES_XML =
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
@@ -551,7 +553,7 @@ const STYLES_XML =
   '<xf numFmtId="0" fontId="5" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
   "</cellXfs>" +
   '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
-  `<dxfs count="${BANDS.length}">${BANDS.map((b) => `<dxf>${solidFill(b.color)}</dxf>`).join("")}</dxfs>` +
+  `<dxfs count="${BANDS.length}">${BAND_DXFS}</dxfs>` +
   "</styleSheet>";
 
 /** Every part of the .xlsx package, keyed by its path inside the zip. */
@@ -571,8 +573,9 @@ export function buildProgramWorkbookFiles(
     dbLastRow,
   );
 
+  const exerciseList = `${quoteSheet(SHEETS.db)}!$A$2:$A$${dbLastRow}`;
   const validation = layout.exerciseRanges.length
-    ? `<dataValidations count="1"><dataValidation type="list" allowBlank="1" showErrorMessage="0" sqref="${layout.exerciseRanges.join(" ")}"><formula1>${escapeXml(`${quoteSheet(SHEETS.db)}!$A$2:$A$${dbLastRow}`)}</formula1></dataValidation></dataValidations>`
+    ? `<dataValidations count="1"><dataValidation type="list" allowBlank="1" showErrorMessage="0" sqref="${layout.exerciseRanges.join(" ")}"><formula1>${escapeXml(exerciseList)}</formula1></dataValidation></dataValidations>`
     : "";
 
   const dbGrid: Grid = new Map();

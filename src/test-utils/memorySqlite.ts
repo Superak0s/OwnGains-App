@@ -70,9 +70,10 @@ export const getRecordsVersion = jest.fn(() => ++versionReads)
 export const listRecordsBefore = jest.fn(
   async (c: string, before: { sortKey: string; id: string } | null, limit: number) =>
     [...rowsOf(c)]
-      .sort((a, b) =>
-        a.sortKey === b.sortKey ? (a.id < b.id ? 1 : -1) : a.sortKey < b.sortKey ? 1 : -1,
-      )
+      .sort((a, b) => {
+        if (a.sortKey !== b.sortKey) return a.sortKey < b.sortKey ? 1 : -1
+        return a.id < b.id ? 1 : -1
+      })
       .filter(
         (r) =>
           !before ||

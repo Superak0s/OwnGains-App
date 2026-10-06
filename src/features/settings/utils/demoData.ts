@@ -133,8 +133,6 @@ export async function fillDemoSessions(
       split,
       day.dayNumber,
       day.dayTitle,
-      day.primaryMuscles,
-      day.secondaryMuscles,
       true,
       new Date(cursor).toISOString(),
     );

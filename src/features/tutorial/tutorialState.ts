@@ -25,7 +25,7 @@ export interface TutorialState {
 // switches must never bring the first-run tutorial back.
 export const TUTORIAL_KEY = "@tutorial";
 
-const ROLES: readonly string[] = ["user", "trainer", "both"];
+const ROLES: ReadonlySet<string> = new Set(["user", "trainer", "both"]);
 
 export function parseTutorialState(raw: string | null): TutorialState {
   let value: unknown = null;
@@ -36,7 +36,7 @@ export function parseTutorialState(raw: string | null): TutorialState {
   }
   const o = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
   return {
-    role: ROLES.includes(o.role as string) ? (o.role as Role) : null,
+    role: ROLES.has(o.role as string) ? (o.role as Role) : null,
     completed: Array.isArray(o.completed)
       ? o.completed.filter((c): c is string => typeof c === "string")
       : [],

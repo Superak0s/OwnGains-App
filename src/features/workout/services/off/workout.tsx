@@ -141,8 +141,6 @@ export const workoutApi = {
     split: string | null,
     dayNumber: number,
     dayTitle?: string,
-    _primaryMuscles?: string[],
-    _secondaryMuscles?: string[],
     isDemo: boolean = false,
     startTime: string | null = null,
   ): Promise<number | string> => {
@@ -343,7 +341,7 @@ export const workoutApi = {
     };
     const sessions = await sessionsStore.getWhere(where, limit);
     const filtered = sessions
-      .sort(
+      .toSorted(
         (a, b) =>
           new Date(b.startTime ?? 0).getTime() -
           new Date(a.startTime ?? 0).getTime(),

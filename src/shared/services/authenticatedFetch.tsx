@@ -24,6 +24,16 @@ export const routeOf = (url: string): string =>
     })
     .join("/") || "/"
 
+const linkCallerSignal = (
+  callerSignal: AbortSignal | null | undefined,
+  controller: AbortController,
+): (() => void) => {
+  const forward = (): void => controller.abort()
+  if (callerSignal?.aborted) controller.abort()
+  else callerSignal?.addEventListener("abort", forward)
+  return () => callerSignal?.removeEventListener("abort", forward)
+}
+
 const fetchWithRetry = async (
   url: string,
   init: RequestInit,
@@ -35,9 +45,7 @@ const fetchWithRetry = async (
   for (let attempt = 0; attempt < attempts; attempt++) {
     const controller = new AbortController()
     const callerSignal = init.signal
-    const forward = (): void => controller.abort()
-    if (callerSignal?.aborted) controller.abort()
-    else callerSignal?.addEventListener("abort", forward)
+    const unlinkCallerSignal = linkCallerSignal(callerSignal, controller)
     const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs)
     try {
       return await fetch(url, { ...init, signal: controller.signal })
@@ -64,7 +72,7 @@ const fetchWithRetry = async (
       )
     } finally {
       clearTimeout(timeoutHandle)
-      callerSignal?.removeEventListener("abort", forward)
+      unlinkCallerSignal()
     }
   }
   throw new Error(`Request failed after ${attempts} attempts`)
@@ -141,7 +149,23 @@ const fetchAuthenticated = async (
     timeoutMs,
   )
 
-  const durationMs = Date.now() - startedAt
+  recordResponse(response, method, route, Date.now() - startedAt)
+
+  // Login, registration and refresh use raw fetch, so a 401 here can only mean
+  // the bearer token itself was rejected, regardless of the message body.
+  if (response.status === 401 && toOwnServer) {
+    return retryAfterRefresh(url, options, { token, mayRefresh, method, route })
+  }
+
+  return response
+}
+
+const recordResponse = (
+  response: Response,
+  method: string,
+  route: string,
+  durationMs: number,
+): void => {
   const status = response.status
   metric.distribution("api.request.duration", durationMs, {
     unit: "millisecond",
@@ -151,34 +175,39 @@ const fetchAuthenticated = async (
   if (!response.ok) {
     log.warn("api.http_error", { method, route, status, durationMs })
   }
+}
 
-  // Login, registration and refresh use raw fetch, so a 401 here can only mean
-  // the bearer token itself was rejected, regardless of the message body.
-  if (status === 401 && toOwnServer) {
-    const hasRefreshToken = !!(await refreshTokenStorage.get())
-    // Without a refresh token the refresher answers "rejected", which is what
-    // logs the session out instead of failing every request.
-    if (mayRefresh && (hasRefreshToken || token) && route !== SIGNOUT_ROUTE) {
-      const current = await tokenStorage.get()
-      // Another request may already have refreshed while this one was in flight.
-      const outcome =
-        current && current !== token
-          ? "refreshed"
-          : await (sessionRefresher?.() ?? Promise.resolve("rejected" as const))
-      if (outcome === "refreshed") return fetchAuthenticated(url, options, false)
-      if (outcome === "unreachable") {
-        throw new ServerUnreachableError()
-      }
-    }
-    console.warn("Token rejected, clearing access token")
-    log.warn("auth.token_rejected", { method, route })
-    metric.count("auth.session_expired")
-    // Only dropped while a refresh token can restore the session.
-    if (hasRefreshToken) await tokenStorage.clearAccess()
-    // Must be an ApiError: isCredentialRejection() keys off it to tell a
-    // rejected credential from an unreachable server.
-    throw new ApiError("SESSION_EXPIRED", status)
+const refreshOutcome = async (token: string | null): Promise<SessionRefreshResult> => {
+  const current = await tokenStorage.get()
+  // Another request may already have refreshed while this one was in flight.
+  if (current && current !== token) return "refreshed"
+  return sessionRefresher?.() ?? "rejected"
+}
+
+const retryAfterRefresh = async (
+  url: string,
+  options: AuthenticatedFetchOptions,
+  { token, mayRefresh, method, route }: {
+    token: string | null
+    mayRefresh: boolean
+    method: string
+    route: string
+  },
+): Promise<Response> => {
+  const hasRefreshToken = !!(await refreshTokenStorage.get())
+  // Without a refresh token the refresher answers "rejected", which is what
+  // logs the session out instead of failing every request.
+  if (mayRefresh && (hasRefreshToken || token) && route !== SIGNOUT_ROUTE) {
+    const outcome = await refreshOutcome(token)
+    if (outcome === "refreshed") return fetchAuthenticated(url, options, false)
+    if (outcome === "unreachable") throw new ServerUnreachableError()
   }
-
-  return response
+  console.warn("Token rejected, clearing access token")
+  log.warn("auth.token_rejected", { method, route })
+  metric.count("auth.session_expired")
+  // Only dropped while a refresh token can restore the session.
+  if (hasRefreshToken) await tokenStorage.clearAccess()
+  // Must be an ApiError: isCredentialRejection() keys off it to tell a
+  // rejected credential from an unreachable server.
+  throw new ApiError("SESSION_EXPIRED", 401)
 }

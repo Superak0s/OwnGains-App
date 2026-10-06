@@ -185,8 +185,8 @@ export const scheduleTimeReminder = async (
   // get a 00:00 notification they never asked for while the UI shows the time
   // they did set.
   const parsed = /^(\d{1,2}):(\d{2})$/.exec(reminderTime.trim());
-  const hours = parsed ? Number(parsed[1]) : NaN;
-  const minutes = parsed ? Number(parsed[2]) : NaN;
+  const hours = parsed ? Number(parsed[1]) : Number.NaN;
+  const minutes = parsed ? Number(parsed[2]) : Number.NaN;
   if (!(hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59)) {
     console.warn(`Refusing to schedule reminder for invalid time "${reminderTime}"`);
     metric.count("notifications.invalid_reminder_time");

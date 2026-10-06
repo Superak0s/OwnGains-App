@@ -97,7 +97,7 @@ const writePhotos = async (photos: Record<string, string>): Promise<void> => {
   }
 };
 
-const PHOTO_FILE_PATTERN = /progress-photos\/([^"\/]+)/g;
+const PHOTO_FILE_PATTERN = /progress-photos\/([^"/]+)/g;
 
 const photoNamesIn = ({ kv, records }: StorageSnapshot): Set<string> =>
   new Set(

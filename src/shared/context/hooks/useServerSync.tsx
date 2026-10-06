@@ -207,7 +207,7 @@ export const useServerSync = ({
           // Splits it doesn't know about are kept.
           return {
             ...localDay,
-            split: { ...localDay.split, ...(serverDay.split || {}) },
+            split: { ...localDay.split, ...serverDay.split },
           };
         }),
       };

@@ -17,5 +17,5 @@ fi
 npx @sonar/scan \
   -Dsonar.host.url=https://sonarqube.superak0s.com \
   -Dsonar.token="$SONAR_TOKEN" \
-  -Dsonar.projectKey=owngains-app \
+  -Dsonar.projectKey=OwnGains-App \
   -Dsonar.analysisCache.enabled=false

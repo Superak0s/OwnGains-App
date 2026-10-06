@@ -159,6 +159,43 @@ interface WorkoutScreenBodyProps {
   readonly visible?: boolean;
 }
 
+function exerciseAt(
+  day: CurrentDayWorkout | null,
+  index: number | null,
+): Exercise | null {
+  if (index === null) return null;
+  return day?.exercises[index] ?? null;
+}
+
+function stickyTarget(
+  prev: { day: number; target: string | null },
+  day: number,
+  muscle: string | undefined,
+): { day: number; target: string | null } {
+  const computed = muscle ? normalizeExerciseName(muscle) : null;
+  if (prev.day !== day) return { day, target: computed };
+  return { day, target: prev.target ?? computed };
+}
+
+// The flag is resolved once per exercise instead of inside the comparator
+// and again at each render site.
+function orderByPriority(exercises: Exercise[], target: string | null) {
+  const ordered = exercises.map((exercise, originalIndex) => ({
+    exercise,
+    originalIndex,
+    isPriority:
+      target !== null &&
+      [
+        ...(exercise.primaryMuscles ?? []),
+        ...(exercise.secondaryMuscles ?? []),
+      ].some((m) => normalizeExerciseName(m) === target),
+  }));
+  if (target !== null) {
+    ordered.sort((a, b) => Number(!a.isPriority) - Number(!b.isPriority));
+  }
+  return ordered;
+}
+
 function WorkoutScreenBody({
   hidePartnerControls = false,
   header,
@@ -823,21 +860,19 @@ function WorkoutScreenBody({
                   {
                     text: "Delete",
                     style: "destructive",
-                    onPress: () => {
-                      void (async () => {
-                        const deleted = await deleteSetDetails(
-                          currentDay,
-                          exerciseIndex,
-                          setIndex,
+                    onPress: async () => {
+                      const deleted = await deleteSetDetails(
+                        currentDay,
+                        exerciseIndex,
+                        setIndex,
+                      );
+                      if (!deleted)
+                        alert(
+                          "Not Deleted",
+                          "The set could not be removed. Please try again.",
+                          [{ text: "OK" }],
+                          "error",
                         );
-                        if (!deleted)
-                          alert(
-                            "Not Deleted",
-                            "The set could not be removed. Please try again.",
-                            [{ text: "OK" }],
-                            "error",
-                          );
-                      })();
                     },
                   },
                 ],
@@ -897,8 +932,9 @@ function WorkoutScreenBody({
       // on reps instead. Otherwise it can never register a PR at all.
       const bodyweight = weightInKg <= 0;
       const current = bodyweight ? reps : estimateOneRepMax(weightInKg, reps);
+      const bodyweightBest = best.weight <= 0 ? best.reps : 0;
       const previousBest = Math.max(
-        bodyweight ? (best.weight <= 0 ? best.reps : 0) : best.oneRepMax,
+        bodyweight ? bodyweightBest : best.oneRepMax,
         celebratedBestRef.current[exerciseName] ?? 0,
       );
       if (previousBest <= 0 || current <= previousBest) return;
@@ -1103,10 +1139,7 @@ function WorkoutScreenBody({
     [isCurrentDayLocked, warnDayLocked],
   );
 
-  const machineExercise =
-    machinesFor === null
-      ? null
-      : ((dayWorkout?.exercises ?? [])[machinesFor] ?? null);
+  const machineExercise = exerciseAt(dayWorkout, machinesFor);
 
   const patchMachines = (index: number | null, patch: MachinePatch) => {
     if (index === null || !selectedSplit) return;
@@ -1183,10 +1216,7 @@ function WorkoutScreenBody({
     [isCurrentDayLocked, warnDayLocked],
   );
 
-  const settingsExercise =
-    settingsFor === null
-      ? null
-      : ((dayWorkout?.exercises ?? [])[settingsFor] ?? null);
+  const settingsExercise = exerciseAt(dayWorkout, settingsFor);
 
   const handleSetDefaultMachine = (name: string) => {
     patchMachines(settingsFor, {
@@ -1698,38 +1728,16 @@ function WorkoutScreenBody({
 
   const partnerParticipant = isInJointSession ? partner : null;
 
-  // The flag is resolved once per exercise instead of inside the comparator
-  // and again at each render site.
-  const computedPriorityTarget =
-    showUndertrainedPerExercise && topUndertrainedGroup
-      ? normalizeExerciseName(topUndertrainedGroup.primaryMuscle)
-      : null;
-  if (priorityTargetRef.current.day !== currentDay) {
-    priorityTargetRef.current = {
-      day: currentDay,
-      target: computedPriorityTarget,
-    };
-  } else {
-    priorityTargetRef.current.target ??= computedPriorityTarget;
-  }
-  const priorityMuscleTarget = priorityTargetRef.current.target;
-  const orderedExercises = (dayWorkout?.exercises ?? []).map(
-    (exercise, originalIndex) => ({
-      exercise,
-      originalIndex,
-      isPriority:
-        priorityMuscleTarget !== null &&
-        [
-          ...(exercise.primaryMuscles ?? []),
-          ...(exercise.secondaryMuscles ?? []),
-        ].some((m) => normalizeExerciseName(m) === priorityMuscleTarget),
-    }),
+  priorityTargetRef.current = stickyTarget(
+    priorityTargetRef.current,
+    currentDay,
+    showUndertrainedPerExercise ? topUndertrainedGroup?.primaryMuscle : undefined,
   );
-  if (priorityMuscleTarget !== null) {
-    orderedExercises.sort(
-      (a, b) => Number(!a.isPriority) - Number(!b.isPriority),
-    );
-  }
+  const priorityMuscleTarget = priorityTargetRef.current.target;
+  const orderedExercises = orderByPriority(
+    dayWorkout?.exercises ?? [],
+    priorityMuscleTarget,
+  );
 
   const renderWidgetContent = (
     instance: WidgetInstance<WorkoutWidgetType>,

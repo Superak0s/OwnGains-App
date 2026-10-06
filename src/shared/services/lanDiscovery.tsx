@@ -17,12 +17,11 @@ const HOSTNAME_PATTERN = new RegExp(
 )
 const MAX_FQDN_LENGTH = 253
 
-export const safeFqdn = (value: string | undefined | null): string | null =>
-  typeof value === "string" &&
-  (value.endsWith(".") ? value.length - 1 : value.length) <= MAX_FQDN_LENGTH &&
-  HOSTNAME_PATTERN.test(value)
-    ? value
-    : null
+export const safeFqdn = (value: string | undefined | null): string | null => {
+  if (typeof value !== "string") return null
+  const length = value.endsWith(".") ? value.length - 1 : value.length
+  return length <= MAX_FQDN_LENGTH && HOSTNAME_PATTERN.test(value) ? value : null
+}
 
 export const safePort = (value: unknown): number | null =>
   typeof value === "number" && Number.isInteger(value) && value > 0 && value <= 65535

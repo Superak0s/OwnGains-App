@@ -44,11 +44,11 @@ export const authService = {
     const existing = await authService.getStoredUser()
     // A profile name typed on the login screen renames the profile rather than
     // being discarded. Before Settings opens, this is the only place to rename it.
-    const user: AuthUser = existing
-      ? username && username !== existing.username
+    const renamed =
+      existing && username && username !== existing.username
         ? { ...existing, username }
         : existing
-      : { id: LOCAL_USER_ID, username, email: "" }
+    const user: AuthUser = renamed ?? { id: LOCAL_USER_ID, username, email: "" }
     await setStorageItem(LOCAL_USER_KEY, JSON.stringify(user))
     cachedUser = user
     await tokenStorage.set(generateId("offline"))

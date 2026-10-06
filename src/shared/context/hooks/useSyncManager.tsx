@@ -273,8 +273,6 @@ export const useSyncManager = ({
           sync.data.split,
           sync.data.dayNumber,
           sync.data.dayTitle,
-          sync.data.primaryMuscles,
-          sync.data.secondaryMuscles,
           false,
           sync.timestamp,
           sync.syncId,
@@ -481,14 +479,11 @@ export const useSyncManager = ({
 
       let rateLimited = false;
 
-      const processSync = async (sync: PendingSync): Promise<void> => {
-        if (sync.type !== "startSession") {
-          const mapped = localToServerId.get(String(sync.data.sessionId));
-          if (mapped) sync.data.sessionId = mapped;
-        }
-
-        const sessionKey = sessionKeyOf(sync);
-
+      const mustWait = (
+        sync: PendingSync,
+        sessionKey: string | null | undefined,
+        retryState: { nextAttemptAt: number } | undefined,
+      ): boolean => {
         // Its startSession hasn't synced yet (or isn't in this run), so keep it
         // queued rather than posting a local id the server can't resolve.
         // startSession is what creates the real id, so it is exempt.
@@ -501,19 +496,55 @@ export const useSyncManager = ({
             attributes: { type: sync.type, outcome: "deferred_local_id" },
           });
           blockedSessions.add(sessionKey);
-          failedSyncs.push(sync);
-          return;
+          return true;
+        }
+        if (sessionKey && blockedSessions.has(sessionKey)) return true;
+        if (retryState && retryState.nextAttemptAt > now) {
+          if (sessionKey) blockedSessions.add(sessionKey);
+          return true;
+        }
+        return false;
+      };
+
+      const runSync = async (sync: PendingSync): Promise<void> => {
+        switch (sync.type) {
+          case "startSession":
+            await handleStartSession(sync);
+            break;
+          case "recordSet":
+            await handleRecordSet(sync);
+            break;
+          case "endSession":
+            await handleEndSession(sync);
+            break;
+          case "updateSessionDay":
+            await handleUpdateSessionDay(sync);
+            break;
+          default:
+            console.warn("Unknown sync type:", (sync as PendingSync).type);
+            log.error("sync.dropped", {
+              type: String((sync as PendingSync).type),
+              reason: "unknown_type",
+            });
+            noteDropped(String((sync as PendingSync).type), "unknown_type");
+            captureException(new Error("Dropped queued sync of unknown type"), {
+              stage: "syncPendingData",
+              type: String((sync as PendingSync).type),
+            });
+        }
+      };
+
+      const processSync = async (sync: PendingSync): Promise<void> => {
+        if (sync.type !== "startSession") {
+          const mapped = localToServerId.get(String(sync.data.sessionId));
+          if (mapped) sync.data.sessionId = mapped;
         }
 
-        if (sessionKey && blockedSessions.has(sessionKey)) {
-          failedSyncs.push(sync);
-          return;
-        }
+        const sessionKey = sessionKeyOf(sync);
 
         const retryKey = retryKeyOf(sync);
         const retryState = retryStateRef.current.get(retryKey);
-        if (retryState && retryState.nextAttemptAt > now) {
-          if (sessionKey) blockedSessions.add(sessionKey);
+        if (mustWait(sync, sessionKey, retryState)) {
           failedSyncs.push(sync);
           return;
         }
@@ -521,31 +552,7 @@ export const useSyncManager = ({
         if (sync.syncId && removedIdsRef.current.has(sync.syncId)) return;
 
         try {
-          switch (sync.type) {
-            case "startSession":
-              await handleStartSession(sync);
-              break;
-            case "recordSet":
-              await handleRecordSet(sync);
-              break;
-            case "endSession":
-              await handleEndSession(sync);
-              break;
-            case "updateSessionDay":
-              await handleUpdateSessionDay(sync);
-              break;
-            default:
-              console.warn("Unknown sync type:", (sync as PendingSync).type);
-              log.error("sync.dropped", {
-                type: String((sync as PendingSync).type),
-                reason: "unknown_type",
-              });
-              noteDropped(String((sync as PendingSync).type), "unknown_type");
-              captureException(new Error("Dropped queued sync of unknown type"), {
-                stage: "syncPendingData",
-                type: String((sync as PendingSync).type),
-              });
-          }
+          await runSync(sync);
           retryStateRef.current.delete(retryKey);
         } catch (error) {
           if (sessionKey) blockedSessions.add(sessionKey);
@@ -559,15 +566,15 @@ export const useSyncManager = ({
       // Anything enqueued while the loop is awaiting is not in workingSyncs.
       // Writing failedSyncs alone would throw those away.
       const attempted = new Set(workingSyncs.map(retryKeyOf));
+      const live = (list: PendingSync[]): PendingSync[] => {
+        const removedIds = removedIdsRef.current;
+        if (removedIds.size === 0) return list;
+        return list.filter((s) => !s.syncId || !removedIds.has(s.syncId));
+      };
       const persistFrom = (index: number): Promise<void> => {
         const extras = queueRef.current.filter(
           (s) => !attempted.has(retryKeyOf(s)),
         );
-        const removedIds = removedIdsRef.current;
-        const live = (list: PendingSync[]): PendingSync[] =>
-          removedIds.size === 0
-            ? list
-            : list.filter((s) => !s.syncId || !removedIds.has(s.syncId));
         // A startSession that synced this run created the real id. Everything
         // still queued has to use it, or a crash before the next run leaves
         // those ops pointing at a local session that no longer replays.

@@ -21,8 +21,6 @@ const startAt = (start: string, split = "push", day = 1) =>
     split,
     day,
     "Chest day",
-    undefined,
-    undefined,
     false,
     start,
   );
@@ -345,7 +343,7 @@ describe("getAnalytics", () => {
 
 describe("deletion", () => {
   it("clears demo sessions only", async () => {
-    await workoutApi.startSession("push", 1, "Day", undefined, undefined, true);
+    await workoutApi.startSession("push", 1, "Day", true);
     await startAt("2024-01-02T10:00:00.000Z");
     expect(await workoutApi.clearDemoSessions()).toEqual({
       success: true,

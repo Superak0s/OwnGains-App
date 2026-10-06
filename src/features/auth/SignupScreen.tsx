@@ -61,11 +61,10 @@ function collectErrors(values: {
   else if (email.length > 254 || !EMAIL_PATTERN.test(email))
     errors.email = "Enter a valid email address, like you@example.com";
 
-  if (!password) errors.password = "Password is required";
-  else {
+  if (password) {
     const policyError = passwordPolicyError(password);
     if (policyError) errors.password = policyError;
-  }
+  } else errors.password = "Password is required";
 
   if (!confirmPassword) errors.confirmPassword = "Re-enter your password";
   else if (password !== confirmPassword)
@@ -73,6 +72,11 @@ function collectErrors(values: {
 
   return errors;
 }
+
+const mismatchError = (password: string, confirm: string): string | undefined =>
+  password && confirm && password !== confirm
+    ? "Passwords do not match"
+    : undefined;
 
 export default function SignupScreen({
   navigation,
@@ -199,12 +203,7 @@ export default function SignupScreen({
   };
 
   const confirmError =
-    errors.confirmPassword ??
-    (password.length > 0 &&
-    confirmPassword.length > 0 &&
-    password !== confirmPassword
-      ? "Passwords do not match"
-      : undefined);
+    errors.confirmPassword ?? mismatchError(password, confirmPassword);
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["top"]}>

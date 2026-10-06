@@ -82,6 +82,6 @@ export const parseDate = (
  */
 export const parseDecimal = (value: string): number => {
   const normalized = value.trim().replace(",", ".")
-  if (!/^-?(\d+\.?\d*|\.\d+)$/.test(normalized)) return NaN
+  if (!/^-?(\d+\.?\d*|\.\d+)$/.test(normalized)) return Number.NaN
   return Number(normalized)
 }

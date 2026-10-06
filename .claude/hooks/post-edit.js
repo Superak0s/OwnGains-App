@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-const { spawnSync } = require("child_process");
-const fs = require("fs");
-const path = require("path");
+const { spawnSync } = require("node:child_process");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const root = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const run = (cmd) => spawnSync(cmd, { shell: true, encoding: "utf8", cwd: root });

@@ -85,6 +85,7 @@ const present = async (
     await Notifications.registerTaskAsync(TASK_NAME);
 
     const goal = settings?.data?.goalMl;
+    const goalNote = goal ? ` of ${goal}` : "";
     await scheduleNotification({
       identifier: NOTIFICATION_ID,
       content: {
@@ -92,7 +93,7 @@ const present = async (
         body:
           total === null
             ? "Log a drink with the buttons below."
-            : `${total}${goal ? ` of ${goal}` : ""} ml today`,
+            : `${total}${goalNote} ml today`,
         data: { type: DATA_TYPE, userId },
         categoryIdentifier: CATEGORY_ID,
         sticky: true,
@@ -156,9 +157,7 @@ const dataOf = (content: RawContent): { type?: string; userId?: string } => {
 export const handleHydrationAction = async (
   response: Pick<NotificationResponse, "actionIdentifier" | "notification">,
 ): Promise<void> => {
-  const { type, userId } = dataOf(
-    response.notification.request.content as RawContent,
-  );
+  const { type, userId } = dataOf(response.notification.request.content);
   if (type !== DATA_TYPE || !userId) return;
   if (!response.actionIdentifier.startsWith(ACTION_PREFIX)) return;
   await quickLogHydration(

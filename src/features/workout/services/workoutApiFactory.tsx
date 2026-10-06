@@ -120,11 +120,6 @@ export const makeWorkoutApi = (http: HttpFetch) => {
       split: string | null,
       dayNumber: number,
       dayTitle?: string,
-      // A workout's muscle labels are read through its program day server-side,
-      // and the offline twin stores them itself. serviceModeContract.test.ts
-      // requires the on/ and off/ signatures to match, so the params are unused here.
-      _primaryMuscles?: string[],
-      _secondaryMuscles?: string[],
       isDemo: boolean = false,
       startTime: string | null = null,
       idempotencyKey?: string,

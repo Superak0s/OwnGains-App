@@ -40,7 +40,7 @@ export function useRestReminder({
     // reruns with the restored set time and must keep the original fire time.
     const fireAt = lastSetEndTime
       ? new Date(lastSetEndTime).getTime() + restReminderSeconds * 1000
-      : NaN;
+      : Number.NaN;
     if (
       !workoutStartTime ||
       isCurrentDayLocked ||

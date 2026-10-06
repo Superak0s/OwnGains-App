@@ -6,6 +6,10 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Internal
+
+- Fixed SonarQube findings: mechanical cleanups, misleading indentation in the offline supplement update, a broken regex in the `api_audit.py` self-test, cognitive-complexity splits across screens, hooks and `api_audit.py`, and the unused muscle params dropped from `startSession`
+
 ## [0.2.1] - 2026-10-06
 
 ### Added

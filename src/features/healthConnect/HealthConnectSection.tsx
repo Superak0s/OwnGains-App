@@ -29,6 +29,15 @@ interface Props {
   readonly alert: ReturnType<typeof useAlert>["alert"];
 }
 
+const syncMessage = (imported: number, failed: boolean): string => {
+  const noun = imported === 1 ? "entry" : "entries";
+  const result =
+    imported > 0 ? `Imported ${imported} new ${noun}.` : "Everything is up to date.";
+  return failed
+    ? `${result} Some data couldn't be imported. It will be retried on the next sync.`
+    : result;
+};
+
 export default function HealthConnectSection({
   styles,
   userId,
@@ -71,18 +80,9 @@ export default function HealthConnectSection({
     setBusy(true);
     try {
       const summary = await syncHealthConnect(userId, true);
-      const imported = summary?.imported ?? 0;
-      const message = [
-        imported > 0
-          ? `Imported ${imported} new ${imported === 1 ? "entry" : "entries"}.`
-          : "Everything is up to date.",
-        summary?.failed.length
-          ? "Some data couldn't be imported. It will be retried on the next sync."
-          : null,
-      ]
-        .filter(Boolean)
-        .join(" ");
-      alert("Health Connect", message, undefined, summary?.failed.length ? "warning" : "success");
+      const failed = Boolean(summary?.failed.length);
+      const message = syncMessage(summary?.imported ?? 0, failed);
+      alert("Health Connect", message, undefined, failed ? "warning" : "success");
     } catch (error) {
       captureException(error, { feature: "healthConnect" });
       alert("Health Connect", "Couldn't read from Health Connect. Try again later.", undefined, "error");
@@ -108,7 +108,9 @@ export default function HealthConnectSection({
   const button = (label: string, accessibilityLabel: string, onPress: () => unknown) => (
     <TouchableOpacity
       style={[styles.syncButton, busy && styles.disabledButton]}
-      onPress={() => void onPress()}
+      onPress={() => {
+        onPress();
+      }}
       disabled={busy}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
@@ -117,6 +119,15 @@ export default function HealthConnectSection({
       <Text style={styles.syncButtonText}>{label}</Text>
     </TouchableOpacity>
   );
+
+  let lastSyncText = "Never";
+  if (busy) lastSyncText = "Syncing…";
+  else if (lastSync) lastSyncText = formatDateTime(lastSync);
+
+  const installButton =
+    availability === "needs_update"
+      ? button("Update Health Connect", "Update Health Connect in the Play Store", openInstallPage)
+      : button("Install Health Connect", "Install Health Connect from the Play Store", openInstallPage);
 
   return (
     <View style={styles.section}>
@@ -129,7 +140,7 @@ export default function HealthConnectSection({
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Last Sync</Text>
               <Text style={styles.infoValue}>
-                {busy ? "Syncing…" : lastSync ? formatDateTime(lastSync) : "Never"}
+                {lastSyncText}
               </Text>
             </View>
             <View style={styles.divider} />
@@ -143,13 +154,7 @@ export default function HealthConnectSection({
             <View style={styles.divider} />
             {availability === "available"
               ? button("Connect", "Connect Health Connect", handleConnect)
-              : button(
-                  availability === "needs_update" ? "Update Health Connect" : "Install Health Connect",
-                  availability === "needs_update"
-                    ? "Update Health Connect in the Play Store"
-                    : "Install Health Connect from the Play Store",
-                  openInstallPage,
-                )}
+              : installButton}
           </>
         )}
       </View>

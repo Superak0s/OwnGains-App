@@ -110,7 +110,7 @@ async function toSummary(s: StoredSupplement): Promise<SupplementSummary> {
     entries
       .map((e) => e.takenAt)
       .filter((t) => new Date(t).getTime() <= now)
-      .sort()
+      .sort((a, b) => a.localeCompare(b))
       .at(-1) ?? null
   return {
     id: s.id,
@@ -177,20 +177,20 @@ export const supplementsApi = {
       const list = await getAllSupplements()
       const stored = requireSupplement(list, id)
 
-    if (params.name !== undefined) stored.name = params.name
-    if (params.unit !== undefined) stored.unit = params.unit
-    if (params.defaultAmount !== undefined)
-      stored.defaultAmount = params.defaultAmount
-    if (params.reminderEnabled !== undefined)
-      stored.reminderEnabled = params.reminderEnabled
-    if (params.reminderTime !== undefined)
-      stored.reminderTime = params.reminderTime
-    if (params.color !== undefined) stored.color = params.color
-    if (params.icon !== undefined) stored.icon = params.icon
-    if (params.dosesPerDay !== undefined)
-      stored.dosesPerDay = params.dosesPerDay
-    if (params.doseIntervalMinutes !== undefined)
-      stored.doseIntervalMinutes = params.doseIntervalMinutes
+      if (params.name !== undefined) stored.name = params.name
+      if (params.unit !== undefined) stored.unit = params.unit
+      if (params.defaultAmount !== undefined)
+        stored.defaultAmount = params.defaultAmount
+      if (params.reminderEnabled !== undefined)
+        stored.reminderEnabled = params.reminderEnabled
+      if (params.reminderTime !== undefined)
+        stored.reminderTime = params.reminderTime
+      if (params.color !== undefined) stored.color = params.color
+      if (params.icon !== undefined) stored.icon = params.icon
+      if (params.dosesPerDay !== undefined)
+        stored.dosesPerDay = params.dosesPerDay
+      if (params.doseIntervalMinutes !== undefined)
+        stored.doseIntervalMinutes = params.doseIntervalMinutes
 
       await saveAllSupplements(list)
       return { success: true, supplement: await toSummary(stored) }

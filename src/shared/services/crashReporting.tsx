@@ -230,6 +230,8 @@ const MAX_EXTRA_LENGTH = 100;
 // Component names only, never user data, and a stack cut at 100 characters
 // would stop at the component that threw.
 const MAX_COMPONENT_STACK_LENGTH = 2000;
+const extraLimit = (key: string) =>
+  key === "componentStack" ? MAX_COMPONENT_STACK_LENGTH : MAX_EXTRA_LENGTH;
 const MAX_MESSAGE_LENGTH = 200;
 
 const redactMessage = (message: string): string =>
@@ -256,14 +258,7 @@ export const scrubEvent = <T extends Sentry.Event>(
       .filter(([key]) => EXTRA_ALLOWED_KEYS.has(key))
       .map(([key, value]) => [
         key,
-        typeof value === "string"
-          ? value.slice(
-              0,
-              key === "componentStack"
-                ? MAX_COMPONENT_STACK_LENGTH
-                : MAX_EXTRA_LENGTH,
-            )
-          : value,
+        typeof value === "string" ? value.slice(0, extraLimit(key)) : value,
       ]),
   );
   const exception = event.exception?.values
@@ -273,7 +268,7 @@ export const scrubEvent = <T extends Sentry.Event>(
           ...value,
           value:
             original instanceof ApiError
-              ? `HTTP ${original.status}${original.code ? ` ${original.code}` : ""}`
+              ? [`HTTP ${original.status}`, original.code].filter(Boolean).join(" ")
               : value.value && redactMessage(value.value),
         })),
       }

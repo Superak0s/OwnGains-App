@@ -66,12 +66,9 @@ export function useWeightTab(deps: UseWeightTabDeps) {
   const saveHeight = useCallback(async (input: HeightInput): Promise<boolean> => {
     const feet = parseDecimal(input.ft || "0");
     const inches = parseDecimal(input.in || "0");
-    const cm =
-      heightUnit === "cm"
-        ? parseDecimal(input.cm)
-        : feet === null || inches === null
-          ? null
-          : (feet * 12 + inches) * 2.54;
+    let cm: number | null = null;
+    if (heightUnit === "cm") cm = parseDecimal(input.cm);
+    else if (feet !== null && inches !== null) cm = (feet * 12 + inches) * 2.54;
     if (cm === null || cm < MIN_HEIGHT_CM || cm > MAX_HEIGHT_CM) {
       alert(
         "Invalid Input",
@@ -120,7 +117,7 @@ export function useWeightTab(deps: UseWeightTabDeps) {
       alert("Invalid Input", "Enter a valid weight, e.g. 80 or 82.5", [{ text: "OK" }], "error");
       return false;
     }
-    if (displayToKg(value, weightUnit as "kg" | "lbs") > MAX_WEIGHT_KG) {
+    if (displayToKg(value, weightUnit) > MAX_WEIGHT_KG) {
       alert(
         "Invalid Input",
         `That's over ${MAX_WEIGHT_KG} kg. Check the number.`,
@@ -135,7 +132,7 @@ export function useWeightTab(deps: UseWeightTabDeps) {
         : null;
       await bodyTrackingApi.logWeight(
         parsed,
-        weightUnit as "kg" | "lbs",
+        weightUnit,
         null,
         recordedAt,
       );

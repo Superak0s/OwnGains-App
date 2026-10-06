@@ -605,7 +605,8 @@ export default function SupplementSettingsModal({
                 <View style={styles.summaryCard}>
                   <Text style={styles.summaryTitle}>📋 Summary</Text>
                   <Text style={styles.summaryText}>
-                    {`You'll be reminded to take ${dosesPerDay > 1 ? `the first dose of ${supplement.name}` : supplement.name} daily at ${reminderTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`}
+                    You'll be reminded to take {dosesPerDay > 1 && "the first dose of "}{supplement.name} daily at{" "}
+                    {reminderTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.
                   </Text>
                 </View>
               )}

@@ -533,6 +533,26 @@ const RANGE_OPTIONS = [
   { value: "90", label: "90 days" },
 ] as const;
 
+function matchesPhotoFilters(
+  photo: ProgressPhotoMuscle,
+  muscle: MuscleGroup | null,
+  cutoffMs: number | null,
+): boolean {
+  if (muscle && !photo.muscleGroups?.includes(muscle)) return false;
+  return cutoffMs === null || new Date(photoTakenAt(photo) ?? 0).getTime() >= cutoffMs;
+}
+
+function daysBetween(before?: string, after?: string): number {
+  if (!before || !after) return 0;
+  return Math.round((new Date(after).getTime() - new Date(before).getTime()) / 86_400_000);
+}
+
+function dateRole(date: string, before?: string, after?: string): string | null {
+  if (date === before) return "Before";
+  if (date === after) return "After";
+  return null;
+}
+
 function PhotosComparisonModal({
   visible,
   onClose,
@@ -577,13 +597,7 @@ function PhotosComparisonModal({
       rangeFilter === "all"
         ? null
         : Date.now() - Number(rangeFilter) * 24 * 60 * 60 * 1000;
-    return photos.filter((p) => {
-      if (muscleFilter && !p.muscleGroups?.includes(muscleFilter)) return false;
-      if (cutoffMs !== null) {
-        if (new Date(photoTakenAt(p) ?? 0).getTime() < cutoffMs) return false;
-      }
-      return true;
-    });
+    return photos.filter((p) => matchesPhotoFilters(p, muscleFilter, cutoffMs));
   }, [photos, muscleFilter, rangeFilter]);
 
   const availableDates = useMemo(
@@ -600,7 +614,7 @@ function PhotosComparisonModal({
     if (autoPicked.current || availableDates.length < 2) return;
     autoPicked.current = true;
     setSelected([
-      availableDates[availableDates.length - 1][0],
+      availableDates.at(-1)![0],
       availableDates[0][0],
     ]);
   }, [visible, availableDates]);
@@ -608,7 +622,7 @@ function PhotosComparisonModal({
   const picked = selected.filter((d) =>
     availableDates.some(([date]) => date === d),
   );
-  const [beforeDate, afterDate] = [...picked].sort();
+  const [beforeDate, afterDate] = picked.toSorted((a, b) => a.localeCompare(b));
 
   const photosForBefore = useMemo(
     () => filteredPhotos.filter((p) => photoDateKey(p) === beforeDate),
@@ -635,13 +649,12 @@ function PhotosComparisonModal({
       day: "numeric",
       year: date.startsWith(String(currentYear)) ? undefined : "numeric",
     });
-  const daysApart =
-    beforeDate && afterDate
-      ? Math.round(
-          (new Date(afterDate).getTime() - new Date(beforeDate).getTime()) /
-            86_400_000,
-        )
-      : 0;
+  const daysApart = daysBetween(beforeDate, afterDate);
+
+  const noDatesNote =
+    availableDates.length === 0
+      ? "No photos match these filters."
+      : "Only one day of photos matches. Widen the filters or take more photos to compare.";
 
   return (
     <ModalSheet
@@ -705,11 +718,7 @@ function PhotosComparisonModal({
 
           <SectionLabel>Dates</SectionLabel>
           {availableDates.length < 2 ? (
-            <Note>
-              {availableDates.length === 0
-                ? "No photos match these filters."
-                : "Only one day of photos matches. Widen the filters or take more photos to compare."}
-            </Note>
+            <Note>{noDatesNote}</Note>
           ) : (
             <ScrollView
               horizontal
@@ -717,18 +726,13 @@ function PhotosComparisonModal({
               contentContainerStyle={styles.dateCardRow}
             >
               {availableDates.map(([date, dayPhotos]) => {
-                const role =
-                  date === beforeDate
-                    ? "Before"
-                    : date === afterDate
-                      ? "After"
-                      : null;
+                const role = dateRole(date, beforeDate, afterDate);
                 return (
                   <TouchableOpacity
                     key={date}
                     accessibilityRole='button'
                     accessibilityState={{ selected: role !== null }}
-                    accessibilityLabel={`${shortDate(date)}, ${dayPhotos.length} photos${role ? `, ${role}` : ""}`}
+                    accessibilityLabel={[shortDate(date), `${dayPhotos.length} photos`, role].filter(Boolean).join(", ")}
                     style={[
                       styles.dateCard,
                       {

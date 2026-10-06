@@ -66,7 +66,7 @@ interface SetDetailsFormProps {
   onSave: (draft: SetDraft) => void;
   onSwitchUnit: (unit: WeightUnit) => void;
   /** Kept current so the parent can tell whether the user has started typing. */
-  draftStartedRef: React.MutableRefObject<boolean>;
+  draftStartedRef: React.RefObject<boolean>;
 }
 
 /** Holds the set inputs in this component so a keystroke re-renders this form, not the workout screen. */

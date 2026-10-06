@@ -79,11 +79,9 @@ function WeightOverview({
     );
 
   const direction =
-    trend?.direction === "up"
-      ? "up"
-      : trend?.direction === "down"
-        ? "down"
-        : "flat";
+    trend?.direction === "up" || trend?.direction === "down"
+      ? trend.direction
+      : "flat";
 
   return (
     <View style={{ gap: space.md }}>

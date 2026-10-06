@@ -137,16 +137,16 @@ export default function PrivacyConsentScreen({
     </TouchableOpacity>
   );
 
+  let heading = "Help improve OwnGains";
+  if (termsChanged) heading = "Updated terms";
+  else if (termsNeeded) heading = "Before you start";
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.logo}>🔒</Text>
         <Text style={styles.title}>
-          {termsChanged
-            ? "Updated terms"
-            : termsNeeded
-              ? "Before you start"
-              : "Help improve OwnGains"}
+          {heading}
         </Text>
         {termsChanged && (
           <Text style={styles.tagline}>

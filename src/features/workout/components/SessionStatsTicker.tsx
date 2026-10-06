@@ -70,6 +70,9 @@ export const SessionStatsWidget = React.memo(function SessionStatsWidget({
   // Before the first rest is logged the baseline is 0, which every elapsed
   // second exceeds. There is no baseline to be over yet.
   const isOvertime = baselineRest > 0 && currentRest > baselineRest;
+  const overtimeNote = isOvertime
+    ? `, over your usual ${lastExercise?.name ?? "session"} rest`
+    : "";
 
   return (
     <View>
@@ -112,11 +115,7 @@ export const SessionStatsWidget = React.memo(function SessionStatsWidget({
         <View
           style={styles.currentRestContainer}
           accessible={true}
-          accessibilityLabel={`Rest since last set ${formatDuration(currentRest)}${
-            isOvertime
-              ? `, over your usual ${lastExercise ? lastExercise.name : "session"} rest`
-              : ""
-          }`}
+          accessibilityLabel={`Rest since last set ${formatDuration(currentRest)}${overtimeNote}`}
         >
           <Text style={styles.currentRestLabel} numberOfLines={1}>
             {lastExercise

@@ -160,12 +160,11 @@ export function Button({
   const { ui, colors } = useUi();
   const base = tone ?? colors.accent;
 
-  const skin =
-    variant === "primary"
-      ? { backgroundColor: base, color: colors.textOnAccent }
-      : variant === "danger"
-        ? { backgroundColor: `${colors.error}${TINT}`, color: colors.error }
-        : { backgroundColor: `${base}${TINT}`, color: base };
+  let skin = { backgroundColor: `${base}${TINT}`, color: base };
+  if (variant === "primary")
+    skin = { backgroundColor: base, color: colors.textOnAccent };
+  else if (variant === "danger")
+    skin = { backgroundColor: `${colors.error}${TINT}`, color: colors.error };
 
   return (
     <TouchableOpacity
@@ -309,12 +308,9 @@ export function Metric({
   side,
 }: MetricProps): React.ReactElement {
   const { ui, colors } = useUi();
-  const deltaColor =
-    delta?.direction === "up"
-      ? colors.error
-      : delta?.direction === "down"
-        ? colors.success
-        : colors.textMuted;
+  let deltaColor = colors.textMuted;
+  if (delta?.direction === "up") deltaColor = colors.error;
+  else if (delta?.direction === "down") deltaColor = colors.success;
 
   return (
     <View style={ui.metric}>

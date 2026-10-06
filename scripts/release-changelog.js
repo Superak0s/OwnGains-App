@@ -3,8 +3,8 @@
 //   check                            exit 1 if [Unreleased] has no entries
 //   stamp <version> <date> <tag>     move [Unreleased] under the version heading
 //   notes <version>                  print that version's section (release notes)
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const FILE = path.join(__dirname, "..", "CHANGELOG.md");
 const RELEASE_HEADING = /^## \[([^\]]+)\]/;
@@ -94,8 +94,8 @@ function updateLinks(lines, version, tag) {
   out[unreleasedIdx] = `[${UNRELEASED}]: ${base}/compare/${tag}...HEAD`;
   const versionLink = `[${version}]: ${base}/releases/tag/${tag}`;
   const existing = out.findIndex((l) => LINK_REF.exec(l)?.[1] === version);
-  if (existing !== -1) out[existing] = versionLink;
-  else out.splice(unreleasedIdx + 1, 0, versionLink);
+  if (existing === -1) out.splice(unreleasedIdx + 1, 0, versionLink);
+  else out[existing] = versionLink;
   return out;
 }
 

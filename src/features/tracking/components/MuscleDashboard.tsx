@@ -184,39 +184,35 @@ export const MuscleDashboard: React.FC<MuscleDashboardProps> = ({
     }
   };
 
+  const removeInjury = async (injury: InjuryRecord) => {
+    try {
+      await injuryApi.deleteInjury(injury.id);
+      setInjuries((prev) => prev.filter((i) => i.id !== injury.id));
+    } catch (error) {
+      Alert.alert("Couldn't delete injury", describeError(error));
+    }
+  };
+
   const deleteInjury = (injury: InjuryRecord) => {
     Alert.alert("Delete injury", "Remove this injury record?", [
       { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await injuryApi.deleteInjury(injury.id);
-            setInjuries((prev) => prev.filter((i) => i.id !== injury.id));
-          } catch (error) {
-            Alert.alert("Couldn't delete injury", describeError(error));
-          }
-        },
-      },
+      { text: "Delete", style: "destructive", onPress: () => removeInjury(injury) },
     ]);
+  };
+
+  const removeNote = async (note: PersonalMuscleNote) => {
+    try {
+      await personalNotesApi.deleteNote(note.id);
+      setPersonalNotes((prev) => prev.filter((n) => n.id !== note.id));
+    } catch (error) {
+      Alert.alert("Couldn't delete note", describeError(error));
+    }
   };
 
   const deleteNote = (note: PersonalMuscleNote) => {
     Alert.alert("Delete note", "Remove this note?", [
       { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await personalNotesApi.deleteNote(note.id);
-            setPersonalNotes((prev) => prev.filter((n) => n.id !== note.id));
-          } catch (error) {
-            Alert.alert("Couldn't delete note", describeError(error));
-          }
-        },
-      },
+      { text: "Delete", style: "destructive", onPress: () => removeNote(note) },
     ]);
   };
 
@@ -436,9 +432,9 @@ export const MuscleDashboard: React.FC<MuscleDashboardProps> = ({
                 <Row
                   title='Severity'
                   value={
-                    recoveryStat.averageSeverity != null
-                      ? `${recoveryStat.averageSeverity.toFixed(1)}/10`
-                      : "—"
+                    recoveryStat.averageSeverity == null
+                      ? "—"
+                      : `${recoveryStat.averageSeverity.toFixed(1)}/10`
                   }
                   last
                 />

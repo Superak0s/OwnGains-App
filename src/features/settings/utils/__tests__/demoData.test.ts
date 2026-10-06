@@ -32,12 +32,12 @@ describe("fillDemoSessions", () => {
     expect(recordSet).toHaveBeenCalledTimes(result.sets);
 
     const starts = startSession.mock.calls.map((c) =>
-      Date.parse((c as unknown[])[6] as string),
+      Date.parse((c as unknown[])[4] as string),
     );
     expect(Math.min(...starts)).toBeLessThanOrEqual(NOW - 30 * DAY_MS);
     expect(Math.max(...starts)).toBeLessThan(NOW);
     expect(
-      startSession.mock.calls.every((c) => (c as unknown[])[5] === true),
+      startSession.mock.calls.every((c) => (c as unknown[])[3] === true),
     ).toBe(true);
   });
 

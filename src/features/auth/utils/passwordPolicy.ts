@@ -6,14 +6,8 @@ export const PASSWORD_RULE_TEXT =
   "at least 10 characters, including a letter and a number";
 export const PASSWORD_HINT = "At least 10 characters, with a letter and a number";
 
-const utf8Length = (value: string): number => {
-  let bytes = 0;
-  for (const char of value) {
-    const code = char.codePointAt(0) ?? 0;
-    bytes += code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4;
-  }
-  return bytes;
-};
+const utf8Length = (value: string): number =>
+  new TextEncoder().encode(value).length;
 
 /** Null when a new password meets the server's policy, otherwise what's wrong with it. */
 export function passwordPolicyError(password: string): string | null {

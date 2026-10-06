@@ -44,9 +44,8 @@ export const menstrualApi = {
       params.set("cycleLengthDays", String(settingsOverride.cycleLengthDays));
     }
     const query = params.toString();
-    return apiCall(
-      `/api/tracking/menstrual/stats${query ? `?${query}` : ""}`,
-    );
+    const path = "/api/tracking/menstrual/stats";
+    return apiCall(query ? `${path}?${query}` : path);
   },
 
   deleteMenstrualEntry: async (id: number): Promise<ApiResponse<null>> =>

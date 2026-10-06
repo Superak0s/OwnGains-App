@@ -2,7 +2,7 @@ const readTimeClaim = (token: string, claim: "exp" | "iat"): number | null => {
   try {
     const payload = token.split(".")[1]
     if (!payload) return null
-    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/")
+    const base64 = payload.replaceAll("-", "+").replaceAll("_", "/")
     const json = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "="))
     const value = (JSON.parse(json) as Record<string, unknown>)[claim]
     return typeof value === "number" ? value * 1000 : null

@@ -46,7 +46,7 @@ describe("makeWorkoutApi", () => {
       reps: 5,
     };
 
-    await api.startSession("Pull", 1, "Back", undefined, undefined, false, null, "k1");
+    await api.startSession("Pull", 1, "Back", false, null, "k1");
     await api.recordSet(7, set, "k2");
     await api.endSession(7, null, "k3");
     await api.recordSet(7, set);

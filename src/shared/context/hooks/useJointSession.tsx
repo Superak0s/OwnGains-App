@@ -237,6 +237,73 @@ export const useJointSession = ({
     setPartnerCompletedSets([])
   }, [])
 
+  const applyJointProgress = useCallback(
+    (progress: JointProgressPayload) => {
+      // The server broadcasts to every participant, so our own push comes
+      // straight back and would be applied as the partner's progress.
+      if (
+        progress.fromUserId &&
+        userId &&
+        String(progress.fromUserId) === String(userId)
+      )
+        return
+
+      if (progress.exerciseNames && progress.fromUserId) {
+        setJointSession((prevSession) => {
+          if (!prevSession?.participants?.length) return prevSession
+          return {
+            ...prevSession,
+            participants: prevSession.participants.map((p) =>
+              p.userId === progress.fromUserId
+                ? { ...p, exerciseNames: progress.exerciseNames }
+                : p,
+            ),
+          }
+        })
+      }
+
+      // Compared against a ref, not inside a setState updater: React may
+      // run an updater more than once, which would fire the pulse twice.
+      const prev = partnerProgressRef.current
+      const changed =
+        prev?.exerciseIndex !== progress.exerciseIndex ||
+        prev?.setIndex !== progress.setIndex
+
+      const next: PartnerProgress = {
+        exerciseIndex: progress.exerciseIndex ?? null,
+        setIndex: progress.setIndex ?? null,
+        exerciseName: progress.exerciseName ?? null,
+        readyForNext: progress.readyForNext ?? false,
+        lastUpdated: Date.now(),
+      }
+      partnerProgressRef.current = next
+      setPartnerProgress(next)
+
+      if (changed && progress.readyForNext) {
+        triggerSyncPulse()
+      }
+
+      if (
+        changed &&
+        progress.exerciseName != null &&
+        progress.setIndex != null
+      ) {
+        const completed = {
+          exerciseName: progress.exerciseName,
+          setIndex: progress.setIndex,
+        }
+        setPartnerCompletedSets((prevSets) =>
+          hasCompletedSet(prevSets, completed)
+            ? prevSets
+            : [...prevSets, completed].slice(-MAX_PARTNER_COMPLETED_SETS),
+        )
+      }
+
+      setIsPartnerReady(progress.readyForNext ?? false)
+    },
+    [userId, triggerSyncPulse],
+  )
+
   const handleSocketMessage = useCallback(
     (msg: WebSocketMessage) => {
       console.debug("[WS_MESSAGE]", msg.type, msg)
@@ -247,67 +314,7 @@ export const useJointSession = ({
             msg as WebSocketMessage & { progress?: JointProgressPayload }
           ).progress
           if (!progress) break
-          // The server broadcasts to every participant, so our own push comes
-          // straight back and would be applied as the partner's progress.
-          if (
-            progress.fromUserId &&
-            userId &&
-            String(progress.fromUserId) === String(userId)
-          )
-            break
-
-          if (progress.exerciseNames && progress.fromUserId) {
-            setJointSession((prevSession) => {
-              if (!prevSession?.participants?.length) return prevSession
-              return {
-                ...prevSession,
-                participants: prevSession.participants.map((p) =>
-                  p.userId === progress.fromUserId
-                    ? { ...p, exerciseNames: progress.exerciseNames }
-                    : p,
-                ),
-              }
-            })
-          }
-
-          // Compared against a ref, not inside a setState updater: React may
-          // run an updater more than once, which would fire the pulse twice.
-          const prev = partnerProgressRef.current
-          const changed =
-            prev?.exerciseIndex !== progress.exerciseIndex ||
-            prev?.setIndex !== progress.setIndex
-
-          const next: PartnerProgress = {
-            exerciseIndex: progress.exerciseIndex ?? null,
-            setIndex: progress.setIndex ?? null,
-            exerciseName: progress.exerciseName ?? null,
-            readyForNext: progress.readyForNext ?? false,
-            lastUpdated: Date.now(),
-          }
-          partnerProgressRef.current = next
-          setPartnerProgress(next)
-
-          if (changed && progress.readyForNext) {
-            triggerSyncPulse()
-          }
-
-          if (
-            changed &&
-            progress.exerciseName != null &&
-            progress.setIndex != null
-          ) {
-            const completed = {
-              exerciseName: progress.exerciseName,
-              setIndex: progress.setIndex,
-            }
-            setPartnerCompletedSets((prevSets) =>
-              hasCompletedSet(prevSets, completed)
-                ? prevSets
-                : [...prevSets, completed].slice(-MAX_PARTNER_COMPLETED_SETS),
-            )
-          }
-
-          setIsPartnerReady(progress.readyForNext ?? false)
+          applyJointProgress(progress)
           break
         }
 
@@ -354,7 +361,7 @@ export const useJointSession = ({
           break
       }
     },
-    [userId, isInJointSession, triggerSyncPulse, resetJointState],
+    [isInJointSession, applyJointProgress, resetJointState],
   )
 
   // Nothing else clears these, so the invite UI would stay in its failed state

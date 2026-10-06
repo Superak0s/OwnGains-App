@@ -27,6 +27,16 @@ interface Props {
 
 const block = { onStartShouldSetResponder: () => true } as const;
 
+const padded = (rect: AnchorRect | null | "pending") =>
+  rect && rect !== "pending"
+    ? { x: rect.x - PAD, y: rect.y - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2 }
+    : null;
+
+const nextStepLabel = (practicePending: boolean, isLast: boolean): string => {
+  if (practicePending) return "Skip practice";
+  return isLast ? "Done" : "Next ›";
+};
+
 export default function TutorialOverlay(p: Props): React.JSX.Element {
   const { step } = p;
   const { colors } = useTheme();
@@ -52,9 +62,7 @@ export default function TutorialOverlay(p: Props): React.JSX.Element {
     };
   }, [step]);
 
-  const hole = step.kind === "spotlight" && rect && rect !== "pending"
-    ? { x: rect.x - PAD, y: rect.y - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2 }
-    : null;
+  const hole = step.kind === "spotlight" ? padded(rect) : null;
   const { onHole } = p;
   const tapHole = step.kind === "spotlight" && step.advanceOn === "tap" ? hole : null;
   useEffect(() => {
@@ -75,16 +83,14 @@ export default function TutorialOverlay(p: Props): React.JSX.Element {
     </View>
   );
 
-  const nextLabel = (() => {
-    if (step.kind === "practice" && !practiceDone) return "Skip practice";
-    return p.isLast ? "Done" : "Next ›";
-  })();
+  const practicePending = step.kind === "practice" && !practiceDone;
+  const nextLabel = nextStepLabel(practicePending, p.isLast);
   const bottomBar = (
     <View style={styles.bottomBar}>
       <TouchableOpacity onPress={p.onBack} disabled={!p.canGoBack} accessibilityRole="button" accessibilityLabel="Previous step" accessibilityState={{ disabled: !p.canGoBack }} style={[styles.navBtn, !p.canGoBack && { opacity: 0.3 }]}>
         <Text style={styles.navText}>‹ Back</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={p.onNext} accessibilityRole="button" accessibilityLabel={nextLabel} style={[styles.navBtn, styles.nextBtn, step.kind === "practice" && !practiceDone && styles.nextMuted]}>
+      <TouchableOpacity onPress={p.onNext} accessibilityRole="button" accessibilityLabel={nextLabel} style={[styles.navBtn, styles.nextBtn, practicePending && styles.nextMuted]}>
         <Text style={styles.nextText}>{nextLabel}</Text>
       </TouchableOpacity>
     </View>
@@ -96,12 +102,12 @@ export default function TutorialOverlay(p: Props): React.JSX.Element {
 
   if (step.kind === "spotlight" && hole) {
     const below = hole.y + hole.height / 2 < height / 2;
-    const bands = [
-      { left: 0, top: 0, width, height: Math.max(0, hole.y) },
-      { left: 0, top: hole.y + hole.height, width, height: Math.max(0, height - hole.y - hole.height) },
-      { left: 0, top: hole.y, width: Math.max(0, hole.x), height: hole.height },
-      { left: hole.x + hole.width, top: hole.y, width: Math.max(0, width - hole.x - hole.width), height: hole.height },
-    ];
+    const bands = {
+      above: { left: 0, top: 0, width, height: Math.max(0, hole.y) },
+      below: { left: 0, top: hole.y + hole.height, width, height: Math.max(0, height - hole.y - hole.height) },
+      left: { left: 0, top: hole.y, width: Math.max(0, hole.x), height: hole.height },
+      right: { left: hole.x + hole.width, top: hole.y, width: Math.max(0, width - hole.x - hole.width), height: hole.height },
+    };
     return (
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none" accessibilityViewIsModal>
         <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -113,8 +119,8 @@ export default function TutorialOverlay(p: Props): React.JSX.Element {
           </Defs>
           <Rect x={0} y={0} width={width} height={height} fill={DIM} mask="url(#tutorialHole)" />
         </Svg>
-        {bands.map((b, i) => (
-          <View key={i} style={[styles.abs, b]} {...block} />
+        {Object.entries(bands).map(([side, b]) => (
+          <View key={side} style={[styles.abs, b]} {...block} />
         ))}
         {step.advanceOn === "next" && <View style={[styles.abs, { left: hole.x, top: hole.y, width: hole.width, height: hole.height }]} {...block} />}
         <PulseRing rect={hole} />
@@ -128,33 +134,6 @@ export default function TutorialOverlay(p: Props): React.JSX.Element {
     );
   }
 
-  let body: React.ReactNode;
-  if (step.kind === "card") {
-    body = (
-      <>
-        <Text style={styles.cardIcon}>{step.icon}</Text>
-        <Text style={styles.cardTitle} accessibilityRole="header">{step.title}</Text>
-        <Text style={styles.cardBody}>{step.body}</Text>
-      </>
-    );
-  } else if (step.kind === "practice") {
-    body = (
-      <>
-        <Text style={styles.cardBody}>{step.caption}</Text>
-        <Practice spec={step.practice} onComplete={() => setPracticeDone(true)} />
-        {practiceDone && <Text style={styles.done}>✓ Nice. That's how it works.</Text>}
-      </>
-    );
-  } else {
-    body = (
-      <>
-        <Text style={styles.cardIcon}>🔎</Text>
-        <Text style={styles.cardTitle} accessibilityRole="header">{step.caption}</Text>
-        <Text style={styles.cardBody}>{step.fallback}</Text>
-      </>
-    );
-  }
-
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: DIM }]} accessibilityViewIsModal {...block}>
       {topBar}
@@ -164,11 +143,44 @@ export default function TutorialOverlay(p: Props): React.JSX.Element {
           contentContainerStyle={styles.panelContent}
           scrollEnabled={!(step.kind === "practice" && step.practice.type === "twoFingerPull")}
         >
-          {body}
+          <StepBody step={step} styles={styles} practiceDone={practiceDone} onPracticeDone={() => setPracticeDone(true)} />
         </ScrollView>
         {bottomBar}
       </View>
     </View>
+  );
+}
+
+function StepBody({ step, styles, practiceDone, onPracticeDone }: {
+  readonly step: Step;
+  readonly styles: ReturnType<typeof makeStyles>;
+  readonly practiceDone: boolean;
+  readonly onPracticeDone: () => void;
+}): React.JSX.Element {
+  if (step.kind === "card") {
+    return (
+      <>
+        <Text style={styles.cardIcon}>{step.icon}</Text>
+        <Text style={styles.cardTitle} accessibilityRole="header">{step.title}</Text>
+        <Text style={styles.cardBody}>{step.body}</Text>
+      </>
+    );
+  }
+  if (step.kind === "practice") {
+    return (
+      <>
+        <Text style={styles.cardBody}>{step.caption}</Text>
+        <Practice spec={step.practice} onComplete={onPracticeDone} />
+        {practiceDone && <Text style={styles.done}>✓ Nice. That's how it works.</Text>}
+      </>
+    );
+  }
+  return (
+    <>
+      <Text style={styles.cardIcon}>🔎</Text>
+      <Text style={styles.cardTitle} accessibilityRole="header">{step.caption}</Text>
+      <Text style={styles.cardBody}>{step.fallback}</Text>
+    </>
   );
 }
 

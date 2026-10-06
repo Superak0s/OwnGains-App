@@ -623,13 +623,12 @@ class ErrorBoundary extends React.Component<
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("Uncaught error in component tree:", error, errorInfo);
     metric.count("app.error_boundary.caught");
+    let boundary = "navigator";
+    if (this.props.renderFallback) boundary = "root";
+    else if (this.props.name) boundary = "screen";
     captureException(error, {
       componentStack: errorInfo.componentStack ?? "",
-      boundary: this.props.renderFallback
-        ? "root"
-        : this.props.name
-          ? "screen"
-          : "navigator",
+      boundary,
       ...(this.props.name && { screen: this.props.name }),
     });
   }

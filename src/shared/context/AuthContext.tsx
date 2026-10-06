@@ -299,11 +299,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const arm = (delay: number): void => {
       clearTimeout(timer);
       dueAt = Date.now() + delay;
-      timer = setTimeout(() => {
-        void refreshToken().then((ok) => {
-          if (!ok) arm(FALLBACK_REFRESH_INTERVAL_MS);
-        });
-      }, delay);
+      timer = setTimeout(refreshOrRetry, delay);
+    };
+    const refreshOrRetry = async (): Promise<void> => {
+      if (!(await refreshToken())) arm(FALLBACK_REFRESH_INTERVAL_MS);
     };
     arm(refreshDelayFor(authToken, receivedTokenRef.current));
     // Timers don't advance while the app is suspended.

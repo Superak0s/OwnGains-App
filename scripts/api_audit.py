@@ -50,6 +50,9 @@ import re
 import sys
 from pathlib import Path
 
+API_PATH_LITERAL = re.compile(r"[\"'`][^\"'`\n]*?(/api/[^\"'`\n]*)")
+USED_MARKER = "api-audit: used"
+
 
 def read_source(path: Path) -> str:
     raw = path.read_bytes()
@@ -171,23 +174,32 @@ def template_end(text: str, quote: int) -> int:
         if ch == "`":
             return i
         if ch == "$" and text[i + 1 : i + 2] == "{":
-            depth, i = 1, i + 2
-            while i < n and depth:
-                c = text[i]
-                if c in "\"'":
-                    i = skip_string(text, i + 1, n, c)
-                elif c == "`":
-                    i = template_end(text, i)
-                    if i < 0:
-                        return -1
-                elif c == "{":
-                    depth += 1
-                elif c == "}":
-                    depth -= 1
-                i += 1
+            i = template_expr_end(text, i + 2, n)
+            if i < 0:
+                return -1
             continue
         i += 1
     return -1
+
+
+def template_expr_end(text: str, i: int, n: int) -> int:
+    """Index just past the `}` closing a `${` expression whose body starts at
+    `i`; -1 when a template nested inside it is unterminated."""
+    depth = 1
+    while i < n and depth:
+        c = text[i]
+        if c in "\"'":
+            i = skip_string(text, i + 1, n, c)
+        elif c == "`":
+            i = template_end(text, i)
+            if i < 0:
+                return -1
+        elif c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+        i += 1
+    return i
 
 
 def object_body(text: str, open_brace: int) -> str:
@@ -303,7 +315,7 @@ def usage_suppressed(text: str, at: int) -> bool:
     unused-after-extraction checks: mirrors `external_marked` below, same
     reason: a regex scan can't see every real consumer of a value.
     """
-    return "api-audit: used" in text[max(0, at - 300) : at + 100]
+    return USED_MARKER in text[max(0, at - 300) : at + 100]
 
 
 # ---------------------------------------------------------------- server
@@ -329,6 +341,54 @@ def handler_span(text: str, m) -> str:
     return span[offset + len(m.group(2)) :]
 
 
+def route_endpoint(method, raw, file, text, m, handler, route_imports):
+    return {
+        "method": method.upper(),
+        "path": normalize(raw),
+        "raw": raw,
+        "file": file,
+        "line": text[: m.start()].count("\n") + 1,
+        "body": server_keys(handler, REQ_BODY) | upload_fields(text, m.start()),
+        "query": server_keys(handler, REQ_QUERY),
+        "body_open": open_reads(handler, REQ_BODY),
+        "query_open": open_reads(handler, REQ_QUERY),
+        "external": external_marked(text, m.start()),
+        "dead_after_read": unused_extractions(handler),
+        "dead_in_callee": (
+            trace_deep_usage(handler, REQ_BODY, route_imports)
+            + trace_deep_usage(handler, REQ_QUERY, route_imports)
+        ),
+        "dead_params": unused_route_params(raw, handler),
+        "response": response_keys(handler),
+    }
+
+
+def collect_routes(prefix, f, seen, endpoints):
+    if not f.exists() or f in seen:
+        return
+    seen = seen | {f}
+    text = read_source(f)
+    router_imports = named_imports(text, f.parent)
+    # first arg is one path or an array of aliases: (["/split/:s", "/person/:p"], ...)
+    for m in re.finditer(
+        r'router\.(%s)\(\s*(\[[^\]]*\]|"[^"]*")' % "|".join(METHODS), text
+    ):
+        handler = handler_span(text, m)
+        for path in re.findall(r'"([^"]*)"', m.group(2)):
+            endpoints.append(
+                route_endpoint(m.group(1), prefix + path, server_rel(f),
+                               text, m, handler, router_imports)
+            )
+    sub_imports = dict(re.findall(r'import\s+(\w+)\s+from\s+"(\.[^"]+)"', text))
+    for sub_prefix, ident in re.findall(
+        r'router\.use\(\s*(?:"([^"]*)"\s*,\s*)?(\w+)\s*\)', text
+    ):
+        rel = sub_imports.get(ident)
+        if rel:
+            collect_routes(prefix + sub_prefix,
+                           (f.parent / rel.replace(".js", ".ts")).resolve(), seen, endpoints)
+
+
 def parse_server():
     routes_ts = (SERVER_ROOT / "routes.ts").read_text(encoding="utf-8")
     imports = dict(re.findall(r'import\s+(\w+)\s+from\s+"\./([^"]+)"', routes_ts))
@@ -337,66 +397,21 @@ def parse_server():
     mounts += re.findall(r'\[\s*"(/[^"]+)"\s*,\s*(\w+Routes)\s*\]', routes_ts)
     top_level_imports = named_imports(routes_ts, SERVER_ROOT)
 
-    def endpoint(method, raw, file, text, m, handler, route_imports):
-        return {
-            "method": method.upper(),
-            "path": normalize(raw),
-            "raw": raw,
-            "file": file,
-            "line": text[: m.start()].count("\n") + 1,
-            "body": server_keys(handler, REQ_BODY) | upload_fields(text, m.start()),
-            "query": server_keys(handler, REQ_QUERY),
-            "body_open": open_reads(handler, REQ_BODY),
-            "query_open": open_reads(handler, REQ_QUERY),
-            "external": external_marked(text, m.start()),
-            "dead_after_read": unused_extractions(handler),
-            "dead_in_callee": (
-                trace_deep_usage(handler, REQ_BODY, route_imports)
-                + trace_deep_usage(handler, REQ_QUERY, route_imports)
-            ),
-            "dead_params": unused_route_params(raw, handler),
-            "response": response_keys(handler),
-        }
-
     endpoints = []
     # routes declared straight on the app, not on a mounted router
     for m in re.finditer(
         r'app\.(%s)\(\s*"([^"]+)"' % "|".join(METHODS), routes_ts
     ):
         endpoints.append(
-            endpoint(m.group(1), m.group(2), "routes.ts", routes_ts, m,
-                     handler_span(routes_ts, m), top_level_imports)
+            route_endpoint(m.group(1), m.group(2), "routes.ts", routes_ts, m,
+                           handler_span(routes_ts, m), top_level_imports)
         )
-
-    def collect(prefix, f, seen):
-        if not f.exists() or f in seen:
-            return
-        seen = seen | {f}
-        text = read_source(f)
-        router_imports = named_imports(text, f.parent)
-        # first arg is one path or an array of aliases: (["/split/:s", "/person/:p"], ...)
-        for m in re.finditer(
-            r'router\.(%s)\(\s*(\[[^\]]*\]|"[^"]*")' % "|".join(METHODS), text
-        ):
-            handler = handler_span(text, m)
-            for path in re.findall(r'"([^"]*)"', m.group(2)):
-                endpoints.append(
-                    endpoint(m.group(1), prefix + path,
-                             str(f.relative_to(SERVER_ROOT)).replace("\\", "/"),
-                             text, m, handler, router_imports)
-                )
-        sub_imports = dict(re.findall(r'import\s+(\w+)\s+from\s+"(\.[^"]+)"', text))
-        for sub_prefix, ident in re.findall(
-            r'router\.use\(\s*(?:"([^"]*)"\s*,\s*)?(\w+)\s*\)', text
-        ):
-            rel = sub_imports.get(ident)
-            if rel:
-                collect(prefix + sub_prefix, (f.parent / rel.replace(".js", ".ts")).resolve(), seen)
 
     for prefix, ident in mounts:
         rel = imports.get(ident)
         if rel:
-            collect(prefix, (SERVER_ROOT / rel.replace(".js", ".ts")).resolve(), frozenset())
+            collect_routes(prefix, (SERVER_ROOT / rel.replace(".js", ".ts")).resolve(),
+                           frozenset(), endpoints)
     return endpoints
 
 
@@ -443,6 +458,11 @@ def server_extractions(handler: str, source: str) -> list:
             }
         )
 
+    return out + destructured_extractions(handler, source)
+
+
+def destructured_extractions(handler: str, source: str) -> list:
+    out = []
     for m in re.finditer(r"const\s*\{", handler):
         tail = handler[m.end() : m.end() + 600]
         close = tail.find("}")
@@ -454,12 +474,11 @@ def server_extractions(handler: str, source: str) -> list:
         bindings, rest = object_bindings(handler, m.end() - 1)
         src_pos = handler.find(source, m.end() + close)
         end_at = src_pos + len(source) if src_pos >= 0 else m.end() + close + 40
-        for key, binding in bindings.items():
-            out.append(
-                {"key": key, "binding": binding, "kind": "destructured", "at": end_at}
-            )
-        for r in rest:
-            out.append({"key": None, "binding": r, "kind": "spread", "at": end_at})
+        out += [
+            {"key": key, "binding": binding, "kind": "destructured", "at": end_at}
+            for key, binding in bindings.items()
+        ]
+        out += [{"key": None, "binding": r, "kind": "spread", "at": end_at} for r in rest]
     return out
 
 
@@ -528,7 +547,7 @@ def unused_route_params(raw_path: str, handler: str) -> list:
     never read in the handler: data the URL carries in and the route drops.
     A dynamic `req.params[...]` (or the escape hatch) makes the set unknowable,
     so it suppresses the check, like spread does for body keys."""
-    if "api-audit: used" in handler or re.search(r"req\.params\s*\[", handler):
+    if USED_MARKER in handler or re.search(r"req\.params\s*\[", handler):
         return []
     used = set(re.findall(r"req\.params\.\??(\w+)", handler))
     return [
@@ -543,7 +562,7 @@ def binding_used_again(text: str, binding: str, after: int) -> bool:
     name never resurfaces, the value was read (or handed off) and then
     dropped on the floor.
     """
-    return re.search(r"\b%s\b" % re.escape(binding), text[after:]) is not None
+    return re.search(word_re(binding), text[after:]) is not None
 
 
 def unused_extractions(handler: str) -> list:
@@ -695,32 +714,34 @@ def call_args(handler: str, fn_name: str) -> list:
     that respects nested (), {}, [], and quoted strings, and tolerates
     multi-line calls and inline comments between arguments.
     """
-    calls = []
-    for m in re.finditer(r"\b%s\s*\(" % re.escape(fn_name), handler):
-        open_paren = m.end() - 1
-        raw = balanced_span(handler, open_paren)
-        args, depth, cur, i, n = [], 0, "", 0, len(raw)
-        while i < n:
-            ch = raw[i]
-            j = skip_noise(raw, i, n)
-            if j != i:
-                cur += raw[i : j + 1]
-                i = j + 1
-                continue
-            if ch in "([{":
-                depth += 1
-            elif ch in ")]}":
-                depth -= 1
-            if ch == "," and depth == 0:
-                args.append(cur.strip())
-                cur = ""
-            else:
-                cur += ch
-            i += 1
-        if cur.strip():
+    return [
+        split_args(balanced_span(handler, m.end() - 1))
+        for m in re.finditer(r"\b%s\s*\(" % re.escape(fn_name), handler)
+    ]
+
+
+def split_args(raw: str) -> list:
+    args, depth, cur, i, n = [], 0, "", 0, len(raw)
+    while i < n:
+        ch = raw[i]
+        j = skip_noise(raw, i, n)
+        if j != i:
+            cur += raw[i : j + 1]
+            i = j + 1
+            continue
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        if ch == "," and depth == 0:
             args.append(cur.strip())
-        calls.append(args)
-    return calls
+            cur = ""
+        else:
+            cur += ch
+        i += 1
+    if cur.strip():
+        args.append(cur.strip())
+    return args
 
 
 def trace_deep_usage(handler: str, source: str, imports: dict) -> list:
@@ -746,33 +767,42 @@ def trace_deep_usage(handler: str, source: str, imports: dict) -> list:
         if not arg_lists:
             continue
         callee = find_function_cached(fn_file, original_name)
-        if not callee or "api-audit: used" in callee["body"]:
+        if not callee or USED_MARKER in callee["body"]:
             continue
-        for args in arg_lists:
-            for idx, arg in enumerate(args):
-                if idx >= len(callee["params"]):
-                    continue
-                match = next((e for e in extractions if e["binding"] == arg), None)
-                if not match:
-                    continue
-                param = callee["params"][idx]
-                if param and not binding_used_again(callee["body"], param, 0):
-                    try:
-                        callee_file = str(fn_file.relative_to(SERVER_ROOT))
-                    except ValueError:
-                        callee_file = str(fn_file)
-                    callee_file = callee_file.replace("\\", "/")
-                    dead.append(
-                        {
-                            "source": source,
-                            "key": match["key"],
-                            "binding": match["binding"],
-                            "passed_to": local_name,
-                            "callee_file": callee_file,
-                            "callee_param": param,
-                        }
-                    )
+        dead += [
+            {
+                "source": source,
+                "key": match["key"],
+                "binding": match["binding"],
+                "passed_to": local_name,
+                "callee_file": server_rel(fn_file),
+                "callee_param": param,
+            }
+            for match, param in unused_params_passed(arg_lists, callee, extractions)
+        ]
     return dead
+
+
+def unused_params_passed(arg_lists, callee, extractions):
+    """(extraction, param) for each extracted binding passed positionally to a
+    callee parameter the callee never uses."""
+    for args in arg_lists:
+        for arg, param in zip(args, callee["params"]):
+            match = next((e for e in extractions if e["binding"] == arg), None)
+            if match and param and not binding_used_again(callee["body"], param, 0):
+                yield match, param
+
+
+def word_re(name: str) -> str:
+    return r"\b%s\b" % re.escape(name)
+
+
+def server_rel(f: Path) -> str:
+    try:
+        rel = str(f.relative_to(SERVER_ROOT))
+    except ValueError:
+        rel = str(f)
+    return rel.replace("\\", "/")
 
 
 # ---------------------------------------------------------------- app types
@@ -854,6 +884,20 @@ def bare_type(name: str) -> str:
     return name if re.fullmatch(r"\w+", name) else ""
 
 
+def intersection_keys(rhs: str, f: Path, seen):
+    keys = set()
+    for part in re.split(r"&(?![^<]*>)", rhs):
+        part = part.strip()
+        if part.startswith("{"):
+            keys |= member_names(balanced_span(part, 0))
+            continue
+        resolved = type_keys(part, f, seen)
+        if resolved is None:
+            return None
+        keys |= resolved
+    return keys
+
+
 def type_keys(name: str, f: Path, seen=()):
     """Top-level property names of TS type `name` as declared in (or imported
     into) file `f`, or None when it can't be resolved: a mapped type, a
@@ -881,18 +925,7 @@ def type_keys(name: str, f: Path, seen=()):
 
     m = re.search(r"\btype\s+%s\b[^=]*=\s*" % re.escape(name), text)
     if m:
-        rhs = text[m.end() : m.end() + 4000].split(";")[0]
-        keys = set()
-        for part in re.split(r"&(?![^<]*>)", rhs):
-            part = part.strip()
-            if part.startswith("{"):
-                keys |= member_names(balanced_span(part, 0))
-                continue
-            resolved = type_keys(part, f, seen)
-            if resolved is None:
-                return None
-            keys |= resolved
-        return keys
+        return intersection_keys(text[m.end() : m.end() + 4000].split(";")[0], f, seen)
 
     spec = type_imports(text).get(name)
     target = resolve_module(spec, f.parent) if spec else None
@@ -1090,12 +1123,17 @@ def pattern_keys(pat: str):
     }
 
 
+def destructure_keys(before: str):
+    pat = re.search(r"(\{[^{}]*\})\s*=$", before)
+    return pattern_keys(pat.group(1)) if pat else None
+
+
 def local_reads(body: str, name: str):
     """Top-level keys read off local `name` in `body`, or None when `name`
     escapes somewhere this scan can't follow: returned whole, handed to a
     callee, spread. None means "unknown", never "reads nothing"."""
     keys = set()
-    for m in re.finditer(r"\b%s\b" % re.escape(name), body):
+    for m in re.finditer(word_re(name), body):
         before, after = body[: m.start()].rstrip(), body[m.end() :].lstrip()
         if before.endswith(("const", "let", "var")):
             continue  # the declaration itself
@@ -1106,8 +1144,7 @@ def local_reads(body: str, name: str):
                 keys.add("%s.%s" % (access.group(1), access.group(2)))
             continue
         if before.endswith("="):  # `const { a, b } = data`
-            pat = re.search(r"(\{[^{}]*\})\s*=$", before)
-            sub = pattern_keys(pat.group(1)) if pat else None
+            sub = destructure_keys(before)
             if sub is None:
                 return None
             keys |= sub
@@ -1179,7 +1216,7 @@ def parse_app():
     for f in app_sources(APP_ROOT / "src"):
         text = read_source(f)
         # the string may be prefixed, e.g. `${API_BASE_URL}/api/x`
-        for m in re.finditer(r"[\"'`][^\"'`\n]*?(/api/[^\"'`\n]*)", text):
+        for m in API_PATH_LITERAL.finditer(text):
             if not is_call_argument(text, m.start()):
                 continue
             if call_ident(text, m.start()) in NON_CALL_IDENTS:
@@ -1273,21 +1310,95 @@ def never_read(route, calls, app_text: str) -> list:
     return sorted(
         k
         for k in keys
-        if not re.search(r"\b%s\b" % re.escape(k.split(".")[-1]), app_text)
+        if not re.search(word_re(k.split(".")[-1]), app_text)
     )
+
+
+def route_drift(c, s):
+    # a keyless server read (req.body[key], whole-object pass) can consume
+    # any of the sent keys, so per-key drift is unjudgeable for that route
+    unread_body = set() if s["body_open"] else c["body"] - s["body"]
+    unread_query = (
+        set() if c["dynamic_query"] or s["query_open"] else c["query"] - s["query"]
+    )
+    if not (unread_body or unread_query):
+        return None
+    return {
+        "method": c["method"],
+        "path": c["path"],
+        "app": "%s:%d" % (c["file"], c["line"]),
+        "server": "%s:%d" % (s["file"], s["line"]),
+        "body_sent_never_read": sorted(unread_body),
+        "query_sent_never_read": sorted(unread_query),
+    }
+
+
+def response_gaps(server, app):
+    unsent, unread_response = [], []
+    app_text = all_app_text()
+    for s in server:
+        calls = [
+            c for c in app
+            if c["method"] == s["method"] and paths_match(c["path"], s["path"])
+        ]
+        if not calls:
+            continue  # a route nothing calls is already reported as dead
+        where = "%s:%d" % (s["file"], s["line"])
+        unsent += [
+            {
+                "method": s["method"],
+                "path": s["path"],
+                "server": where,
+                "channel": field,
+                "keys": keys,
+            }
+            for field, keys in never_sent(s, calls)
+        ]
+        keys = never_read(s, calls, app_text)
+        if keys:
+            unread_response.append(
+                {"method": s["method"], "path": s["path"], "server": where, "keys": keys}
+            )
+    return unsent, unread_response
+
+
+def extracted_unused(server, app):
+    def was_sent(s, e) -> bool:
+        field = "body" if e["source"] == REQ_BODY else "query"
+        return any(
+            c["method"] == s["method"] and paths_match(c["path"], s["path"])
+            and e["key"] in c[field]
+            for c in app
+        )
+
+    def entry(s, e, stage):
+        return {
+            "method": s["method"],
+            "path": s["path"],
+            "server": "%s:%d" % (s["file"], s["line"]),
+            "key": e["key"],
+            "stage": stage,
+            "sent_by_app": was_sent(s, e),
+        }
+
+    out = []
+    for s in server:
+        out += [
+            entry(s, e, "extracted in the route handler, never referenced again")
+            for e in s["dead_after_read"]
+        ]
+        out += [
+            entry(s, e, "passed to %s() as `%s`, never referenced there [%s]"
+                  % (e["passed_to"], e["callee_param"], e["callee_file"]))
+            for e in s["dead_in_callee"]
+        ]
+    return out
 
 
 def audit():
     server, app = parse_server(), parse_app()
     missing, drift = [], []
     hit = set()
-
-    def was_sent(method: str, path: str, source: str, key: str) -> bool:
-        field = "body" if source == REQ_BODY else "query"
-        return any(
-            c["method"] == method and paths_match(c["path"], path) and key in c[field]
-            for c in app
-        )
 
     for c in app:
         same_path = [s for s in server if paths_match(c["path"], s["path"])]
@@ -1306,53 +1417,11 @@ def audit():
             continue
         s = exact[0]
         hit.add((s["method"], s["path"], s["file"], s["line"]))
-        # a keyless server read (req.body[key], whole-object pass) can consume
-        # any of the sent keys, so per-key drift is unjudgeable for that route
-        unread_body = set() if s["body_open"] else c["body"] - s["body"]
-        unread_query = (
-            set() if c["dynamic_query"] or s["query_open"] else c["query"] - s["query"]
-        )
-        if unread_body or unread_query:
-            drift.append(
-                {
-                    "method": c["method"],
-                    "path": c["path"],
-                    "app": "%s:%d" % (c["file"], c["line"]),
-                    "server": "%s:%d" % (s["file"], s["line"]),
-                    "body_sent_never_read": sorted(unread_body),
-                    "query_sent_never_read": sorted(unread_query),
-                }
-            )
+        d = route_drift(c, s)
+        if d:
+            drift.append(d)
 
-    unsent, unread_response = [], []
-    app_text = all_app_text()
-    for s in server:
-        calls = [
-            c for c in app
-            if c["method"] == s["method"] and paths_match(c["path"], s["path"])
-        ]
-        if not calls:
-            continue  # a route nothing calls is already reported as dead
-        for field, keys in never_sent(s, calls):
-            unsent.append(
-                {
-                    "method": s["method"],
-                    "path": s["path"],
-                    "server": "%s:%d" % (s["file"], s["line"]),
-                    "channel": field,
-                    "keys": keys,
-                }
-            )
-        keys = never_read(s, calls, app_text)
-        if keys:
-            unread_response.append(
-                {
-                    "method": s["method"],
-                    "path": s["path"],
-                    "server": "%s:%d" % (s["file"], s["line"]),
-                    "keys": keys,
-                }
-            )
+    unsent, unread_response = response_gaps(server, app)
 
     dead = [
         s
@@ -1361,35 +1430,7 @@ def audit():
         and not s["external"]
     ]
 
-    extracted_but_unused = []
-    for s in server:
-        for e in s["dead_after_read"]:
-            extracted_but_unused.append(
-                {
-                    "method": s["method"],
-                    "path": s["path"],
-                    "server": "%s:%d" % (s["file"], s["line"]),
-                    "key": e["key"],
-                    "stage": "extracted in the route handler, never referenced again",
-                    "sent_by_app": was_sent(
-                        s["method"], s["path"], e["source"], e["key"]
-                    ),
-                }
-            )
-        for e in s["dead_in_callee"]:
-            extracted_but_unused.append(
-                {
-                    "method": s["method"],
-                    "path": s["path"],
-                    "server": "%s:%d" % (s["file"], s["line"]),
-                    "key": e["key"],
-                    "stage": "passed to %s() as `%s`, never referenced there [%s]"
-                    % (e["passed_to"], e["callee_param"], e["callee_file"]),
-                    "sent_by_app": was_sent(
-                        s["method"], s["path"], e["source"], e["key"]
-                    ),
-                }
-            )
+    extracted_but_unused = extracted_unused(server, app)
 
     unused_params = [
         {
@@ -1446,11 +1487,11 @@ def report(r):
 
     print("\n== Contract drift (%d)" % len(r["contract_drift"]))
     for d in r["contract_drift"]:
-        bits = []
-        if d["body_sent_never_read"]:
-            bits.append("body %s" % d["body_sent_never_read"])
-        if d["query_sent_never_read"]:
-            bits.append("query %s" % d["query_sent_never_read"])
+        bits = [
+            "%s %s" % (channel, d["%s_sent_never_read" % channel])
+            for channel in ("body", "query")
+            if d["%s_sent_never_read" % channel]
+        ]
         print(
             "  %-6s %-45s sends but server ignores: %s"
             % (d["method"], d["path"], "; ".join(bits))
@@ -1517,7 +1558,7 @@ def self_test():
         "c",
     }
     sendjson_src = 'sendJson(`/api/x/${id}`, "PATCH", { a: 1 })'
-    m = re.search(r"[\"'`][^\"'`\n]*?(/api/[^\"'`\n]*)", sendjson_src)
+    m = API_PATH_LITERAL.search(sendjson_src)
     assert app_call(APP_ROOT / "f.ts", sendjson_src, m)["method"] == "PATCH"
     assert server_keys("const { a, b } = req.body\nreq.body.c", REQ_BODY) == {
         "a",
@@ -1608,14 +1649,14 @@ def self_test():
 
     # phantom app call sites
     doc = 'export type T = 1 /* `/api/program/upload replaces the` */\n'
-    m = re.search(r"[\"'`\][^\"'`\n]*?(/api/[^\"'`\n]*)", doc)
+    m = API_PATH_LITERAL.search(doc)
     assert not is_call_argument(doc, m.start())
     guard = 'if (routeOf(url).startsWith("/api/auth/")) reject()\n'
-    m = re.search(r"[\"'`\][^\"'`\n]*?(/api/[^\"'`\n]*)", guard)
+    m = API_PATH_LITERAL.search(guard)
     assert is_call_argument(guard, m.start())
     assert call_ident(guard, m.start()) == "startsWith"
     real = 'apiCall(`/api/sessions/${id}`, { method: "PATCH" })\n'
-    m = re.search(r"[\"'`\][^\"'`\n]*?(/api/[^\"'`\n]*)", real)
+    m = API_PATH_LITERAL.search(real)
     assert call_ident(real, m.start()) == "apiCall"
 
     tpl = '`/a?x=${ids.join(",")}`, rest'
@@ -1623,7 +1664,7 @@ def self_test():
 
     # nested template literals truncate the path string
     nested = '`/api/x/stats${query ? `?${query}` : ""}`'
-    m = re.search(r"[\"'`][^\"'`\n]*?(/api/[^\"'`\n]*)", nested)
+    m = API_PATH_LITERAL.search(nested)
     assert truncated(m.group(1))
     c = app_call(APP_ROOT / "f.ts", nested, m)
     assert c["path"] == "/api/x/stats"
@@ -1672,15 +1713,16 @@ def self_test():
     # a non-literal response contributes nothing, a nested literal contributes
     # `parent.child` (but only one level, and not from inside a callback)
     assert response_keys(handler) == {"success", "error", "alreadyEnded", "rows"}
+    user_id, user_name = "user.id", "user.name"
     assert response_keys('res.json({ ok: 1, user: { id, name } })') == {
         "ok",
         "user",
-        "user.id",
-        "user.name",
+        user_id,
+        user_name,
     }
-    nested = {"response": {"user", "user.id", "user.name"}}
+    nested = {"response": {"user", user_id, user_name}}
     # the app opens `user` up but never touches `name`
-    assert never_read(nested, [{"reads": {"user", "user.id"}}], "") == ["user.name"]
+    assert never_read(nested, [{"reads": {"user", user_id}}], "") == [user_name]
     # the app takes `user` whole: what it does with the insides is unknowable
     assert never_read(nested, [{"reads": {"user"}}], "") == []
     route = {"response": {"success", "alreadyEnded"}}

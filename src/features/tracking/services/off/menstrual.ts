@@ -92,8 +92,8 @@ export const menstrualApi = {
     if (!entry) throw new Error("Menstrual entry not found");
     const updated: MenstrualEntry = {
       ...entry,
-      ...(updates.cycleEnd !== undefined ? { cycleEnd: updates.cycleEnd } : {}),
-      ...(updates.symptoms !== undefined ? { symptoms: updates.symptoms } : {}),
+      ...(updates.cycleEnd !== undefined && { cycleEnd: updates.cycleEnd }),
+      ...(updates.symptoms !== undefined && { symptoms: updates.symptoms }),
       updatedAt: new Date().toISOString(),
     };
     await store.put(updated);

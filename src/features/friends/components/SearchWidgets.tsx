@@ -168,18 +168,16 @@ export function SearchUsersWidget({
   onMoreActions,
 }: SearchUsersWidgetProps): React.JSX.Element {
   const query = searchQuery.trim();
-  const noResults =
-    query.length > 0 && query.length < MIN_USER_SEARCH_LENGTH ? (
-      <View style={styles.emptyStateSmall}>
-        <Text style={styles.emptyTextSmall}>
-          Type at least {MIN_USER_SEARCH_LENGTH} letters of a username
-        </Text>
-      </View>
-    ) : query && !searching && searchResults.length === 0 ? (
-      <View style={styles.emptyStateSmall}>
-        <Text style={styles.emptyTextSmall}>No users found</Text>
-      </View>
-    ) : null;
+  let noResultsText: React.ReactNode = null;
+  if (query.length > 0 && query.length < MIN_USER_SEARCH_LENGTH)
+    noResultsText = `Type at least ${MIN_USER_SEARCH_LENGTH} letters of a username`;
+  else if (query && !searching && searchResults.length === 0)
+    noResultsText = "No users found";
+  const noResults = noResultsText && (
+    <View style={styles.emptyStateSmall}>
+      <Text style={styles.emptyTextSmall}>{noResultsText}</Text>
+    </View>
+  );
   return (
     <View>
       <View style={styles.searchContainer}>

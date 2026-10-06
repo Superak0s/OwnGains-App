@@ -73,7 +73,7 @@ export function renderMeasurementWidget(
                 key={site.key}
                 title={site.label}
                 value={
-                  latest[site.key] != null ? `${latest[site.key]} cm` : "—"
+                  latest[site.key] == null ? "—" : `${latest[site.key]} cm`
                 }
                 dot={tone}
                 last={i === SITES.length - 1}

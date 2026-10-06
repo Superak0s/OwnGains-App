@@ -36,6 +36,30 @@ const stripInline = (text: string): string =>
 const isCategory = (name: string): name is ChangeCategory =>
   (CHANGE_CATEGORIES as readonly string[]).includes(name);
 
+const sectionFor = (release: Release, name: string): ChangeSection | null => {
+  if (!isCategory(name)) return null;
+  let section = release.sections.find((s) => s.category === name);
+  if (!section) {
+    section = { category: name, items: [] };
+    release.sections.push(section);
+  }
+  return section;
+};
+
+/** Returns false when the line ends the section. */
+const appendLine = (section: ChangeSection, line: string): boolean => {
+  const bullet = BULLET.exec(line);
+  if (bullet) {
+    section.items.push(stripInline(bullet[1]));
+  } else if (/^\s+\S/.test(line) && section.items.length > 0) {
+    const last = section.items.length - 1;
+    section.items[last] = `${section.items[last]} ${stripInline(line)}`;
+  } else if (line.trim() !== "") {
+    return false;
+  }
+  return true;
+};
+
 /**
  * Parses a Keep a Changelog file, newest release first. Sections outside the
  * user-facing categories (such as Internal) are dropped.
@@ -63,29 +87,11 @@ export function parseChangelog(markdown: string): Release[] {
 
     const categoryMatch = CATEGORY_HEADING.exec(line);
     if (categoryMatch) {
-      const name = categoryMatch[1].trim();
-      section = null;
-      if (release && isCategory(name)) {
-        section = release.sections.find((s) => s.category === name) ?? null;
-        if (!section) {
-          section = { category: name, items: [] };
-          release.sections.push(section);
-        }
-      }
+      section = release ? sectionFor(release, categoryMatch[1].trim()) : null;
       continue;
     }
 
-    if (!section) continue;
-
-    const bullet = BULLET.exec(line);
-    if (bullet) {
-      section.items.push(stripInline(bullet[1]));
-    } else if (/^\s+\S/.test(line) && section.items.length > 0) {
-      const last = section.items.length - 1;
-      section.items[last] = `${section.items[last]} ${stripInline(line)}`;
-    } else if (line.trim() !== "") {
-      section = null;
-    }
+    if (section && !appendLine(section, line)) section = null;
   }
 
   for (const r of releases) {

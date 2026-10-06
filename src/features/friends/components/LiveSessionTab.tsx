@@ -310,11 +310,11 @@ function ElapsedClock({
   startRaw,
   style,
   prefix = "",
-}: {
+}: Readonly<{
   startRaw?: string;
   style: TextStyle;
   prefix?: string;
-}) {
+}>) {
   const [sec, setSec] = useState(() => elapsedFromStart(startRaw));
   useEffect(() => {
     setSec(elapsedFromStart(startRaw));

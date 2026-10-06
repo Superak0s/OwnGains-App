@@ -1,4 +1,4 @@
-const os = require("os");
+const os = require("node:os");
 const { withGradleProperties } = require("@expo/config-plugins");
 
 // Sized to the machine running prebuild (a WSL VM reports its own limit, not the

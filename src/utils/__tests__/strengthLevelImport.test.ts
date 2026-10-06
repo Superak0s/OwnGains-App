@@ -45,14 +45,12 @@ describe("importStrengthLevelCSV", () => {
     });
 
     // Dates are replayed oldest-first.
-    expect(startSession.mock.calls[0][6]).toBe("2026-01-13T12:00:00.000Z");
-    expect(startSession.mock.calls[1][6]).toBe("2026-01-14T12:00:00.000Z");
+    expect(startSession.mock.calls[0][4]).toBe("2026-01-13T12:00:00.000Z");
+    expect(startSession.mock.calls[1][4]).toBe("2026-01-14T12:00:00.000Z");
     expect(startSession).toHaveBeenCalledWith(
       "Push",
       1,
       "Imported (Strength Level)",
-      [],
-      [],
       false,
       expect.any(String),
     );

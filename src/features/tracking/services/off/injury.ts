@@ -51,10 +51,10 @@ export const injuryApi = {
     if (!entry) throw new Error("Injury not found");
     const updated: InjuryRecord = {
       ...entry,
-      ...(updates.painLevel !== undefined ? { painLevel: updates.painLevel } : {}),
-      ...(updates.status !== undefined ? { status: updates.status } : {}),
-      ...(updates.recoveryDate !== undefined ? { recoveryDate: updates.recoveryDate } : {}),
-      ...(updates.note !== undefined ? { note: updates.note } : {}),
+      ...(updates.painLevel !== undefined && { painLevel: updates.painLevel }),
+      ...(updates.status !== undefined && { status: updates.status }),
+      ...(updates.recoveryDate !== undefined && { recoveryDate: updates.recoveryDate }),
+      ...(updates.note !== undefined && { note: updates.note }),
       updatedAt: new Date().toISOString(),
     };
     await store.put(updated);

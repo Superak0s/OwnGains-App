@@ -86,7 +86,7 @@ export default function ProgressChart({
   const summary = useMemo(() => {
     if (values.length === 0) return `${title ?? "Chart"}: no data yet`;
     const first = values[0];
-    const last = values[values.length - 1];
+    const last = values.at(-1)!;
     const round = (v: number) => v.toFixed(decimalPlaces);
     return [
       `${title ?? "Chart"}: ${values.length} points`,

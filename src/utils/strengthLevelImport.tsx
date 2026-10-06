@@ -143,8 +143,6 @@ async function importDateGroup(
       split,
       1,
       "Imported (Strength Level)",
-      [],
-      [],
       false,
       new Date(baseTime).toISOString(),
     )

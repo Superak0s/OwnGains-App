@@ -76,6 +76,79 @@ const idOf = (res: unknown): number | string | undefined => {
 const isLocal = async (feature: string) =>
   (await isServerless()) || (await isFeatureLocal(feature));
 
+type Add = (kind: Kind, call: Promise<unknown>) => Promise<void>;
+type At = (daysAgo: number, hour?: number) => string;
+
+async function fillTracking(add: Add, at: At): Promise<void> {
+  for (let d = DAYS; d >= 0; d--) {
+    const progress = (DAYS - d) / DAYS;
+    if (d % 2 === 0)
+      await add("weight", bodyTrackingApi.logWeight(82 - 2.5 * progress, "kg", null, at(d, 7)));
+    await add(
+      "macros",
+      macrosTrackingApi.logMacros({
+        name: "Daily intake",
+        protein: 150 + (d % 4) * 10,
+        carbs: 230 + (d % 5) * 15,
+        fat: 65 + (d % 3) * 5,
+        calories: 2300 + (d % 5) * 80,
+        date: at(d, 13),
+      }),
+    );
+    await add("hydration", hydrationApi.logHydration(500, undefined, at(d, 8)));
+    await add("hydration", hydrationApi.logHydration(750 + (d % 3) * 250, undefined, at(d, 15)));
+    if (d % 7 === 0) {
+      await add(
+        "bodyFat",
+        bodyFatApi.logBodyFat(18 - 2 * progress, { waist: 86 - 3 * progress, neck: 38, unit: "cm" }, "male", at(d)),
+      );
+      await add(
+        "measurement",
+        bodyMeasurementsApi.logMeasurement(86 - 3 * progress, 36 + progress, 36 + progress, 102 + progress, at(d)),
+      );
+    }
+  }
+  await add("soreness", sorenessApi.logSoreness({ muscleGroup: "quads", intensity: 6, loggedAt: at(1, 18) }));
+  await add("soreness", sorenessApi.logSoreness({ muscleGroup: "chest_upper", intensity: 4, loggedAt: at(2, 18) }));
+  await add(
+    "injury",
+    injuryApi.logInjury({ muscleGroup: "lower_back", injuryType: "strain", painLevel: 3, startDate: at(10), note: "Demo injury" }),
+  );
+  await add("note", personalNotesApi.createNote({ muscleGroup: "shoulders_front", content: "Warm up with band pull-aparts." }));
+  for (const daysAgo of [56, 28, 0])
+    await add("menstrual", menstrualApi.logMenstrualCycle(at(daysAgo), ["cramps"]));
+  for (const { muscle, angle, images } of DEMO_PHOTOS)
+    for (const [i, image] of images.entries()) {
+      const asset = await Asset.fromModule(image).downloadAsync();
+      await add(
+        "photo",
+        progressPhotoApi.uploadPhoto({
+          uri: asset.localUri ?? asset.uri,
+          muscleGroups: [muscle],
+          note: "Demo photo",
+          angle,
+          takenAt: at(DEMO_PHOTO_DAYS_AGO[i], 8),
+        }),
+      );
+    }
+}
+
+async function fillSupplements(records: DemoRecord[], at: At): Promise<void> {
+  const supplements = [
+    { name: "Creatine (demo)", unit: "g", defaultAmount: 5 },
+    { name: "Vitamin D (demo)", unit: "IU", defaultAmount: 2000 },
+    { name: "Omega-3 (demo)", unit: "caps", defaultAmount: 2 },
+  ];
+  for (const [i, params] of supplements.entries()) {
+    const id = idOf(await supplementsApi.create(params)) as number | undefined;
+    if (id === undefined) continue;
+    records.push(["supplement", id]);
+    for (let d = DAYS; d >= 0; d--)
+      if ((d + i) % 5 !== 0)
+        await supplementsApi.log(id, { amount: params.defaultAmount, takenAt: at(d, 8 + i) });
+  }
+}
+
 // Only local features: the server's demo fill seeds the ones it stores.
 export async function fillDemoTracking(
   userId: string | null,
@@ -100,75 +173,8 @@ export async function fillDemoTracking(
       records.push(["height", heightKey]);
     }
 
-    if (await isLocal("tracking")) {
-      for (let d = DAYS; d >= 0; d--) {
-        const progress = (DAYS - d) / DAYS;
-        if (d % 2 === 0)
-          await add("weight", bodyTrackingApi.logWeight(82 - 2.5 * progress, "kg", null, at(d, 7)));
-        await add(
-          "macros",
-          macrosTrackingApi.logMacros({
-            name: "Daily intake",
-            protein: 150 + (d % 4) * 10,
-            carbs: 230 + (d % 5) * 15,
-            fat: 65 + (d % 3) * 5,
-            calories: 2300 + (d % 5) * 80,
-            date: at(d, 13),
-          }),
-        );
-        await add("hydration", hydrationApi.logHydration(500, undefined, at(d, 8)));
-        await add("hydration", hydrationApi.logHydration(750 + (d % 3) * 250, undefined, at(d, 15)));
-        if (d % 7 === 0) {
-          await add(
-            "bodyFat",
-            bodyFatApi.logBodyFat(18 - 2 * progress, { waist: 86 - 3 * progress, neck: 38, unit: "cm" }, "male", at(d)),
-          );
-          await add(
-            "measurement",
-            bodyMeasurementsApi.logMeasurement(86 - 3 * progress, 36 + progress, 36 + progress, 102 + progress, at(d)),
-          );
-        }
-      }
-      await add("soreness", sorenessApi.logSoreness({ muscleGroup: "quads", intensity: 6, loggedAt: at(1, 18) }));
-      await add("soreness", sorenessApi.logSoreness({ muscleGroup: "chest_upper", intensity: 4, loggedAt: at(2, 18) }));
-      await add(
-        "injury",
-        injuryApi.logInjury({ muscleGroup: "lower_back", injuryType: "strain", painLevel: 3, startDate: at(10), note: "Demo injury" }),
-      );
-      await add("note", personalNotesApi.createNote({ muscleGroup: "shoulders_front", content: "Warm up with band pull-aparts." }));
-      for (const daysAgo of [56, 28, 0])
-        await add("menstrual", menstrualApi.logMenstrualCycle(at(daysAgo), ["cramps"]));
-      for (const { muscle, angle, images } of DEMO_PHOTOS)
-        for (const [i, image] of images.entries()) {
-          const asset = await Asset.fromModule(image).downloadAsync();
-          await add(
-            "photo",
-            progressPhotoApi.uploadPhoto({
-              uri: asset.localUri ?? asset.uri,
-              muscleGroups: [muscle],
-              note: "Demo photo",
-              angle,
-              takenAt: at(DEMO_PHOTO_DAYS_AGO[i], 8),
-            }),
-          );
-        }
-    }
-
-    if (await isLocal("supplements")) {
-      const supplements = [
-        { name: "Creatine (demo)", unit: "g", defaultAmount: 5 },
-        { name: "Vitamin D (demo)", unit: "IU", defaultAmount: 2000 },
-        { name: "Omega-3 (demo)", unit: "caps", defaultAmount: 2 },
-      ];
-      for (const [i, params] of supplements.entries()) {
-        const id = idOf(await supplementsApi.create(params)) as number | undefined;
-        if (id === undefined) continue;
-        records.push(["supplement", id]);
-        for (let d = DAYS; d >= 0; d--)
-          if ((d + i) % 5 !== 0)
-            await supplementsApi.log(id, { amount: params.defaultAmount, takenAt: at(d, 8 + i) });
-      }
-    }
+    if (await isLocal("tracking")) await fillTracking(add, at);
+    if (await isLocal("supplements")) await fillSupplements(records, at);
   } finally {
     await saveToStorage(DEMO_RECORDS_KEY, records, userId);
   }

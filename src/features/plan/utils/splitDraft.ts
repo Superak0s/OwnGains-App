@@ -18,7 +18,7 @@ export const sanitizeRepsInput = (value: string): string => {
     .replace(/[^\d-]/g, "")
     .replace(/^-+/, "")
     .split("-");
-  return rest.length > 0 ? `${first}-${rest.join("").replace(/-/g, "")}` : first;
+  return rest.length > 0 ? `${first}-${rest.join("").replaceAll("-", "")}` : first;
 };
 
 export const normalizeReps = (value: string): string =>

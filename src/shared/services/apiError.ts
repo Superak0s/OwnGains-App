@@ -9,9 +9,8 @@ export const OFFLINE_UNAVAILABLE_MESSAGE =
 const waitPhrase = (retryAfterMs: number | undefined, fallback: string): string => {
   if (retryAfterMs == null) return fallback
   const seconds = Math.max(1, Math.ceil(retryAfterMs / 1000))
-  return seconds >= 120
-    ? `in ${Math.ceil(seconds / 60)} minutes`
-    : `in ${seconds} second${seconds === 1 ? "" : "s"}`
+  if (seconds >= 120) return `in ${Math.ceil(seconds / 60)} minutes`
+  return seconds === 1 ? "in 1 second" : `in ${seconds} seconds`
 }
 
 /** Copy for server codes whose prose alone doesn't tell the user what to do. */

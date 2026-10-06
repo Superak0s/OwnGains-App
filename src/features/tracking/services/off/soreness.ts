@@ -116,7 +116,7 @@ export const sorenessApi = {
     return {
       success: true,
       data: entries
-        .sort(
+        .toSorted(
           (a, b) =>
             new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime(),
         ),

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const { spawnSync } = require("child_process");
+const { spawnSync } = require("node:child_process");
 
 let raw = "";
 process.stdin.on("data", (d) => (raw += d));

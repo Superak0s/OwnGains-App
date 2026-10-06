@@ -149,8 +149,8 @@ export default function ChangelogSheet({ visible, onClose, currentVersion }: Pro
               >
                 {section.category}
               </Text>
-              {section.items.map((item, i) => (
-                <View key={i} style={styles.itemRow}>
+              {section.items.map((item) => (
+                <View key={item} style={styles.itemRow}>
                   <Text style={styles.bullet} importantForAccessibility="no">
                     •
                   </Text>
@@ -202,7 +202,7 @@ export default function ChangelogSheet({ visible, onClose, currentVersion }: Pro
                 setView({ kind: "version", version: release.version });
               }}
               accessibilityRole="button"
-              accessibilityLabel={`${releaseLabel(release)}${date ? `, ${date}` : ""}${summary ? `, ${summary}` : ""}`}
+              accessibilityLabel={[releaseLabel(release), date, summary].filter(Boolean).join(", ")}
             >
               <View style={{ flex: 1 }}>
                 <View style={styles.versionHeader}>
@@ -241,13 +241,10 @@ export default function ChangelogSheet({ visible, onClose, currentVersion }: Pro
       scrollable={true}
       fullHeight={true}
     >
-      {RELEASES.length === 0 ? (
+      {RELEASES.length === 0 && (
         <Text style={styles.emptyText}>No release notes are available.</Text>
-      ) : selected ? (
-        renderVersion(selected)
-      ) : (
-        renderAll()
       )}
+      {RELEASES.length > 0 && (selected ? renderVersion(selected) : renderAll())}
     </ModalSheet>
   );
 }
