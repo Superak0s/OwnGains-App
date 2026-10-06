@@ -38,6 +38,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The two root error fallbacks share one view with a colour argument.
 - Removed dead code: `exerciseGuides`, the tracking hooks barrel, `pendingSyncRows`, `getActiveInjuries`, `getAllPhotos`, `resetServerVersionStatus`, `parseSafeDate`, `getCycleStartIso`, the `CycleEntry` alias, `nowIso`, `SEVERITY_INK`, the `LOCALE` constant, unused `React` imports and five exports only used in their own file.
 - `scripts/api_audit.py` reads the server routes from `OwnGains-Server/src/`, where they moved.
+- The README links to OwnGains Server on GitHub instead of a relative sibling path.
 - Body fat entries can be stored without tape measurements, and `api-requests.md` specs the matching server change.
 - Added the `react-native-health-connect` dependency and the `withHealthConnectRationale` config plugin, which opens the privacy policy from the Health Connect permission screen.
 - Health Connect tests cover the importer's mapping, both dedup checks, failures, pruning, pagination, throttling and account switches, and the Home widget's foreground refresh.
