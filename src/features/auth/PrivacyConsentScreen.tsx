@@ -88,7 +88,7 @@ export default function PrivacyConsentScreen({
       : "run by whoever operates it, not the OwnGains developer";
   const serverFeatures = getServerStoredFeatures();
   const storedData = [
-    "your workouts, sets, weights, programs and notes",
+    "your workouts, sets, weights and notes",
     ...(serverFeatures ?? []).map((f) => HEALTH_FEATURE_DATA[f] ?? f),
   ].join(", plus ");
 

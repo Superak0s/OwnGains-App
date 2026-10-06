@@ -6,11 +6,13 @@ jest.mock("../notifications", () => {
   return {
     getNotifications,
     // The real wrapper strips `sound` from the content before delegating.
-    scheduleNotification: jest.fn(async (options: any) => {
-      const mod = await getNotifications();
-      const { sound: _sound, ...content } = options.content;
-      return mod.scheduleNotificationAsync({ ...options, content });
-    }),
+    scheduleNotification: jest.fn(
+      async (options: { content: Record<string, unknown> }) => {
+        const mod = await getNotifications();
+        const { sound: _sound, ...content } = options.content;
+        return mod.scheduleNotificationAsync({ ...options, content });
+      },
+    ),
   };
 });
 
@@ -41,6 +43,15 @@ const makeNotifications = () => ({
 });
 
 type Notifications = ReturnType<typeof makeNotifications>;
+
+type ScheduledRequest = {
+  identifier: string;
+  trigger: unknown;
+  content: { channelId?: string; title: string };
+};
+
+const scheduledRequest = () =>
+  notifications.scheduleNotificationAsync.mock.calls[0][0] as ScheduledRequest;
 
 let notifications: Notifications;
 
@@ -197,7 +208,7 @@ describe("scheduleTimeReminder", () => {
     expect(id).toBe("notif-1");
     expect(kv.supplementTimeNotifId_1_user_42).toBe("notif-1");
 
-    const arg = notifications.scheduleNotificationAsync.mock.calls[0][0] as any;
+    const arg = scheduledRequest();
     expect(arg.identifier).toBe("supplement-time-42-1");
     expect(arg.trigger).toEqual({ type: "daily", hour: 8, minute: 30 });
     expect(arg.content.channelId).toBe("supplement-reminders");
@@ -208,7 +219,7 @@ describe("scheduleTimeReminder", () => {
     setPlatform("android");
     await scheduleTimeReminder("42", 1, "Creatine", 5, "g", "08:30", "alarm");
 
-    const arg = notifications.scheduleNotificationAsync.mock.calls[0][0] as any;
+    const arg = scheduledRequest();
     expect(arg.content.channelId).toBe("supplement-alarms");
   });
 
@@ -216,7 +227,7 @@ describe("scheduleTimeReminder", () => {
     setPlatform("android");
     await scheduleTimeReminder("42", 1, "Creatine", 5, "g", "08:30", "siren");
 
-    const arg = notifications.scheduleNotificationAsync.mock.calls[0][0] as any;
+    const arg = scheduledRequest();
     expect(arg.content.channelId).toBe("supplement-reminders");
   });
 
@@ -224,7 +235,7 @@ describe("scheduleTimeReminder", () => {
     setPlatform("ios");
     await scheduleTimeReminder("42", 1, "Creatine", 5, "g", "08:30");
 
-    const arg = notifications.scheduleNotificationAsync.mock.calls[0][0] as any;
+    const arg = scheduledRequest();
     expect(arg.content.channelId).toBeUndefined();
   });
 

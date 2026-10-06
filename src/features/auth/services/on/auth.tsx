@@ -137,24 +137,18 @@ export const authService = {
 
   refreshToken: async (): Promise<string | null> => {
     try {
+      // A session without a refresh token can't be renewed: sign in again.
       const stored = await refreshTokenStorage.get()
-      const current = await tokenStorage.get()
-      if (!stored && !current) return null
+      if (!stored) return null
 
-      // Without a stored refresh token (a session from before the server issued
-      // them) the bearer form is the only option. Servers answer it with 401
-      // REFRESH_TOKEN_REQUIRED unless AUTH_LEGACY_REFRESH is on, which ends that session.
       const data = await unauthenticatedCall<{
         token?: string
         accessToken?: string
         refreshToken?: string
       }>("/api/auth/refresh", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(stored ? {} : { Authorization: `Bearer ${current}` }),
-        },
-        ...(stored && { body: JSON.stringify({ refreshToken: stored }) }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken: stored }),
       })
 
       const newToken = data.token || data.accessToken

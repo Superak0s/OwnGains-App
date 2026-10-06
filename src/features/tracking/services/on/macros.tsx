@@ -36,11 +36,11 @@ export const macrosTrackingApi = {
     days: number = 30,
   ): Promise<{ entries: MacrosEntry[] }> => {
     type Row = MacrosEntry & { takenAt: string }
-    const res = await apiCall<{ data?: Row[]; entries?: Row[] }>(
+    const res = await apiCall<{ data?: Row[] }>(
       `/api/tracking/macros/log?days=${days}`,
     )
     return {
-      entries: (res.data ?? res.entries ?? []).map((e) => ({
+      entries: (res.data ?? []).map((e) => ({
         ...e,
         loggedAt: e.takenAt,
       })),

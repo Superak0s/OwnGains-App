@@ -1,6 +1,4 @@
-// The server answers { success, data } and still emits the old per-feature key
-// beside it. These adapters have to read either, because a self-hosted box is
-// updated independently of the app build talking to it.
+// The server answers { success, data }. These adapters unwrap it.
 
 import { supplementsApi } from "../supplements"
 import { apiCall } from "@shared/services/apiClient"
@@ -17,7 +15,7 @@ const normalized = {
   lastTakenAt: null,
 }
 
-describe("supplements online adapter unwraps either envelope", () => {
+describe("supplements online adapter unwraps the envelope", () => {
   beforeEach(() => apiCallMock.mockReset())
 
   it("reads data", async () => {
@@ -36,19 +34,6 @@ describe("supplements online adapter unwraps either envelope", () => {
     })
     expect(await supplementsApi.getLog(1)).toEqual({
       success: true, entries: [], streak: 2, takenToday: true, todayEntry: null,
-    })
-  })
-
-  it("falls back to the legacy key of an older server", async () => {
-    apiCallMock.mockResolvedValue({ success: true, supplements: [summary] })
-    expect((await supplementsApi.list()).supplements).toEqual([normalized])
-
-    apiCallMock.mockResolvedValue({ success: true, id: 9, streak: 3 })
-    expect(await supplementsApi.log(1)).toEqual({ success: true, id: 9, streak: 3 })
-
-    apiCallMock.mockResolvedValue({ success: true, entries: [], streak: 2, takenToday: false })
-    expect(await supplementsApi.getLog(1)).toEqual({
-      success: true, entries: [], streak: 2, takenToday: false, todayEntry: null,
     })
   })
 

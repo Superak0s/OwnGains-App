@@ -32,6 +32,7 @@ import type {
 import ProgressChart from "@shared/components/ProgressChart";
 import { getSeverityColor, SEVERITY_STOPS } from "@utils/severityColor";
 import { captureException } from "@shared/services/crashReporting";
+import type { ApiResponse } from "../services/types";
 import { describeError } from "../helpers";
 import {
   Bar,
@@ -120,11 +121,13 @@ export const MuscleDashboard: React.FC<MuscleDashboardProps> = ({
         personalNotesApi.getNotesByMuscle(muscleGroup),
       ]);
 
-    const unwrap = (result: PromiseSettledResult<any>) => {
+    const unwrap = <T,>(
+      result: PromiseSettledResult<ApiResponse<T>>,
+    ): T | undefined => {
       if (result.status === "rejected") return undefined;
-      return result.value?.data ?? result.value;
+      return result.value?.data;
     };
-    const asList = (result: PromiseSettledResult<any>) => {
+    const asList = <T,>(result: PromiseSettledResult<ApiResponse<T[]>>) => {
       const value = unwrap(result);
       return Array.isArray(value) ? value : [];
     };

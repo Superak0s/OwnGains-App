@@ -55,7 +55,7 @@ export const sharingApi = {
 
   getReceivedPermissions: async (): Promise<ReceivedPermission[]> => {
     const data = await apiCall<{ permissions: Record<string, unknown>[] }>(
-      `/api/sharing/permissions/received?includePayload=true`,
+      `/api/sharing/permissions/received`,
     )
     const permissions = (data.permissions || [])
       .filter((p) => p.id !== undefined && p.id !== null)
@@ -68,7 +68,7 @@ export const sharingApi = {
         hasPayload: p.hasPayload === true || (p.payload ?? null) !== null,
         createdAt: p.createdAt as string,
       })) as ReceivedPermission[]
-    // The server inlines at most 10 payloads. The rest come back as null and are fetched one by one.
+    // The list carries no payloads, only hasPayload. Each one is fetched on its own.
     await Promise.all(
       permissions
         .filter((p) => p.hasPayload && p.payload === null)
@@ -120,28 +120,12 @@ export const sharingApi = {
     return data.session || null
   },
 
-  // Needs raw response for 404 check
-  getFriendSessionStatus: async (
-    friendId: number | string,
-  ): Promise<{ hasActiveSession: boolean }> => {
-    const response = await authenticatedFetch(
-      `/api/sharing/joint-sessions/friend/${friendId}/status`,
-    )
-    if (response.status === 404) return { hasActiveSession: false }
-    return parseApiResponse(response)
-  },
-
-  /** Null on a server without the batch route. Ask per friend instead. */
   getFriendSessionStatuses: async (
     friendIds: (number | string)[],
-  ): Promise<Record<string, boolean> | null> => {
-    const response = await authenticatedFetch(
-      `/api/sharing/joint-sessions/status?friendIds=${friendIds.map(encodeURIComponent).join(",")}`,
-    )
-    if (response.status === 404) return null
-    const data = await parseApiResponse<{
+  ): Promise<Record<string, boolean>> => {
+    const data = await apiCall<{
       statuses: Record<string, { hasActiveSession: boolean }>
-    }>(response)
+    }>(`/api/sharing/joint-sessions/status?friendIds=${friendIds.map(encodeURIComponent).join(",")}`)
     const map: Record<string, boolean> = {}
     for (const id of friendIds)
       map[String(id)] = !!data.statuses?.[String(id)]?.hasActiveSession

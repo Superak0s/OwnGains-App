@@ -39,6 +39,8 @@ module.exports = [
       // Both spellings are used deliberately across the codebase.
       "@typescript-eslint/array-type": "off",
 
+      "@typescript-eslint/no-explicit-any": "error",
+
       // A leading underscore is the codebase's existing marker for a
       // deliberately unused binding (see services/off/auth.tsx).
       "@typescript-eslint/no-unused-vars": [

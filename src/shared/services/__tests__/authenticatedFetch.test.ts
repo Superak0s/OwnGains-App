@@ -111,7 +111,7 @@ describe("authenticatedFetch 401 handling", () => {
     expect(refresher).not.toHaveBeenCalled()
   })
 
-  it("refreshes with the bearer but keeps it without a refresh token", async () => {
+  it("asks the refresher, which rejects, and keeps the token without a refresh token", async () => {
     const refresher = jest.fn(async () => "rejected" as const)
     setSessionRefresher(refresher)
     refreshGet.mockResolvedValue(null)

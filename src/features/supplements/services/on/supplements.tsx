@@ -10,12 +10,8 @@ import type {
 
 // The server answers { success, data } on every tracking route. These adapters
 // unwrap it into the format the screens and the offline version share, so
-// the envelope stops at this file. The `?? res.<legacy>` fallbacks keep this
-// build working against a server image older than the envelope change.
-type Enveloped<K extends string, T> = { data?: T } & { [P in K]?: T }
-
-const unwrap = <K extends string, T>(res: Enveloped<K, T>, legacy: K): T | undefined =>
-  res.data ?? res[legacy]
+// the envelope stops at this file.
+type Enveloped<T> = { data?: T }
 
 // Servers without multi-dose support omit these fields. One dose a day is what
 // they model.
@@ -36,34 +32,34 @@ const withDoseDefaults = (s: ServerSummary): SupplementSummary => ({
 export const supplementsApi = {
 
   list: async (): Promise<{ success: boolean; supplements: SupplementSummary[] }> => {
-    const res = await apiCall<Enveloped<"supplements", ServerSummary[]>>(
+    const res = await apiCall<Enveloped<ServerSummary[]>>(
       `/api/tracking/supplements`,
     )
     return {
       success: true,
-      supplements: (unwrap(res, "supplements") ?? []).map(withDoseDefaults),
+      supplements: (res.data ?? []).map(withDoseDefaults),
     }
   },
 
   create: async (
     params: CreateSupplementParams,
   ): Promise<{ success: boolean; supplement: SupplementSummary }> => {
-    const res = await apiCall<Enveloped<"supplement", ServerSummary>>(
+    const res = await apiCall<Enveloped<ServerSummary>>(
       `/api/tracking/supplements`,
       { method: "POST", body: JSON.stringify(params) },
     )
-    return { success: true, supplement: withDoseDefaults(unwrap(res, "supplement")!) }
+    return { success: true, supplement: withDoseDefaults(res.data!) }
   },
 
   update: async (
     id: number,
     params: UpdateSupplementParams,
   ): Promise<{ success: boolean; supplement: SupplementSummary }> => {
-    const res = await apiCall<Enveloped<"supplement", ServerSummary>>(
+    const res = await apiCall<Enveloped<ServerSummary>>(
       `/api/tracking/supplements/${id}`,
       { method: "PATCH", body: JSON.stringify(params) },
     )
-    return { success: true, supplement: withDoseDefaults(unwrap(res, "supplement")!) }
+    return { success: true, supplement: withDoseDefaults(res.data!) }
   },
 
   delete: (id: number): Promise<{ success: boolean }> =>
@@ -74,29 +70,18 @@ export const supplementsApi = {
     id: number,
     params: LogSupplementParams = {},
   ): Promise<{ success: boolean; id: number; streak: number }> => {
-    const res = await apiCall<{
-      data?: { id: number; streak: number }
-      id?: number
-      streak?: number
-    }>(`/api/tracking/supplements/${id}/log`, {
-      method: "POST",
-      body: JSON.stringify(params),
-    })
-    const logged = res.data ?? { id: res.id!, streak: res.streak! }
-    return { success: true, ...logged }
+    const res = await apiCall<Enveloped<{ id: number; streak: number }>>(
+      `/api/tracking/supplements/${id}/log`,
+      { method: "POST", body: JSON.stringify(params) },
+    )
+    return { success: true, ...res.data! }
   },
 
   getLog: async (id: number, limit = 30): Promise<SupplementLogResponse> => {
-    const res = await apiCall<
-      { data?: Omit<SupplementLogResponse, "success"> } & Partial<SupplementLogResponse>
-    >(`/api/tracking/supplements/${id}/log?limit=${limit}`)
-    const log = res.data ?? {
-      entries: res.entries ?? [],
-      streak: res.streak ?? 0,
-      takenToday: !!res.takenToday,
-      todayEntry: res.todayEntry ?? null,
-    }
-    return { success: true, ...log }
+    const res = await apiCall<Enveloped<Omit<SupplementLogResponse, "success">>>(
+      `/api/tracking/supplements/${id}/log?limit=${limit}`,
+    )
+    return { success: true, ...res.data! }
   },
 
   deleteLogEntry: (

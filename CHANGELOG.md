@@ -6,6 +6,8 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-06
+
 ### Added
 
 - Settings → About links to the GitHub pages of the app and of OwnGains Server.
@@ -14,11 +16,15 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 ### Changed
 
 - Hydration is now the first tab on the Tracking screen and the one it opens on. If you have reordered your tracking tabs, your order is kept.
+- A sign-in from an app version before 0.1.4 that never received a refresh token now asks you to sign in again when it expires, instead of renewing itself.
 
 ### Fixed
 
 - Tracking widgets on the Home screen now show entries you log on the Tracking screen. They refresh each time you return to Home, and the Tracking screen likewise picks up entries logged elsewhere.
 - Logging water from the quick-log notification or a tile while the app is closed no longer contacts your server when it keeps that data on this phone. The app checks which features the server stores each time you open it or return to it, and keeps the last known answer while the server is unreachable.
+
+- Switching to offline mode, or withdrawing health consent, now copies the workout history of every split to this phone, not only the current one. If the copy fails, the switch stops and the server deletes nothing, where before the server could erase history that was never copied.
+- The health consent screen no longer lists programs among the data that withdrawing consent deletes from the server. The server keeps them.
 
 ### Security
 
@@ -28,6 +34,8 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 - Moved `ApiError`/`ServerUnreachableError` into `apiErrorClasses.ts` to break the `crashReporting` and `apiError` require cycle.
 - New local native module `modules/hydration-tiles` with the tile services and a headless JS task. The notification buttons and the tiles share `quickLogHydration`.
+- Moved off the server routes and response keys kept only for older app builds: soreness follow-ups use the batch route, soreness and injury lists use `?status=active` and `?muscle=`, joint workout status uses the batch route with no per-friend fallback, received program shares fetch each payload from `/permissions/:id/payload`, and tracking responses are read from `data` only. Every released server version supports these.
+- Removed every explicit `any` type and made ESLint's `no-explicit-any` an error.
 
 ## [0.2.0] - 2026-10-06
 

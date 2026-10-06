@@ -156,8 +156,8 @@ const fetchAuthenticated = async (
   // the bearer token itself was rejected, regardless of the message body.
   if (status === 401 && toOwnServer) {
     const hasRefreshToken = !!(await refreshTokenStorage.get())
-    // A session without a refresh token still refreshes with its bearer, and a
-    // refusal there is what logs it out instead of failing every request.
+    // Without a refresh token the refresher answers "rejected", which is what
+    // logs the session out instead of failing every request.
     if (mayRefresh && (hasRefreshToken || token) && route !== SIGNOUT_ROUTE) {
       const current = await tokenStorage.get()
       // Another request may already have refreshed while this one was in flight.
@@ -173,9 +173,7 @@ const fetchAuthenticated = async (
     console.warn("Token rejected, clearing access token")
     log.warn("auth.token_rejected", { method, route })
     metric.count("auth.session_expired")
-    // Only safe to drop while a separate refresh credential exists. Until the
-    // server issues one, the access token is its own refresh credential, so
-    // clearing it here would turn a routine expiry into a forced logout.
+    // Only dropped while a refresh token can restore the session.
     if (hasRefreshToken) await tokenStorage.clearAccess()
     // Must be an ApiError: isCredentialRejection() keys off it to tell a
     // rejected credential from an unreachable server.

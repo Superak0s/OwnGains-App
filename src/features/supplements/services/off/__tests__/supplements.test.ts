@@ -3,6 +3,7 @@ jest.mock("@shared/services/sqliteStorage", () =>
 );
 
 import type { supplementsApi as Api } from "../supplements";
+import type { CreateSupplementParams } from "../../../types";
 
 let supplementsApi: typeof Api;
 
@@ -15,8 +16,10 @@ beforeEach(() => {
 
 afterEach(() => jest.useRealTimers());
 
-const create = (name = "Creatine", extra = {}) =>
-  supplementsApi.create({ name, ...extra } as any);
+const create = (
+  name = "Creatine",
+  extra: Partial<CreateSupplementParams> = {},
+) => supplementsApi.create({ name, ...extra });
 
 // Offline ids are offset out of the server's id space by LOCAL_ID_BASE.
 const ID = (n: number) => 1_000_000_000 + n;

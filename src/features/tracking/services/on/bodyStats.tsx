@@ -40,11 +40,11 @@ export const bodyTrackingApi = {
   getWeightHistory: async (
     limit: number = 90,
   ): Promise<WeightHistoryResponse> => {
-    const res = await apiCall<{ data?: MetricEntry[]; entries?: MetricEntry[] }>(
+    const res = await apiCall<{ data?: MetricEntry[] }>(
       `/api/tracking/bodystats/weight?limit=${limit}`,
     )
     return {
-      entries: (res.data ?? res.entries ?? []).map((e) => ({
+      entries: (res.data ?? []).map((e) => ({
         id: e.id,
         weightKg: e.value,
         recordedAt: e.measuredAt,
@@ -56,11 +56,10 @@ export const bodyTrackingApi = {
     apiCall(`/api/tracking/bodystats/weight/${id}`, { method: "DELETE" }),
 
   getCurrentWeight: async (): Promise<{ entry?: { weightKg: number } }> => {
-    const res = await apiCall<{
-      data?: MetricEntry | null
-      entry?: MetricEntry | null
-    }>(`/api/tracking/bodystats/weight/current`)
-    const entry = res.data ?? res.entry
+    const res = await apiCall<{ data?: MetricEntry | null }>(
+      `/api/tracking/bodystats/weight/current`,
+    )
+    const entry = res.data
     return entry ? { entry: { weightKg: entry.value } } : {}
   },
 }
@@ -111,11 +110,10 @@ export const bodyFatApi = {
   getBodyFatHistory: async (
     limit: number = 90,
   ): Promise<{ entries: BodyFatEntry[] }> => {
-    const res = await apiCall<{
-      data?: BodyFatEntry[]
-      entries?: BodyFatEntry[]
-    }>(`/api/tracking/bodystats/bodyfat/log?limit=${limit}`)
-    return { entries: res.data ?? res.entries ?? [] }
+    const res = await apiCall<{ data?: BodyFatEntry[] }>(
+      `/api/tracking/bodystats/bodyfat/log?limit=${limit}`,
+    )
+    return { entries: res.data ?? [] }
   },
 
   deleteBodyFatEntry: async (id: number | string): Promise<unknown> =>

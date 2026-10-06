@@ -139,19 +139,6 @@ function fetchFriendSessionStatuses(
   ) {
     return sharedStatuses.statuses;
   }
-  const perFriend = () =>
-    mapWithConcurrency(friends, FRIEND_FETCH_CONCURRENCY, (f) =>
-      sharingApi
-        .getFriendSessionStatus(f.id)
-        .then((r) => ({ id: f.id, active: !!r?.hasActiveSession }))
-        .catch(reportAndReturn({ id: f.id, active: false }, { stage: "friendSessionStatus" })),
-    ).then((results) => {
-      const map: Record<string | number, boolean> = {};
-      results.forEach((r) => {
-        map[r.id] = r.active;
-      });
-      return map;
-    });
   const batches: Friend[][] = [];
   for (let i = 0; i < friends.length; i += STATUS_BATCH_SIZE)
     batches.push(friends.slice(i, i + STATUS_BATCH_SIZE));
@@ -160,13 +147,8 @@ function fetchFriendSessionStatuses(
       sharingApi.getFriendSessionStatuses(batch.map((f) => f.id)),
     ),
   )
-    .then((maps) =>
-      maps.includes(null) ? perFriend() : Object.assign({}, ...maps),
-    )
-    .catch((error) => {
-      captureException(error, { stage: "friendSessionStatuses" });
-      return perFriend();
-    });
+    .then((maps) => Object.assign({}, ...maps))
+    .catch(reportAndReturn({}, { stage: "friendSessionStatuses" }));
   sharedStatuses = { key, fetchedAt: Date.now(), statuses };
   return statuses;
 }

@@ -22,12 +22,17 @@ const countCall = async <R,>(
   }
 }
 
-// `any` in the constraint is required: `unknown[]`/`never[]` parameters
-// make every concrete service method fail the constraint contravariantly.
-export function createDispatchProxy<
-  T extends Record<string, (...args: any[]) => any>,
->(onImpl: T, offImpl: T, feature?: string, metricName = feature): T {
-  const proxy = {} as Record<keyof T, (...args: unknown[]) => unknown>
+type ServiceMethod = (...args: never[]) => unknown
+type ServiceModule<T> = { [K in keyof T]: ServiceMethod }
+type Invoke = (...args: unknown[]) => unknown
+
+export function createDispatchProxy<T extends ServiceModule<T>>(
+  onImpl: T,
+  offImpl: T,
+  feature?: string,
+  metricName = feature,
+): T {
+  const proxy = {} as Record<keyof T, Invoke>
 
   for (const key of Object.keys(onImpl) as Array<keyof T>) {
     proxy[key] = async (...args: unknown[]) => {
@@ -36,7 +41,7 @@ export function createDispatchProxy<
         (feature !== undefined && (await isFeatureLocal(feature)))
       const call = (off: boolean) =>
         countCall(metricName, String(key), off ? "offline" : "online", () =>
-          (off ? offImpl : onImpl)[key](...args),
+          ((off ? offImpl : onImpl)[key] as unknown as Invoke)(...args),
         )
       try {
         return await call(useOff)
@@ -55,7 +60,7 @@ export function createDispatchProxy<
     }
   }
 
-  return proxy as T
+  return proxy as unknown as T
 }
 
 export const FEATURE_LOCAL_ONLY = "FEATURE_LOCAL_ONLY"
@@ -66,19 +71,20 @@ export const FEATURE_LOCAL_ONLY = "FEATURE_LOCAL_ONLY"
  * (friends, sharing). Without this they would keep issuing real requests
  * with an `offline_…` bearer token in a mode documented as zero-backend.
  */
-export function createOnlineOnlyProxy<
-  T extends Record<string, (...args: any[]) => any>,
->(onImpl: T, metricName?: string): T {
-  const proxy = {} as Record<keyof T, (...args: unknown[]) => unknown>
+export function createOnlineOnlyProxy<T extends ServiceModule<T>>(
+  onImpl: T,
+  metricName?: string,
+): T {
+  const proxy = {} as Record<keyof T, Invoke>
 
   for (const key of Object.keys(onImpl) as Array<keyof T>) {
     proxy[key] = async (...args: unknown[]) => {
       if (await isServerless()) throw new Error(OFFLINE_UNAVAILABLE_MESSAGE)
       return countCall(metricName, String(key), "online", () =>
-        onImpl[key](...args),
+        (onImpl[key] as unknown as Invoke)(...args),
       )
     }
   }
 
-  return proxy as T
+  return proxy as unknown as T
 }

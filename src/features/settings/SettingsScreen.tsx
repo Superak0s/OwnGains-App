@@ -1669,38 +1669,35 @@ ${photosOmitted} progress photo${photosOmitted === 1 ? " was" : "s were"} too la
         console.warn(`Failed copying key ${key}:`, err);
       }
     }
-    try {
-      if (selectedSplit) {
-        const sessions: WorkoutSession[] = [];
-        let before: string | null = null;
-        do {
-          const page = await workoutApi.getSessionHistoryPage(
-            selectedSplit,
-            before,
-            1000,
-            true,
-          );
-          sessions.push(...page.sessions);
-          before = page.sessions.length > 0 ? page.nextCursor : null;
-        } while (before);
-        const mapSession = (s: WorkoutSession) => ({
-          id: s.id,
-          split: selectedSplit,
-          dayNumber: s.dayNumber ?? 0,
-          dayTitle: s.dayTitle,
-          startTime: s.startTime,
-          endTime: s.endTime,
-          setTimings: s.setTimings ?? [],
-          isDemo: false,
-        });
-        await setStorageItem(
-          "@offline:workout:sessions",
-          JSON.stringify(sessions.map(mapSession)),
-        );
-      }
-    } catch (err) {
-      console.warn("Failed migrating sessions:", err);
-    }
+    // Every split, not just the current one: withdrawing health consent makes
+    // the server delete all of them. A failure throws so the caller stops
+    // before that delete.
+    const sessions: WorkoutSession[] = [];
+    let before: string | null = null;
+    do {
+      const page = await workoutApi.getSessionHistoryPage(
+        null,
+        before,
+        1000,
+        true,
+      );
+      sessions.push(...page.sessions);
+      before = page.sessions.length > 0 ? page.nextCursor : null;
+    } while (before);
+    const mapSession = (s: WorkoutSession) => ({
+      id: s.id,
+      split: s.split ?? selectedSplit,
+      dayNumber: s.dayNumber ?? 0,
+      dayTitle: s.dayTitle,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      setTimings: s.setTimings ?? [],
+      isDemo: false,
+    });
+    await setStorageItem(
+      "@offline:workout:sessions",
+      JSON.stringify(sessions.map(mapSession)),
+    );
   };
 
   const doMigrateOffline = async (withdrawHealthConsent = false): Promise<boolean> => {
@@ -1752,7 +1749,7 @@ ${photosOmitted} progress photo${photosOmitted === 1 ? " was" : "s were"} too la
   const withdrawHealthConsent = () => {
     alert(
       "Withdraw Health Consent",
-      "The server will permanently delete your workout history and any body data it stores, and the app will switch to offline mode, copying your current plan and its history to this device. Export My Data first if you want a full copy. Continue?",
+      "The server will permanently delete your workout history and any body data it stores, and the app will switch to offline mode, copying your current plan and all your workout history to this device. Export My Data first if you want a full copy. Continue?",
       [
         { text: "Cancel", style: "cancel" },
         {

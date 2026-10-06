@@ -16,6 +16,7 @@ import {
   exercisesForMuscle,
 } from "../utils";
 import type { ThemeColors } from "@shared/context/ThemeContext";
+import type { PartnerProgress } from "@shared/context/hooks/useJointSession";
 import { isDarkColor } from "@utils/color";
 
 const colors = {
@@ -126,7 +127,10 @@ describe("getAddingSetsSubtitle", () => {
 
 describe("checkIsSelectedSetAssisted", () => {
   const dayWorkout = {
-    exercises: [{ name: "Assisted Pull Up" }, { name: "Bench Press" }] as any,
+    exercises: [
+      { name: "Assisted Pull Up", sets: 3 },
+      { name: "Bench Press", sets: 3 },
+    ],
   };
 
   it("is false without a selection or a day", () => {
@@ -378,15 +382,14 @@ describe("getServerHistoryEntries", () => {
 });
 
 describe("pickBestPerformanceSummary", () => {
-  const entry = (date: string, oneRepMax: number, isWarmup = false) =>
-    ({
-      date: new Date(date),
-      weight: 0,
-      reps: 0,
-      oneRepMax,
-      note: "",
-      isWarmup,
-    }) as any;
+  const entry = (date: string, oneRepMax: number, isWarmup = false) => ({
+    date: new Date(date),
+    weight: 0,
+    reps: 0,
+    oneRepMax,
+    note: "",
+    isWarmup,
+  });
 
   it("ignores today's sets and warmups", () => {
     expect(
@@ -410,6 +413,15 @@ describe("pickBestPerformanceSummary", () => {
 });
 
 describe("getPartnerStatusText", () => {
+  const progress = (p: Partial<PartnerProgress>): PartnerProgress => ({
+    exerciseIndex: null,
+    setIndex: null,
+    exerciseName: null,
+    readyForNext: false,
+    lastUpdated: 0,
+    ...p,
+  });
+
   it("prefers the ready flag", () => {
     expect(getPartnerStatusText(true, null)).toBe("✅ Ready for next set");
   });
@@ -420,18 +432,18 @@ describe("getPartnerStatusText", () => {
 
   it("shows the exercise name and 1-based set number", () => {
     expect(
-      getPartnerStatusText(false, {
-        exerciseName: "Squat",
-        setIndex: 2,
-      } as any),
+      getPartnerStatusText(
+        false,
+        progress({ exerciseName: "Squat", setIndex: 2 }),
+      ),
     ).toBe("Squat · Set 3");
   });
 
   it("falls back to the exercise index, then to a dash", () => {
-    expect(getPartnerStatusText(false, { exerciseIndex: 1 } as any)).toBe(
+    expect(getPartnerStatusText(false, progress({ exerciseIndex: 1 }))).toBe(
       "Ex 2 · —",
     );
-    expect(getPartnerStatusText(false, {} as any)).toBe("— · —");
+    expect(getPartnerStatusText(false, progress({}))).toBe("— · —");
   });
 });
 

@@ -214,6 +214,13 @@ export function checkIsSelectedSetAssisted(
   return !!exercise && isAssistedExercise(exercise.name);
 }
 
+type HistoryWorkoutData = {
+  days: Array<{
+    dayNumber: number;
+    split: Record<string, { exercises?: Array<{ name: string }> }>;
+  }>;
+};
+
 type PerformanceEntry = {
   date: Date;
   weight: number;
@@ -277,7 +284,7 @@ function collectSetsForExercise(
 }
 
 function getSetsForDayExercise(
-  workoutData: { days: Array<Record<string, any>> } | null | undefined,
+  workoutData: HistoryWorkoutData | null | undefined,
   selectedSplit: string | null,
   completedDays: Record<string, Record<number, Record<string, unknown>>>,
   dayNumber: string,
@@ -292,7 +299,7 @@ function getSetsForDayExercise(
   if (!pw?.exercises) return [];
 
   const entries: PerformanceEntry[] = [];
-  pw.exercises.forEach((ex: { name: string }, exerciseIndex: number) => {
+  pw.exercises.forEach((ex, exerciseIndex) => {
     if (
       getCanonicalName(ex.name, allExerciseNames).toLowerCase() !==
       canonicalName.toLowerCase()
@@ -308,7 +315,7 @@ function getSetsForDayExercise(
 
 export function getLocalHistoryEntries(
   completedDays: Record<string, Record<number, Record<string, unknown>>>,
-  workoutData: { days: Array<Record<string, any>> } | null | undefined,
+  workoutData: HistoryWorkoutData | null | undefined,
   selectedSplit: string | null,
   canonicalName: string,
   allExerciseNames: string[],

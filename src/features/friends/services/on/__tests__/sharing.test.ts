@@ -2,16 +2,11 @@ jest.mock("@shared/services/apiClient", () => ({
   apiCall: jest.fn(),
   parseApiResponse: jest.fn((res: { body: unknown }) => Promise.resolve(res.body)),
 }));
-jest.mock("@shared/services/authenticatedFetch", () => ({
-  authenticatedFetch: jest.fn(),
-}));
 
 import { apiCall } from "@shared/services/apiClient";
-import { authenticatedFetch } from "@shared/services/authenticatedFetch";
 import { sharingApi } from "../sharing";
 
 const mockApiCall = apiCall as jest.Mock;
-const mockFetch = authenticatedFetch as jest.Mock;
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -33,22 +28,14 @@ describe("getFriendSessionsWithTimings", () => {
 
 describe("getFriendSessionStatuses", () => {
   it("maps every requested friend, defaulting omitted ones to inactive", async () => {
-    mockFetch.mockResolvedValueOnce({
-      status: 200,
-      body: { statuses: { a: { hasActiveSession: true } } },
-    });
+    mockApiCall.mockResolvedValueOnce({ statuses: { a: { hasActiveSession: true } } });
     await expect(sharingApi.getFriendSessionStatuses(["a", "b"])).resolves.toEqual({
       a: true,
       b: false,
     });
-    expect(mockFetch).toHaveBeenCalledWith(
+    expect(mockApiCall).toHaveBeenCalledWith(
       "/api/sharing/joint-sessions/status?friendIds=a,b",
     );
-  });
-
-  it("returns null from a server without the batch route", async () => {
-    mockFetch.mockResolvedValueOnce({ status: 404 });
-    await expect(sharingApi.getFriendSessionStatuses(["a"])).resolves.toBeNull();
   });
 });
 
@@ -68,7 +55,7 @@ describe("getReceivedPermissions", () => {
 
     expect(mockApiCall).toHaveBeenNthCalledWith(
       1,
-      "/api/sharing/permissions/received?includePayload=true",
+      "/api/sharing/permissions/received",
     );
     expect(mockApiCall).toHaveBeenNthCalledWith(2, "/api/sharing/permissions/2/payload");
     expect(mockApiCall).toHaveBeenCalledTimes(2);
