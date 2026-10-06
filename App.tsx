@@ -137,6 +137,7 @@ import { getNotifications } from "./src/shared/services/notifications";
 import { sweepStaleExports } from "./src/utils/writeJsonExport";
 import { useGitHubUpdateCheck } from "./src/shared/services/githubUpdate";
 import { useHealthConnectSync } from "./src/features/healthConnect/importer";
+import { useHydrationNotification } from "./src/features/tracking/hydrationNotification";
 
 interface TabIconProps {
   readonly icon: string;
@@ -472,6 +473,7 @@ function MainTabs() {
   const { colors } = useTheme();
   useTutorialGate();
   useHealthConnectSync(user?.id ?? null);
+  useHydrationNotification(user?.id ?? null);
   const updateAlert = useGitHubUpdateCheck();
   const [isOffline, setIsOffline] = useState(
     () => getAppModeSync() === "offline",

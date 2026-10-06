@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { AppState, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import type { useAlert } from "@shared/components/CustomAlert";
-import { captureException } from "@shared/services/crashReporting";
+import { captureException, trackFeature } from "@shared/services/crashReporting";
 import { loadFromStorage, STORAGE_KEYS } from "@shared/services/storage";
 import { formatDateTime } from "@utils/format";
 import type { SettingsStyles } from "@features/settings/SettingsScreen";
@@ -94,7 +94,9 @@ export default function HealthConnectSection({
 
   const handleConnect = async (): Promise<void> => {
     try {
-      if ((await connect()).length > 0) await sync();
+      const granted = await connect();
+      trackFeature("healthConnect", "connect", { granted: granted.length });
+      if (granted.length > 0) await sync();
     } catch (error) {
       captureException(error, { feature: "healthConnect" });
     }

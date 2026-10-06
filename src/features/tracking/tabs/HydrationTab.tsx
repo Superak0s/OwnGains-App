@@ -1,5 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { View, Text, StyleSheet, ScrollView, TextInput } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  Platform,
+  Switch,
+} from "react-native";
 import ModalSheet from "@shared/components/ModalSheet";
 import { useAuth } from "@shared/context/AuthContext";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
@@ -12,6 +20,14 @@ import {
 import type { WidgetDefinition } from "@shared/types";
 import { toDefaultWidgets } from "@shared/types";
 import { hydrationApi } from "../services";
+import {
+  DEFAULT_HYDRATION_PRESETS,
+  type HydrationPreset,
+} from "../services/types";
+import {
+  isHydrationNotificationEnabled,
+  setHydrationNotificationEnabled,
+} from "../hydrationNotification";
 import { describeError } from "../helpers";
 import { buildLocalISOForDate } from "../utils";
 import { useRetryKey } from "../hooks/useRetryKey";
@@ -83,18 +99,6 @@ export const HYDRATION_TAB_CONFIG = {
   key: "hydration",
   label: "Hydration",
 };
-
-interface HydrationPreset {
-  label: string;
-  ml: number;
-}
-
-const DEFAULT_HYDRATION_PRESETS: HydrationPreset[] = [
-  { label: "Small glass", ml: 250 },
-  { label: "Regular glass", ml: 500 },
-  { label: "Water bottle", ml: 750 },
-  { label: "Large bottle", ml: 1000 },
-];
 
 interface LogHydrationModalProps {
   readonly visible: boolean;
@@ -422,8 +426,24 @@ export function HydrationSettingsWidget({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState(false);
+  const { user } = useAuth();
+  const userId = user?.id == null ? null : String(user.id);
+  const [notificationOn, setNotificationOn] = useState(false);
 
   const styles = useMemo(() => makeHydrationSettingsStyles(colors), [colors]);
+
+  useEffect(() => {
+    if (userId) void isHydrationNotificationEnabled(userId).then(setNotificationOn);
+  }, [userId]);
+
+  const toggleNotification = async (on: boolean) => {
+    if (!userId) return;
+    setNotificationOn(on);
+    if (!(await setHydrationNotificationEnabled(userId, on))) {
+      setNotificationOn(false);
+      setError("Allow notifications for OwnGains to use the quick-log notification.");
+    }
+  };
 
   useEffect(() => {
     if (!success) return;
@@ -510,6 +530,21 @@ export function HydrationSettingsWidget({
               ))}
             </View>
           </View>
+
+          {Platform.OS === "android" && (
+            <Row
+              title='Quick-log notification'
+              meta="Keeps a notification with today's total and buttons for your first three presets."
+              right={
+                <Switch
+                  value={notificationOn}
+                  onValueChange={toggleNotification}
+                  accessibilityLabel='Quick-log notification'
+                />
+              }
+              last
+            />
+          )}
 
           {!!error && <Text style={styles.error}>{error}</Text>}
           {success && <Text style={styles.success}>Settings saved.</Text>}

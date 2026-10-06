@@ -10,6 +10,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 - Settings has a Health Connect section on Android. After you connect it, OwnGains imports your weight, body fat, hydration and nutrition from the last 30 days into your logs, again each time you open the app, or on demand with Sync Now. Entries you already have are not imported twice.
 - Steps, Heart Rate and Sleep widgets for Home on Android show today's steps and heart rate and last night's sleep from Health Connect. They read it live and store nothing.
+- Hydration settings on Android can turn on a quick-log notification. It stays in the notification shade, shows today's water total and has buttons for your first three presets that log a drink without opening the app.
 
 ### Changed
 
@@ -25,6 +26,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The privacy policy describes what OwnGains reads from Health Connect and where it is kept.
 
 ### Internal
+- Usage telemetry for Health Connect (connect, sync timing and counts, rejected imports) and the water quick-log notification (toggle, quick logs).
 
 - Unused Android permissions are blocked through `android.blockedPermissions` in `app.json`, replacing the `withAndroidPermissionPruning` config plugin.
 - Path aliases are declared once in `tsconfig.json` `paths` (Metro reads them natively) and mirrored in the Jest `moduleNameMapper`, replacing `babel-plugin-module-resolver`.
@@ -39,6 +41,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Removed dead code: `exerciseGuides`, the tracking hooks barrel, `pendingSyncRows`, `getActiveInjuries`, `getAllPhotos`, `resetServerVersionStatus`, `parseSafeDate`, `getCycleStartIso`, the `CycleEntry` alias, `nowIso`, `SEVERITY_INK`, the `LOCALE` constant, unused `React` imports and five exports only used in their own file.
 - `scripts/api_audit.py` reads the server routes from `OwnGains-Server/src/`, where they moved.
 - The README links to OwnGains Server on GitHub instead of a relative sibling path.
+- Added `expo-task-manager` so notification buttons can run while the app is closed. The default hydration presets moved to `tracking/services/types.ts`.
 - Body fat entries can be stored without tape measurements, and `api-requests.md` specs the matching server change.
 - Added the `react-native-health-connect` dependency and the `withHealthConnectRationale` config plugin, which opens the privacy policy from the Health Connect permission screen.
 - Health Connect tests cover the importer's mapping, both dedup checks, failures, pruning, pagination, throttling and account switches, and the Home widget's foreground refresh.

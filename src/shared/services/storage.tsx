@@ -122,6 +122,7 @@ export const STORAGE_KEYS = {
   MEASUREMENTS_TAB_WIDGETS: "trackingScreen_measurementsWidgets",
   HYDRATION_TAB_WIDGETS: "trackingScreen_hydrationWidgets",
   HYDRATION_PRESETS: "tracking_hydration_presets",
+  HYDRATION_NOTIFICATION: "tracking_hydration_notification",
   MACROS_SAVED_FOODS: "tracking_macros_saved_foods",
   SORENESS_TAB_WIDGETS: "trackingScreen_sorenessWidgets",
   MENSTRUAL_TAB_WIDGETS: "trackingScreen_menstrualWidgets",

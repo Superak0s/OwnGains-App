@@ -62,3 +62,15 @@ export const DEFAULT_HYDRATION_SETTINGS: HydrationSettings = {
   goalMl: 2500,
   measurementErrorPercent: 5,
 };
+
+export interface HydrationPreset {
+  label: string;
+  ml: number;
+}
+
+export const DEFAULT_HYDRATION_PRESETS: HydrationPreset[] = [
+  { label: "Small glass", ml: 250 },
+  { label: "Regular glass", ml: 500 },
+  { label: "Water bottle", ml: 750 },
+  { label: "Large bottle", ml: 1000 },
+];

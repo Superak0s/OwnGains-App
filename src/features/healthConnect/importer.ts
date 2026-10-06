@@ -9,7 +9,12 @@ import {
 } from "@features/tracking/services";
 import type { BodyFatEntryWithFields } from "@features/tracking/types";
 import { ApiError } from "@shared/services/apiError";
-import { captureException } from "@shared/services/crashReporting";
+import {
+  captureException,
+  metric,
+  trackFeature,
+  trackSpan,
+} from "@shared/services/crashReporting";
 import { getRecordStoreUser } from "@shared/services/offlineHelpers";
 import { loadFromStorage, saveToStorage, STORAGE_KEYS } from "@shared/services/storage";
 import { toDateString } from "@utils/format";
@@ -188,7 +193,13 @@ async function importFromHealthConnect(userId: string): Promise<ImportSummary> {
     } catch (error) {
       summary.failed.push(type);
       const rejected = error instanceof ApiError && error.status >= 400 && error.status < 500;
-      if (!rejected) captureException(error, { feature: "healthConnect", recordType: type });
+      if (rejected) {
+        metric.count("healthConnect.import_rejected", 1, {
+          attributes: { recordType: type, status: error.status },
+        });
+      } else {
+        captureException(error, { feature: "healthConnect", recordType: type });
+      }
     }
     await saveToStorage(STORAGE_KEYS.HEALTH_CONNECT_IMPORTED, ids, userId);
   }
@@ -208,7 +219,17 @@ export async function syncHealthConnect(
   }
   let run = running.get(userId);
   if (!run) {
-    run = importFromHealthConnect(userId).finally(() => running.delete(userId));
+    const trigger = force ? "manual" : "auto";
+    run = trackSpan("healthConnect.sync", "sync", () => importFromHealthConnect(userId), { trigger })
+      .then((summary) => {
+        trackFeature("healthConnect", "sync", {
+          trigger,
+          imported: summary.imported,
+          failed: summary.failed.length,
+        });
+        return summary;
+      })
+      .finally(() => running.delete(userId));
     running.set(userId, run);
   }
   return run;

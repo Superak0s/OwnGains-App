@@ -26,6 +26,7 @@ import { setRecordStoreUser } from "../services/offlineHelpers";
 import type { ProfileUpdate } from "@features/auth/types";
 import type { User } from "../types";
 import { cancelAllSupplementReminders } from "@shared/services/supplementReminders";
+import { hideHydrationNotification } from "@features/tracking/hydrationNotification";
 import { userFacingError } from "@shared/services/apiError";
 
 export type { User };
@@ -156,6 +157,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = useCallback(async (): Promise<void> => {
     if (user?.id) await cancelAllSupplementReminders(String(user.id));
+    await hideHydrationNotification();
     try {
       await authService.logout();
       metric.count("auth.logout", 1, { attributes: { outcome: "ok" } });

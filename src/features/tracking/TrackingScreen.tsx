@@ -31,6 +31,7 @@ import {
 import { LogCycleModal } from "./tabs/MenstrualTab";
 import { LogSorenessModal } from "./tabs/SorenessTab";
 import { LogHydrationModal } from "./tabs/HydrationTab";
+import { refreshHydrationNotification } from "./hydrationNotification";
 import {
   renderWeightWidget,
   renderBodyFatWidget,
@@ -498,6 +499,7 @@ export default function TrackingScreen({
       if (settings?.data?.goalMl) {
         _hydration.setHydrationGoal(settings.data.goalMl);
       }
+      if (user?.id) void refreshHydrationNotification(String(user.id));
     },
     soreness: async () => {
       const s = await sorenessApi.getSorenessHistory(200);
