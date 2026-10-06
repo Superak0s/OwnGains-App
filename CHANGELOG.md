@@ -6,9 +6,44 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Added
+
+- New Weekly Sets widget in Progress: working sets this week and the 4-week average. For a muscle group it compares them with the 10 to 20 sets a week most muscles need to grow, counting sets where the muscle only assists as half.
+- New Exercises widget for a muscle group: every exercise in the group with its own estimated 1RM and 30-day trend. Tap one to open its analytics.
+
+### Changed
+
+- The active tab in the bottom bar is marked with a soft tint instead of a solid glowing bubble.
+- The Next Workout widget on Home is more compact.
+- Training Summary opens on the shortest range that has sets (today, this week or the last 30 days) and sits closer to the tabs above it.
+- The custom date picker in Training Summary highlights the chosen start and end dates, shades the days between them and marks the days you trained.
+- Save and Log buttons stay pinned at the bottom of long forms instead of scrolling out of view.
+- Tracking no longer shows "Loading your entries" each time you come back to it. Entries refresh in the background.
+- In dark theme, the Support Development and Give Feedback buttons use darker colors.
+- The Migrate to Offline Account button and the other Settings action buttons no longer have an outline, and the Advanced section no longer has a colored strip on its left edge.
+- Muscle group analytics no longer show weight, 1RM, record or rest charts that pooled different exercises together. They focus on weekly sets, frequency and rep ranges instead.
+- Personal Records now also lists your best weight at each rep count from 1 to 12.
+- Weight Progress, Reps Progress, All Set Data and Last Workout are no longer on the Progress board by default. Boards that had them get Estimated 1RM or Personal Records instead, and you can add them back from the widget gallery. The weight, reps and set data widgets show only for a single exercise.
+- Screen titles share one style and match the tab names: Home, Plan, Progress, Tracking, Supplements, Friends and Settings. The emoji and the Friends tagline are gone.
+
+### Removed
+
+- The Rep Max Table widget. Personal Records now shows the same table, and boards that had it get Personal Records in its place.
+
+### Fixed
+
+- Training Frequency and other analytics showed "No workout sessions found" when no plan was selected, even with logged sessions.
+- The + and - buttons in tracking forms were invisible in dark theme.
+- The "No timer" and amount placeholders in supplement settings were hard to read in dark theme.
+- The friend search bar text was unreadable in dark theme.
+- Fixed a "VirtualizedLists should never be nested" warning on the Friends screen.
+
 ### Internal
 
 - Fixed SonarQube findings: mechanical cleanups, misleading indentation in the offline supplement update, a broken regex in the `api_audit.py` self-test, cognitive-complexity splits across screens, hooks and `api_audit.py`, and the unused muscle params dropped from `startSession`
+- Added tests for the Training Summary default range
+- Storage migration 2 rewrites saved Analytics and Home layouts for the widgets taken off the default board and adds the two new Analytics widgets
+- Added a shared `ScreenTitle` component
 
 ## [0.2.1] - 2026-10-06
 

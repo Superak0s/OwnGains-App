@@ -202,12 +202,8 @@ export default function AnalyticsScreen({
   }, [userId, fetchSessionHistory, fetchRecordSessions, alert, embedWidget]);
 
   useEffect(() => {
-    if (selectedSplit) {
-      void loadSessions();
-    } else {
-      setIsLoading(false);
-    }
-  }, [selectedSplit, loadSessions]);
+    void loadSessions();
+  }, [loadSessions]);
 
   const onRefresh = useCallback(async (): Promise<void> => {
     if (!isMountedRef.current || refreshing) return;
@@ -254,7 +250,7 @@ export default function AnalyticsScreen({
         currentBodyWeight={currentBodyWeight}
         onRefresh={embedWidget ? null : onRefresh}
         refreshing={refreshing}
-        title='Exercise Analytics'
+        title='Progress'
         isLoading={isLoading}
         error={error}
         userId={user?.id ?? null}

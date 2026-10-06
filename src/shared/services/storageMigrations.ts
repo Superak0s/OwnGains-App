@@ -51,3 +51,72 @@ export const runMigrations = (
   }
   return version;
 };
+
+interface StoredWidget {
+  type: string;
+  order: number;
+}
+
+/**
+ * Rewrites a saved widget layout so retired widget types become the widget
+ * that replaced them. A replacement already on the board is not added twice.
+ * Anything that isn't a layout is returned unchanged.
+ */
+export const mergeWidgetTypes = (
+  json: string,
+  replacements: Readonly<Record<string, string | null>>,
+): string => {
+  let layout: unknown;
+  try {
+    layout = JSON.parse(json);
+  } catch {
+    return json;
+  }
+  if (!Array.isArray(layout)) return json;
+  const widgets = layout as StoredWidget[];
+  if (!widgets.some((w) => w.type in replacements)) return json;
+
+  const placed = new Set(
+    widgets.filter((w) => !(w.type in replacements)).map((w) => w.type),
+  );
+  const next = [...widgets]
+    .sort((a, b) => a.order - b.order)
+    .flatMap((widget) => {
+      if (!(widget.type in replacements)) return [widget];
+      const type = replacements[widget.type];
+      if (!type || placed.has(type)) return [];
+      placed.add(type);
+      return [{ ...widget, type }];
+    })
+    .map((widget, order) => ({ ...widget, order }));
+  return JSON.stringify(next);
+};
+
+/** Appends widgets a saved layout doesn't have yet, so new features reach
+ * boards that were customised before they existed. */
+export const appendWidgetTypes = (
+  json: string,
+  additions: readonly { type: string; size: string }[],
+): string => {
+  let layout: unknown;
+  try {
+    layout = JSON.parse(json);
+  } catch {
+    return json;
+  }
+  if (!Array.isArray(layout)) return json;
+  const widgets = layout as StoredWidget[];
+  const missing = additions.filter(
+    ({ type }) => !widgets.some((w) => w.type === type),
+  );
+  if (missing.length === 0) return json;
+  return JSON.stringify([
+    ...widgets,
+    ...missing.map(({ type, size }, index) => ({
+      id: `migrated-${type.replaceAll("_", "-")}`,
+      type,
+      size,
+      order: widgets.length + index,
+    })),
+  ]);
+};

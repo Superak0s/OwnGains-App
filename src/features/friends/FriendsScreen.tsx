@@ -5,13 +5,13 @@ import React, {
   useMemo,
   useRef,
 } from "react";
+import ScreenTitle from "@shared/components/ScreenTitle";
 import { trackScreenView, captureException, reportAndReturn } from "@shared/services/crashReporting";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
@@ -295,13 +295,12 @@ const FriendsListWidget = React.memo(function FriendsListWidget({
         </View>
       )}
       {friends.length > 0 && (
-        <FlatList
+        <ScrollView
           style={styles.friendListBounded}
           contentContainerStyle={styles.friendListContent}
-          data={friends}
-          keyExtractor={(friend) => String(friend.id)}
           nestedScrollEnabled
-          renderItem={({ item: friend }) => {
+        >
+          {friends.map((friend) => {
             const friendIsWorkingOut = !!friendSessionStatuses[friend.id];
             const cardStatus = getInviteStatusForFriend(friend.id);
             const showLiftButton =
@@ -316,6 +315,7 @@ const FriendsListWidget = React.memo(function FriendsListWidget({
 
             return (
               <TouchableOpacity
+                key={String(friend.id)}
                 style={[
                   styles.friendCard,
                   friendIsWorkingOut && styles.friendCardActive,
@@ -361,8 +361,8 @@ const FriendsListWidget = React.memo(function FriendsListWidget({
                 </View>
               </TouchableOpacity>
             );
-          }}
-        />
+          })}
+        </ScrollView>
       )}
     </View>
   );
@@ -1937,12 +1937,7 @@ export default function FriendsScreen({
             }
           >
             <View style={styles.content}>
-              <View style={styles.header}>
-                <Text style={styles.title}>👥 Friends</Text>
-                <Text style={styles.subtitle}>
-                  Connect and share your fitness journey
-                </Text>
-              </View>
+              <ScreenTitle title='Friends' />
 
               <ScrollTabBar
                 tabs={FRIENDS_TABS}
@@ -2086,18 +2081,6 @@ export const makeStyles = (colors: ThemeColors) =>
       backgroundColor: colors.background,
     },
     loadingText: { marginTop: 12, color: colors.textSecondary, fontSize: 16 },
-    header: { marginBottom: 25, alignItems: "center" },
-    title: {
-      fontSize: 32,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      marginBottom: 8,
-    },
-    subtitle: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      textAlign: "center",
-    },
     sectionHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -2205,6 +2188,7 @@ export const makeStyles = (colors: ThemeColors) =>
       borderRadius: 12,
       padding: 14,
       fontSize: 16,
+      color: colors.textPrimary,
       borderWidth: 2,
       borderColor: colors.infoLight,
     },

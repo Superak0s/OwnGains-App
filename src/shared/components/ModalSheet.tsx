@@ -257,19 +257,21 @@ export default function ModalSheet({
           ) : null}
 
           {scrollable ? (
-            <ScrollView
-              style={styles.scrollBody}
-              contentContainerStyle={[
-                styles.scrollBodyContent,
-                { paddingBottom: bottomPad },
-              ]}
-              showsVerticalScrollIndicator
-              keyboardShouldPersistTaps='handled'
-              bounces={false}
-            >
-              {children}
+            <>
+              <ScrollView
+                style={[styles.scrollBody, fullHeight && { flex: 1 }]}
+                contentContainerStyle={[
+                  styles.scrollBodyContent,
+                  !buttons && { paddingBottom: bottomPad },
+                ]}
+                showsVerticalScrollIndicator
+                keyboardShouldPersistTaps='handled'
+                bounces={false}
+              >
+                {children}
+              </ScrollView>
               {buttons}
-            </ScrollView>
+            </>
           ) : (
             <>
               {/* A fullHeight sheet has a fixed height, so its body can fill it, and
@@ -349,7 +351,7 @@ const makeStyles = (colors: ThemeColors) =>
     // flex: 1 clipped a non-scrollable body that outgrew the sheet's
     // maxHeight, so the last rows could not be scrolled to. Shrinking is enough.
     staticBody: { marginTop: 8, flexShrink: 1 },
-    scrollBody: { marginTop: 8 },
+    scrollBody: { marginTop: 8, flexShrink: 1 },
     scrollBodyContent: { paddingBottom: 8 },
     modalButtons: { flexDirection: "row", gap: 10, marginTop: 16 },
     modalButtonCancel: {

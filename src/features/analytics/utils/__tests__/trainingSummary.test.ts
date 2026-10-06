@@ -3,6 +3,9 @@ import {
   aggregateTrainingSummary,
   buildTrainingSetEntries,
   getUndertrainedMuscleGroups,
+  pickDefaultPeriod,
+  muscleCredit,
+  weeklySetVolume,
   type TrainingSetEntry,
 } from "../trainingSummary";
 import type { WorkoutData } from "@shared/types";
@@ -567,5 +570,73 @@ describe("getUndertrainedMuscleGroups", () => {
       "days_done",
     );
     expect(result).toEqual([]);
+  });
+});
+
+describe("pickDefaultPeriod", () => {
+  const now = new Date("2026-08-12T15:30:00");
+  const at = (iso: string) => ({ date: new Date(iso) });
+
+  it("picks the narrowest period that has sets", () => {
+    expect(pickDefaultPeriod([at("2026-08-12T09:00:00")], now)).toBe("today");
+    expect(pickDefaultPeriod([at("2026-08-10T09:00:00")], now)).toBe("week");
+    expect(pickDefaultPeriod([at("2026-07-20T09:00:00")], now)).toBe("month");
+  });
+
+  it("falls back to month when nothing is recent", () => {
+    expect(pickDefaultPeriod([at("2026-01-01T09:00:00")], now)).toBe("month");
+    expect(pickDefaultPeriod([], now)).toBe("month");
+  });
+});
+
+describe("weeklySetVolume", () => {
+  // Wednesday, so the week started on Monday the 10th.
+  const now = new Date("2026-08-12T15:30:00");
+  const set = (
+    date: string,
+    primaryMuscles: string[],
+    secondaryMuscles: string[] = [],
+  ): TrainingSetEntry => ({
+    date: new Date(date),
+    exerciseName: "Bench Press",
+    primaryMuscles,
+    secondaryMuscles,
+    weight: 100,
+    reps: 8,
+    dayNumber: 1,
+  });
+
+  it("counts secondary muscles as half a set", () => {
+    const entries = [
+      set("2026-08-11T10:00:00", ["Chest"]),
+      set("2026-08-11T10:05:00", ["Chest"]),
+      set("2026-08-11T10:10:00", ["Triceps"], ["Chest"]),
+      set("2026-08-11T10:15:00", ["Back"]),
+    ];
+    expect(weeklySetVolume(entries, muscleCredit("Chest"), now).thisWeek).toBe(
+      2.5,
+    );
+  });
+
+  it("averages only over the weeks that have history, up to four", () => {
+    const entries = [
+      set("2026-07-28T10:00:00", ["Chest"]),
+      set("2026-07-28T10:05:00", ["Chest"]),
+      set("2026-08-04T10:00:00", ["Chest"]),
+      set("2026-08-04T10:05:00", ["Chest"]),
+      set("2026-08-04T10:10:00", ["Chest"]),
+      set("2026-08-04T10:15:00", ["Chest"]),
+    ];
+    expect(weeklySetVolume(entries, muscleCredit("Chest"), now)).toEqual({
+      thisWeek: 0,
+      average: 3,
+    });
+  });
+
+  it("has no average before a full week of history", () => {
+    const entries = [set("2026-08-11T10:00:00", ["Chest"])];
+    expect(
+      weeklySetVolume(entries, muscleCredit("Chest"), now).average,
+    ).toBeNull();
   });
 });

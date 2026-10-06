@@ -110,12 +110,16 @@ const HOME_PLAN_REGISTRY = Object.fromEntries(
   HOME_PLAN_KEYS.map((key) => [key, PLAN_WIDGET_REGISTRY[key]]),
 ) as Record<HomePlanWidgetType, WidgetDefinition<PlanWidgetType>>;
 
+// The muscle group pick only exists on the Analytics screen itself.
+const { group_exercises: _groupExercises, ...HOME_ANALYTICS_REGISTRY } =
+  ANALYTICS_WIDGET_REGISTRY;
+
 /** Every other screen's widgets can also be placed on Home. Workout's are
  * deliberately excluded because they only make sense inside a live session. */
 export type HomeWidgetType =
   | HomeOwnWidgetType
   | HomePlanWidgetType
-  | AnalyticsWidgetType
+  | Exclude<AnalyticsWidgetType, "group_exercises">
   | FriendsWidgetType
   | RequestsWidgetType
   | SearchWidgetType
@@ -136,7 +140,7 @@ const WIDGET_SOURCES: [
 ][] = [
   ["Home", HOME_OWN_REGISTRY],
   ["Plan", HOME_PLAN_REGISTRY],
-  ["Analytics", ANALYTICS_WIDGET_REGISTRY],
+  ["Analytics", HOME_ANALYTICS_REGISTRY],
   ["Friends", FRIENDS_WIDGET_REGISTRY, "Friends"],
   ["Friends", REQUESTS_WIDGET_REGISTRY, "Requests"],
   ["Friends", SEARCH_WIDGET_REGISTRY, "Search"],

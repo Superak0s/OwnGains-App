@@ -1,4 +1,6 @@
 import {
+  appendWidgetTypes,
+  mergeWidgetTypes,
   runMigrations,
   takeMigrationFailure,
   type MigrationDb,
@@ -80,5 +82,76 @@ describe("runMigrations", () => {
 
     expect(first).not.toHaveBeenCalled();
     expect(version()).toBe(0);
+  });
+});
+
+describe("mergeWidgetTypes", () => {
+  const replacements = {
+    weight_progress: "one_rep_max",
+    set_data: "personal_records",
+    reps_progress: null,
+  };
+  const layout = (...types: string[]) =>
+    JSON.stringify(
+      types.map((type, order) => ({ id: type, type, size: "large", order })),
+    );
+  const typesOf = (json: string) =>
+    (JSON.parse(json) as { type: string; order: number }[]).map(
+      (w) => `${w.order}:${w.type}`,
+    );
+
+  it("renames a retired type, drops removed ones and reindexes", () => {
+    expect(
+      typesOf(
+        mergeWidgetTypes(
+          layout("select_exercise", "reps_progress", "weight_progress"),
+          replacements,
+        ),
+      ),
+    ).toEqual(["0:select_exercise", "1:one_rep_max"]);
+  });
+
+  it("does not duplicate a replacement already on the board", () => {
+    expect(
+      typesOf(
+        mergeWidgetTypes(
+          layout("weight_progress", "one_rep_max", "set_data"),
+          replacements,
+        ),
+      ),
+    ).toEqual(["0:one_rep_max", "1:personal_records"]);
+  });
+
+  it("leaves untouched layouts and non-layout values as they are", () => {
+    const untouched = layout("one_rep_max");
+    expect(mergeWidgetTypes(untouched, replacements)).toBe(untouched);
+    expect(mergeWidgetTypes("not json", replacements)).toBe("not json");
+    expect(mergeWidgetTypes('{"a":1}', replacements)).toBe('{"a":1}');
+  });
+});
+
+describe("appendWidgetTypes", () => {
+  const layout = JSON.stringify([
+    { id: "a", type: "one_rep_max", size: "large", order: 0 },
+  ]);
+
+  it("adds only the missing types after the existing ones", () => {
+    const next = JSON.parse(
+      appendWidgetTypes(layout, [
+        { type: "one_rep_max", size: "large" },
+        { type: "weekly_volume", size: "medium" },
+      ]),
+    ) as { type: string; order: number }[];
+    expect(next.map((w) => `${w.order}:${w.type}`)).toEqual([
+      "0:one_rep_max",
+      "1:weekly_volume",
+    ]);
+  });
+
+  it("leaves a complete layout and non-layout values unchanged", () => {
+    expect(
+      appendWidgetTypes(layout, [{ type: "one_rep_max", size: "large" }]),
+    ).toBe(layout);
+    expect(appendWidgetTypes("oops", [])).toBe("oops");
   });
 });

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import ScreenTitle from "@shared/components/ScreenTitle";
 import {
   View,
   Text,
@@ -502,10 +503,11 @@ export default function SupplementsScreen(): React.JSX.Element {
         ListHeaderComponent={
           <>
             <View style={styles.header}>
-              <View>
-                <Text style={styles.headerTitle}>Supplements</Text>
-                <Text style={styles.headerSubtitle}>{headerSubtitle}</Text>
-              </View>
+              <ScreenTitle
+                title='Supplements'
+                subtitle={headerSubtitle}
+                style={{ marginBottom: 0 }}
+              />
               <TouchableOpacity
                 style={styles.addButton}
                 onPress={() => setShowTemplateSheet(true)}
@@ -1096,12 +1098,7 @@ const makeStyles = (colors: ThemeColors) =>
       paddingHorizontal: 20,
       paddingVertical: 18,
     },
-    headerTitle: {
-      fontSize: 28,
-      fontWeight: "800",
-      color: colors.textPrimary,
-    },
-    headerSubtitle: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
+
     addButton: {
       backgroundColor: colors.accent,
       paddingHorizontal: 18,

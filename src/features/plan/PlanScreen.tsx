@@ -6,6 +6,7 @@ import React, {
   useRef,
   startTransition,
 } from "react";
+import ScreenTitle from "@shared/components/ScreenTitle";
 import {
   View,
   Text,
@@ -1391,10 +1392,7 @@ Your program is untouched. Try again, or pick a different destination.`,
             keyboardShouldPersistTaps='handled'
           >
             <View style={styles.content}>
-              <View style={styles.header}>
-                <Text style={styles.title}>Plan</Text>
-                <Text style={styles.subtitle}>{headerSubtitle}</Text>
-              </View>
+              <ScreenTitle title='Plan' subtitle={headerSubtitle} />
 
               {widgetsLoaded && widgets.length > 0 && (
                 <WidgetEditHeader
@@ -1643,19 +1641,6 @@ const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     content: { paddingHorizontal: 14, paddingTop: 18, paddingBottom: 120 },
-    header: { marginBottom: 18 },
-    title: {
-      fontSize: 30,
-      fontWeight: "800",
-      letterSpacing: -0.6,
-      color: colors.textPrimary,
-    },
-    subtitle: {
-      fontSize: 14,
-      lineHeight: 20,
-      color: colors.textSecondary,
-      marginTop: 4,
-    },
     widgetLineMuted: {
       fontSize: 12,
       color: colors.textMuted,

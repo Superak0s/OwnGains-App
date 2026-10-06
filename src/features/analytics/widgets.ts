@@ -3,18 +3,19 @@ import { toDefaultWidgets } from "@shared/types";
 
 export type AnalyticsWidgetType =
   | "select_exercise"
-  | "set_data"
-  | "last_workout"
   | "workout_history"
-  | "weight_progress"
-  | "reps_progress"
+  | "weekly_volume"
+  | "group_exercises"
   | "one_rep_max"
   | "personal_records"
-  | "rep_max_table"
   | "progress_rate"
   | "rep_distribution"
   | "training_frequency"
-  | "set_efficiency";
+  | "set_efficiency"
+  | "weight_progress"
+  | "reps_progress"
+  | "set_data"
+  | "last_workout";
 
 export const ANALYTICS_WIDGET_REGISTRY: Record<
   AnalyticsWidgetType,
@@ -28,21 +29,6 @@ export const ANALYTICS_WIDGET_REGISTRY: Record<
     availableSizes: ["medium", "large"],
     defaultSize: "large",
   },
-  set_data: {
-    type: "set_data",
-    title: "All Set Data",
-    description:
-      "Total sets, workouts, max weight/reps, and averages for the selected exercise",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
-  },
-  last_workout: {
-    type: "last_workout",
-    title: "Last Workout",
-    description: "The most recent date you trained this exercise",
-    availableSizes: ["small", "medium", "large"],
-    defaultSize: "medium",
-  },
   workout_history: {
     type: "workout_history",
     title: "Workout History",
@@ -50,15 +36,19 @@ export const ANALYTICS_WIDGET_REGISTRY: Record<
     availableSizes: ["medium", "large"],
     defaultSize: "large",
   },
-  weight_progress: {
-    type: "weight_progress",
-    description: "Weight trend over time for the selected exercise",
+  weekly_volume: {
+    type: "weekly_volume",
+    title: "Weekly Sets",
+    description:
+      "Working sets this week and the 4-week average, against the 10 to 20 sets a muscle needs to grow",
     availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    defaultSize: "medium",
   },
-  reps_progress: {
-    type: "reps_progress",
-    description: "Average reps per session trend over time",
+  group_exercises: {
+    type: "group_exercises",
+    title: "Exercises",
+    description:
+      "Every exercise in the muscle group with its own estimated 1RM and 30-day trend",
     availableSizes: ["medium", "large"],
     defaultSize: "large",
   },
@@ -74,14 +64,7 @@ export const ANALYTICS_WIDGET_REGISTRY: Record<
     type: "personal_records",
     title: "Personal Records",
     description:
-      "Heaviest set, most reps and best estimated 1RM, each with the date you hit it",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
-  },
-  rep_max_table: {
-    type: "rep_max_table",
-    title: "Rep Max Table",
-    description: "Your actual best weight at each rep count from 1 to 12",
+      "Heaviest set, most reps, best estimated 1RM and your best weight at each rep count",
     availableSizes: ["medium", "large"],
     defaultSize: "large",
   },
@@ -117,23 +100,65 @@ export const ANALYTICS_WIDGET_REGISTRY: Record<
     availableSizes: ["medium", "large"],
     defaultSize: "medium",
   },
+  weight_progress: {
+    type: "weight_progress",
+    description: "Weight trend over time for the selected exercise",
+    availableSizes: ["medium", "large"],
+    defaultSize: "large",
+  },
+  reps_progress: {
+    type: "reps_progress",
+    description: "Average reps per session trend over time",
+    availableSizes: ["medium", "large"],
+    defaultSize: "large",
+  },
+  set_data: {
+    type: "set_data",
+    title: "All Set Data",
+    description:
+      "Total sets, workouts, max weight/reps, and averages for the selected exercise",
+    availableSizes: ["medium", "large"],
+    defaultSize: "large",
+  },
+  last_workout: {
+    type: "last_workout",
+    title: "Last Workout",
+    description: "The most recent date you trained this exercise or muscle group",
+    availableSizes: ["small", "medium", "large"],
+    defaultSize: "medium",
+  },
 };
+
+/** Pooled weight from different exercises can't be compared, so these only
+ * make sense for one exercise. */
+const EXERCISE_ONLY = new Set<AnalyticsWidgetType>([
+  "one_rep_max",
+  "personal_records",
+  "progress_rate",
+  "set_efficiency",
+  "weight_progress",
+  "reps_progress",
+  "set_data",
+]);
+
+export const fitsFocus = (
+  type: AnalyticsWidgetType,
+  isGroupFocus: boolean,
+): boolean =>
+  isGroupFocus ? !EXERCISE_ONLY.has(type) : type !== "group_exercises";
 
 export const DEFAULT_ANALYTICS_WIDGETS = toDefaultWidgets(
   ANALYTICS_WIDGET_REGISTRY,
   [
     "select_exercise",
-    "set_data",
-    "last_workout",
-    "workout_history",
+    "weekly_volume",
+    "group_exercises",
     "one_rep_max",
     "progress_rate",
     "personal_records",
-    "rep_max_table",
-    "weight_progress",
-    "reps_progress",
-    "rep_distribution",
+    "workout_history",
     "training_frequency",
+    "rep_distribution",
     "set_efficiency",
   ],
 );

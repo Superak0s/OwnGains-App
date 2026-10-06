@@ -5,7 +5,12 @@ import React, {
   useRef,
   useMemo,
 } from "react";
-import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+import ScreenTitle from "@shared/components/ScreenTitle";
+import {
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from "@react-navigation/native";
 import {
   View,
   Text,
@@ -135,15 +140,13 @@ import {
   MeasurementLogModal,
   WeightLogModal,
 } from "./components/BodyLogModals";
+import { Button, IconButton, Note, Placeholder, Row, SectionLabel } from "./ui";
 import {
-  Button,
-  IconButton,
-  Note,
-  Placeholder,
-  Row,
-  SectionLabel,
-} from "./ui";
-import { captureException, metric, trackScreenView, reportAndReturn } from "@shared/services/crashReporting";
+  captureException,
+  metric,
+  trackScreenView,
+  reportAndReturn,
+} from "@shared/services/crashReporting";
 
 type TrackingWidgetType =
   | WeightWidgetType
@@ -181,11 +184,9 @@ const registryMap: Record<
 
 function tabForWidget(type: TrackingWidgetType): string {
   return (
-    Object.keys(registryMap).find((tab) => type in registryMap[tab]) ??
-    "weight"
+    Object.keys(registryMap).find((tab) => type in registryMap[tab]) ?? "weight"
   );
 }
-
 
 function useTrackingBoards(userId: string | null, activeTab: string) {
   const weightBoard = useWidgets<WeightWidgetType>(userId, {
@@ -502,7 +503,9 @@ export default function TrackingScreen({
     hydration: async () => {
       const [h, settings] = await Promise.all([
         hydrationApi.getHydrationHistory(200),
-        hydrationApi.getSettings().catch(reportAndReturn(null, { stage: "loadHydrationSettings" })),
+        hydrationApi
+          .getSettings()
+          .catch(reportAndReturn(null, { stage: "loadHydrationSettings" })),
       ]);
       _hydration.setHydrationEntries(h?.data ?? []);
       if (settings?.data?.goalMl) {
@@ -525,8 +528,10 @@ export default function TrackingScreen({
   const [loadingTab, setLoadingTab] = useState<string | null>(null);
 
   const loadTab = useCallback(async (tab: string, force = false) => {
-    if (!force && loadedTabsRef.current.has(tab)) return;
-    setLoadingTab(tab);
+    const isRefresh = loadedTabsRef.current.has(tab);
+    if (!force && isRefresh) return;
+    // Refreshes keep the current entries on screen instead of a loading banner.
+    if (!isRefresh) setLoadingTab(tab);
     try {
       await tabLoadersRef.current[tab]?.();
       loadedTabsRef.current.add(tab);
@@ -711,7 +716,10 @@ export default function TrackingScreen({
     const { tab } = dayModal;
 
     const timeOf = (iso: string) =>
-      new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      new Date(iso).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
 
     let heading = "Logged entries";
     let rows: {
@@ -743,8 +751,12 @@ export default function TrackingScreen({
         title: entry.name || "Meal",
         meta: [
           entry.time,
-          entry.calories == null ? null : `${Number(entry.calories).toFixed(0)} kcal`,
-          entry.protein == null ? null : `P ${Number(entry.protein).toFixed(0)}g`,
+          entry.calories == null
+            ? null
+            : `${Number(entry.calories).toFixed(0)} kcal`,
+          entry.protein == null
+            ? null
+            : `P ${Number(entry.protein).toFixed(0)}g`,
           entry.carbs == null ? null : `C ${Number(entry.carbs).toFixed(0)}g`,
           entry.fat == null ? null : `F ${Number(entry.fat).toFixed(0)}g`,
         ]
@@ -764,7 +776,9 @@ export default function TrackingScreen({
             ? [
                 `Waist ${m?.waist == null ? "—" : Number(m.waist).toFixed(1)} cm`,
                 `Neck ${m?.neck == null ? "—" : Number(m.neck).toFixed(1)} cm`,
-                m?.hip != null && m.hip !== 0 ? `Hip ${Number(m.hip).toFixed(1)} cm` : null,
+                m?.hip != null && m.hip !== 0
+                  ? `Hip ${Number(m.hip).toFixed(1)} cm`
+                  : null,
               ]
                 .filter(Boolean)
                 .join(" · ")
@@ -814,7 +828,9 @@ export default function TrackingScreen({
         meta: entry.symptoms?.length ? entry.symptoms.join(", ") : undefined,
         deleteLabel: "Delete period entry",
         onDelete:
-          entry.id == null ? undefined : () => menstrual.deleteCycleEntry(entry),
+          entry.id == null
+            ? undefined
+            : () => menstrual.deleteCycleEntry(entry),
       }));
     } else {
       return null;
@@ -833,9 +849,9 @@ export default function TrackingScreen({
             right={
               row.onDelete ? (
                 <IconButton
-                  glyph="🗑"
+                  glyph='🗑'
                   label={row.deleteLabel}
-                  tone="danger"
+                  tone='danger'
                   onPress={row.onDelete}
                 />
               ) : undefined
@@ -1113,29 +1129,24 @@ export default function TrackingScreen({
         }
       >
         <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Tracking</Text>
-            <Text style={styles.subtitle}>
-              Everything you measure between sessions
-            </Text>
-          </View>
+          <ScreenTitle title='Tracking' />
 
           <ScrollTabBar
             tabs={TRACKING_TABS}
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            storageKey="trackingScreen_tabConfig"
+            storageKey='trackingScreen_tabConfig'
           />
 
           <LocalOnlyNotice
-            feature="tracking"
+            feature='tracking'
             style={{ marginHorizontal: 0 }}
-            detail="Your entries are stored on this phone only. Back them up from Settings."
+            detail='Your entries are stored on this phone only. Back them up from Settings.'
           />
 
           {tabLoadError === activeTab && (
             <Placeholder
-              icon="⚠️"
+              icon='⚠️'
               text="Couldn't load this tab's data."
               action={{
                 label: "Try again",
@@ -1154,8 +1165,8 @@ export default function TrackingScreen({
           {isTabLoading && (
             <View
               style={styles.loadingBlock}
-              accessibilityRole="progressbar"
-              accessibilityLabel="Loading entries"
+              accessibilityRole='progressbar'
+              accessibilityLabel='Loading entries'
             >
               <ActivityIndicator color={colors.accent} />
               <Note>Loading your entries…</Note>
@@ -1166,8 +1177,8 @@ export default function TrackingScreen({
             activeBoard.isLoaded &&
             activeBoard.widgets.length === 0 && (
               <Placeholder
-                icon="🧩"
-                text="This tab is empty. Pick the widgets you want to see."
+                icon='🧩'
+                text='This tab is empty. Pick the widgets you want to see.'
                 action={{
                   label: "Add a widget",
                   onPress: widgetBoard.openGallery,

@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import ScreenTitle from "@shared/components/ScreenTitle";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
@@ -142,15 +143,17 @@ function NextWorkoutWidget({
     <View
       style={[styles.currentDayCard, locked && styles.currentDayCardLocked]}
     >
-      <Text style={styles.currentDayText}>
-        {dayTitle ? `Day ${displayDay} - ${dayTitle}` : `Day ${displayDay}`}
-      </Text>
-      <View style={locked ? styles.lockedBadge : styles.completeBadge}>
-        <Text
-          style={locked ? styles.lockedBadgeText : styles.completeBadgeText}
-        >
-          {getDayStatusLabel(locked, hasActiveSession())}
+      <View style={styles.currentDayHeader}>
+        <Text style={styles.currentDayText} numberOfLines={1}>
+          {dayTitle ? `Day ${displayDay} - ${dayTitle}` : `Day ${displayDay}`}
         </Text>
+        <View style={locked ? styles.lockedBadge : styles.completeBadge}>
+          <Text
+            style={locked ? styles.lockedBadgeText : styles.completeBadgeText}
+          >
+            {getDayStatusLabel(locked, hasActiveSession())}
+          </Text>
+        </View>
       </View>
       <View style={styles.dayActions}>
         <TouchableOpacity
@@ -823,14 +826,12 @@ export default function HomeScreen(): React.JSX.Element {
         }
       >
         <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Workout Tracker</Text>
-            {!selectedSplit && (
-              <Text style={styles.subtitle}>
-                Upload your workout plan and get started
-              </Text>
-            )}
-          </View>
+          <ScreenTitle
+            title='Home'
+            subtitle={
+              selectedSplit ? null : "Upload your workout plan and get started"
+            }
+          />
 
           {outdatedServer && (
             <View style={styles.errorBanner} accessibilityLiveRegion='polite'>
@@ -1274,21 +1275,6 @@ const makeStyles = (colors: ThemeColors) => {
       paddingTop: 10,
       paddingBottom: 120,
     },
-    header: {
-      marginBottom: 30,
-      alignItems: "center",
-    },
-    title: {
-      fontSize: 32,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      marginBottom: 8,
-    },
-    subtitle: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      textAlign: "center",
-    },
     errorBanner: {
       flexDirection: "row",
       alignItems: "center",
@@ -1362,42 +1348,43 @@ const makeStyles = (colors: ThemeColors) => {
     currentDayCard: {
       backgroundColor: getDayOverviewTint(colors, false, false),
       borderRadius: 12,
-      padding: 20,
-      alignItems: "center",
-      marginBottom: 20,
+      padding: 12,
     },
     currentDayCardLocked: {
       backgroundColor: getDayOverviewTint(colors, true, false),
     },
+    currentDayHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 10,
+    },
     currentDayText: {
-      fontSize: 20,
+      flex: 1,
+      fontSize: 17,
       fontWeight: "bold",
       color: onTint,
-      marginBottom: 10,
-      textAlign: "center",
     },
     completeBadge: {
       backgroundColor: "rgba(255, 255, 255, 0.2)",
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
       borderRadius: 16,
-      marginBottom: 15,
     },
     completeBadgeText: {
       color: onTint,
-      fontSize: 14,
+      fontSize: 12,
       fontWeight: "600",
     },
     lockedBadge: {
       backgroundColor: "rgba(255, 255, 255, 0.3)",
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
       borderRadius: 16,
-      marginBottom: 15,
     },
     lockedBadgeText: {
       color: onTint,
-      fontSize: 14,
+      fontSize: 12,
       fontWeight: "600",
     },
     dayActions: {
@@ -1408,8 +1395,8 @@ const makeStyles = (colors: ThemeColors) => {
     changeDayButton: {
       flex: 1,
       backgroundColor: "rgba(255, 255, 255, 0.2)",
-      paddingHorizontal: 20,
-      paddingVertical: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
       borderRadius: 8,
       borderWidth: 1,
       borderColor: onTint,
@@ -1423,7 +1410,7 @@ const makeStyles = (colors: ThemeColors) => {
     goToWorkoutButton: {
       flex: 1,
       backgroundColor: colors.surface,
-      paddingVertical: 12,
+      paddingVertical: 9,
       borderRadius: 8,
     },
     goToWorkoutButtonText: {
@@ -1436,8 +1423,8 @@ const makeStyles = (colors: ThemeColors) => {
       color: colors.textSecondary,
     },
     lockedHintText: {
-      marginTop: 12,
-      fontSize: 13,
+      marginTop: 8,
+      fontSize: 12,
       color: onTint,
       opacity: 0.9,
       textAlign: "center",

@@ -19,10 +19,12 @@ import {
   getPeriodDateRange,
   aggregateTrainingSummary,
   getUndertrainedMuscleGroups,
+  pickDefaultPeriod,
   type SummaryPeriod,
   type DateRange,
 } from "../utils/trainingSummary";
 import { muscleLabel as formatMuscleLabel } from "@utils/exerciseDb";
+import { toDateString } from "@utils/format";
 
 const MUSCLE_GROUP_BAR_COLORS = [
   "#4C6EF5",
@@ -69,7 +71,9 @@ export default function TrainingSummaryTab({
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  const [summaryPeriod, setSummaryPeriod] = useState<SummaryPeriod>("today");
+  const [pickedPeriod, setSummaryPeriod] = useState<SummaryPeriod | null>(
+    null,
+  );
   const [summaryCustomRange, setSummaryCustomRange] =
     useState<DateRange | null>(null);
   const [showSummaryRangePicker, setShowSummaryRangePicker] = useState(false);
@@ -100,10 +104,38 @@ export default function TrainingSummaryTab({
     [sessions, workoutData, selectedSplit, completedDays],
   );
 
+  const defaultPeriod = useMemo(
+    () => pickDefaultPeriod(allSetEntries),
+    [allSetEntries],
+  );
+  const summaryPeriod = pickedPeriod ?? defaultPeriod;
+
+  const trainedDays = useMemo(
+    () => new Set(allSetEntries.map((entry) => toDateString(entry.date))),
+    [allSetEntries],
+  );
+
   const summaryRange = useMemo(
     () => getPeriodDateRange(summaryPeriod, summaryCustomRange),
     [summaryPeriod, summaryCustomRange],
   );
+
+  const getRangeDecoration = (date: Date) => {
+    const day = toDateString(date);
+    if (pendingRangeStart) {
+      return day === toDateString(pendingRangeStart)
+        ? { backgroundColor: colors.accent, textColor: colors.textOnAccent }
+        : null;
+    }
+    if (summaryPeriod !== "custom" || !summaryCustomRange) return null;
+    const { start, end } = summaryRange;
+    if (date < start || date > end) return null;
+    const isEdge =
+      day === toDateString(start) || day === toDateString(end);
+    return isEdge
+      ? { backgroundColor: colors.accent, textColor: colors.textOnAccent }
+      : { backgroundColor: colors.accentLight };
+  };
 
   const trainingSummary = useMemo(
     () => aggregateTrainingSummary(allSetEntries, summaryRange),
@@ -261,7 +293,8 @@ export default function TrainingSummaryTab({
         showConfirmButton={false}
       >
         <UniversalCalendar
-          hasDataOnDate={() => false}
+          hasDataOnDate={(date) => trainedDays.has(toDateString(date))}
+          getDayDecoration={getRangeDecoration}
           onDatePress={handleSummaryRangeDatePress}
           initialView="month"
           legendText="Tap a start date, then an end date"
@@ -273,7 +306,7 @@ export default function TrainingSummaryTab({
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    container: { flex: 1, padding: 20 },
+    container: { flex: 1, paddingHorizontal: 20, paddingBottom: 20 },
     undertrainedCard: {
       backgroundColor: colors.warningLight,
       borderRadius: 10,

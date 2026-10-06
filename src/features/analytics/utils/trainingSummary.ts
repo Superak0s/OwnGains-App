@@ -88,6 +88,22 @@ export function getPeriodDateRange(
   return { start: startOfDay(start), end: endOfDay(end) };
 }
 
+export function pickDefaultPeriod(
+  entries: readonly Pick<TrainingSetEntry, "date">[],
+  now: Date = new Date(),
+): SummaryPeriod {
+  const periods = ["today", "week", "month"] as const;
+  return (
+    periods.find((period) => {
+      const { start, end } = getPeriodDateRange(period, null, now);
+      return entries.some(
+        ({ date }) =>
+          date.getTime() >= start.getTime() && date.getTime() <= end.getTime(),
+      );
+    }) ?? "month"
+  );
+}
+
 interface SessionLike {
   dayNumber?: number | null;
   startTime?: string | null;
@@ -354,3 +370,51 @@ export function getUndertrainedMuscleGroups(
     .filter((row) => row.deltaFromAvg > UNDERTRAINED_DELTA_THRESHOLD)
     .sort((a, b) => b.deltaFromAvg - a.deltaFromAvg);
 }
+
+/** Weekly working sets per muscle that most hypertrophy research lands on. */
+export const WEEKLY_SET_TARGET = { min: 10, max: 20 } as const;
+
+const AVERAGE_WEEKS = 4;
+const WEEK_MS = 7 * 86_400_000;
+
+interface WeeklySetVolume {
+  thisWeek: number;
+  /** Over the last full weeks with data, up to four. Null with no prior week. */
+  average: number | null;
+}
+
+/** `credit` says how much one set counts, so a secondary muscle can get half. */
+export function weeklySetVolume(
+  entries: readonly TrainingSetEntry[],
+  credit: (entry: TrainingSetEntry) => number,
+  now: Date = new Date(),
+): WeeklySetVolume {
+  const weekStart = getPeriodDateRange("week", null, now).start.getTime();
+  const windowStart = weekStart - AVERAGE_WEEKS * WEEK_MS;
+  let thisWeek = 0;
+  let previous = 0;
+  let first = Infinity;
+  entries.forEach((entry) => {
+    const value = credit(entry);
+    if (value === 0) return;
+    const time = entry.date.getTime();
+    first = Math.min(first, time);
+    if (time >= weekStart && time <= now.getTime()) thisWeek += value;
+    else if (time >= windowStart && time < weekStart) previous += value;
+  });
+  const weeks = Math.min(
+    AVERAGE_WEEKS,
+    Math.max(0, Math.ceil((weekStart - first) / WEEK_MS)),
+  );
+  return {
+    thisWeek,
+    average: weeks > 0 ? Math.round((previous / weeks) * 10) / 10 : null,
+  };
+}
+
+export const muscleCredit =
+  (muscle: string) =>
+  (entry: TrainingSetEntry): number => {
+    if (entry.primaryMuscles.includes(muscle)) return 1;
+    return entry.secondaryMuscles.includes(muscle) ? 0.5 : 0;
+  };

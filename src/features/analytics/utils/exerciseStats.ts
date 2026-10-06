@@ -688,3 +688,34 @@ function downsample<T extends { value: number }>(points: T[], max: number): T[] 
   );
 }
 
+
+export interface ExerciseBreakdownRow {
+  exerciseName: string;
+  sets: number;
+  currentOneRepMax: number;
+  oneRepMaxChange30d: number;
+}
+
+/** Splits a muscle group's pooled history back into its exercises, the only
+ * level where a 1RM trend means anything. */
+export function exerciseBreakdown(
+  entries: ExerciseHistoryEntry[],
+): ExerciseBreakdownRow[] {
+  const byName = new Map<string, ExerciseHistoryEntry[]>();
+  workingSets(entries).forEach((entry) => {
+    const bucket = byName.get(entry.exerciseName);
+    if (bucket) bucket.push(entry);
+    else byName.set(entry.exerciseName, [entry]);
+  });
+  return [...byName.entries()]
+    .map(([exerciseName, sets]) => {
+      const insights = computeExerciseInsights(sets);
+      return {
+        exerciseName,
+        sets: sets.length,
+        currentOneRepMax: insights.currentOneRepMax,
+        oneRepMaxChange30d: insights.oneRepMaxChange30d,
+      };
+    })
+    .sort((a, b) => b.sets - a.sets);
+}

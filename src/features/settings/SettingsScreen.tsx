@@ -5,6 +5,7 @@ import React, {
   useRef,
   useMemo,
 } from "react";
+import ScreenTitle from "@shared/components/ScreenTitle";
 import {
   View,
   Text,
@@ -280,7 +281,7 @@ const ACCOUNT_COPY = {
 };
 
 export default function SettingsScreen(): React.JSX.Element {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const switchThumbColor = (on: boolean) =>
     on ? colors.textOnAccent : colors.textMuted;
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -1848,7 +1849,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
   const renderAdvancedSection = (): React.JSX.Element | null => {
     if (!showAdvanced) return null;
     return (
-      <View style={styles.advancedContent}>
+      <View>
         <View style={styles.section}>
           <Text
             style={styles.sectionTitle}
@@ -2789,13 +2790,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
       >
         <View style={styles.content}>
           <View style={styles.section}>
-            <Text
-              style={styles.screenTitle}
-              accessibilityRole="header"
-              accessibilityLabel="Settings"
-            >
-              ⚙️ Settings
-            </Text>
+            <ScreenTitle title='Settings' style={{ marginBottom: 0 }} />
           </View>
 
           <View style={styles.section}>
@@ -2810,7 +2805,11 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
               accessibilityLabel={SUPPORT_COPY.label}
             >
               <LinearGradient
-                colors={["#db2777", "#e11d48", "#ea580c"]}
+                colors={
+                  isDark
+                    ? ["#9d174d", "#9f1239", "#9a3412"]
+                    : ["#db2777", "#e11d48", "#ea580c"]
+                }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.supportButton}
@@ -2822,7 +2821,9 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                     Help keep OwnGains and its official server running
                   </Text>
                 </View>
-                <Text style={styles.supportCta}>
+                <Text
+                  style={[styles.supportCta, isDark && { color: "#9f1239" }]}
+                >
                   {SUPPORT_COPY.cta}
                 </Text>
               </LinearGradient>
@@ -2846,7 +2847,11 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
               accessibilityLabel="Give feedback by email"
             >
               <LinearGradient
-                colors={["#2563eb", "#7c3aed", "#9333ea"]}
+                colors={
+                  isDark
+                    ? ["#1e40af", "#5b21b6", "#6b21a8"]
+                    : ["#2563eb", "#7c3aed", "#9333ea"]
+                }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.supportButton}
@@ -2858,7 +2863,12 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                     Report a bug or suggest an idea
                   </Text>
                 </View>
-                <Text style={[styles.supportCta, { color: "#7c3aed" }]}>
+                <Text
+                  style={[
+                    styles.supportCta,
+                    { color: isDark ? "#5b21b6" : "#7c3aed" },
+                  ]}
+                >
                   Email ↗
                 </Text>
               </LinearGradient>
@@ -3648,22 +3658,12 @@ const makeStyles = (colors: ThemeColors) =>
       borderRadius: 999,
       overflow: "hidden",
     },
-    screenTitle: {
-      fontSize: 28,
-      fontWeight: "800",
-      color: colors.textPrimary,
-      marginBottom: 4,
-    },
+
     sectionTitle: {
       fontSize: 20,
       fontWeight: "bold",
       color: colors.textPrimary,
       marginBottom: 12,
-    },
-    advancedContent: {
-      borderLeftWidth: 2,
-      borderLeftColor: colors.surfaceBorder,
-      paddingLeft: 12,
     },
     card: {
       backgroundColor: colors.surface,
@@ -3855,8 +3855,11 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       marginBottom: 12,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
     },
     disabledButton: { opacity: 0.5 },
     dangerZone: {

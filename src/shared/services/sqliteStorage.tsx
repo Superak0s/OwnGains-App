@@ -1,5 +1,10 @@
 import * as SQLite from "expo-sqlite";
-import { runMigrations, type Migration } from "./storageMigrations";
+import {
+  appendWidgetTypes,
+  mergeWidgetTypes,
+  runMigrations,
+  type Migration,
+} from "./storageMigrations";
 
 const db = SQLite.openDatabaseSync("asyncStorage.db");
 
@@ -29,7 +34,32 @@ const readDb = SQLite.openDatabaseSync("asyncStorage.db", {
 });
 
 // Schema version 1 is the baseline: the tables above, created on first open.
-const MIGRATIONS: readonly Migration[] = [() => {}];
+const MIGRATIONS: readonly Migration[] = [
+  () => {},
+  () => {
+    const rows = db.getAllSync<{ key: string; value: string }>(
+      "SELECT key, value FROM kv_store WHERE key IN ('analyticsWidgets', 'homeWidgets') " +
+        "OR key LIKE 'analyticsWidgets_user_%' OR key LIKE 'homeWidgets_user_%'",
+    );
+    rows.forEach(({ key, value }) => {
+      const merged = mergeWidgetTypes(value, {
+        weight_progress: "one_rep_max",
+        set_data: "personal_records",
+        rep_max_table: "personal_records",
+        reps_progress: null,
+        last_workout: null,
+      });
+      const next = key.startsWith("analyticsWidgets")
+        ? appendWidgetTypes(merged, [
+            { type: "weekly_volume", size: "medium" },
+            { type: "group_exercises", size: "large" },
+          ])
+        : merged;
+      if (next !== value)
+        db.runSync("UPDATE kv_store SET value = ? WHERE key = ?", [next, key]);
+    });
+  },
+];
 
 runMigrations(db, MIGRATIONS);
 

@@ -422,6 +422,7 @@ export default function SupplementSettingsModal({
                     onChangeText={setDefaultAmount}
                     keyboardType='decimal-pad'
                     placeholder={String(supplement.defaultAmount)}
+                    placeholderTextColor={colors.textMuted}
                   />
                   <View style={styles.amountUnit}>
                     <Text style={styles.amountUnitText}>{supplement.unit}</Text>
@@ -484,6 +485,7 @@ export default function SupplementSettingsModal({
                         onChangeText={setIntervalHours}
                         keyboardType='decimal-pad'
                         placeholder='No timer'
+                        placeholderTextColor={colors.textMuted}
                         accessibilityLabel='Hours between doses'
                       />
                       <View style={styles.amountUnit}>

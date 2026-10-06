@@ -184,6 +184,7 @@ export function SearchUsersWidget({
         <TextInput
           style={styles.searchInput}
           placeholder='Search by username (3+ letters)'
+          placeholderTextColor={colors.textMuted}
           accessibilityLabel='Search users by username'
           value={searchQuery}
           onChangeText={onChangeQuery}

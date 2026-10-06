@@ -1,6 +1,7 @@
 import {
   buildProgressChartData,
   computeExerciseInsights,
+  exerciseBreakdown,
   sessionOneRepMaxes,
   workingSets,
 } from "../exerciseStats"
@@ -264,5 +265,23 @@ describe("buildProgressChartData", () => {
       entry({ date: daysAgo(1), weight: 110 }),
     ]
     expect(buildProgressChartData(entries, "weight").datasets[0].data).toEqual([90, 110])
+  })
+})
+
+describe("exerciseBreakdown", () => {
+  it("splits a group's history per exercise, skipping warm-ups", () => {
+    const rows = exerciseBreakdown([
+      entry({ date: daysAgo(1), exerciseName: "Bench Press", weight: 100 }),
+      entry({ date: daysAgo(1), exerciseName: "Bench Press", setNumber: 2 }),
+      entry({ date: daysAgo(1), exerciseName: "Cable Fly", weight: 20 }),
+      entry({ date: daysAgo(1), exerciseName: "Dips", isWarmup: true }),
+    ])
+    expect(rows.map((r) => [r.exerciseName, r.sets])).toEqual([
+      ["Bench Press", 2],
+      ["Cable Fly", 1],
+    ])
+    expect(rows[1].currentOneRepMax).toBe(
+      Math.round(estimateOneRepMax(20, 5) * 10) / 10,
+    )
   })
 })

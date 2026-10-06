@@ -229,11 +229,7 @@ const TabIcon = ({ icon, label, focused }: TabIconProps) => {
       <View
         style={[
           styles.iconWrapper,
-          focused && {
-            backgroundColor: colors.accent,
-            shadowColor: colors.accent,
-            borderRadius: 23,
-          },
+          focused && { backgroundColor: colors.accentLight },
         ]}
       >
         <Text style={styles.icon}>{icon}</Text>

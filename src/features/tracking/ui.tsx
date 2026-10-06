@@ -81,7 +81,7 @@ const makeUi = (colors: ThemeColors) =>
       justifyContent: "center",
       backgroundColor: colors.background,
     },
-    iconBtnGlyph: { fontSize: 14 },
+    iconBtnGlyph: { fontSize: 14, color: colors.textPrimary },
 
     row: {
       flexDirection: "row",

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import ScreenTitle from "@shared/components/ScreenTitle";
 import {
   View,
   Text,
@@ -40,8 +41,15 @@ import { embedInstance } from "@shared/components/widgets/embedWidget";
 import {
   ANALYTICS_WIDGET_REGISTRY,
   DEFAULT_ANALYTICS_WIDGETS,
+  fitsFocus,
   type AnalyticsWidgetType,
 } from "../widgets";
+import {
+  WEEKLY_SET_TARGET,
+  buildTrainingSetEntries,
+  muscleCredit,
+  weeklySetVolume,
+} from "../utils/trainingSummary";
 import type { CompletedDays, ExerciseHistoryEntry } from "../types";
 import {
   buildAvailableExercises,
@@ -50,6 +58,7 @@ import {
   computeExerciseInsights,
   computeExerciseStats,
   dedupeHistory,
+  exerciseBreakdown,
   workingSets,
 } from "../utils/exerciseStats";
 import type { ChartData, PersonalRecord } from "../utils/exerciseStats";
@@ -86,8 +95,6 @@ const LONG_DATE: Intl.DateTimeFormatOptions = {
   day: "numeric",
   year: "numeric",
 };
-
-const REP_MAX_TABLE_EMPTY = "No working sets in the 1-12 rep range yet.";
 
 type ProgressWidgetType = "weight_progress" | "reps_progress";
 
@@ -172,7 +179,7 @@ export default function ExerciseAnalytics({
   currentBodyWeight = null,
   onRefresh = null,
   refreshing = false,
-  title = "Exercise Analytics",
+  title = "Progress",
   isLoading = false,
   error = null,
   userId = null,
@@ -278,13 +285,13 @@ export default function ExerciseAnalytics({
     return workingSets(history);
   }, [recordSessions, selection, isGroupFocus, currentBodyWeight]);
 
-  const stats = useMemo(
-    () => computeExerciseStats(workingSetData),
-    [workingSetData],
-  );
   const insights = useMemo(
     () => computeExerciseInsights(workingSetData, recordSetData),
     [workingSetData, recordSetData],
+  );
+  const stats = useMemo(
+    () => computeExerciseStats(workingSetData),
+    [workingSetData],
   );
   const chartDataByMetric = useMemo(
     () => ({
@@ -301,6 +308,31 @@ export default function ExerciseAnalytics({
     [workingSetData, weightUnit],
   );
 
+  const trainingEntries = useMemo(
+    () =>
+      buildTrainingSetEntries(
+        sessions,
+        workoutData,
+        selectedSplit,
+        completedDays,
+      ),
+    [sessions, workoutData, selectedSplit, completedDays],
+  );
+  const weeklyVolume = useMemo(() => {
+    if (!selection) return null;
+    return weeklySetVolume(
+      trainingEntries,
+      isGroupFocus
+        ? muscleCredit(selection)
+        : (entry) => (entry.exerciseName === selection ? 1 : 0),
+    );
+  }, [trainingEntries, selection, isGroupFocus]);
+
+  const groupExercises = useMemo(
+    () => (isGroupFocus && exerciseData ? exerciseBreakdown(exerciseData) : []),
+    [isGroupFocus, exerciseData],
+  );
+
   const setDates = useMemo(
     () => new Set((exerciseData ?? []).map((set) => toDateString(set.date))),
     [exerciseData],
@@ -311,7 +343,8 @@ export default function ExerciseAnalytics({
       (set) => toDateString(set.date) === toDateString(date),
     ) ?? [];
 
-  const hasSetsOnDate = (date: Date): boolean => setDates.has(toDateString(date));
+  const hasSetsOnDate = (date: Date): boolean =>
+    setDates.has(toDateString(date));
 
   const handleDatePress = (date: Date) => {
     if (!hasSetsOnDate(date)) return;
@@ -465,6 +498,20 @@ export default function ExerciseAnalytics({
     );
   };
 
+  const renderProgressWidget = (type: ProgressWidgetType): React.ReactNode => {
+    const config = PROGRESS_WIDGET_CONFIG[type];
+    if (!selection || !exerciseData?.length) return mutedLine(config.emptyText);
+    return (
+      <ProgressChart
+        title={config.title}
+        icon={config.icon}
+        data={chartDataByMetric[config.metric]}
+        yAxisSuffix={config.metric === "weight" ? weightUnit : undefined}
+        chartWidth={chartWidth}
+      />
+    );
+  };
+
   const renderWorkoutHistoryWidget = (): React.ReactNode => {
     if (!selection)
       return mutedLine(`${selectPrompt} to see its history here.`);
@@ -481,24 +528,78 @@ export default function ExerciseAnalytics({
     );
   };
 
-  const renderProgressWidget = (type: ProgressWidgetType): React.ReactNode => {
-    const config = PROGRESS_WIDGET_CONFIG[type];
-    if (!selection || !exerciseData?.length) return mutedLine(config.emptyText);
-    return (
-      <ProgressChart
-        title={config.title}
-        icon={config.icon}
-        data={chartDataByMetric[config.metric]}
-        yAxisSuffix={config.metric === "weight" ? weightUnit : undefined}
-        chartWidth={chartWidth}
-      />
-    );
-  };
-
   const renderInsightGuard = (emptyText: string): React.ReactNode | null => {
     if (!selection) return mutedLine(`${selectPrompt} to see this.`);
     if (insights.workingSetCount === 0) return mutedLine(emptyText);
     return null;
+  };
+
+  const volumeVerdict = (sets: number): string => {
+    if (sets < WEEKLY_SET_TARGET.min)
+      return `Below the ${WEEKLY_SET_TARGET.min} sets a week most muscles need to grow.`;
+    if (sets > WEEKLY_SET_TARGET.max)
+      return `Above ${WEEKLY_SET_TARGET.max} sets a week, where extra sets add little.`;
+    return `Inside the ${WEEKLY_SET_TARGET.min} to ${WEEKLY_SET_TARGET.max} sets a week range.`;
+  };
+
+  const renderWeeklyVolumeWidget = (): React.ReactNode => {
+    if (!selection || !weeklyVolume)
+      return mutedLine(`${selectPrompt} to see its weekly sets.`);
+    const { thisWeek, average } = weeklyVolume;
+    return (
+      <View>
+        <View style={styles.statsRow}>
+          {wideStatTile(fmt(thisWeek), "This Week")}
+          {wideStatTile(average === null ? "—" : fmt(average), "4-Week Avg")}
+        </View>
+        {isGroupFocus &&
+          mutedLine(
+            `${volumeVerdict(average ?? thisWeek)} Secondary muscles count as half a set.`,
+          )}
+      </View>
+    );
+  };
+
+  const trendLabel = (change: number): string => {
+    if (change > 0) return `▲ ${signedPercent(change)}`;
+    if (change < 0) return `▼ ${signedPercent(change)}`;
+    return "No change";
+  };
+
+  const renderGroupExercisesWidget = (): React.ReactNode => {
+    if (!isGroupFocus) return mutedLine("Pick a muscle group to see this.");
+    if (groupExercises.length === 0)
+      return mutedLine(`No working sets for "${selection ?? ""}" yet.`);
+    return (
+      <View>
+        {groupExercises.map((row) => (
+          <TouchableOpacity
+            key={row.exerciseName}
+            style={styles.insightRow}
+            accessibilityRole='button'
+            accessibilityLabel={`Analyze ${row.exerciseName}`}
+            onPress={() => {
+              setSelectedExercise(row.exerciseName);
+              setFocusMode("exercise");
+            }}
+          >
+            <View style={{ flexShrink: 1 }}>
+              <Text style={styles.insightRowLabel}>{row.exerciseName}</Text>
+              <Text style={styles.insightRowMeta}>{row.sets} sets</Text>
+            </View>
+            <View style={styles.insightRowRight}>
+              <Text style={styles.insightRowValue}>
+                {load(row.currentOneRepMax)}
+              </Text>
+              <Text style={styles.insightRowMeta}>
+                {trendLabel(row.oneRepMaxChange30d)} · 30 days
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+        {historyWindowNote}
+      </View>
+    );
   };
 
   const renderOneRepMaxWidget = (): React.ReactNode => {
@@ -562,18 +663,9 @@ export default function ExerciseAnalytics({
         {renderRecordRow("Heaviest Set", records.heaviestSet, load)}
         {renderRecordRow("Most Reps", records.mostReps, fmt)}
         {renderRecordRow("Best Estimated 1RM", records.bestOneRepMax, load)}
-        {recordsWindowNote}
-      </View>
-    );
-  };
-
-  const renderRepMaxTableWidget = (): React.ReactNode => {
-    const guard = renderInsightGuard(REP_MAX_TABLE_EMPTY);
-    if (guard) return guard;
-    if (insights.repMaxTable.length === 0)
-      return mutedLine(REP_MAX_TABLE_EMPTY);
-    return (
-      <View>
+        {insights.repMaxTable.length > 0 && (
+          <Text style={styles.insightSubheading}>Best at each rep count</Text>
+        )}
         {insights.repMaxTable.map((row) => (
           <View style={styles.insightRow} key={row.reps}>
             <Text style={styles.insightRowLabel}>
@@ -685,24 +777,32 @@ export default function ExerciseAnalytics({
   const renderWidgetContent = (
     instance: WidgetInstance<AnalyticsWidgetType>,
   ): React.ReactNode => {
+    if (!embedWidget && !fitsFocus(instance.type, isGroupFocus))
+      return mutedLine(
+        isGroupFocus
+          ? "Shown for one exercise, since weight from different exercises can't be compared."
+          : "Shown for a muscle group.",
+      );
     switch (instance.type) {
       case "select_exercise":
         return renderSelectExerciseWidget();
+      case "workout_history":
+        return renderWorkoutHistoryWidget();
       case "set_data":
         return renderSetDataWidget();
       case "last_workout":
         return renderLastWorkoutWidget();
-      case "workout_history":
-        return renderWorkoutHistoryWidget();
       case "weight_progress":
       case "reps_progress":
         return renderProgressWidget(instance.type);
+      case "weekly_volume":
+        return renderWeeklyVolumeWidget();
+      case "group_exercises":
+        return renderGroupExercisesWidget();
       case "one_rep_max":
         return renderOneRepMaxWidget();
       case "personal_records":
         return renderPersonalRecordsWidget();
-      case "rep_max_table":
-        return renderRepMaxTableWidget();
       case "progress_rate":
         return renderProgressRateWidget();
       case "rep_distribution":
@@ -715,6 +815,11 @@ export default function ExerciseAnalytics({
         return mutedLine("Coming soon");
     }
   };
+
+  // Edit mode keeps every widget, because a reorder saves only the ids it is given.
+  const boardWidgets = widgetBoard.editMode
+    ? widgets
+    : widgets.filter((w) => fitsFocus(w.type, isGroupFocus));
 
   const showAnalyticsChrome =
     focusMode !== "training_summary" &&
@@ -963,7 +1068,7 @@ export default function ExerciseAnalytics({
         )}
 
         <WidgetsPanel
-          widgets={widgets}
+          widgets={boardWidgets}
           editMode={widgetBoard.editMode}
           onCycleSize={cycleWidgetSize}
           onRemove={removeWidget}
@@ -1020,10 +1125,7 @@ export default function ExerciseAnalytics({
         }
       >
         <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.subtitle}>Track progress over time</Text>
-          </View>
+          <ScreenTitle title={title} />
 
           <ScrollTabBar
             tabs={FOCUS_MODE_TABS}
@@ -1056,7 +1158,9 @@ export default function ExerciseAnalytics({
       <WidgetGallery
         visible={widgetBoard.galleryVisible}
         onClose={widgetBoard.closeGallery}
-        availableWidgets={availableToAdd}
+        availableWidgets={availableToAdd.filter((def) =>
+          fitsFocus(def.type, isGroupFocus),
+        )}
         onAddWidget={widgetBoard.add}
         hasPlacedWidgets={widgets.length > 0}
         onEditWidgets={widgetBoard.editWidgets}
@@ -1069,23 +1173,7 @@ const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     content: { padding: 10, paddingBottom: 40, flexGrow: 1 },
-    header: {
-      marginBottom: 12,
-      alignItems: "center",
-      paddingHorizontal: 10,
-      paddingTop: 10,
-    },
-    title: {
-      fontSize: 32,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      marginBottom: 8,
-    },
-    subtitle: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      textAlign: "center",
-    },
+
     widgetLineMuted: {
       fontSize: 12,
       color: colors.textSecondary,
@@ -1335,13 +1423,11 @@ const makeStyles = (colors: ThemeColors) =>
       backgroundColor: colors.accentLight,
     },
     insightBadgeText: { fontSize: 14, color: colors.textPrimary },
-    lastWorkoutCardWidget: {
-      alignItems: "flex-start",
-    },
-    lastWorkoutDate: {
-      fontSize: 16,
-      color: colors.textPrimary,
+    insightSubheading: {
+      marginTop: 16,
+      fontSize: 13,
       fontWeight: "600",
+      color: colors.textSecondary,
     },
     emptyContainer: {
       flex: 1,
@@ -1363,13 +1449,6 @@ const makeStyles = (colors: ThemeColors) =>
       textAlign: "center",
       lineHeight: 24,
     },
-    noDataContainer: {
-      padding: 40,
-      alignItems: "center",
-      backgroundColor: colors.surface,
-      borderRadius: 16,
-      marginTop: 4,
-    },
     noDataIcon: { fontSize: 48, marginBottom: 16 },
     noDataTitle: {
       fontSize: 20,
@@ -1383,4 +1462,20 @@ const makeStyles = (colors: ThemeColors) =>
       textAlign: "center",
       lineHeight: 22,
     },
+    lastWorkoutCardWidget: { alignItems: "flex-start" },
+    lastWorkoutDate: {
+      fontSize: 16,
+      color: colors.textPrimary,
+      fontWeight: "600",
+    },
+    noDataContainer: {
+      padding: 40,
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      marginTop: 4,
+    },
+    
+    
+    
   });
