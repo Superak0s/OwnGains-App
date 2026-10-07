@@ -16,10 +16,8 @@ import {
 import {
   FRIENDS_WIDGET_REGISTRY,
   REQUESTS_WIDGET_REGISTRY,
-  SEARCH_WIDGET_REGISTRY,
   type FriendsWidgetType,
   type RequestsWidgetType,
-  type SearchWidgetType,
 } from "@features/friends/widgets";
 import {
   WEIGHT_WIDGET_REGISTRY,
@@ -122,7 +120,6 @@ export type HomeWidgetType =
   | Exclude<AnalyticsWidgetType, "group_exercises">
   | FriendsWidgetType
   | RequestsWidgetType
-  | SearchWidgetType
   | WeightWidgetType
   | PhotosWidgetType
   | MacrosWidgetType
@@ -143,7 +140,6 @@ const WIDGET_SOURCES: [
   ["Analytics", HOME_ANALYTICS_REGISTRY],
   ["Friends", FRIENDS_WIDGET_REGISTRY, "Friends"],
   ["Friends", REQUESTS_WIDGET_REGISTRY, "Requests"],
-  ["Friends", SEARCH_WIDGET_REGISTRY, "Search"],
   ["Tracking", WEIGHT_WIDGET_REGISTRY, "Weight"],
   ["Tracking", PHOTOS_WIDGET_REGISTRY, "Photos"],
   ["Tracking", MACROS_WIDGET_REGISTRY, "Macros"],

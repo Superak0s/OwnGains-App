@@ -59,6 +59,29 @@ const MIGRATIONS: readonly Migration[] = [
         db.runSync("UPDATE kv_store SET value = ? WHERE key = ?", [next, key]);
     });
   },
+  () => {
+    const rows = db.getAllSync<{ key: string; value: string }>(
+      "SELECT key, value FROM kv_store WHERE key IN ('friendsScreen_friendsWidgets', 'homeWidgets') " +
+        "OR key LIKE 'friendsScreen_friendsWidgets_user_%' OR key LIKE 'homeWidgets_user_%'",
+    );
+    rows.forEach(({ key, value }) => {
+      const next = key.startsWith("homeWidgets")
+        ? mergeWidgetTypes(value, {
+            search_qr: "friends_search",
+            search_users: "friends_search",
+          })
+        : appendWidgetTypes(
+            value,
+            [{ type: "friends_search", size: "medium" }],
+            true,
+          );
+      if (next !== value)
+        db.runSync("UPDATE kv_store SET value = ? WHERE key = ?", [next, key]);
+    });
+    db.runSync(
+      "DELETE FROM kv_store WHERE key = 'friendsScreen_searchWidgets' OR key LIKE 'friendsScreen_searchWidgets_user_%'",
+    );
+  },
 ];
 
 runMigrations(db, MIGRATIONS);

@@ -97,6 +97,7 @@ export const mergeWidgetTypes = (
 export const appendWidgetTypes = (
   json: string,
   additions: readonly { type: string; size: string }[],
+  atStart = false,
 ): string => {
   let layout: unknown;
   try {
@@ -110,13 +111,15 @@ export const appendWidgetTypes = (
     ({ type }) => !widgets.some((w) => w.type === type),
   );
   if (missing.length === 0) return json;
-  return JSON.stringify([
-    ...widgets,
-    ...missing.map(({ type, size }, index) => ({
-      id: `migrated-${type.replaceAll("_", "-")}`,
-      type,
-      size,
-      order: widgets.length + index,
-    })),
-  ]);
+  const added = missing.map(({ type, size }) => ({
+    id: `migrated-${type.replaceAll("_", "-")}`,
+    type,
+    size,
+  }));
+  const existing = [...widgets].sort((a, b) => a.order - b.order);
+  return JSON.stringify(
+    (atStart ? [...added, ...existing] : [...existing, ...added]).map(
+      (widget, order) => ({ ...widget, order }),
+    ),
+  );
 };

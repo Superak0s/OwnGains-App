@@ -54,7 +54,7 @@ import {
   RequestsPendingWidget,
   RequestsSentWidget,
 } from "./components/RequestWidgets";
-import { SearchQrWidget, SearchUsersWidget } from "./components/SearchWidgets";
+import { SearchUsersWidget } from "./components/SearchWidgets";
 import { FriendTabsBar } from "./components/FriendTabsBar";
 import { FriendProgramTab } from "./components/FriendProgramTab";
 import { FriendActionsTab } from "./components/FriendActionsTab";
@@ -83,9 +83,6 @@ import {
   REQUESTS_WIDGET_REGISTRY,
   DEFAULT_REQUESTS_WIDGETS,
   type RequestsWidgetType,
-  SEARCH_WIDGET_REGISTRY,
-  DEFAULT_SEARCH_WIDGETS,
-  type SearchWidgetType,
 } from "./widgets";
 import { STORAGE_KEYS } from "@shared/services/storage";
 import type {
@@ -153,10 +150,7 @@ function fetchFriendSessionStatuses(
   return statuses;
 }
 
-type FriendsBoardWidgetType =
-  | FriendsWidgetType
-  | RequestsWidgetType
-  | SearchWidgetType;
+type FriendsBoardWidgetType = FriendsWidgetType | RequestsWidgetType;
 
 type FriendsBoard = ReturnType<typeof useWidgets<FriendsBoardWidgetType>>;
 
@@ -404,10 +398,7 @@ const SessionExerciseGroup = React.memo(function SessionExerciseGroup({
 export default function FriendsScreen({
   embedWidget,
 }: {
-  readonly embedWidget?:
-    | FriendsWidgetType
-    | RequestsWidgetType
-    | SearchWidgetType;
+  readonly embedWidget?: FriendsWidgetType | RequestsWidgetType;
 } = {}): React.JSX.Element {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -505,16 +496,10 @@ export default function FriendsScreen({
     defaults: DEFAULT_REQUESTS_WIDGETS,
     storageKey: STORAGE_KEYS.REQUESTS_TAB_WIDGETS,
   });
-  const searchBoard = useWidgets<SearchWidgetType>(user?.id ?? null, {
-    registry: SEARCH_WIDGET_REGISTRY,
-    defaults: DEFAULT_SEARCH_WIDGETS,
-    storageKey: STORAGE_KEYS.SEARCH_TAB_WIDGETS,
-  });
 
   const boardsByTab: Record<string, FriendsBoard> = {
     friends: toFriendsBoard(friendsBoard),
     requests: toFriendsBoard(requestsBoard),
-    search: toFriendsBoard(searchBoard),
   };
   const registriesByTab: Record<
     string,
@@ -522,10 +507,9 @@ export default function FriendsScreen({
   > = {
     friends: FRIENDS_WIDGET_REGISTRY,
     requests: REQUESTS_WIDGET_REGISTRY,
-    search: SEARCH_WIDGET_REGISTRY,
   };
-  const activeBoard = boardsByTab[activeTab] ?? boardsByTab.search;
-  const activeRegistry = registriesByTab[activeTab] ?? registriesByTab.search;
+  const activeBoard = boardsByTab[activeTab] ?? boardsByTab.friends;
+  const activeRegistry = registriesByTab[activeTab] ?? registriesByTab.friends;
 
   // Two-finger pull opens the active tab's widget panel, as on Home/Tracking.
   const widgetBoard = useWidgetBoard<FriendsBoardWidgetType>(
@@ -546,6 +530,7 @@ export default function FriendsScreen({
   >([]);
   const [sentRequests, setSentRequests] = useState<SentFriendRequest[]>([]);
 
+  const searchInputRef = useRef<TextInput>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searching, setSearching] = useState<boolean>(false);
@@ -1368,7 +1353,10 @@ export default function FriendsScreen({
     [loadFriendData],
   );
 
-  const handleFindFriends = useCallback(() => setActiveTab("search"), []);
+  const handleFindFriends = useCallback(
+    () => searchInputRef.current?.focus(),
+    [],
+  );
 
   const handleRetryLoad = useCallback(() => void loadData(), [loadData]);
 
@@ -1438,18 +1426,11 @@ export default function FriendsScreen({
           />
         );
 
-      case "search_qr":
-        return (
-          <SearchQrWidget
-            permStyles={permStyles}
-            onShowMyQr={() => setShowMyQrModal(true)}
-            onScanQr={openScanQrModal}
-          />
-        );
-
-      case "search_users":
+      case "friends_search":
         return (
           <SearchUsersWidget
+            inputRef={searchInputRef}
+            onScanQr={openScanQrModal}
             styles={styles}
             colors={colors}
             searchQuery={searchQuery}
@@ -1827,6 +1808,16 @@ export default function FriendsScreen({
             </View>
           )}
         </View>
+        <TouchableOpacity
+          style={styles.showMyCodeButton}
+          onPress={() => {
+            setShowScanQrModal(false);
+            setShowMyQrModal(true);
+          }}
+          accessibilityRole="button"
+        >
+          <Text style={styles.showMyCodeButtonText}>Show My Code</Text>
+        </TouchableOpacity>
       </ModalSheet>
 
       <ModalSheet
@@ -2182,7 +2173,36 @@ export const makeStyles = (colors: ThemeColors) =>
     },
     statusBadgeText: { color: colors.warning, fontSize: 12, fontWeight: "600" },
     statusBadgeFriend: { backgroundColor: colors.successLight },
-    searchContainer: { position: "relative", marginBottom: 20 },
+    searchBarRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 20,
+    },
+    searchContainer: { position: "relative", flex: 1 },
+    scanButton: {
+      width: 52,
+      height: 52,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.surface,
+      borderWidth: 2,
+      borderColor: colors.infoLight,
+    },
+    scanButtonIcon: { fontSize: 22 },
+    showMyCodeButton: {
+      marginTop: 12,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: "center",
+      backgroundColor: colors.accent,
+    },
+    showMyCodeButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.textOnAccent,
+    },
     searchInput: {
       backgroundColor: colors.surface,
       borderRadius: 12,

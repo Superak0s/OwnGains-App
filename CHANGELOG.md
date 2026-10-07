@@ -24,6 +24,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Muscle group analytics no longer show weight, 1RM, record or rest charts that pooled different exercises together. They focus on weekly sets, frequency and rep ranges instead.
 - Personal Records now also lists your best weight at each rep count from 1 to 12.
 - Your password manager now offers to save your username and password after you sign in or create an account.
+- The Search tab in Friends is gone. A Find Friends search bar now sits at the top of the Friends tab, with a camera button beside it that scans a friend's QR code. Your own code is one tap away in the scanner.
 - The Compare against setting for undertrained muscles is now a row of buttons instead of a dropdown, with a new Last 30 days option that compares your sets over the past month with a month of your split.
 - Weight Progress, Reps Progress, All Set Data and Last Workout are no longer on the Progress board by default. Boards that had them get Estimated 1RM or Personal Records instead, and you can add them back from the widget gallery. The weight, reps and set data widgets show only for a single exercise.
 - Screen titles share one style and match the tab names: Home, Plan, Progress, Tracking, Supplements, Friends and Settings. The emoji and the Friends tagline are gone.

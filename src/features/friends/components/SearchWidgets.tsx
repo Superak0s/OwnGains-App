@@ -8,43 +8,8 @@ import type {
 } from "../services";
 import type { UserSearchResult, UserRef } from "../types";
 import type { makeStyles } from "../FriendsScreen";
-import type { makePermStyles } from "./PermissionRow";
 import { Avatar } from "./Avatar";
 import { MIN_USER_SEARCH_LENGTH } from "../utils";
-
-interface SearchQrWidgetProps {
-  readonly permStyles: ReturnType<typeof makePermStyles>;
-  readonly onShowMyQr: () => void;
-  readonly onScanQr: () => void;
-}
-
-export function SearchQrWidget({
-  permStyles,
-  onShowMyQr,
-  onScanQr,
-}: SearchQrWidgetProps): React.JSX.Element {
-  return (
-    <View style={permStyles.row}>
-      <Text style={permStyles.icon}>🔳</Text>
-      <View style={permStyles.text}>
-        <Text style={permStyles.title}>Add via QR Code</Text>
-        <Text style={permStyles.desc}>
-          Show your code for a friend to scan, or scan theirs to add them
-          instantly.
-        </Text>
-      </View>
-      <TouchableOpacity style={permStyles.grantBtn} onPress={onShowMyQr}>
-        <Text style={permStyles.grantBtnText}>My Code</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[permStyles.grantBtn, { marginLeft: 8 }]}
-        onPress={onScanQr}
-      >
-        <Text style={permStyles.grantBtnText}>Scan</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
 
 interface SearchUsersWidgetProps {
   readonly styles: ReturnType<typeof makeStyles>;
@@ -61,11 +26,18 @@ interface SearchUsersWidgetProps {
   readonly onAddFriend: (username: string) => void;
   readonly sendingRequestTo: number | string | null;
   readonly onMoreActions: (user: UserRef) => void;
+  readonly onScanQr: () => void;
+  readonly inputRef?: React.Ref<TextInput>;
 }
 
 type SearchUserResultRowProps = Omit<
   SearchUsersWidgetProps,
-  "searchQuery" | "onChangeQuery" | "searching" | "searchResults"
+  | "searchQuery"
+  | "onChangeQuery"
+  | "searching"
+  | "searchResults"
+  | "onScanQr"
+  | "inputRef"
 > & { readonly result: UserSearchResult };
 
 function SearchUserResultRow({
@@ -166,6 +138,8 @@ export function SearchUsersWidget({
   onAddFriend,
   sendingRequestTo,
   onMoreActions,
+  onScanQr,
+  inputRef,
 }: SearchUsersWidgetProps): React.JSX.Element {
   const query = searchQuery.trim();
   let noResultsText: React.ReactNode = null;
@@ -180,24 +154,35 @@ export function SearchUsersWidget({
   );
   return (
     <View>
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder='Search by username (3+ letters)'
-          placeholderTextColor={colors.textMuted}
-          accessibilityLabel='Search users by username'
-          value={searchQuery}
-          onChangeText={onChangeQuery}
-          autoCapitalize='none'
-          autoCorrect={false}
-        />
-        {searching && (
-          <ActivityIndicator
-            style={styles.searchLoader}
-            size='small'
-            color={colors.accent}
+      <View style={styles.searchBarRow}>
+        <View style={styles.searchContainer}>
+          <TextInput
+            ref={inputRef}
+            style={styles.searchInput}
+            placeholder='Search by username (3+ letters)'
+            placeholderTextColor={colors.textMuted}
+            accessibilityLabel='Search users by username'
+            value={searchQuery}
+            onChangeText={onChangeQuery}
+            autoCapitalize='none'
+            autoCorrect={false}
           />
-        )}
+          {searching && (
+            <ActivityIndicator
+              style={styles.searchLoader}
+              size='small'
+              color={colors.accent}
+            />
+          )}
+        </View>
+        <TouchableOpacity
+          style={styles.scanButton}
+          onPress={onScanQr}
+          accessibilityRole='button'
+          accessibilityLabel="Scan a friend's QR code"
+        >
+          <Text style={styles.scanButtonIcon}>📷</Text>
+        </TouchableOpacity>
       </View>
       {searchResults.length > 0 ? (
         <View style={styles.listContainer}>

@@ -148,6 +148,24 @@ describe("appendWidgetTypes", () => {
     ]);
   });
 
+  it("puts added types first and renumbers the rest when atStart is set", () => {
+    const next = JSON.parse(
+      appendWidgetTypes(
+        JSON.stringify([
+          { id: "b", type: "weekly_volume", size: "medium", order: 1 },
+          { id: "a", type: "one_rep_max", size: "large", order: 0 },
+        ]),
+        [{ type: "friends_search", size: "medium" }],
+        true,
+      ),
+    ) as { type: string; order: number }[];
+    expect(next.map((w) => `${w.order}:${w.type}`)).toEqual([
+      "0:friends_search",
+      "1:one_rep_max",
+      "2:weekly_volume",
+    ]);
+  });
+
   it("leaves a complete layout and non-layout values unchanged", () => {
     expect(
       appendWidgetTypes(layout, [{ type: "one_rep_max", size: "large" }]),
