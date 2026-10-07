@@ -10,6 +10,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 - New Weekly Sets widget in Progress: working sets this week and the 4-week average. For a muscle group it compares them with the 10 to 20 sets a week most muscles need to grow, counting sets where the muscle only assists as half.
 - New Exercises widget for a muscle group: every exercise in the group with its own estimated 1RM and 30-day trend. Tap one to open its analytics.
+- Trainers can send a plan to a trainee from the Trainer section of their Actions tab, picked from the built-in templates or their own plan. The trainee sees it in the trainer's Program tab and can tap Use this plan to make it their own. Any shared program now has the same Use this plan button.
 
 ### Changed
 

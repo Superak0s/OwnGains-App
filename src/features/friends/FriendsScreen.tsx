@@ -113,6 +113,12 @@ import type {
 import { Avatar } from "./components/Avatar";
 import { mapWithConcurrency } from "@utils/concurrency";
 import { userFacingError } from "@shared/services/apiError";
+import { markProgramDirty } from "@shared/services/programDirty";
+import { programApi } from "@features/plan/services";
+import {
+  DEFAULT_SPLITS,
+  buildProgramFromTemplate,
+} from "@features/plan/utils/splitTemplates";
 
 // The server rate-limits each IP to 200 requests a minute, and a shared NAT
 // shares that bucket, so opening a friend must not fire dozens at once.
@@ -426,11 +432,13 @@ export default function FriendsScreen({
   const watchStyles = useMemo(() => makeWatchStyles(colors), [colors]);
   const jointStyles = useMemo(() => makeJointStyles(colors), [colors]);
   const { user } = useAuth();
-  const { workoutData, workoutStartTime, currentSessionId } = useWorkoutPick(
-    "workoutData",
-    "workoutStartTime",
-    "currentSessionId",
-  );
+  const { workoutData, workoutStartTime, currentSessionId, saveWorkoutData } =
+    useWorkoutPick(
+      "workoutData",
+      "workoutStartTime",
+      "currentSessionId",
+      "saveWorkoutData",
+    );
 
   const {
     isInJointSession,
@@ -713,8 +721,10 @@ export default function FriendsScreen({
     try {
       await sharingApi.grantPermission(friend.id, type, payload);
       await loadPermissions();
+      return true;
     } catch (e) {
       alertError(userFacingError(e, "Failed to grant permission"));
+      return false;
     } finally {
       setPermLoading(friend.id, type, false);
     }
@@ -747,18 +757,83 @@ export default function FriendsScreen({
       );
       return;
     }
-    const wd = workoutData as WorkoutData & { people?: string[] };
-    const split = wd.split ?? wd.people;
-    const payload: Record<string, unknown> = {
-      programData: {
-        name: `${split?.join("/")} Program, ${wd.totalDays} Days`,
-        totalDays: wd.totalDays,
-        split,
-        days: wd.days,
-      },
-      message: null,
+    await handleGrantPermission(friend, "program", programPayload(workoutData));
+  };
+
+  const sendPlan = async (friend: Friend, program: WorkoutData, name?: string) => {
+    const sent = await handleGrantPermission(
+      friend,
+      "program",
+      programPayload(program, name),
+    );
+    if (sent)
+      alert(
+        "Plan sent",
+        `${friend.username} can open it from your Program tab and choose to use it.`,
+        [{ text: "OK" }],
+        "success",
+      );
+  };
+
+  const handleSendPlan = (friend: Friend) => {
+    alert(
+      `Send ${friend.username} a plan`,
+      `It replaces any program you've already shared with ${friend.username}. Their own plan only changes if they choose to use it.`,
+      [
+        ...DEFAULT_SPLITS.map((template) => ({
+          text: template.name,
+          onPress: () =>
+            void sendPlan(
+              friend,
+              buildProgramFromTemplate(template, []),
+              template.name,
+            ),
+        })),
+        ...(workoutData
+          ? [{ text: "Your current plan", onPress: () => void sendPlan(friend, workoutData) }]
+          : []),
+        { text: "Cancel", style: "cancel" as const },
+      ],
+      "info",
+    );
+  };
+
+  const handleUsePlan = (program: ReceivedProgram) => {
+    const apply = async () => {
+      const data = program.programData as WorkoutData;
+      try {
+        await saveWorkoutData(data);
+      } catch (e) {
+        alertError(userFacingError(e, "Couldn't save that plan"));
+        return;
+      }
+      try {
+        await programApi.saveProgram(data);
+      } catch (e) {
+        captureException(e, { stage: "useSharedPlan" }, "warning");
+        await markProgramDirty(user?.id ?? null);
+      }
+      closeFriendDetail();
+      alert(
+        "Plan saved",
+        "It's now your plan. Edit it any time from the Plan tab.",
+        [{ text: "OK" }],
+        "success",
+      );
     };
-    await handleGrantPermission(friend, "program", payload);
+    if (!workoutData) {
+      void apply();
+      return;
+    }
+    alert(
+      "Replace your plan?",
+      `Your current plan is replaced by the one from ${program.senderUsername}. Your logged workouts are kept.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Use this plan", style: "destructive", onPress: () => void apply() },
+      ],
+      "warning",
+    );
   };
 
   const getInviteStatusForFriend = useCallback(
@@ -1585,6 +1660,7 @@ export default function FriendsScreen({
               receivedPrograms={receivedPrograms}
               selectedProgram={selectedProgram}
               setSelectedProgram={setSelectedProgram}
+              onUsePlan={handleUsePlan}
               styles={styles}
             />
           )}
@@ -1628,6 +1704,7 @@ export default function FriendsScreen({
               onSendInvite={handleSendInvite}
               onStartTrainer={handleStartTrainer}
               onStopTrainer={handleStopTrainer}
+              onSendPlan={handleSendPlan}
               onRemoveFriend={handleRemoveFriend}
               onBlockFriend={handleBlockFriend}
               onReportFriend={handleReportFriend}
@@ -1837,14 +1914,14 @@ export default function FriendsScreen({
           )}
         </View>
         <TouchableOpacity
-          style={styles.showMyCodeButton}
+          style={styles.primaryButton}
           onPress={() => {
             setShowScanQrModal(false);
             setShowMyQrModal(true);
           }}
           accessibilityRole="button"
         >
-          <Text style={styles.showMyCodeButtonText}>Show My Code</Text>
+          <Text style={styles.primaryButtonText}>Show My Code</Text>
         </TouchableOpacity>
       </ModalSheet>
 
@@ -2089,6 +2166,22 @@ export const makeJointStyles = (colors: ThemeColors) =>
     leaveBtnText: { color: colors.error, fontSize: 13, fontWeight: "600" },
   });
 
+const programPayload = (
+  wd: WorkoutData & { people?: string[] },
+  name?: string,
+): Record<string, unknown> => {
+  const split = wd.split ?? wd.people;
+  return {
+    programData: {
+      name: name ?? `${split?.join("/")} Program, ${wd.totalDays} Days`,
+      totalDays: wd.totalDays,
+      split,
+      days: wd.days,
+    },
+    message: null,
+  };
+};
+
 export const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -2219,14 +2312,14 @@ export const makeStyles = (colors: ThemeColors) =>
       borderColor: colors.infoLight,
     },
     scanButtonIcon: { fontSize: 22 },
-    showMyCodeButton: {
+    primaryButton: {
       marginTop: 12,
       paddingVertical: 14,
       borderRadius: 12,
       alignItems: "center",
       backgroundColor: colors.accent,
     },
-    showMyCodeButtonText: {
+    primaryButtonText: {
       fontSize: 16,
       fontWeight: "600",
       color: colors.textOnAccent,

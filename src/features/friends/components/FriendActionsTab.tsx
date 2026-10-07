@@ -243,6 +243,7 @@ interface TrainerActionProps {
   readonly isActive: boolean;
   readonly onStart: (friend: Friend) => void;
   readonly onStop: () => void;
+  readonly onSendPlan: (friend: Friend) => void;
   readonly styles: ReturnType<typeof makeStyles>;
   readonly jointStyles: ReturnType<typeof makeJointStyles>;
   readonly colors: ThemeColors;
@@ -253,6 +254,7 @@ function TrainerAction({
   isActive,
   onStart,
   onStop,
+  onSendPlan,
   styles,
   jointStyles,
   colors,
@@ -313,6 +315,26 @@ function TrainerAction({
     <>
       <Text style={styles.actionsTabSectionTitle}>Trainer</Text>
       {row}
+      <TouchableOpacity
+        style={[styles.actionRow, jointStyles.inviteRow]}
+        onPress={() => selectedFriend && onSendPlan(selectedFriend)}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`Send a plan to ${selectedFriend?.username ?? "friend"}`}
+      >
+        <Text style={styles.actionRowIcon}>📋</Text>
+        <View style={styles.actionRowText}>
+          <Text style={[styles.actionRowTitle, { color: colors.accentDark }]}>
+            Send a Plan
+          </Text>
+          <Text style={styles.actionRowSub}>
+            Pick a plan for {selectedFriend?.username} to review and use.
+          </Text>
+        </View>
+        <Text style={[styles.actionRowArrow, { color: colors.accentDark }]}>
+          ›
+        </Text>
+      </TouchableOpacity>
     </>
   );
 }
@@ -349,6 +371,7 @@ interface FriendActionsTabProps {
   readonly onSendInvite: (friend: Friend) => void;
   readonly onStartTrainer: (friend: Friend) => void;
   readonly onStopTrainer: () => void;
+  readonly onSendPlan: (friend: Friend) => void;
   readonly onRemoveFriend: (friend: Friend) => void;
   readonly onBlockFriend: (friend: Friend) => void;
   readonly onReportFriend: (friend: Friend) => void;
@@ -378,6 +401,7 @@ export function FriendActionsTab({
   onSendInvite,
   onStartTrainer,
   onStopTrainer,
+  onSendPlan,
   onRemoveFriend,
   onBlockFriend,
   onReportFriend,
@@ -432,6 +456,7 @@ export function FriendActionsTab({
             }
             onStart={onStartTrainer}
             onStop={onStopTrainer}
+            onSendPlan={onSendPlan}
             styles={styles}
             jointStyles={jointStyles}
             colors={colors}
