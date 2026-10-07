@@ -170,7 +170,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
       ["🩹", "Recovery", "Soreness, a morning recovery check, recovery analytics and an injury log."],
       ["🌙", "Cycle", "Your cycle status, with your period and cycle length."],
     ]),
-    practice("Tap the muscles that feel sore to log recovery. Switch between Front and Back.", { type: "soreness" }),
+    practice("Tap the muscles that feel sore to log recovery.", { type: "soreness" }),
     card("🩹", "More recovery tools", "Recovery also has the morning recovery check, recovery analytics, and Log injury."),
   ]),
   supplements: chapter("supplements", "💊", "Supplements", [
@@ -188,7 +188,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
   ]),
   friends: chapter("friends", "👥", "Friends", [
     tapTab("Friends", "Tap Friends."),
-    spot("Friends", "scrollTabs", "Friends, Requests and Search are all here.", "At the top of Friends, switch between Friends, Requests and Search."),
+    spot("Friends", "scrollTabs", "Friends and Requests are both here.", "At the top of Friends, switch between Friends and Requests. Search for people from the bar at the top of Friends."),
     practice("Add a friend by QR code or username. Alex sent you a request, so accept it.", { type: "friendRequest" }),
     checklist("Each friend has their own tabs.", [
       ["📅", "History", "Their workout calendar and sessions."],
@@ -206,7 +206,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     ]),
   ], true),
   sharing: chapter("sharing", "🔐", "Sharing & permissions", [
-    practice("You decide what each friend can see and do. Grant a few, give Alex Trainer Access, then revoke one.", { type: "permissions" }),
+    practice("You decide what each friend can see and do. Turn a few on, give Alex Trainer Access, then turn one off.", { type: "permissions" }),
     practice("While a trainer logs a session for you, this banner shows on your Workout screen. Try revoking their access.", { type: "banner", variant: "trainer" }),
   ], true),
   together: chapter("together", "🤝", "Training together", [
@@ -258,7 +258,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
   ], true),
   trainerSession: chapter("trainerSession", "🏋️", "Trainer: running a session", [
     checklist("Start a session for your client.", [
-      ["👤", "Pick your client", "Open them from Friends."],
+      ["👤", "Pick your client", "Tap Train next to them in Friends, or open them."],
       ["⚙️", "Actions", "Once they've granted Trainer Access, their Actions tab has Start trainer session."],
       ["▶️", "Start", "Workout opens, and you're running their session."],
     ]),

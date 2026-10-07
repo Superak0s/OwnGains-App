@@ -16,6 +16,7 @@ import { useAuth } from "@shared/context/AuthContext";
 import { useTheme } from "@shared/context/ThemeContext";
 import { useAlert } from "@shared/components/CustomAlert";
 import { captureException } from "@shared/services/crashReporting";
+import { commitAutofill } from "../../../modules/autofill";
 import type { RootStackParamList } from "./types";
 import { PASSWORD_HINT, passwordPolicyError } from "./utils/passwordPolicy";
 import type { ThemeColors } from "@shared/context/ThemeContext";
@@ -162,6 +163,7 @@ export default function SignupScreen({
         setIsLoading(false);
 
         if (result.success) {
+          commitAutofill();
           clearSensitiveData();
         } else {
           const lowerError = result.error?.toLowerCase() ?? "";

@@ -4,8 +4,8 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import type { WeightEntry, HeightData } from "@shared/types";
 import { bodyTrackingApi } from "../services";
 import { createDeleteHandler, withConfirm, describeError } from "../helpers";
-import { isoToLocalDateStr } from "../utils";
-import { formatDate, toDateString } from "@utils/format";
+import { isoToLocalDateStr, toTrendChartData } from "../utils";
+import { toDateString } from "@utils/format";
 import { getUserKey as sharedGetUserKey } from "@shared/services/storage";
 import { getStorageItem, setStorageItem } from "@shared/services/sqliteStorage";
 import { authService } from "@features/auth/services/index";
@@ -182,21 +182,15 @@ export function useWeightTab(deps: UseWeightTabDeps) {
 
   const getWeightChartData = useCallback(() => {
     if (weightHistory.length < 2) return { labels: [], datasets: [{ data: [] }] };
-    const recentEntries = [...weightHistory].slice(0, 30).reverse();
-    const maxLabels = 8;
-    const labelInterval = Math.ceil(recentEntries.length / maxLabels);
-    const labels = recentEntries.map((entry, index) => {
-      if (recentEntries.length <= maxLabels || index % labelInterval === 0) {
-        return formatDate(entry.recordedAt, { month: "short", day: "numeric" });
-      }
-      return "";
-    });
-    const data: number[] = recentEntries.map((entry) =>
-      weightUnit === "kg"
-        ? Number(entry.weightKg)
-        : Number(entry.weightKg) * 2.20462,
+    return toTrendChartData(
+      weightHistory.map((entry) => ({
+        at: entry.recordedAt,
+        value:
+          weightUnit === "kg"
+            ? Number(entry.weightKg)
+            : Number(entry.weightKg) * 2.20462,
+      })),
     );
-    return { labels, datasets: [{ data }] };
   }, [weightHistory, weightUnit]);
 
   const loadMoreWeightEntries = useCallback(() => {

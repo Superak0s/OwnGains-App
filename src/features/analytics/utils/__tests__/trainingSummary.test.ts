@@ -3,7 +3,6 @@ import {
   aggregateTrainingSummary,
   buildTrainingSetEntries,
   getUndertrainedMuscleGroups,
-  pickDefaultPeriod,
   muscleCredit,
   weeklySetVolume,
   type TrainingSetEntry,
@@ -15,10 +14,10 @@ describe("getPeriodDateRange", () => {
   // Wednesday
   const now = new Date("2026-08-12T15:30:00");
 
-  it("today spans the current calendar day", () => {
-    const range = getPeriodDateRange("today", null, now);
+  it("quarter spans a rolling 90 days ending today", () => {
+    const range = getPeriodDateRange("quarter", null, now);
     expect(range.start.toISOString()).toBe(
-      new Date("2026-08-12T00:00:00").toISOString(),
+      new Date("2026-05-15T00:00:00").toISOString(),
     );
     expect(range.end.toISOString()).toBe(
       new Date("2026-08-12T23:59:59.999").toISOString(),
@@ -438,6 +437,28 @@ describe("getUndertrainedMuscleGroups", () => {
     expect(chest).toBeUndefined();
   });
 
+  it("last_30_days mode: counts sets from the last 30 days against 30 days of the split", () => {
+    const daysAgo = (days: number) =>
+      new Date(now.getTime() - days * 86_400_000);
+    const entries: TrainingSetEntry[] = [
+      ...Array.from({ length: 45 }, (_, i) =>
+        makeEntry({ date: daysAgo(i % 29), primaryMuscles: ["Chest"] }),
+      ),
+      makeEntry({ date: daysAgo(40), primaryMuscles: ["Legs"] }),
+    ];
+    const result = getUndertrainedMuscleGroups(
+      entries,
+      workoutData,
+      "solo",
+      now,
+      "last_30_days",
+    );
+    const legs = result.find((r) => r.primaryMuscle === "Legs");
+    expect(legs?.targetSets).toBe(45);
+    expect(legs?.actualSets).toBe(0);
+    expect(result.find((r) => r.primaryMuscle === "Chest")).toBeUndefined();
+  });
+
   it("full_split mode: includes every day's target regardless of what was logged", () => {
     const entries: TrainingSetEntry[] = [
       makeEntry({
@@ -570,22 +591,6 @@ describe("getUndertrainedMuscleGroups", () => {
       "days_done",
     );
     expect(result).toEqual([]);
-  });
-});
-
-describe("pickDefaultPeriod", () => {
-  const now = new Date("2026-08-12T15:30:00");
-  const at = (iso: string) => ({ date: new Date(iso) });
-
-  it("picks the narrowest period that has sets", () => {
-    expect(pickDefaultPeriod([at("2026-08-12T09:00:00")], now)).toBe("today");
-    expect(pickDefaultPeriod([at("2026-08-10T09:00:00")], now)).toBe("week");
-    expect(pickDefaultPeriod([at("2026-07-20T09:00:00")], now)).toBe("month");
-  });
-
-  it("falls back to month when nothing is recent", () => {
-    expect(pickDefaultPeriod([at("2026-01-01T09:00:00")], now)).toBe("month");
-    expect(pickDefaultPeriod([], now)).toBe("month");
   });
 });
 

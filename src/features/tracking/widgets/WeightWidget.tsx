@@ -213,7 +213,13 @@ export function renderWeightWidget(
             Two weigh-ins are enough to draw a trend. You have {history.length}.
           </Note>
         );
-      return <ProgressChart data={chartData} yAxisSuffix={weightUnit} />;
+      return (
+        <ProgressChart
+          data={chartData}
+          yAxisSuffix={weightUnit}
+          fromZero={false}
+        />
+      );
 
     default:
       return <Note>Coming soon</Note>;

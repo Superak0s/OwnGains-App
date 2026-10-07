@@ -108,6 +108,26 @@ const makeUi = (colors: ThemeColors) =>
 
     note: { fontSize: 13, color: colors.textMuted, paddingVertical: space.sm },
 
+    stepper: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: space.sm,
+      paddingTop: space.md,
+    },
+    stepperLabel: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.textPrimary,
+    },
+    stepperValue: {
+      minWidth: 48,
+      textAlign: "center",
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+
     sectionLabel: {
       fontSize: 13,
       fontWeight: "600",
@@ -290,6 +310,7 @@ interface MetricProps {
   readonly label: string;
   readonly value: string;
   readonly unit?: string;
+  readonly range?: string;
   readonly meta?: string;
   readonly tone?: string;
   readonly delta?: { readonly text: string; readonly direction: "up" | "down" | "flat" };
@@ -302,6 +323,7 @@ export function Metric({
   label,
   value,
   unit,
+  range,
   meta,
   tone,
   delta,
@@ -321,6 +343,7 @@ export function Metric({
       <View style={ui.metricRow}>
         <Text style={[ui.metricValue, tone ? { color: tone } : null]}>{value}</Text>
         {unit ? <Text style={ui.metricUnit}>{unit}</Text> : null}
+        {range ? <Text style={ui.metricMeta}>{range}</Text> : null}
       </View>
       {delta ? (
         <View style={[ui.delta, { backgroundColor: `${deltaColor}${TINT}` }]}>
@@ -415,6 +438,34 @@ export function Placeholder({ icon, text, action }: PlaceholderProps): React.Rea
 export function Note({ children }: { readonly children: React.ReactNode }): React.ReactElement {
   const { ui } = useUi();
   return <Text style={ui.note}>{children}</Text>;
+}
+
+const MAX_ERROR_MARGIN = 20;
+
+export function ErrorMarginStepper({
+  value,
+  onChange,
+}: {
+  readonly value: number;
+  readonly onChange: (value: number) => void;
+}): React.ReactElement {
+  const { ui } = useUi();
+  return (
+    <View style={ui.stepper}>
+      <Text style={ui.stepperLabel}>Measurement error</Text>
+      <IconButton
+        glyph={"−"}
+        label="Lower the measurement error"
+        onPress={() => onChange(Math.max(0, value - 1))}
+      />
+      <Text style={ui.stepperValue}>±{value}%</Text>
+      <IconButton
+        glyph="+"
+        label="Raise the measurement error"
+        onPress={() => onChange(Math.min(MAX_ERROR_MARGIN, value + 1))}
+      />
+    </View>
+  );
 }
 
 export function SectionLabel({ children }: { readonly children: React.ReactNode }): React.ReactElement {

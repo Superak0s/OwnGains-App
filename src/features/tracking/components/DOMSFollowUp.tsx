@@ -4,18 +4,17 @@ import { useTheme } from "@shared/context/ThemeContext";
 import { sorenessApi } from "../services";
 import {
   ActiveSoreness,
-  SorenessFollowUp,
   MUSCLE_GROUP_LABELS,
 } from "../types/muscleRecovery";
+import { followUpStatus, needsFollowUp } from "../utils";
 import { IntensityPicker } from "@shared/components/IntensityPicker";
-import { getSeverityColor, SEVERITY_STOPS } from "@utils/severityColor";
+import { getSeverityColor } from "@utils/severityColor";
 import { captureException } from "@shared/services/crashReporting";
 import { useAlert } from "@shared/components/CustomAlert";
 import { describeError } from "../helpers";
 import {
   Bar,
   Button,
-  Chip,
   Note,
   Placeholder,
   SectionLabel,
@@ -23,22 +22,7 @@ import {
   space,
 } from "../ui";
 
-const FOLLOW_UP_OPTIONS = [
-  {
-    label: "Still sore",
-    value: "still_sore" as const,
-    color: SEVERITY_STOPS.bad,
-  },
-  { label: "Better", value: "better" as const, color: SEVERITY_STOPS.warn },
-  {
-    label: "Recovered",
-    value: "recovered" as const,
-    color: SEVERITY_STOPS.good,
-  },
-];
-
 type PendingUpdate = {
-  status: SorenessFollowUp["status"];
   intensity: number;
   notes: string;
 };
@@ -53,6 +37,7 @@ export const DOMSFollowUp: React.FC<DOMSFollowUpProps> = ({
   const { colors } = useTheme();
   const { alert, AlertComponent } = useAlert();
   const [activeSoreness, setActiveSoreness] = useState<ActiveSoreness[]>([]);
+  const [hasActive, setHasActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [pendingUpdates, setPendingUpdates] = useState<
@@ -75,7 +60,9 @@ export const DOMSFollowUp: React.FC<DOMSFollowUpProps> = ({
       setLoading(true);
       const response = await sorenessApi.getActiveSoreness();
       const data = response?.data ?? response;
-      setActiveSoreness(Array.isArray(data) ? data : []);
+      const active = Array.isArray(data) ? data : [];
+      setHasActive(active.length > 0);
+      setActiveSoreness(active.filter((s) => needsFollowUp(s)));
     } catch (error) {
       console.error("Failed to load active soreness:", error);
       captureException(error, { stage: "loadActiveSoreness" });
@@ -84,16 +71,22 @@ export const DOMSFollowUp: React.FC<DOMSFollowUpProps> = ({
     }
   };
 
+  const toParams = (sorenessId: number, update: PendingUpdate) => ({
+    sorenessId,
+    intensity: update.intensity,
+    status: followUpStatus(
+      activeSoreness.find((s) => s.id === sorenessId)?.intensity ??
+        update.intensity,
+      update.intensity,
+    ),
+    note: update.notes || undefined,
+  });
+
   const handleFollowUp = async (sorenessId: number, update: PendingUpdate) => {
     const idKey = String(sorenessId);
     try {
       setSubmitting(idKey);
-      await sorenessApi.updateSoreness({
-        sorenessId,
-        intensity: update.intensity,
-        status: update.status,
-        note: update.notes || undefined,
-      });
+      await sorenessApi.updateSoreness(toParams(sorenessId, update));
 
       setPendingUpdates((prev) => {
         const next = { ...prev };
@@ -111,12 +104,9 @@ export const DOMSFollowUp: React.FC<DOMSFollowUpProps> = ({
   };
 
   const handleBatchFollowUp = async () => {
-    const updates = Object.entries(pendingUpdates).map(([id, update]) => ({
-      sorenessId: Number(id),
-      intensity: update.intensity,
-      status: update.status,
-      note: update.notes || undefined,
-    }));
+    const updates = Object.entries(pendingUpdates).map(([id, update]) =>
+      toParams(Number(id), update),
+    );
 
     try {
       setSubmitting("batch");
@@ -142,7 +132,13 @@ export const DOMSFollowUp: React.FC<DOMSFollowUpProps> = ({
 
   if (activeSoreness.length === 0) {
     return (
-      <Placeholder text="Nothing sore right now. Log soreness after a session and it'll show up here to check on." />
+      <Placeholder
+        text={
+          hasActive
+            ? "All checked in for today. Sore muscles come back here tomorrow."
+            : "Nothing sore right now. Log soreness after a session and it'll show up here to check on."
+        }
+      />
     );
   }
 
@@ -151,13 +147,12 @@ export const DOMSFollowUp: React.FC<DOMSFollowUpProps> = ({
   return (
     <View style={{ gap: space.lg }}>
       {AlertComponent}
-      <Note>How are these feeling today?</Note>
+      <Note>How are these feeling today? Set 0 once a muscle has recovered.</Note>
 
       {activeSoreness.map((soreness, index) => {
         const muscleLabel =
           MUSCLE_GROUP_LABELS[soreness.muscleGroup] || soreness.muscleGroup;
         const update = pendingUpdates[soreness.id] || {
-          status: "still_sore" as const,
           intensity: soreness.intensity,
           notes: "",
         };
@@ -226,23 +221,6 @@ export const DOMSFollowUp: React.FC<DOMSFollowUpProps> = ({
                   buttonText: { fontSize: 13, fontWeight: "600" },
                 }}
               />
-            </View>
-
-            <View>
-              <SectionLabel>Status</SectionLabel>
-              <View style={styles.pickerRow}>
-                {FOLLOW_UP_OPTIONS.map((option) => (
-                  <Chip
-                    key={option.value}
-                    label={option.label}
-                    tone={option.color}
-                    selected={update.status === option.value}
-                    onPress={() =>
-                      patchUpdate(soreness.id, update, { status: option.value })
-                    }
-                  />
-                ))}
-              </View>
             </View>
 
             <View

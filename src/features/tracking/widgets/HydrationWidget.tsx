@@ -2,9 +2,15 @@ import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { TrackingStyles } from "../styles";
 import React from "react";
 import { View } from "react-native";
+import ProgressChart from "@shared/components/ProgressChart";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import { HydrationSettingsWidget } from "../tabs/HydrationTab";
-import { formatDateLabel, isoToLocalDateStr } from "../utils";
+import {
+  formatDateLabel,
+  formatRange,
+  isoToLocalDateStr,
+  toDailyTotalsChartData,
+} from "../utils";
 import type { HydrationEntry } from "../services/types";
 import {
   Bar,
@@ -55,9 +61,18 @@ export function renderHydrationWidget(
   switch (type) {
     case "hydration_overview": {
       const todayStr = isoToLocalDateStr(new Date().toISOString());
-      const totalToday = entries
-        .filter((h) => isoToLocalDateStr(h.loggedAt) === todayStr)
-        .reduce((s, e) => s + (Number(e.amountMl) || 0), 0);
+      const today = entries.filter(
+        (h) => isoToLocalDateStr(h.loggedAt) === todayStr,
+      );
+      const totalToday = today.reduce(
+        (s, e) => s + (Number(e.amountMl) || 0),
+        0,
+      );
+      const errorToday = today.reduce(
+        (s, e) =>
+          s + ((Number(e.amountMl) || 0) * (Number(e.errorMargin) || 0)) / 100,
+        0,
+      );
       const pct = goal
         ? Math.min(100, Math.round((totalToday / goal) * 100))
         : 0;
@@ -68,6 +83,7 @@ export function renderHydrationWidget(
             value={String(totalToday)}
             unit={`of ${goal} ml`}
             tone={tone}
+            range={formatRange(totalToday - errorToday, totalToday + errorToday)}
             meta={`${pct}% of your daily goal`}
           />
           <Bar pct={pct} tone={tone} />
@@ -75,6 +91,19 @@ export function renderHydrationWidget(
         </View>
       );
     }
+
+    case "hydration_chart":
+      if (entries.length === 0)
+        return <Note>Log some water and your daily totals show up here.</Note>;
+      return (
+        <ProgressChart
+          chartType='bar'
+          data={toDailyTotalsChartData(
+            entries.map((h) => ({ at: h.loggedAt, value: Number(h.amountMl) })),
+          )}
+          yAxisSuffix='ml'
+        />
+      );
 
     case "hydration_calendar":
       return (

@@ -70,6 +70,13 @@ ${B}Git and GitHub${R}
   --draft             GitHub release as a draft
   --prerelease        GitHub release as a pre-release
 
+${B}Google Play${R}
+  Uploads the AAB with docs/play-release-notes.txt whenever .env sets
+  PLAY_SERVICE_ACCOUNT (the service-account JSON or a path to it). Skipped otherwise.
+  --play=TRACK        Track to upload to: internal (default), alpha (closed testing),
+                      beta, production (as a draft) or a custom track. PLAY_TRACK in .env also works.
+  --no-play           Don't upload
+
 ${B}Other${R}
   --no-sourcemaps     Release without SENTRY_AUTH_TOKEN (unreadable crash reports)
   -h, --help          Show this help
@@ -93,6 +100,8 @@ COMMIT_MSG=""
 SKIP_RELEASE=false
 DEBUG_ONLY=false
 USE_WSL=false
+PLAY_TRACK_ARG=""
+SKIP_PLAY=false
 PASS_ARGS=()
 GH_RELEASE_FLAGS=()
 for arg in "$@"; do
@@ -113,6 +122,8 @@ for arg in "$@"; do
         --no-release) SKIP_RELEASE=true ;;
         --draft) GH_RELEASE_FLAGS+=(--draft) ;;
         --prerelease) GH_RELEASE_FLAGS+=(--prerelease) ;;
+        --play=*) PLAY_TRACK_ARG="${arg#*=}" ;;
+        --no-play) SKIP_PLAY=true ;;
         -h|--help) usage; exit 0 ;;
         *) err "Unknown option: $arg"; echo "Run scripts/release.sh -h for the list." >&2; exit 1 ;;
     esac
@@ -121,7 +132,7 @@ done
 if [ "$DEBUG_ONLY" = true ]; then
     if [ -n "$BUMP_ARG$COMMIT_MSG" ] || [ "$SKIP_PUSH" = true ] || [ "$SKIP_TESTS" = true ] || [ "$BUMP_CODE" = false ] \
         || [ "$WANT_AAB" = true ] || [ "$ALLOW_NO_SOURCEMAPS" = true ] \
-        || [ "$SKIP_RELEASE" = true ] || [ ${#GH_RELEASE_FLAGS[@]} -gt 0 ]; then
+        || [ "$SKIP_RELEASE" = true ] || [ ${#GH_RELEASE_FLAGS[@]} -gt 0 ] || [ -n "$PLAY_TRACK_ARG" ] || [ "$SKIP_PLAY" = true ]; then
         die "debug only takes --no-prebuild and --32bit. The rest apply to releases."
     fi
 fi
@@ -143,6 +154,9 @@ fi
 
 if [ "$SKIP_RELEASE" = true ] && [ ${#GH_RELEASE_FLAGS[@]} -gt 0 ]; then
     die "--draft/--prerelease have no effect when no GitHub release is created."
+fi
+if [ -n "$PLAY_TRACK_ARG" ] && [ "$BUILD_AAB" = false ]; then
+    die "--play=TRACK uploads the AAB, so it can't be combined with apk."
 fi
 
 yn() { [ "$1" = true ] && printf '%syes%s' "$GRN" "$R" || printf '%sno%s' "$YEL" "$R"; }
@@ -264,6 +278,32 @@ if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
         err "SENTRY_AUTH_TOKEN unset. Crash reports from this release would be unreadable."
         echo "Set it in .env or the environment, or pass --no-sourcemaps to release anyway." >&2
         exit 1
+    fi
+fi
+
+# PLAY_SERVICE_ACCOUNT in .env is the service-account JSON itself or a path to it.
+PLAY_UPLOAD=false
+if [ "$BUILD_AAB" = true ] && [ "$SKIP_PLAY" = false ]; then
+    PLAY_TRACK="${PLAY_TRACK_ARG:-${PLAY_TRACK:-internal}}"
+    case "${PLAY_SERVICE_ACCOUNT:-}" in
+        "") play_skip="no PLAY_SERVICE_ACCOUNT in .env" ;;
+        "{"*) PLAY_UPLOAD=true ;;
+        *)
+            if [ -f "$PLAY_SERVICE_ACCOUNT" ]; then
+                # Windows node can't open Git Bash's /c/... paths.
+                command -v cygpath >/dev/null && PLAY_SERVICE_ACCOUNT="$(cygpath -w "$PLAY_SERVICE_ACCOUNT")"
+                PLAY_UPLOAD=true
+            else
+                play_skip="PLAY_SERVICE_ACCOUNT file $PLAY_SERVICE_ACCOUNT not found"
+            fi ;;
+    esac
+    if [ "$PLAY_UPLOAD" = true ]; then
+        export PLAY_SERVICE_ACCOUNT
+        ok "Google Play upload to the $PLAY_TRACK track"
+    elif [ -n "$PLAY_TRACK_ARG" ]; then
+        die "--play=$PLAY_TRACK_ARG, but $play_skip."
+    else
+        info "Google Play upload skipped: $play_skip"
     fi
 fi
 
@@ -555,6 +595,23 @@ done
 rm -rf "$BACKUP_DIR"
 BACKUP_DIR=""
 
+# Not fatal: the build is good, so the release goes on and a failed upload is retried by hand.
+PLAY_UPLOADED=false
+if [ "$PLAY_UPLOAD" = true ]; then
+    step 4/6 "Uploading AAB to Google Play ($PLAY_TRACK)"
+    play_aab="$AAB_OUT"
+    command -v cygpath >/dev/null && play_aab="$(cygpath -w "$play_aab")"
+    if node scripts/play-upload.js "$play_aab" "$PLAY_TRACK"; then
+        PLAY_UPLOADED=true
+        ok "Uploaded to $PLAY_TRACK"
+        # Emptied in $SRC so the release commit carries it, matching the now-empty [Unreleased].
+        : > "$SRC/docs/play-release-notes.txt"
+        info "Cleared docs/play-release-notes.txt"
+    else
+        warn "Play upload failed. Retry with: node --env-file=.env scripts/play-upload.js \"$AAB_OUT\" $PLAY_TRACK"
+    fi
+fi
+
 # [5/6] Push source to GitHub
 # Runs only after a successful build, so a bumped-but-broken version never
 # lands as a pushed commit. Skipped entirely with --no-push: source tree is
@@ -584,6 +641,7 @@ finish() {
     [ -n "$1" ] && printf '  GitHub release  %s\n' "$1"
     for apk in "${APK_OUTS[@]}"; do printf '  APK             %s\n' "$apk"; done
     [ -n "$AAB_OUT" ] && printf '  Play bundle     %s\n' "$AAB_OUT"
+    [ "$PLAY_UPLOADED" = true ] && printf '  Google Play     %s track\n' "$PLAY_TRACK"
     exit 0
 }
 

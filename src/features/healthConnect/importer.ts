@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { AppState, Platform } from "react-native";
-import { readRecords, type RecordResult } from "react-native-health-connect";
+import type { RecordResult } from "react-native-health-connect";
 import {
   bodyFatApi,
   bodyTrackingApi,
@@ -18,7 +18,8 @@ import {
 import { getRecordStoreUser } from "@shared/services/offlineHelpers";
 import { loadFromStorage, saveToStorage, STORAGE_KEYS } from "@shared/services/storage";
 import { toDateString } from "@utils/format";
-import { getGrantedTypes, IMPORT_TYPES, type ImportType } from "./healthConnect";
+import { isKeepingHealthData, readRecentDays, storeRecentDays } from "./dailyHealth";
+import { getGrantedTypes, IMPORT_TYPES, readAll, type ImportType } from "./healthConnect";
 
 // Health Connect only serves the last 30 days without READ_HEALTH_DATA_HISTORY.
 const WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
@@ -128,24 +129,6 @@ const SPECS: { [T in ImportType]: TypeSpec<T> } = {
   },
 };
 
-async function readAll<T extends ImportType>(
-  recordType: T,
-  startTime: string,
-  endTime: string,
-): Promise<RecordResult<T>[]> {
-  const records: RecordResult<T>[] = [];
-  let pageToken: string | undefined;
-  do {
-    const page = await readRecords(recordType, {
-      timeRangeFilter: { operator: "between", startTime, endTime },
-      pageToken,
-    });
-    records.push(...page.records);
-    pageToken = page.pageToken || undefined;
-  } while (pageToken);
-  return records;
-}
-
 // Writes stop at the first failure so an unreachable server costs one
 // request and one report, and the unmarked records are retried next sync.
 // The tracking APIs write as whoever is signed in now, so a run also stops
@@ -179,8 +162,14 @@ async function importType<T extends ImportType>(
 
 async function importFromHealthConnect(userId: string): Promise<ImportSummary> {
   const summary: ImportSummary = { imported: 0, failed: [] };
+  if (!(await isKeepingHealthData(userId))) return summary;
   const granted = await getGrantedTypes();
   const now = Date.now();
+  try {
+    await storeRecentDays(userId, await readRecentDays(granted, new Date(now)));
+  } catch (error) {
+    captureException(error, { feature: "healthConnect", stage: "dailyHealth" });
+  }
   const since = new Date(now - WINDOW_MS).toISOString();
   const stored = await loadFromStorage<ImportedIds>(STORAGE_KEYS.HEALTH_CONNECT_IMPORTED, userId);
   const ids: ImportedIds = Object.fromEntries(

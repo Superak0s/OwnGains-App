@@ -3,7 +3,7 @@ import type { CompletedDays } from "../types";
 import { normalizeExerciseName } from "@utils/exerciseMatching";
 import { parseDate } from "@utils/format";
 
-export type SummaryPeriod = "today" | "week" | "month" | "custom";
+export type SummaryPeriod = "quarter" | "month" | "week" | "custom";
 
 export interface DateRange {
   start: Date;
@@ -60,13 +60,9 @@ const startOfWeek = (date: Date): Date => {
   return d;
 };
 
-// Calendar month-to-date shows an empty summary on the 1st-3rd, so "month" is
-// a rolling 30-day window instead.
-const ROLLING_MONTH_DAYS = 30;
-
-const startOfRollingMonth = (date: Date): Date => {
+const startOfRollingDays = (date: Date, days: number): Date => {
   const d = startOfDay(date);
-  d.setDate(d.getDate() - (ROLLING_MONTH_DAYS - 1));
+  d.setDate(d.getDate() - (days - 1));
   return d;
 };
 
@@ -75,10 +71,11 @@ export function getPeriodDateRange(
   customRange: DateRange | null,
   now: Date = new Date(),
 ): DateRange {
-  if (period === "today") return { start: startOfDay(now), end: endOfDay(now) };
-  if (period === "week") return { start: startOfWeek(now), end: endOfDay(now) };
+  if (period === "quarter")
+    return { start: startOfRollingDays(now, 90), end: endOfDay(now) };
   if (period === "month")
-    return { start: startOfRollingMonth(now), end: endOfDay(now) };
+    return { start: startOfRollingDays(now, 30), end: endOfDay(now) };
+  if (period === "week") return { start: startOfWeek(now), end: endOfDay(now) };
 
   if (!customRange) return { start: startOfDay(now), end: endOfDay(now) };
   const [start, end] =
@@ -86,22 +83,6 @@ export function getPeriodDateRange(
       ? [customRange.start, customRange.end]
       : [customRange.end, customRange.start];
   return { start: startOfDay(start), end: endOfDay(end) };
-}
-
-export function pickDefaultPeriod(
-  entries: readonly Pick<TrainingSetEntry, "date">[],
-  now: Date = new Date(),
-): SummaryPeriod {
-  const periods = ["today", "week", "month"] as const;
-  return (
-    periods.find((period) => {
-      const { start, end } = getPeriodDateRange(period, null, now);
-      return entries.some(
-        ({ date }) =>
-          date.getTime() >= start.getTime() && date.getTime() <= end.getTime(),
-      );
-    }) ?? "month"
-  );
 }
 
 interface SessionLike {
@@ -279,7 +260,12 @@ export function aggregateTrainingSummary(
   };
 }
 
-type UndertrainedCalculationMode = "days_done" | "full_split";
+export type UndertrainedCalculationMode =
+  | "days_done"
+  | "full_split"
+  | "last_30_days";
+
+const ROLLING_WINDOW_DAYS = 30;
 
 interface UndertrainedGroup {
   primaryMuscle: string;
@@ -323,11 +309,17 @@ export function getUndertrainedMuscleGroups(
 ): UndertrainedGroup[] {
   if (!workoutData?.days || !selectedSplit) return [];
 
-  const weekRange = getPeriodDateRange("week", null, now);
+  const isRolling = calculationMode === "last_30_days";
+  const range = isRolling
+    ? {
+        start: new Date(now.getTime() - ROLLING_WINDOW_DAYS * 86_400_000),
+        end: now,
+      }
+    : getPeriodDateRange("week", null, now);
   const weekEntries = entries.filter(
     (entry) =>
-      entry.date.getTime() >= weekRange.start.getTime() &&
-      entry.date.getTime() <= weekRange.end.getTime(),
+      entry.date.getTime() >= range.start.getTime() &&
+      entry.date.getTime() <= range.end.getTime(),
   );
 
   let targetDays = workoutData.days;
@@ -341,6 +333,8 @@ export function getUndertrainedMuscleGroups(
 
   const targets = sumPlannedSetsByMuscleGroup(targetDays, selectedSplit);
   if (targets.size === 0) return [];
+  // ponytail: assumes one program day per calendar day, so 30 days hold 30 / days.length cycles.
+  const cycles = isRolling ? ROLLING_WINDOW_DAYS / targetDays.length : 1;
 
   const actuals = new Map<string, number>();
   weekEntries.forEach((entry) => {
@@ -354,7 +348,8 @@ export function getUndertrainedMuscleGroups(
   });
 
   const rows = Array.from(targets.entries()).map(
-    ([key, { primaryMuscle, sets: targetSets }]) => {
+    ([key, { primaryMuscle, sets }]) => {
+      const targetSets = Math.round(sets * cycles);
       const actualSets = actuals.get(key) ?? 0;
       const completionPct =
         targetSets > 0 ? (actualSets / targetSets) * 100 : 0;

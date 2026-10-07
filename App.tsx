@@ -137,10 +137,6 @@ import { getNotifications } from "./src/shared/services/notifications";
 import { sweepStaleExports } from "./src/utils/writeJsonExport";
 import { useGitHubUpdateCheck } from "./src/shared/services/githubUpdate";
 import { useHealthConnectSync } from "./src/features/healthConnect/importer";
-import {
-  refreshHydrationNotification,
-  useHydrationNotification,
-} from "./src/features/tracking/hydrationNotification";
 import { HydrationTileModal } from "./src/features/tracking/hydrationTiles";
 
 interface TabIconProps {
@@ -189,6 +185,8 @@ setTimeout(() => {
           }),
         });
       }
+      // Clears the sticky water quick-log notification that 0.2.x could leave on.
+      await Notifications?.dismissNotificationAsync("hydration-quick-log");
     } catch (error) {
       console.warn(
         "Notifications not available in Expo Go:",
@@ -229,7 +227,11 @@ const TabIcon = ({ icon, label, focused }: TabIconProps) => {
       <View
         style={[
           styles.iconWrapper,
-          focused && { backgroundColor: colors.accentLight },
+          focused && {
+            backgroundColor: colors.accent,
+            shadowColor: colors.accent,
+            borderRadius: 23,
+          },
         ]}
       >
         <Text style={styles.icon}>{icon}</Text>
@@ -473,7 +475,6 @@ function MainTabs() {
   const { colors } = useTheme();
   useTutorialGate();
   useHealthConnectSync(user?.id ?? null);
-  useHydrationNotification(user?.id ?? null);
   const updateAlert = useGitHubUpdateCheck();
   const [isOffline, setIsOffline] = useState(
     () => getAppModeSync() === "offline",
@@ -591,11 +592,7 @@ function MainTabs() {
             />
           ))}
       </Tab.Navigator>
-      {user?.id != null && (
-        <HydrationTileModal
-          onLogged={() => void refreshHydrationNotification(String(user.id))}
-        />
-      )}
+      {user?.id != null && <HydrationTileModal />}
       {updateAlert}
     </View>
   );

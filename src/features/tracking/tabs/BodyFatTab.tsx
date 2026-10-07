@@ -4,7 +4,9 @@ import { toDefaultWidgets } from "@shared/types";
 export type BodyFatWidgetType =
   | "bodyfat_height"
   | "bodyfat_calendar"
-  | "bodyfat_latest";
+  | "bodyfat_latest"
+  | "bodyfat_chart"
+  | "bodyfat_history";
 
 export const BODYFAT_WIDGET_REGISTRY: Record<
   BodyFatWidgetType,
@@ -31,11 +33,31 @@ export const BODYFAT_WIDGET_REGISTRY: Record<
     availableSizes: ["small", "medium"],
     defaultSize: "medium",
   },
+  bodyfat_chart: {
+    type: "bodyfat_chart",
+    title: "Body Fat Trend Chart",
+    description: "Line chart of your body fat percentage over time",
+    availableSizes: ["medium", "large"],
+    defaultSize: "medium",
+  },
+  bodyfat_history: {
+    type: "bodyfat_history",
+    title: "Body Fat History",
+    description: "Your past body fat readings",
+    availableSizes: ["medium", "large"],
+    defaultSize: "medium",
+  },
 };
 
 export const DEFAULT_BODYFAT_WIDGETS = toDefaultWidgets(
   BODYFAT_WIDGET_REGISTRY,
-  ["bodyfat_latest", "bodyfat_height", "bodyfat_calendar"],
+  [
+    "bodyfat_latest",
+    "bodyfat_chart",
+    "bodyfat_calendar",
+    "bodyfat_history",
+    "bodyfat_height",
+  ],
 );
 
 export const BODYFAT_TAB_CONFIG = {

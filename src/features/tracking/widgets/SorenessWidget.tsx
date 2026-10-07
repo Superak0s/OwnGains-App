@@ -1,25 +1,21 @@
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { TrackingStyles } from "../styles";
 import React from "react";
-import { View } from "react-native";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import type { SorenessEntry } from "../services/types";
 import {
   DOMSFollowUpWidget,
   DOMSHeatmapWidget,
   InjuryTrackerWidget,
-  MuscleMapWidget,
+  SorenessLogWidget,
 } from "../tabs/SorenessTab";
 import { getSeverityColor } from "@utils/severityColor";
 import {
-  Button,
   IconButton,
-  Metric,
   Note,
   Placeholder,
   Row,
   ShowMoreList,
-  space,
 } from "../ui";
 
 interface SorenessRenderCtx {
@@ -31,6 +27,7 @@ interface SorenessRenderCtx {
   colors: ThemeColors;
   styles: TrackingStyles;
   handleCalendarDatePress: (date: Date, type: string) => void;
+  onLogged: () => void;
 }
 
 export function renderSorenessWidget(
@@ -45,6 +42,7 @@ export function renderSorenessWidget(
     hasDataOnDate,
     colors,
     handleCalendarDatePress,
+    onLogged,
   } = ctx;
   const tone = colors.warning;
   const openLog = () => {
@@ -53,30 +51,6 @@ export function renderSorenessWidget(
   };
 
   switch (type) {
-    case "soreness_map": {
-      if (entries.length === 0)
-        return (
-          <Placeholder
-            text='Log how sore a muscle feels and track how fast it recovers.'
-            action={{ label: "Log soreness", onPress: openLog, tone }}
-          />
-        );
-      const last = entries[0];
-      const lastIntensity = Number(last.intensity ?? 0);
-      return (
-        <View style={{ gap: space.md }}>
-          <Metric
-            label='Most recent'
-            value={last.muscleGroup ?? "—"}
-            unit={`${lastIntensity}/10`}
-            tone={getSeverityColor(lastIntensity, 3)}
-            meta={new Date(last.loggedAt).toLocaleDateString()}
-          />
-          <Button label='Log soreness' onPress={openLog} tone={tone} />
-        </View>
-      );
-    }
-
     case "soreness_calendar":
       return (
         <UniversalCalendar
@@ -92,7 +66,12 @@ export function renderSorenessWidget(
 
     case "soreness_history": {
       if (entries.length === 0)
-        return <Placeholder text='No soreness logged yet.' />;
+        return (
+          <Placeholder
+            text='No soreness logged yet.'
+            action={{ label: "Log soreness", onPress: openLog, tone }}
+          />
+        );
       return (
         <ShowMoreList
           items={entries}
@@ -121,8 +100,8 @@ export function renderSorenessWidget(
       );
     }
 
-    case "muscle_map":
-      return <MuscleMapWidget />;
+    case "soreness_log":
+      return <SorenessLogWidget onLogged={onLogged} />;
     case "doms_followup":
       return <DOMSFollowUpWidget />;
     case "doms_heatmap":

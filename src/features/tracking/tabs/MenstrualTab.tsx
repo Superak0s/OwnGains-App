@@ -16,7 +16,8 @@ export type MenstrualWidgetType =
   | "menstrual_overview"
   | "menstrual_calendar"
   | "menstrual_cycle"
-  | "menstrual_history";
+  | "menstrual_history"
+  | "menstrual_chart";
 
 export const MENSTRUAL_WIDGET_REGISTRY: Record<
   MenstrualWidgetType,
@@ -50,15 +51,23 @@ export const MENSTRUAL_WIDGET_REGISTRY: Record<
     availableSizes: ["medium", "large"],
     defaultSize: "medium",
   },
+  menstrual_chart: {
+    type: "menstrual_chart",
+    title: "Cycle Length Chart",
+    description: "How many days each of your cycles lasted",
+    availableSizes: ["medium", "large"],
+    defaultSize: "medium",
+  },
 };
 
 export const DEFAULT_MENSTRUAL_WIDGETS = toDefaultWidgets(
   MENSTRUAL_WIDGET_REGISTRY,
   [
     "menstrual_overview",
+    "menstrual_chart",
     "menstrual_calendar",
-    "menstrual_cycle",
     "menstrual_history",
+    "menstrual_cycle",
   ],
 );
 
@@ -136,7 +145,7 @@ export function LogCycleModal({
     <ModalSheet
       visible={visible}
       onClose={onClose}
-      title='Log period start'
+      title="Log period start"
       confirmText={loading ? "Logging…" : "Log period"}
       onConfirm={handleLog}
       confirmDisabled={loading}
@@ -155,14 +164,14 @@ export function LogCycleModal({
         </Text>
         <TextInput
           style={[styles.input, { minHeight: 90 }]}
-          placeholder='Symptoms, how you feel'
+          placeholder="Symptoms, how you feel"
           placeholderTextColor={colors.textMuted}
           value={note}
           maxLength={NOTE_MAX_LENGTH}
           onChangeText={setNote}
           multiline
           numberOfLines={3}
-          textAlignVertical='top'
+          textAlignVertical="top"
         />
 
         {!!error && <Text style={styles.inputError}>{error}</Text>}
@@ -224,11 +233,8 @@ export function CycleSettingsWidget({
 
       setSuccess(true);
       onSettingsUpdate?.({ periodDays, cycleLengthDays });
-
     } catch (err) {
-      setError(
-        userFacingError(err, "Couldn't save your settings."),
-      );
+      setError(userFacingError(err, "Couldn't save your settings."));
     } finally {
       setLoading(false);
     }
@@ -258,7 +264,7 @@ export function CycleSettingsWidget({
   return (
     <View>
       <Row
-        title='Cycle settings'
+        title="Cycle settings"
         meta={`${periodDays}-day period on a ${cycleLengthDays}-day cycle`}
         onPress={() => setExpanded(!expanded)}
         right={
@@ -293,11 +299,11 @@ export function CycleSettingsWidget({
                       ),
                     )
                   }
-                  keyboardType='number-pad'
+                  keyboardType="number-pad"
                   accessibilityLabel={field.label}
                 />
                 <IconButton
-                  glyph='+'
+                  glyph="+"
                   label={`Increase ${field.label.toLowerCase()}`}
                   onPress={() =>
                     field.onChange(Math.min(field.max, field.value + 1))
@@ -319,8 +325,8 @@ export function CycleSettingsWidget({
               disabled={loading}
             />
             <Button
-              label='Close'
-              variant='quiet'
+              label="Close"
+              variant="quiet"
               onPress={() => setExpanded(false)}
               disabled={loading}
             />

@@ -21,6 +21,8 @@ interface ProgressChartProps {
   /** Per-bar color override, only used when chartType is "bar". */
   readonly barColors?: string[];
   readonly showValuesOnTopOfBars?: boolean;
+  /** Line charts only. Off for body metrics, where a 0 baseline flattens a few kg into a straight line. */
+  readonly fromZero?: boolean;
 }
 
 const CHART_HEIGHT = 220;
@@ -35,6 +37,7 @@ export default function ProgressChart({
   chartType = "line",
   barColors,
   showValuesOnTopOfBars,
+  fromZero = true,
 }: ProgressChartProps) {
   const { colors, resolvedChartColor, resolvedChartColorDark } = useTheme();
   const { width } = useWindowDimensions();
@@ -57,8 +60,13 @@ export default function ProgressChart({
   // The gradient behind the chart is user-configurable, so the labels drawn on
   // top of it can't assume a dark background.
   const onChartRgb = isDarkColor(resolvedChartColor) ? "255, 255, 255" : "0, 0, 0";
-  // Whole-number series (volume, reps) read as "12500.0" with a fixed scale.
-  const decimalPlaces = values.every((v) => Math.abs(v) >= 10) ? 0 : 1;
+  // Whole-number series (volume, reps) read as "12500.0" with a fixed scale,
+  // but a narrow range like 80 to 82 needs the decimal or its axis labels repeat.
+  const decimalPlaces =
+    values.every((v) => Math.abs(v) >= 10) &&
+    Math.max(...values) - Math.min(...values) >= 10
+      ? 0
+      : 1;
   const chartConfig = {
     backgroundColor: resolvedChartColor,
     backgroundGradientFrom: resolvedChartColor,
@@ -142,7 +150,7 @@ export default function ProgressChart({
           withOuterLines
           withVerticalLines={false}
           withHorizontalLines
-          fromZero
+          fromZero={fromZero}
         />
       ))}
     </View>

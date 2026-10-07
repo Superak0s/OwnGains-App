@@ -2,11 +2,30 @@ import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { TrackingStyles } from "../styles";
 import React from "react";
 import { Text, View } from "react-native";
+import ProgressChart from "@shared/components/ProgressChart";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import type { DailyMacrosStats } from "../hooks/useMacrosTab";
-import { Bar, Button, Metric, Note, Placeholder, space } from "../ui";
+import type { MacrosEntryWithFields } from "../types";
+import {
+  formatDateLabel,
+  toDailyTotalsChartData,
+  formatRange,
+} from "../utils";
+import {
+  Bar,
+  Button,
+  IconButton,
+  Metric,
+  Note,
+  Placeholder,
+  Row,
+  ShowMoreList,
+  space,
+} from "../ui";
 
 interface MacrosRenderCtx {
+  entries: MacrosEntryWithFields[];
+  deleteMacroEntry: (entry: MacrosEntryWithFields) => void;
   goals: { calories: number; protein: number; carbs: number; fat: number };
   openMacrosModal: () => void;
   openGoalModal: () => void;
@@ -23,6 +42,8 @@ export function renderMacrosWidget(
   ctx: MacrosRenderCtx,
 ): React.ReactNode {
   const {
+    entries,
+    deleteMacroEntry,
     goals,
     openMacrosModal,
     openGoalModal,
@@ -40,6 +61,54 @@ export function renderMacrosWidget(
   };
 
   switch (type) {
+    case "macros_chart":
+      if (entries.length === 0)
+        return <Note>Log a meal and your daily calories show up here.</Note>;
+      return (
+        <ProgressChart
+          chartType='bar'
+          data={toDailyTotalsChartData(
+            entries.map((e) => ({
+              at: e.date ?? e.loggedAt,
+              value: Number(e.calories ?? 0),
+            })),
+          )}
+          yAxisSuffix='kcal'
+        />
+      );
+
+    case "macros_history":
+      if (entries.length === 0)
+        return (
+          <Placeholder
+            text='Nothing logged yet. Log a meal and it shows up here.'
+            action={{ label: "Log macros", onPress: openLog, tone }}
+          />
+        );
+      return (
+        <ShowMoreList
+          items={entries}
+          renderItem={(e, i, isLast) => (
+            <Row
+              key={e.id ?? i}
+              title={e.name || formatDateLabel(e.date ?? e.loggedAt)}
+              meta={`${e.name ? `${formatDateLabel(e.date ?? e.loggedAt)} · ` : ""}P ${Number(e.protein ?? 0).toFixed(0)}g · C ${Number(e.carbs ?? 0).toFixed(0)}g · F ${Number(e.fat ?? 0).toFixed(0)}g`}
+              value={`${Number(e.calories ?? 0).toFixed(0)} kcal`}
+              dot={tone}
+              last={isLast}
+              right={
+                <IconButton
+                  glyph='🗑'
+                  label='Delete macros entry'
+                  tone='danger'
+                  onPress={() => deleteMacroEntry(e)}
+                />
+              }
+            />
+          )}
+        />
+      );
+
     case "macros_calendar":
       return (
         <UniversalCalendar
@@ -52,22 +121,15 @@ export function renderMacrosWidget(
       );
 
     case "macros_today": {
-      if (!dailyStats)
-        return (
-          <View style={{ gap: space.md }}>
-            <Placeholder
-              text={`Nothing logged today. Your goal is ${goals.calories} kcal.`}
-              action={{ label: "Log macros", onPress: openLog, tone }}
-            />
-            <Button
-              label='Change goals'
-              onPress={openGoalModal}
-              variant='quiet'
-              size='sm'
-              tone={tone}
-            />
-          </View>
-        );
+      const zero = (goal: number) => ({ total: 0, min: 0, max: 0, goal, percentage: 0 });
+      const stats: DailyMacrosStats = dailyStats ?? {
+        calories: zero(goals.calories),
+        protein: zero(goals.protein),
+        carbs: zero(goals.carbs),
+        fat: zero(goals.fat),
+        entries: 0,
+        entriesList: [],
+      };
 
       const rows = (
         [
@@ -76,10 +138,10 @@ export function renderMacrosWidget(
           { key: "carbs", label: "Carbs", unit: "g", color: colors.success },
           { key: "fat", label: "Fat", unit: "g", color: colors.error },
         ] as const
-      ).filter(({ key }) => dailyStats[key] != null);
+      ).filter(({ key }) => stats[key] != null);
 
-      const calories = dailyStats.calories;
-      const protein = dailyStats.protein;
+      const calories = stats.calories;
+      const protein = stats.protein;
 
       return (
         <View style={{ gap: space.md }}>
@@ -88,7 +150,7 @@ export function renderMacrosWidget(
             value={calories ? calories.total.toFixed(0) : "0"}
             unit={`of ${goals.calories} kcal`}
             tone={tone}
-            meta={`${dailyStats.entries} ${dailyStats.entries === 1 ? "entry" : "entries"}${
+            meta={`${stats.entries} ${stats.entries === 1 ? "entry" : "entries"}${
               protein && calories && calories.total > 0
                 ? ` · ${((protein.total / calories.total) * 100).toFixed(1)}g protein per 100 kcal`
                 : ""
@@ -97,7 +159,8 @@ export function renderMacrosWidget(
 
           <View>
             {rows.map(({ key, label, unit, color }) => {
-              const macro = dailyStats[key]!;
+              const macro = stats[key]!;
+              const range = formatRange(macro.min, macro.max);
               return (
                 <View key={key} style={styles.macroRow}>
                   <View style={styles.macroLabelRow}>
@@ -105,10 +168,12 @@ export function renderMacrosWidget(
                     <Text style={styles.macroValue}>
                       {macro.total.toFixed(0)}
                       {unit}
-                      <Text style={styles.macroRange}>
-                        {"  "}
-                        {macro.min.toFixed(0)}-{macro.max.toFixed(0)}
-                      </Text>
+                      {range && (
+                        <Text style={styles.macroRange}>
+                          {"  "}
+                          {range}
+                        </Text>
+                      )}
                     </Text>
                   </View>
                   <Bar pct={macro.percentage} tone={color} />

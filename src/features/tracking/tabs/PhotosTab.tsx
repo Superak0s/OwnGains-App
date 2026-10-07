@@ -42,9 +42,7 @@ import {
 import { userFacingError } from "@shared/services/apiError";
 
 export type PhotosWidgetType =
-  | "photos_calendar"
-  | "photos_gallery"
-  | "photos_comparison";
+  "photos_calendar" | "photos_gallery" | "photos_comparison";
 
 export const PHOTOS_WIDGET_REGISTRY: Record<
   PhotosWidgetType,
@@ -74,9 +72,9 @@ export const PHOTOS_WIDGET_REGISTRY: Record<
 };
 
 export const DEFAULT_PHOTOS_WIDGETS = toDefaultWidgets(PHOTOS_WIDGET_REGISTRY, [
-  "photos_calendar",
   "photos_gallery",
   "photos_comparison",
+  "photos_calendar",
 ]);
 
 function getAngleLabel(photo: ProgressPhotoMuscle): string {
@@ -173,7 +171,7 @@ function PhotoTile({
   return (
     <TouchableOpacity
       style={styles.photoTile}
-      accessibilityRole='button'
+      accessibilityRole="button"
       accessibilityLabel={`Progress photo, ${getAngleLabel(photo)}. Long press to delete.`}
       onLongPress={onLongPress}
       delayLongPress={400}
@@ -187,8 +185,15 @@ const DATE_PAGE_SIZE = 14;
 
 export function PhotosCalendarWidget() {
   const authToken = useAuthToken();
-  const { photos, loading, loadingMore, hasMore, loadFailed, refresh, loadMore } =
-    usePhotoPages();
+  const {
+    photos,
+    loading,
+    loadingMore,
+    hasMore,
+    loadFailed,
+    refresh,
+    loadMore,
+  } = usePhotoPages();
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [visibleDays, setVisibleDays] = useState(DATE_PAGE_SIZE);
 
@@ -217,7 +222,7 @@ export function PhotosCalendarWidget() {
 
   if (allDates.length === 0) {
     return (
-      <Placeholder text='No photos yet. The days you shoot one will show up here.' />
+      <Placeholder text="No photos yet. The days you shoot one will show up here." />
     );
   }
 
@@ -257,8 +262,8 @@ export function PhotosCalendarWidget() {
         <View style={styles.centerAction}>
           <Button
             label={loadingMore ? "Loading…" : "Show more"}
-            variant='quiet'
-            size='sm'
+            variant="quiet"
+            size="sm"
             disabled={loadingMore}
             onPress={() => setVisibleDays((count) => count + DATE_PAGE_SIZE)}
           />
@@ -295,12 +300,15 @@ function UploadProgressBar({ state }: { readonly state: UploadProgressState }) {
   return (
     <View style={styles.uploadBar}>
       {state.status === "uploading" && (
-        <ActivityIndicator size='small' color={colors.accent} />
+        <ActivityIndicator size="small" color={colors.accent} />
       )}
       <Text
         style={[
           styles.uploadText,
-          { color: state.status === "error" ? colors.error : colors.textSecondary },
+          {
+            color:
+              state.status === "error" ? colors.error : colors.textSecondary,
+          },
         ]}
       >
         {text}
@@ -398,8 +406,8 @@ export function PhotosGalleryWidget() {
     <View>
       <View style={styles.headerAction}>
         <Button
-          label='Add photo'
-          size='sm'
+          label="Add photo"
+          size="sm"
           onPress={() => setShowUploadModal(true)}
         />
       </View>
@@ -410,7 +418,7 @@ export function PhotosGalleryWidget() {
         (loadFailed ? (
           <PhotosLoadFailed onRetry={refresh} />
         ) : (
-          <Placeholder text='No photos yet. Add one to start tracking how you change.' />
+          <Placeholder text="No photos yet. Add one to start tracking how you change." />
         ))}
 
       {Array.from(photosByDate.entries()).map(([date, dayPhotos]) => (
@@ -441,8 +449,8 @@ export function PhotosGalleryWidget() {
         <View style={styles.centerAction}>
           <Button
             label={loadingMore ? "Loading…" : "Show more"}
-            variant='quiet'
-            size='sm'
+            variant="quiet"
+            size="sm"
             disabled={loadingMore}
             onPress={() => setVisibleCount((c) => c + 4)}
           />
@@ -472,7 +480,7 @@ export function PhotosComparisonWidget() {
     <View>
       <Note>Line up two shoots from different dates and see what moved.</Note>
       <View style={styles.headerAction}>
-        <Button label='Compare photos' onPress={() => setShowModal(true)} />
+        <Button label="Compare photos" onPress={() => setShowModal(true)} />
       </View>
       <PhotosComparisonModal
         visible={showModal}
@@ -501,7 +509,7 @@ function ComparisonColumn({
       </Text>
       {photos.map((photo) => (
         <TouchableOpacity
-          accessibilityRole='button'
+          accessibilityRole="button"
           accessibilityLabel={`${label}, ${getAngleLabel(photo)}`}
           key={photo.id}
           style={styles.comparisonItem}
@@ -539,15 +547,24 @@ function matchesPhotoFilters(
   cutoffMs: number | null,
 ): boolean {
   if (muscle && !photo.muscleGroups?.includes(muscle)) return false;
-  return cutoffMs === null || new Date(photoTakenAt(photo) ?? 0).getTime() >= cutoffMs;
+  return (
+    cutoffMs === null ||
+    new Date(photoTakenAt(photo) ?? 0).getTime() >= cutoffMs
+  );
 }
 
 function daysBetween(before?: string, after?: string): number {
   if (!before || !after) return 0;
-  return Math.round((new Date(after).getTime() - new Date(before).getTime()) / 86_400_000);
+  return Math.round(
+    (new Date(after).getTime() - new Date(before).getTime()) / 86_400_000,
+  );
 }
 
-function dateRole(date: string, before?: string, after?: string): string | null {
+function dateRole(
+  date: string,
+  before?: string,
+  after?: string,
+): string | null {
   if (date === before) return "Before";
   if (date === after) return "After";
   return null;
@@ -613,16 +630,15 @@ function PhotosComparisonModal({
     }
     if (autoPicked.current || availableDates.length < 2) return;
     autoPicked.current = true;
-    setSelected([
-      availableDates.at(-1)![0],
-      availableDates[0][0],
-    ]);
+    setSelected([availableDates.at(-1)![0], availableDates[0][0]]);
   }, [visible, availableDates]);
 
   const picked = selected.filter((d) =>
     availableDates.some(([date]) => date === d),
   );
-  const [beforeDate, afterDate] = picked.toSorted((a, b) => a.localeCompare(b));
+  const [beforeDate, afterDate] = [...picked].sort((a, b) =>
+    a.localeCompare(b),
+  );
 
   const photosForBefore = useMemo(
     () => filteredPhotos.filter((p) => photoDateKey(p) === beforeDate),
@@ -659,7 +675,7 @@ function PhotosComparisonModal({
   return (
     <ModalSheet
       visible={visible}
-      title='Compare photos'
+      title="Compare photos"
       onClose={onClose}
       showCancelButton={false}
       showConfirmButton={false}
@@ -687,7 +703,7 @@ function PhotosComparisonModal({
               <SectionLabel>Muscle groups</SectionLabel>
               <TextInput
                 style={trackingStyles.input}
-                placeholder='Search muscle groups'
+                placeholder="Search muscle groups"
                 placeholderTextColor={colors.textMuted}
                 value={muscleSearch}
                 onChangeText={setMuscleSearch}
@@ -698,7 +714,7 @@ function PhotosComparisonModal({
                 contentContainerStyle={styles.chipRow}
               >
                 <Chip
-                  label='All muscles'
+                  label="All muscles"
                   selected={!muscleFilter}
                   onPress={() => setMuscleFilter(null)}
                 />
@@ -730,9 +746,15 @@ function PhotosComparisonModal({
                 return (
                   <TouchableOpacity
                     key={date}
-                    accessibilityRole='button'
+                    accessibilityRole="button"
                     accessibilityState={{ selected: role !== null }}
-                    accessibilityLabel={[shortDate(date), `${dayPhotos.length} photos`, role].filter(Boolean).join(", ")}
+                    accessibilityLabel={[
+                      shortDate(date),
+                      `${dayPhotos.length} photos`,
+                      role,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
                     style={[
                       styles.dateCard,
                       {
@@ -764,11 +786,16 @@ function PhotosComparisonModal({
                       </View>
                     )}
                     <Text
-                      style={[styles.photoCaption, { color: colors.textPrimary }]}
+                      style={[
+                        styles.photoCaption,
+                        { color: colors.textPrimary },
+                      ]}
                     >
                       {shortDate(date)}
                     </Text>
-                    <Text style={[styles.photoMeta, { color: colors.textMuted }]}>
+                    <Text
+                      style={[styles.photoMeta, { color: colors.textMuted }]}
+                    >
                       {dayPhotos.length}{" "}
                       {dayPhotos.length === 1 ? "photo" : "photos"}
                     </Text>
@@ -788,9 +815,9 @@ function PhotosComparisonModal({
               </Text>
               <View style={styles.headerAction}>
                 <Button
-                  label='Open fullscreen'
-                  variant='quiet'
-                  size='sm'
+                  label="Open fullscreen"
+                  variant="quiet"
+                  size="sm"
                   onPress={() => setFullscreenOpen(true)}
                 />
               </View>
@@ -911,15 +938,15 @@ function FullscreenCompareViewer({
   return (
     <Modal
       visible={visible}
-      animationType='fade'
+      animationType="fade"
       onRequestClose={onClose}
       transparent={false}
     >
       <View style={styles.fullscreenContainer}>
         <TouchableOpacity
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityRole='button'
-          accessibilityLabel='Close photo'
+          accessibilityRole="button"
+          accessibilityLabel="Close photo"
           style={styles.fullscreenClose}
           onPress={onClose}
         >

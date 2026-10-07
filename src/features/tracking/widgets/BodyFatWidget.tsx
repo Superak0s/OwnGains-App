@@ -2,10 +2,25 @@ import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { TrackingStyles } from "../styles";
 import React from "react";
 import { View } from "react-native";
+import ProgressChart from "@shared/components/ProgressChart";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import type { BodyFatEntryWithFields } from "../types";
-import { Button, Metric, Note, Placeholder, space } from "../ui";
-import { hasTapeMeasurements, toFeetInches } from "../utils";
+import {
+  Button,
+  IconButton,
+  Metric,
+  Note,
+  Placeholder,
+  Row,
+  ShowMoreList,
+  space,
+} from "../ui";
+import {
+  formatDateLabel,
+  hasTapeMeasurements,
+  toFeetInches,
+  toTrendChartData,
+} from "../utils";
 
 interface BodyFatRenderCtx {
   history: BodyFatEntryWithFields[];
@@ -20,6 +35,12 @@ interface BodyFatRenderCtx {
   styles: TrackingStyles;
   handleCalendarDatePress: (date: Date, type: string) => void;
 }
+
+const readingDate = (entry: BodyFatEntryWithFields) =>
+  entry.date ?? entry.recordedAt ?? entry.calculatedAt;
+
+const readingPercent = (entry: BodyFatEntryWithFields) =>
+  Number(entry.percentage ?? entry.bodyFatPercentage ?? 0);
 
 export function renderBodyFatWidget(
   type: string,
@@ -104,12 +125,10 @@ export function renderBodyFatWidget(
         <View style={{ gap: space.md }}>
           <Metric
             label='Latest reading'
-            value={Number(
-              latest.percentage ?? latest.bodyFatPercentage ?? 0,
-            ).toFixed(1)}
+            value={readingPercent(latest).toFixed(1)}
             unit='%'
             meta={`${hasTapeMeasurements(latest) ? "US Navy method" : "Health Connect"} · ${new Date(
-              latest.date ?? latest.recordedAt ?? latest.calculatedAt ?? "",
+              readingDate(latest) ?? "",
             ).toLocaleDateString()}`}
           />
           <View
@@ -131,6 +150,49 @@ export function renderBodyFatWidget(
         </View>
       );
     }
+
+    case "bodyfat_chart":
+      if (history.length <= 1)
+        return (
+          <Note>
+            Two readings are enough to draw a trend. You have {history.length}.
+          </Note>
+        );
+      return (
+        <ProgressChart
+          data={toTrendChartData(
+            history.map((e) => ({ at: readingDate(e), value: readingPercent(e) })),
+          )}
+          yAxisSuffix='%'
+          fromZero={false}
+        />
+      );
+
+    case "bodyfat_history":
+      if (history.length === 0)
+        return <Note>Your body fat readings show up here.</Note>;
+      return (
+        <ShowMoreList
+          items={history}
+          renderItem={(entry, i, isLast) => (
+            <Row
+              key={entry.id ?? i}
+              title={formatDateLabel(readingDate(entry))}
+              meta={hasTapeMeasurements(entry) ? "US Navy method" : "Health Connect"}
+              value={`${readingPercent(entry).toFixed(1)} %`}
+              last={isLast}
+              right={
+                <IconButton
+                  glyph='🗑'
+                  label='Delete body fat reading'
+                  tone='danger'
+                  onPress={() => deleteBodyFatEntry(entry)}
+                />
+              }
+            />
+          )}
+        />
+      );
 
     default:
       return <Note>Coming soon</Note>;

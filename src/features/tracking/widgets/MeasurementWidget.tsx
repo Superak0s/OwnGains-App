@@ -1,11 +1,14 @@
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { TrackingStyles } from "../styles";
-import React from "react";
+import React, { useState } from "react";
 import { View } from "react-native";
+import ProgressChart from "@shared/components/ProgressChart";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import type { MeasurementEntry } from "../services/types";
+import { toTrendChartData } from "../utils";
 import {
   Button,
+  Chip,
   IconButton,
   Note,
   Placeholder,
@@ -13,6 +16,7 @@ import {
   ShowMoreList,
   SectionLabel,
   space,
+  useUi,
 } from "../ui";
 
 interface MeasurementRenderCtx {
@@ -32,6 +36,45 @@ const SITES = [
   { key: "armLeftCm", label: "Left arm" },
   { key: "armRightCm", label: "Right arm" },
 ] as const;
+
+type Site = (typeof SITES)[number]["key"];
+
+function MeasurementChart({
+  history,
+}: {
+  readonly history: MeasurementEntry[];
+}): React.ReactElement {
+  const { ui } = useUi();
+  const [site, setSite] = useState<Site>("waistCm");
+  const points = history
+    .filter((e) => e[site] != null)
+    .map((e) => ({ at: e.measuredAt, value: Number(e[site]) }));
+  return (
+    <View style={{ gap: space.md }}>
+      <View style={ui.chipRow}>
+        {SITES.map((s) => (
+          <Chip
+            key={s.key}
+            label={s.label}
+            selected={site === s.key}
+            onPress={() => setSite(s.key)}
+          />
+        ))}
+      </View>
+      {points.length <= 1 ? (
+        <Note>
+          Two measurements are enough to draw a trend. You have {points.length}.
+        </Note>
+      ) : (
+        <ProgressChart
+          data={toTrendChartData(points)}
+          yAxisSuffix='cm'
+          fromZero={false}
+        />
+      )}
+    </View>
+  );
+}
 
 export function renderMeasurementWidget(
   type: string,
@@ -84,6 +127,9 @@ export function renderMeasurementWidget(
         </View>
       );
     }
+
+    case "measurements_chart":
+      return <MeasurementChart history={history} />;
 
     case "measurements_calendar":
       return (

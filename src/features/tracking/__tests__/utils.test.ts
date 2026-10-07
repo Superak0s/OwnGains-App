@@ -1,8 +1,14 @@
 import {
   buildLocalISOForDate,
+  cycleLengthPoints,
+  followUpStatus,
+  needsFollowUp,
+  toDailyTotalsChartData,
+  toTrendChartData,
   computeUpcomingPredictedDays,
   daysSinceLocal,
   formatDateLabel,
+  formatRange,
   getCycleDuration,
   getCyclePhaseInfo,
   getCyclePhaseLabel,
@@ -229,5 +235,98 @@ describe("describeError", () => {
       "Goal must be positive",
     );
     expect(describeError("")).toBe("Something went wrong. Please try again.");
+  });
+});
+
+describe("toTrendChartData", () => {
+  it("sorts oldest first, keeps the newest points and drops invalid ones", () => {
+    const data = toTrendChartData(
+      [
+        { at: "2026-01-03T09:00:00", value: 81 },
+        { at: "2026-01-01T09:00:00", value: 80 },
+        { at: "2026-01-02T09:00:00", value: 82 },
+        { at: null, value: 90 },
+        { at: "2026-01-04T09:00:00", value: Number.NaN },
+      ],
+      2,
+    );
+    expect(data.datasets[0].data).toEqual([82, 81]);
+    expect(data.labels).toHaveLength(2);
+  });
+
+  it("labels at most eight points", () => {
+    const points = Array.from({ length: 30 }, (_, i) => ({
+      at: new Date(2026, 0, i + 1).toISOString(),
+      value: i,
+    }));
+    expect(toTrendChartData(points).labels.filter(Boolean)).toHaveLength(8);
+  });
+});
+
+describe("toDailyTotalsChartData", () => {
+  it("sums each day and fills empty days with 0, today last", () => {
+    const today = new Date(2026, 0, 7, 12);
+    const data = toDailyTotalsChartData(
+      [
+        { at: new Date(2026, 0, 7, 8).toISOString(), value: 250 },
+        { at: new Date(2026, 0, 7, 9).toISOString(), value: 500 },
+        { at: new Date(2026, 0, 5, 9).toISOString(), value: 300 },
+        { at: new Date(2025, 11, 1, 9).toISOString(), value: 999 },
+      ],
+      3,
+      today,
+    );
+    expect(data.datasets[0].data).toEqual([300, 0, 750]);
+  });
+});
+
+describe("cycleLengthPoints", () => {
+  it("measures days between consecutive starts in any input order", () => {
+    const entry = (cycleStart: string) =>
+      ({ id: 1, cycleStart, createdAt: "", updatedAt: "" });
+    expect(
+      cycleLengthPoints([
+        entry("2026-03-01"),
+        entry("2026-01-01"),
+        entry("2026-01-29"),
+      ]).map((p) => p.value),
+    ).toEqual([28, 31]);
+  });
+});
+
+describe("formatRange", () => {
+  it("joins the rounded ends", () => {
+    expect(formatRange(1455.4, 1544.6)).toBe("1455-1545");
+  });
+
+  it("is undefined when both ends round to the same number", () => {
+    expect(formatRange(1500, 1500)).toBeUndefined();
+    expect(formatRange(499.8, 500.2)).toBeUndefined();
+  });
+});
+
+describe("followUpStatus", () => {
+  it("derives the status from the intensity change", () => {
+    expect(followUpStatus(6, 0)).toBe("recovered");
+    expect(followUpStatus(6, 4)).toBe("better");
+    expect(followUpStatus(6, 6)).toBe("still_sore");
+    expect(followUpStatus(4, 6)).toBe("still_sore");
+  });
+});
+
+describe("needsFollowUp", () => {
+  const today = new Date(2026, 9, 7, 9, 0);
+  const entry = (updatedAt: Date, status = "active") =>
+    ({ status, updatedAt: updatedAt.toISOString() }) as never;
+
+  it("is due once the last update is from an earlier day", () => {
+    expect(needsFollowUp(entry(new Date(2026, 9, 6, 22, 0)), today)).toBe(true);
+    expect(needsFollowUp(entry(new Date(2026, 9, 7, 7, 0)), today)).toBe(false);
+  });
+
+  it("is never due once recovered", () => {
+    expect(
+      needsFollowUp(entry(new Date(2026, 9, 1), "recovered"), today),
+    ).toBe(false);
   });
 });

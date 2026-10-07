@@ -6,6 +6,8 @@ import React, {
   useRef,
 } from "react";
 import ScreenTitle from "@shared/components/ScreenTitle";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { trackScreenView, captureException, reportAndReturn } from "@shared/services/crashReporting";
 import {
   View,
@@ -48,13 +50,12 @@ import {
   LiftTogetherButton,
   makeLiftStyles,
 } from "./components/LiftTogetherButton";
-import { makePermStyles } from "./components/PermissionRow";
 import { trainerGrantConfirmation } from "./components/FriendPermissions";
 import {
   RequestsPendingWidget,
   RequestsSentWidget,
 } from "./components/RequestWidgets";
-import { SearchQrWidget, SearchUsersWidget } from "./components/SearchWidgets";
+import { SearchUsersWidget } from "./components/SearchWidgets";
 import { FriendTabsBar } from "./components/FriendTabsBar";
 import { FriendProgramTab } from "./components/FriendProgramTab";
 import { FriendActionsTab } from "./components/FriendActionsTab";
@@ -83,9 +84,6 @@ import {
   REQUESTS_WIDGET_REGISTRY,
   DEFAULT_REQUESTS_WIDGETS,
   type RequestsWidgetType,
-  SEARCH_WIDGET_REGISTRY,
-  DEFAULT_SEARCH_WIDGETS,
-  type SearchWidgetType,
 } from "./widgets";
 import { STORAGE_KEYS } from "@shared/services/storage";
 import type {
@@ -110,10 +108,13 @@ import type {
   WidgetInstance,
   WidgetDefinition,
   WorkoutData,
+  RootStackParamList,
 } from "@shared/types";
 import { Avatar } from "./components/Avatar";
 import { mapWithConcurrency } from "@utils/concurrency";
 import { userFacingError } from "@shared/services/apiError";
+import { programApi } from "@features/plan/services";
+import { SCREEN_PADDING } from "@shared/layout";
 
 // The server rate-limits each IP to 200 requests a minute, and a shared NAT
 // shares that bucket, so opening a friend must not fire dozens at once.
@@ -153,10 +154,7 @@ function fetchFriendSessionStatuses(
   return statuses;
 }
 
-type FriendsBoardWidgetType =
-  | FriendsWidgetType
-  | RequestsWidgetType
-  | SearchWidgetType;
+type FriendsBoardWidgetType = FriendsWidgetType | RequestsWidgetType;
 
 type FriendsBoard = ReturnType<typeof useWidgets<FriendsBoardWidgetType>>;
 
@@ -237,6 +235,8 @@ interface FriendsListWidgetProps {
   readonly onSelectFriend: (friend: Friend) => void;
   readonly onFindFriends: () => void;
   readonly onSendInvite: (friend: Friend) => void;
+  readonly canTrain: (friendId: FriendId, type: PermissionType) => boolean;
+  readonly onTrain: (friend: Friend) => void;
   readonly styles: ReturnType<typeof makeStyles>;
   readonly liftStyles: ReturnType<typeof makeLiftStyles>;
   readonly watchStyles: ReturnType<typeof makeWatchStyles>;
@@ -255,6 +255,8 @@ const FriendsListWidget = React.memo(function FriendsListWidget({
   onSelectFriend,
   onFindFriends,
   onSendInvite,
+  canTrain,
+  onTrain,
   styles,
   liftStyles,
   watchStyles,
@@ -339,6 +341,20 @@ const FriendsListWidget = React.memo(function FriendsListWidget({
                   </View>
                 </View>
                 <View style={styles.friendCardRight}>
+                  {canTrain(friend.id, "trainer") && (
+                    <TouchableOpacity
+                      style={[
+                        liftStyles.button,
+                        liftStyles.buttonSmall,
+                        { backgroundColor: colors.accent },
+                      ]}
+                      onPress={() => onTrain(friend)}
+                      accessibilityRole='button'
+                      accessibilityLabel={`Start a trainer session for ${friend.username}`}
+                    >
+                      <Text style={liftStyles.labelSmall}>Train</Text>
+                    </TouchableOpacity>
+                  )}
                   {showLiftButton && (
                     <LiftTogetherButton
                       small
@@ -404,23 +420,21 @@ const SessionExerciseGroup = React.memo(function SessionExerciseGroup({
 export default function FriendsScreen({
   embedWidget,
 }: {
-  readonly embedWidget?:
-    | FriendsWidgetType
-    | RequestsWidgetType
-    | SearchWidgetType;
+  readonly embedWidget?: FriendsWidgetType | RequestsWidgetType;
 } = {}): React.JSX.Element {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const liftStyles = useMemo(() => makeLiftStyles(colors), [colors]);
-  const permStyles = useMemo(() => makePermStyles(colors), [colors]);
   const watchStyles = useMemo(() => makeWatchStyles(colors), [colors]);
   const jointStyles = useMemo(() => makeJointStyles(colors), [colors]);
   const { user } = useAuth();
-  const { workoutData, workoutStartTime, currentSessionId } = useWorkoutPick(
-    "workoutData",
-    "workoutStartTime",
-    "currentSessionId",
-  );
+  const { workoutData, workoutStartTime, currentSessionId, saveWorkoutData } =
+    useWorkoutPick(
+      "workoutData",
+      "workoutStartTime",
+      "currentSessionId",
+      "saveWorkoutData",
+    );
 
   const {
     isInJointSession,
@@ -505,16 +519,10 @@ export default function FriendsScreen({
     defaults: DEFAULT_REQUESTS_WIDGETS,
     storageKey: STORAGE_KEYS.REQUESTS_TAB_WIDGETS,
   });
-  const searchBoard = useWidgets<SearchWidgetType>(user?.id ?? null, {
-    registry: SEARCH_WIDGET_REGISTRY,
-    defaults: DEFAULT_SEARCH_WIDGETS,
-    storageKey: STORAGE_KEYS.SEARCH_TAB_WIDGETS,
-  });
 
   const boardsByTab: Record<string, FriendsBoard> = {
     friends: toFriendsBoard(friendsBoard),
     requests: toFriendsBoard(requestsBoard),
-    search: toFriendsBoard(searchBoard),
   };
   const registriesByTab: Record<
     string,
@@ -522,10 +530,9 @@ export default function FriendsScreen({
   > = {
     friends: FRIENDS_WIDGET_REGISTRY,
     requests: REQUESTS_WIDGET_REGISTRY,
-    search: SEARCH_WIDGET_REGISTRY,
   };
-  const activeBoard = boardsByTab[activeTab] ?? boardsByTab.search;
-  const activeRegistry = registriesByTab[activeTab] ?? registriesByTab.search;
+  const activeBoard = boardsByTab[activeTab] ?? boardsByTab.friends;
+  const activeRegistry = registriesByTab[activeTab] ?? registriesByTab.friends;
 
   // Two-finger pull opens the active tab's widget panel, as on Home/Tracking.
   const widgetBoard = useWidgetBoard<FriendsBoardWidgetType>(
@@ -546,6 +553,7 @@ export default function FriendsScreen({
   >([]);
   const [sentRequests, setSentRequests] = useState<SentFriendRequest[]>([]);
 
+  const searchInputRef = useRef<TextInput>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searching, setSearching] = useState<boolean>(false);
@@ -605,15 +613,22 @@ export default function FriendsScreen({
   const [trainee, setTrainee] = useState(() => getActiveTrainee());
   useEffect(() => onActiveTraineeChange.subscribe(setTrainee), []);
 
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const handleTrainFriend = useCallback(
+    (friend: Friend): void => {
+      setActiveTrainee({
+        userId: String(friend.id),
+        username: friend.username,
+      });
+      navigation.navigate("Workout");
+    },
+    [navigation],
+  );
+
   const handleStartTrainer = (friend: Friend): void => {
-    setActiveTrainee({ userId: String(friend.id), username: friend.username });
     closeFriendDetail();
-    alert(
-      "Trainer Session Started",
-      `You're now logging ${friend.username}'s session. Switch to the Workout tab to record their sets.`,
-      [{ text: "OK" }],
-      "success",
-    );
+    handleTrainFriend(friend);
   };
 
   const handleStopTrainer = (): void => {
@@ -702,8 +717,10 @@ export default function FriendsScreen({
     try {
       await sharingApi.grantPermission(friend.id, type, payload);
       await loadPermissions();
+      return true;
     } catch (e) {
       alertError(userFacingError(e, "Failed to grant permission"));
+      return false;
     } finally {
       setPermLoading(friend.id, type, false);
     }
@@ -736,18 +753,79 @@ export default function FriendsScreen({
       );
       return;
     }
-    const wd = workoutData as WorkoutData & { people?: string[] };
-    const split = wd.split ?? wd.people;
-    const payload: Record<string, unknown> = {
-      programData: {
-        name: `${split?.join("/")} Program, ${wd.totalDays} Days`,
-        totalDays: wd.totalDays,
-        split,
-        days: wd.days,
-      },
-      message: null,
+    await handleGrantPermission(friend, "program", programPayload(workoutData));
+  };
+
+  const sendPlan = async (friend: Friend, program: WorkoutData) => {
+    const sent = await handleGrantPermission(
+      friend,
+      "program",
+      programPayload(program),
+    );
+    if (sent)
+      alert(
+        "Plan sent",
+        `${friend.username} can open it from your Program tab and choose to use it.`,
+        [{ text: "OK" }],
+        "success",
+      );
+  };
+
+  const handleSendPlan = (friend: Friend) => {
+    if (!workoutData) {
+      alert(
+        "No Program Loaded",
+        "Load a workout program first before sending it.",
+        [{ text: "OK" }],
+        "info",
+      );
+      return;
+    }
+    alert(
+      `Send ${friend.username} your plan`,
+      `It replaces any program you've already shared with ${friend.username}. Their own plan only changes if they choose to use it.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Send", onPress: () => void sendPlan(friend, workoutData) },
+      ],
+      "info",
+    );
+  };
+
+  const handleUsePlan = (program: ReceivedProgram) => {
+    const apply = async () => {
+      // A friend wrote this payload, so the server's upload validator checks it
+      // before anything is stored on this device.
+      try {
+        const accepted = (await programApi.saveProgram(
+          program.programData as WorkoutData,
+        )) as WorkoutData;
+        await saveWorkoutData(accepted);
+      } catch (e) {
+        alertError(userFacingError(e, "Couldn't use that plan"));
+        return;
+      }
+      closeFriendDetail();
+      alert(
+        "Plan saved",
+        "It's now your plan. Edit it any time from the Plan tab.",
+        [{ text: "OK" }],
+        "success",
+      );
     };
-    await handleGrantPermission(friend, "program", payload);
+    if (!workoutData) {
+      void apply();
+      return;
+    }
+    alert(
+      "Replace your plan?",
+      `Your current plan is replaced by the one from ${program.senderUsername}. Your logged workouts are kept.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Use this plan", style: "destructive", onPress: () => void apply() },
+      ],
+      "warning",
+    );
   };
 
   const getInviteStatusForFriend = useCallback(
@@ -1293,7 +1371,7 @@ export default function FriendsScreen({
           map.get(k)!.sets.push(t);
         });
         map.forEach((ex) => {
-          ex.sets = ex.sets.toSorted(
+          ex.sets = [...ex.sets].sort(
             (a: { setIndex: number }, b: { setIndex: number }) =>
               a.setIndex - b.setIndex,
           );
@@ -1368,7 +1446,10 @@ export default function FriendsScreen({
     [loadFriendData],
   );
 
-  const handleFindFriends = useCallback(() => setActiveTab("search"), []);
+  const handleFindFriends = useCallback(
+    () => searchInputRef.current?.focus(),
+    [],
+  );
 
   const handleRetryLoad = useCallback(() => void loadData(), [loadData]);
 
@@ -1409,6 +1490,8 @@ export default function FriendsScreen({
             onSelectFriend={handleSelectFriend}
             onFindFriends={handleFindFriends}
             onSendInvite={handleSendInvite}
+            canTrain={hasReceivedPermission}
+            onTrain={handleTrainFriend}
             styles={styles}
             liftStyles={liftStyles}
             watchStyles={watchStyles}
@@ -1438,18 +1521,11 @@ export default function FriendsScreen({
           />
         );
 
-      case "search_qr":
-        return (
-          <SearchQrWidget
-            permStyles={permStyles}
-            onShowMyQr={() => setShowMyQrModal(true)}
-            onScanQr={openScanQrModal}
-          />
-        );
-
-      case "search_users":
+      case "friends_search":
         return (
           <SearchUsersWidget
+            inputRef={searchInputRef}
+            onScanQr={openScanQrModal}
             styles={styles}
             colors={colors}
             searchQuery={searchQuery}
@@ -1576,6 +1652,7 @@ export default function FriendsScreen({
               receivedPrograms={receivedPrograms}
               selectedProgram={selectedProgram}
               setSelectedProgram={setSelectedProgram}
+              onUsePlan={handleUsePlan}
               styles={styles}
             />
           )}
@@ -1619,6 +1696,7 @@ export default function FriendsScreen({
               onSendInvite={handleSendInvite}
               onStartTrainer={handleStartTrainer}
               onStopTrainer={handleStopTrainer}
+              onSendPlan={handleSendPlan}
               onRemoveFriend={handleRemoveFriend}
               onBlockFriend={handleBlockFriend}
               onReportFriend={handleReportFriend}
@@ -1779,7 +1857,8 @@ export default function FriendsScreen({
               <QRCode
                 value={buildFriendQrPayload(user.id, user.username)}
                 size={220}
-                backgroundColor={colors.surface}
+                color='#000000'
+                backgroundColor='#FFFFFF'
               />
             ) : (
               <ActivityIndicator size='large' color={colors.accent} />
@@ -1827,6 +1906,16 @@ export default function FriendsScreen({
             </View>
           )}
         </View>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => {
+            setShowScanQrModal(false);
+            setShowMyQrModal(true);
+          }}
+          accessibilityRole="button"
+        >
+          <Text style={styles.primaryButtonText}>Show My Code</Text>
+        </TouchableOpacity>
       </ModalSheet>
 
       <ModalSheet
@@ -2070,10 +2159,25 @@ export const makeJointStyles = (colors: ThemeColors) =>
     leaveBtnText: { color: colors.error, fontSize: 13, fontWeight: "600" },
   });
 
+const programPayload = (
+  wd: WorkoutData & { people?: string[] },
+): Record<string, unknown> => {
+  const split = wd.split ?? wd.people;
+  return {
+    programData: {
+      name: `${split?.join("/")} Program, ${wd.totalDays} Days`,
+      totalDays: wd.totalDays,
+      split,
+      days: wd.days,
+    },
+    message: null,
+  };
+};
+
 export const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    content: { padding: 10, paddingTop: 10, paddingBottom: 120 },
+    content: SCREEN_PADDING,
     loadingContainer: {
       flex: 1,
       justifyContent: "center",
@@ -2182,7 +2286,36 @@ export const makeStyles = (colors: ThemeColors) =>
     },
     statusBadgeText: { color: colors.warning, fontSize: 12, fontWeight: "600" },
     statusBadgeFriend: { backgroundColor: colors.successLight },
-    searchContainer: { position: "relative", marginBottom: 20 },
+    searchBarRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 20,
+    },
+    searchContainer: { position: "relative", flex: 1 },
+    scanButton: {
+      width: 52,
+      height: 52,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.surface,
+      borderWidth: 2,
+      borderColor: colors.infoLight,
+    },
+    scanButtonIcon: { fontSize: 22 },
+    primaryButton: {
+      marginTop: 12,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: "center",
+      backgroundColor: colors.accent,
+    },
+    primaryButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.textOnAccent,
+    },
     searchInput: {
       backgroundColor: colors.surface,
       borderRadius: 12,
@@ -2444,6 +2577,13 @@ export const makeStyles = (colors: ThemeColors) =>
       letterSpacing: 0.9,
       marginBottom: 6,
     },
+    permissionGroupLabel: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      marginTop: 6,
+      marginBottom: 8,
+    },
     actionsTabSectionHint: {
       fontSize: 12,
       color: colors.textMuted,
@@ -2631,7 +2771,8 @@ export const makeStyles = (colors: ThemeColors) =>
       marginBottom: 24,
     },
     qrCodeWrapper: {
-      backgroundColor: colors.surface,
+      // Scanners need dark modules on a light quiet zone, whatever the theme.
+      backgroundColor: "#FFFFFF",
       padding: 20,
       borderRadius: 16,
       alignItems: "center",

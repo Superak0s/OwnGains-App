@@ -49,6 +49,7 @@ import { formatDate as formatDateUtil, formatClockTime, parseDecimal } from "@ut
 import LocalOnlyNotice from "@shared/components/LocalOnlyNotice";
 import { captureException, metric } from "@shared/services/crashReporting";
 import { userFacingError } from "@shared/services/apiError";
+import { SCREEN_PADDING } from "@shared/layout";
 
 const DEFAULT_SUPPLEMENT_TEMPLATES: SupplementTemplate[] = [
   {
@@ -565,7 +566,6 @@ export default function SupplementsScreen(): React.JSX.Element {
             onDelete={() => handleDeleteSupplement(supp)}
           />
         )}
-        ListFooterComponent={<View style={{ height: 100 }} />}
       />
 
       {quickLogSupplement && (
@@ -991,7 +991,6 @@ const cardStyles = (colors: ThemeColors) =>
     card: {
       backgroundColor: colors.surface,
       borderRadius: 16,
-      marginHorizontal: 16,
       marginBottom: 12,
       overflow: "hidden",
       shadowColor: colors.shadow,
@@ -1082,7 +1081,7 @@ const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     scroll: { flex: 1 },
-    scrollContent: { paddingTop: 4, paddingBottom: 20 },
+    scrollContent: SCREEN_PADDING,
     loadingContainer: {
       flex: 1,
       alignItems: "center",
@@ -1095,8 +1094,7 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      paddingHorizontal: 20,
-      paddingVertical: 18,
+      marginBottom: 16,
     },
 
     addButton: {

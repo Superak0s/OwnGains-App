@@ -95,7 +95,6 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 12,
     padding: 12,
-    marginHorizontal: 16,
     marginBottom: 12,
   },
   text: { flex: 1, fontSize: 13, lineHeight: 19 },

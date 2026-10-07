@@ -84,6 +84,7 @@ import { STORAGE_KEYS } from "@shared/services/storage";
 import { userFacingError } from "@shared/services/apiError";
 import { markProgramDirty } from "@shared/services/programDirty";
 import { tutorialAnchor } from "@features/tutorial/anchors";
+import { SCREEN_PADDING } from "@shared/layout";
 
 export type Styles = ReturnType<typeof makeStyles>;
 
@@ -579,7 +580,7 @@ Your current program is untouched. Check that you picked the right columns, or p
     const drop = () =>
       patchDraftSplitDay(idx, (day) => ({
         ...day,
-        exercises: day.exercises.toSpliced(exIdx, 1),
+        exercises: day.exercises.filter((_, i) => i !== exIdx),
       }));
     const name = draftSplitDays[idx]?.exercises[exIdx]?.name?.trim();
     if (!name) {
@@ -1640,7 +1641,7 @@ Your program is untouched. Try again, or pick a different destination.`,
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    content: { paddingHorizontal: 14, paddingTop: 18, paddingBottom: 120 },
+    content: SCREEN_PADDING,
     widgetLineMuted: {
       fontSize: 12,
       color: colors.textMuted,

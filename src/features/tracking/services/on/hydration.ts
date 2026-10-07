@@ -14,6 +14,7 @@ export const hydrationApi = {
     note?: string,
     loggedAt: string | null = null,
     idempotencyKey: string = generateId("idem"),
+    errorMargin = 0,
   ): Promise<ApiResponse<{ id: number }>> => {
     // Two drinks at the same measuredAt are two entries, so only the key stops a resend from double-logging.
     const res = await fetchIdempotent(
@@ -25,6 +26,7 @@ export const hydrationApi = {
           amountMl,
           measuredAt: loggedAt || new Date().toISOString(),
           note: note || null,
+          errorMargin,
         }),
       },
       idempotencyKey,
@@ -34,7 +36,7 @@ export const hydrationApi = {
 
   getHydrationHistory: async (limit: number = 100): Promise<ApiResponse<HydrationEntry[]>> => {
     const res = await apiCall<{
-      data: Array<{ id: number; value: number; measuredAt: string; note: string | null; createdAt: string }>
+      data: Array<{ id: number; value: number; measuredAt: string; note: string | null; errorMargin?: number | null; createdAt: string }>
     }>(`/api/tracking/hydration?limit=${limit}`)
     return {
       success: true,
@@ -43,6 +45,7 @@ export const hydrationApi = {
         amountMl: row.value,
         loggedAt: row.measuredAt,
         note: row.note,
+        errorMargin: row.errorMargin ?? 0,
         createdAt: row.createdAt,
       })),
     }

@@ -5,12 +5,11 @@ import { useAlert } from "@shared/components/CustomAlert";
 import { IntensityPicker } from "@shared/components/IntensityPicker";
 import { useTwoFingerPull } from "@shared/context/hooks/useTwoFingerPull";
 import { PermissionRow } from "@features/friends/components/PermissionRow";
-import { PERMISSION_TYPES, trainerGrantConfirmation } from "@features/friends/components/FriendPermissions";
+import { PERMISSION_TYPES, permissionPrerequisites, trainerGrantConfirmation } from "@features/friends/components/FriendPermissions";
 import type { PermissionType } from "@features/friends/types";
 import { TrainerBanner, makeTrainerBannerStyles } from "@features/workout/components/TrainerBanner";
 import { PartnerBanner } from "@features/workout/components/PartnerBanner";
-import MuscleMap from "@features/tracking/components/MuscleMap";
-import { MUSCLE_GROUP_LABELS, type MuscleGroup } from "@features/tracking/types/muscleRecovery";
+import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS, type MuscleGroup } from "@features/tracking/types/muscleRecovery";
 import type { WorkoutData } from "@shared/types";
 import type { ChecklistItem } from "../chapters";
 import { Hand } from "../motion";
@@ -130,11 +129,11 @@ export function PermissionsDemo({ onComplete }: PracticeProps) {
   const titleOf = (type: PermissionType) => PERMISSION_TYPES.find((p) => p.type === type)?.title ?? type;
   const grant = (type: PermissionType) => {
     const apply = () => {
-      setGranted((g) => new Set(g).add(type));
+      setGranted((g) => new Set([...g, ...permissionPrerequisites(type), type]));
       if (type === "trainer") setTrainerSeen(true);
       setNote(
         type === "analytics" && !granted.has("history")
-          ? "Analytics needs History Access too, so grant that as well."
+          ? "Analytics needs History Access, so that was turned on too."
           : `${DEMO_FRIEND} now has ${titleOf(type)}.`,
       );
     };
@@ -179,7 +178,7 @@ export function FriendRequestDemo({ onComplete }: PracticeProps) {
   return (
     <View style={s.demo}>
       <View style={s.row}>
-        <TouchableOpacity style={s.chip} onPress={() => setHint("Scan a friend's QR code from Search to add them instantly.")} accessibilityRole="button" accessibilityLabel="Add by QR code">
+        <TouchableOpacity style={s.chip} onPress={() => setHint("Tap the camera next to the search bar in Friends to scan a friend's QR code.")} accessibilityRole="button" accessibilityLabel="Add by QR code">
           <Text style={s.chipText}>📷 Scan QR</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.chip} onPress={() => setHint("Search by username and tap Add to send a request.")} accessibilityRole="button" accessibilityLabel="Add by username">
@@ -218,37 +217,27 @@ export function FriendRequestDemo({ onComplete }: PracticeProps) {
   );
 }
 
-const NO_SORENESS = Object.fromEntries(
-  Object.keys(MUSCLE_GROUP_LABELS).map((m) => [m, 0]),
-) as Record<MuscleGroup, number>;
-
 export function SorenessDemo({ onComplete }: PracticeProps) {
   const s = usePracticeStyles();
-  const [view, setView] = useState<"front" | "back">("front");
-  const [sore, setSore] = useState(NO_SORENESS);
-  const count = Object.values(sore).filter((v) => v > 0).length;
+  const [sore, setSore] = useState<ReadonlySet<MuscleGroup>>(new Set());
+  const toggle = (m: MuscleGroup) => {
+    setSore((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(m)) next.add(m);
+      return next;
+    });
+    onComplete();
+  };
   return (
     <View style={s.demo}>
-      <View style={s.segment}>
-        {(["front", "back"] as const).map((v) => (
-          <TouchableOpacity key={v} style={[s.segmentBtn, view === v && s.segmentActive]} onPress={() => setView(v)} accessibilityRole="button" accessibilityLabel={`Show ${v}`} accessibilityState={{ selected: view === v }}>
-            <Text style={s.secondaryText}>{v === "front" ? "Front" : "Back"}</Text>
+      <View style={s.effortRow}>
+        {MUSCLE_GROUPS.map((m) => (
+          <TouchableOpacity key={m} style={[s.chip, sore.has(m) && s.segmentActive]} onPress={() => toggle(m)} accessibilityRole="button" accessibilityLabel={MUSCLE_GROUP_LABELS[m]} accessibilityState={{ selected: sore.has(m) }}>
+            <Text style={[s.chipText, sore.has(m) && s.primaryText]}>{MUSCLE_GROUP_LABELS[m]}</Text>
           </TouchableOpacity>
         ))}
       </View>
-      <View style={{ alignItems: "center" }}>
-        <MuscleMap
-          view={view}
-          selectedMuscles={new Set()}
-          sorenessMap={sore}
-          showLabels
-          onPressMuscle={(m) => {
-            setSore((prev) => ({ ...prev, [m]: prev[m] ? 0 : 6 }));
-            onComplete();
-          }}
-        />
-      </View>
-      <Text style={s.muted}>{count} sore muscle{count === 1 ? "" : "s"} logged</Text>
+      <Text style={s.muted}>{sore.size} sore muscle{sore.size === 1 ? "" : "s"} logged</Text>
     </View>
   );
 }

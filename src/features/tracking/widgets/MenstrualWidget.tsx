@@ -2,13 +2,16 @@ import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { TrackingStyles } from "../styles";
 import React, { useState } from "react";
 import { Text, View } from "react-native";
+import ProgressChart from "@shared/components/ProgressChart";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import { CycleSettingsWidget } from "../tabs/MenstrualTab";
 import {
   getCycleDuration,
   getCyclePhaseLabel,
   computeUpcomingPredictedDays,
+  cycleLengthPoints,
   formatDateLabel,
+  toTrendChartData,
 } from "../utils";
 import { toDateString } from "@utils/format";
 import type { MenstrualEntry } from "../services/types";
@@ -210,6 +213,23 @@ export function renderMenstrualWidget(
           }}
         />
       );
+
+    case "menstrual_chart": {
+      const lengths = cycleLengthPoints(entries);
+      if (lengths.length <= 1)
+        return (
+          <Note>
+            Log three period starts to see how your cycle length changes.
+          </Note>
+        );
+      return (
+        <ProgressChart
+          data={toTrendChartData(lengths)}
+          yAxisSuffix='d'
+          fromZero={false}
+        />
+      );
+    }
 
     case "menstrual_cycle":
       return (

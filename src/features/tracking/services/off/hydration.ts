@@ -22,12 +22,14 @@ export const hydrationApi = {
     note?: string,
     loggedAt: string | null = null,
     _idempotencyKey?: string,
+    errorMargin = 0,
   ): Promise<ApiResponse<{ id: number }>> => {
     const entry: HydrationEntry = {
       id: nextLocalId(),
       amountMl,
       loggedAt: loggedAt || new Date().toISOString(),
       note: note || null,
+      errorMargin,
       createdAt: new Date().toISOString(),
     }
     await store.put(entry)

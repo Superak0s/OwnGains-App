@@ -4,7 +4,8 @@ import { toDefaultWidgets } from "@shared/types";
 export type MeasurementsWidgetType =
   | "measurements_overview"
   | "measurements_calendar"
-  | "measurements_history";
+  | "measurements_history"
+  | "measurements_chart";
 
 export const MEASUREMENTS_WIDGET_REGISTRY: Record<
   MeasurementsWidgetType,
@@ -31,11 +32,23 @@ export const MEASUREMENTS_WIDGET_REGISTRY: Record<
     availableSizes: ["medium", "large"],
     defaultSize: "medium",
   },
+  measurements_chart: {
+    type: "measurements_chart",
+    title: "Measurements Trend Chart",
+    description: "Line chart of one body measurement over time",
+    availableSizes: ["medium", "large"],
+    defaultSize: "medium",
+  },
 };
 
 export const DEFAULT_MEASUREMENTS_WIDGETS = toDefaultWidgets(
   MEASUREMENTS_WIDGET_REGISTRY,
-  ["measurements_overview", "measurements_calendar", "measurements_history"],
+  [
+    "measurements_overview",
+    "measurements_chart",
+    "measurements_calendar",
+    "measurements_history",
+  ],
 );
 
 export const MEASUREMENTS_TAB_CONFIG = {

@@ -1,5 +1,8 @@
 jest.mock("@shared/services/sqliteStorage", () => require("test-utils/memorySqlite"));
-jest.mock("react-native-health-connect", () => ({ readRecords: jest.fn() }));
+jest.mock("react-native-health-connect", () => ({
+  readRecords: jest.fn(),
+  aggregateRecord: jest.fn(async () => ({ COUNT_TOTAL: 0 })),
+}));
 jest.mock("../healthConnect", () => ({
   ...jest.requireActual("../healthConnect"),
   getGrantedTypes: jest.fn(),
@@ -15,7 +18,8 @@ jest.mock("@shared/services/crashReporting", () => ({
   captureException: jest.fn(),
 }));
 
-import { readRecords } from "react-native-health-connect";
+import { aggregateRecord, readRecords } from "react-native-health-connect";
+import { loadHealthHistory, setKeepingHealthData } from "../dailyHealth";
 import { resetMemorySqlite } from "test-utils/memorySqlite";
 import {
   bodyFatApi,
@@ -112,6 +116,24 @@ it("reads only the granted types", async () => {
   jest.mocked(getGrantedTypes).mockResolvedValue(["Hydration", "Steps"]);
   await syncHealthConnect("u1", true);
   expect(jest.mocked(readRecords).mock.calls.map((call) => call[0])).toEqual(["Hydration"]);
+});
+
+it("copies nothing once the user turns off keeping health data", async () => {
+  jest.mocked(getGrantedTypes).mockResolvedValue(["Weight", "Steps"]);
+  records.Weight = [weight("w1", local(4, 7), 80)];
+  await setKeepingHealthData("u1", false);
+
+  await expect(syncHealthConnect("u1", true)).resolves.toEqual({ imported: 0, failed: [] });
+  expect(readRecords).not.toHaveBeenCalled();
+  expect(aggregateRecord).not.toHaveBeenCalled();
+  expect(bodyTrackingApi.logWeight).not.toHaveBeenCalled();
+});
+
+it("keeps daily steps alongside the import", async () => {
+  jest.mocked(getGrantedTypes).mockResolvedValue(["Steps"]);
+  jest.mocked(aggregateRecord).mockResolvedValueOnce({ COUNT_TOTAL: 4321 } as never);
+  await syncHealthConnect("u1", true);
+  expect(await loadHealthHistory("u1")).toEqual({ "2026-09-06": { steps: 4321 } });
 });
 
 it("skips records already imported, separately per user", async () => {

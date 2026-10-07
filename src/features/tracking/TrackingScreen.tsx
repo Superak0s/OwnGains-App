@@ -37,7 +37,6 @@ import {
 import { LogCycleModal } from "./tabs/MenstrualTab";
 import { LogSorenessModal } from "./tabs/SorenessTab";
 import { LogHydrationModal } from "./tabs/HydrationTab";
-import { refreshHydrationNotification } from "./hydrationNotification";
 import {
   renderWeightWidget,
   renderBodyFatWidget,
@@ -54,6 +53,12 @@ import type {
   WidgetDefinition,
   WeightEntry,
 } from "@shared/types";
+import { toDefaultWidgets } from "@shared/types";
+import HealthWidget from "@features/healthConnect/HealthWidget";
+import {
+  HEALTH_WIDGET_REGISTRY,
+  type HealthWidgetType,
+} from "@features/healthConnect/widgets";
 import WidgetGallery from "@shared/components/widgets/WidgetGallery";
 import WidgetEditButton from "@shared/components/widgets/WidgetEditButton";
 import {
@@ -156,7 +161,17 @@ type TrackingWidgetType =
   | MeasurementsWidgetType
   | HydrationWidgetType
   | SorenessWidgetType
-  | MenstrualWidgetType;
+  | MenstrualWidgetType
+  | HealthWidgetType;
+
+const DEFAULT_HEALTH_WIDGETS = toDefaultWidgets(HEALTH_WIDGET_REGISTRY, [
+  "health_steps",
+  "health_heart_rate",
+  "health_sleep",
+  "health_steps_trend",
+  "health_heart_rate_trend",
+  "health_sleep_trend",
+]);
 
 type TrackingBoard = ReturnType<typeof useWidgets<TrackingWidgetType>>;
 
@@ -180,6 +195,7 @@ const registryMap: Record<
   hydration: HYDRATION_WIDGET_REGISTRY,
   soreness: SORENESS_WIDGET_REGISTRY,
   menstrual: MENSTRUAL_WIDGET_REGISTRY,
+  health: HEALTH_WIDGET_REGISTRY,
 };
 
 function tabForWidget(type: TrackingWidgetType): string {
@@ -237,6 +253,12 @@ function useTrackingBoards(userId: string | null, activeTab: string) {
     storageKey: STORAGE_KEYS.MENSTRUAL_TAB_WIDGETS,
     enabled: activeTab === "menstrual",
   });
+  const healthBoard = useWidgets<HealthWidgetType>(userId, {
+    registry: HEALTH_WIDGET_REGISTRY,
+    defaults: DEFAULT_HEALTH_WIDGETS,
+    storageKey: STORAGE_KEYS.HEALTH_TAB_WIDGETS,
+    enabled: activeTab === "health",
+  });
   const boardMap: Record<string, TrackingBoard> = {
     weight: toTrackingBoard(weightBoard),
     photos: toTrackingBoard(photosBoard),
@@ -246,6 +268,7 @@ function useTrackingBoards(userId: string | null, activeTab: string) {
     hydration: toTrackingBoard(hydrationBoard),
     soreness: toTrackingBoard(sorenessBoard),
     menstrual: toTrackingBoard(menstrualBoard),
+    health: toTrackingBoard(healthBoard),
   };
   return {
     activeBoard: boardMap[activeTab] ?? boardMap.weight,
@@ -511,7 +534,6 @@ export default function TrackingScreen({
       if (settings?.data?.goalMl) {
         _hydration.setHydrationGoal(settings.data.goalMl);
       }
-      if (user?.id) void refreshHydrationNotification(String(user.id));
     },
     soreness: async () => {
       const s = await sorenessApi.getSorenessHistory(200);
@@ -933,6 +955,8 @@ export default function TrackingScreen({
 
     if (tab === "macros") {
       return renderMacrosWidget(instance.type, {
+        entries: macros.entries,
+        deleteMacroEntry: macros.deleteMacroEntry,
         goals: macros.goals,
         openMacrosModal: () => macros.openMacrosModal(),
         openGoalModal: macros.openGoalModal,
@@ -945,12 +969,7 @@ export default function TrackingScreen({
       });
     }
 
-    if (
-      tab === "soreness" ||
-      instance.type === "doms_followup" ||
-      instance.type === "doms_heatmap" ||
-      instance.type === "injury_tracker"
-    ) {
+    if (instance.type in SORENESS_WIDGET_REGISTRY) {
       return renderSorenessWidget(instance.type, {
         entries: soreness.entries,
         openSorenessModal: () => soreness.openSorenessModal(),
@@ -960,6 +979,7 @@ export default function TrackingScreen({
         colors,
         styles,
         handleCalendarDatePress,
+        onLogged: forceReloadActiveTab,
       });
     }
 
@@ -984,6 +1004,15 @@ export default function TrackingScreen({
 
     if (tab === "photos") {
       return renderPhotosWidget(instance.type);
+    }
+
+    if (tab === "health") {
+      return (
+        <HealthWidget
+          type={instance.type as HealthWidgetType}
+          onOpenSettings={() => navigation.navigate("Settings" as never)}
+        />
+      );
     }
 
     return <Note>Coming soon</Note>;

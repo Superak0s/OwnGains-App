@@ -97,6 +97,7 @@ export const mergeWidgetTypes = (
 export const appendWidgetTypes = (
   json: string,
   additions: readonly { type: string; size: string }[],
+  atStart = false,
 ): string => {
   let layout: unknown;
   try {
@@ -110,13 +111,57 @@ export const appendWidgetTypes = (
     ({ type }) => !widgets.some((w) => w.type === type),
   );
   if (missing.length === 0) return json;
-  return JSON.stringify([
-    ...widgets,
-    ...missing.map(({ type, size }, index) => ({
-      id: `migrated-${type.replaceAll("_", "-")}`,
-      type,
-      size,
-      order: widgets.length + index,
-    })),
-  ]);
+  const added = missing.map(({ type, size }) => ({
+    id: `migrated-${type.replaceAll("_", "-")}`,
+    type,
+    size,
+  }));
+  const existing = [...widgets].sort((a, b) => a.order - b.order);
+  return JSON.stringify(
+    (atStart ? [...added, ...existing] : [...existing, ...added]).map(
+      (widget, order) => ({ ...widget, order }),
+    ),
+  );
+};
+
+/** Puts `order`'s types first and in that order, adding any the layout lacks.
+ * Other widgets keep their relative order after them. */
+export const orderWidgetTypes = (
+  json: string,
+  order: readonly { type: string; size: string }[],
+): string => {
+  let layout: unknown;
+  try {
+    layout = JSON.parse(appendWidgetTypes(json, order));
+  } catch {
+    return json;
+  }
+  if (!Array.isArray(layout)) return json;
+  const rank = (type: string) => {
+    const i = order.findIndex((o) => o.type === type);
+    return i === -1 ? order.length : i;
+  };
+  return JSON.stringify(
+    [...(layout as StoredWidget[])]
+      .sort((a, b) => rank(a.type) - rank(b.type) || a.order - b.order)
+      .map((widget, i) => ({ ...widget, order: i })),
+  );
+};
+
+/** Adds `addition` just before the first `before` widget, or at the end when
+ * that isn't on the board. A layout that already has it is unchanged. */
+export const insertWidgetTypeBefore = (
+  json: string,
+  addition: { type: string; size: string },
+  before: string,
+): string => {
+  const appended = appendWidgetTypes(json, [addition]);
+  if (appended === json) return json;
+  const widgets = (JSON.parse(appended) as StoredWidget[]).sort(
+    (a, b) => a.order - b.order,
+  );
+  const added = widgets.pop()!;
+  const at = widgets.findIndex((w) => w.type === before);
+  widgets.splice(at === -1 ? widgets.length : at, 0, added);
+  return JSON.stringify(widgets.map((widget, order) => ({ ...widget, order })));
 };

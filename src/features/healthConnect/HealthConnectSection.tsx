@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { AppState, Text, TouchableOpacity, View } from "react-native";
+import { AppState, Switch, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import type { useAlert } from "@shared/components/CustomAlert";
+import { useTheme } from "@shared/context/ThemeContext";
 import { captureException, trackFeature } from "@shared/services/crashReporting";
 import { loadFromStorage, STORAGE_KEYS } from "@shared/services/storage";
 import { formatDateTime } from "@utils/format";
@@ -15,10 +16,11 @@ import {
   type Availability,
 } from "./healthConnect";
 import { syncHealthConnect } from "./importer";
+import { deleteHealthHistory, isKeepingHealthData, setKeepingHealthData } from "./dailyHealth";
 
 const DESCRIPTION: Record<Exclude<Availability, "unsupported">, string> = {
   available:
-    "Import weight, body fat, hydration and nutrition, and show steps, heart rate and sleep on Home. OwnGains only reads this data.",
+    "Import weight, body fat, hydration and nutrition, and show steps, heart rate and sleep in Tracking and on Home. OwnGains only reads this data.",
   needs_install: "Install Health Connect to import your health data into OwnGains.",
   needs_update: "Update Health Connect to connect it to OwnGains.",
 };
@@ -47,6 +49,8 @@ export default function HealthConnectSection({
   const [connected, setConnected] = useState(false);
   const [lastSync, setLastSync] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [keep, setKeep] = useState(true);
+  const { colors } = useTheme();
 
   const refresh = useCallback(async () => {
     try {
@@ -55,6 +59,7 @@ export default function HealthConnectSection({
       setLastSync(
         userId ? await loadFromStorage<number>(STORAGE_KEYS.HEALTH_CONNECT_LAST_SYNC, userId) : null,
       );
+      if (userId) setKeep(await isKeepingHealthData(userId));
     } catch (error) {
       captureException(error, { feature: "healthConnect" });
     }
@@ -90,6 +95,34 @@ export default function HealthConnectSection({
       setBusy(false);
       void refresh();
     }
+  };
+
+  const toggleKeep = (on: boolean): void => {
+    if (!userId) return;
+    trackFeature("healthConnect", "keep", { on });
+    setKeep(on);
+    const saved = setKeepingHealthData(userId, on);
+    if (on) {
+      void saved.then(sync);
+      return;
+    }
+    alert(
+      "Delete Saved Health Data?",
+      "OwnGains stops copying new data from Health Connect. Your saved steps, heart rate and sleep can stay on this phone or be deleted now. Imported weight, body fat, hydration and meals stay in your logs.",
+      [
+        { text: "Keep", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            deleteHealthHistory(userId).catch((error: unknown) =>
+              captureException(error, { feature: "healthConnect" }),
+            );
+          },
+        },
+      ],
+      "warning",
+    );
   };
 
   const handleConnect = async (): Promise<void> => {
@@ -144,7 +177,30 @@ export default function HealthConnectSection({
               </Text>
             </View>
             <View style={styles.divider} />
-            {button("Sync Now", "Import new data from Health Connect now", sync)}
+            <View style={styles.settingRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.settingLabel}>Keep Health Data</Text>
+                <Text style={styles.settingDescription}>
+                  Health Connect only lets OwnGains read the last 30 days. Keep a copy so older
+                  days remain. Weight, body fat, hydration and nutrition go into your logs. Steps,
+                  heart rate and sleep are stored on this phone only.
+                </Text>
+              </View>
+              <Switch
+                value={keep}
+                onValueChange={toggleKeep}
+                disabled={busy || !userId}
+                accessibilityLabel="Keep a copy of Health Connect data"
+                trackColor={{ false: colors.surfaceBorder, true: colors.accent }}
+                thumbColor={keep ? colors.textOnAccent : colors.textMuted}
+              />
+            </View>
+            {keep && (
+              <>
+                <View style={styles.divider} />
+                {button("Sync Now", "Import new data from Health Connect now", sync)}
+              </>
+            )}
             <View style={styles.divider} />
             {button("Manage Permissions", "Open Health Connect permissions", openSettings)}
           </>

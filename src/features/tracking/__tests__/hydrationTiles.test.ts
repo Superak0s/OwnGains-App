@@ -1,8 +1,3 @@
-jest.mock("expo-task-manager", () => ({ defineTask: jest.fn() }));
-jest.mock("@shared/services/notifications", () => ({
-  getNotifications: jest.fn(async () => null),
-  scheduleNotification: jest.fn(),
-}));
 jest.mock("../services", () => ({
   hydrationApi: { logHydration: jest.fn(async () => ({ success: true })) },
 }));
@@ -29,7 +24,7 @@ beforeEach(() => {
 it("logs the tile's amount for the stored user", async () => {
   getStoredUser.mockResolvedValue({ id: 7 });
   await logFromTile({ ml: 250 });
-  expect(logHydration).toHaveBeenCalledWith(250);
+  expect(logHydration).toHaveBeenCalledWith(250, undefined, null, undefined, 3);
   expect(ToastAndroid.show).toHaveBeenCalledWith("Logged 250 ml of water", expect.anything());
 });
 

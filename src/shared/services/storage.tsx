@@ -126,10 +126,10 @@ export const STORAGE_KEYS = {
   MACROS_SAVED_FOODS: "tracking_macros_saved_foods",
   SORENESS_TAB_WIDGETS: "trackingScreen_sorenessWidgets",
   MENSTRUAL_TAB_WIDGETS: "trackingScreen_menstrualWidgets",
+  HEALTH_TAB_WIDGETS: "trackingScreen_healthWidgets",
   MENSTRUAL_PREFS: "tracking_menstrual_prefs",
   FRIENDS_TAB_WIDGETS: "friendsScreen_friendsWidgets",
   REQUESTS_TAB_WIDGETS: "friendsScreen_requestsWidgets",
-  SEARCH_TAB_WIDGETS: "friendsScreen_searchWidgets",
   UNDERTRAINED_DISPLAY_MODE: "undertrainedDisplayMode",
   UNDERTRAINED_CALCULATION_MODE: "undertrainedCalculationMode",
   PR_CELEBRATION: "prCelebration",
@@ -137,5 +137,7 @@ export const STORAGE_KEYS = {
   PROGRAM_DIRTY: "programDirty",
   HEALTH_CONNECT_IMPORTED: "healthConnectImported",
   HEALTH_CONNECT_LAST_SYNC: "healthConnectLastSync",
+  HEALTH_CONNECT_HISTORY: "healthConnectHistory",
+  HEALTH_CONNECT_KEEP: "healthConnectKeep",
 } as const
 

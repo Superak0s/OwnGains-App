@@ -1,13 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  Platform,
-  Switch,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, TextInput } from "react-native";
 import ModalSheet from "@shared/components/ModalSheet";
 import { useAuth } from "@shared/context/AuthContext";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
@@ -21,13 +13,10 @@ import type { WidgetDefinition } from "@shared/types";
 import { toDefaultWidgets } from "@shared/types";
 import { hydrationApi } from "../services";
 import {
+  DEFAULT_HYDRATION_ERROR_MARGIN,
   DEFAULT_HYDRATION_PRESETS,
   type HydrationPreset,
 } from "../services/types";
-import {
-  isHydrationNotificationEnabled,
-  setHydrationNotificationEnabled,
-} from "../hydrationNotification";
 import { describeError } from "../helpers";
 import { buildLocalISOForDate } from "../utils";
 import { useRetryKey } from "../hooks/useRetryKey";
@@ -36,9 +25,9 @@ import {
   Bar,
   Button,
   Chip,
+  ErrorMarginStepper,
   IconButton,
   Metric,
-  Note,
   Row,
   radius,
   space,
@@ -49,7 +38,8 @@ export type HydrationWidgetType =
   | "hydration_overview"
   | "hydration_calendar"
   | "hydration_goal"
-  | "hydration_history";
+  | "hydration_history"
+  | "hydration_chart";
 
 export const HYDRATION_WIDGET_REGISTRY: Record<
   HydrationWidgetType,
@@ -83,15 +73,23 @@ export const HYDRATION_WIDGET_REGISTRY: Record<
     availableSizes: ["medium", "large"],
     defaultSize: "medium",
   },
+  hydration_chart: {
+    type: "hydration_chart",
+    title: "Hydration Chart",
+    description: "Water drunk each day this week",
+    availableSizes: ["medium", "large"],
+    defaultSize: "medium",
+  },
 };
 
 export const DEFAULT_HYDRATION_WIDGETS = toDefaultWidgets(
   HYDRATION_WIDGET_REGISTRY,
   [
     "hydration_overview",
+    "hydration_chart",
     "hydration_calendar",
-    "hydration_goal",
     "hydration_history",
+    "hydration_goal",
   ],
 );
 
@@ -130,7 +128,7 @@ export function LogHydrationModal({
     DEFAULT_HYDRATION_PRESETS,
   );
   const [editingPresets, setEditingPresets] = useState(false);
-  const [errorPercent, setErrorPercent] = useState(0);
+  const [errorMargin, setErrorMargin] = useState(DEFAULT_HYDRATION_ERROR_MARGIN);
   const retryKey = useRetryKey();
 
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -162,7 +160,6 @@ export function LogHydrationModal({
       const response = await hydrationApi.getSettings();
       if (response.success && response.data) {
         setSettings(response.data);
-        setErrorPercent(response.data.measurementErrorPercent);
       }
     } catch (err) {
       console.error("Failed to load hydration settings:", err);
@@ -186,20 +183,19 @@ export function LogHydrationModal({
       setLoading(true);
       setError("");
 
-      if (settings && errorPercent !== settings.measurementErrorPercent) {
-        await hydrationApi.setSettings(undefined, errorPercent);
-      }
       const loggedAt = prefillDate ? buildLocalISOForDate(prefillDate) : null;
       await hydrationApi.logHydration(
         amountMl,
         note || undefined,
         loggedAt,
-        retryKey.keyFor(`${amountMl}|${note}|${loggedAt ?? ""}`),
+        retryKey.keyFor(`${amountMl}|${note}|${loggedAt ?? ""}|${errorMargin}`),
+        errorMargin,
       );
       retryKey.reset();
 
       setAmountMl(500);
       setNote("");
+      setErrorMargin(DEFAULT_HYDRATION_ERROR_MARGIN);
       onClose();
       onSuccess?.();
     } catch (err) {
@@ -213,15 +209,11 @@ export function LogHydrationModal({
     ? Math.min((amountMl / settings.goalMl) * 100, 100)
     : 0;
 
-  const errorMl = Math.round((amountMl * errorPercent) / 100);
-  const rangeLow = Math.max(0, amountMl - errorMl);
-  const rangeHigh = amountMl + errorMl;
-
   return (
     <ModalSheet
       visible={visible}
       onClose={onClose}
-      title='Log hydration'
+      title="Log hydration"
       confirmText={loading ? "Logging…" : "Log hydration"}
       onConfirm={handleLog}
       confirmDisabled={loading}
@@ -230,9 +222,9 @@ export function LogHydrationModal({
       <ScrollView>
         <View style={styles.amountBlock}>
           <Metric
-            label='Amount'
+            label="Amount"
             value={String(amountMl)}
-            unit='ml'
+            unit="ml"
             tone={colors.info}
             meta={
               settings
@@ -247,7 +239,7 @@ export function LogHydrationModal({
                   onPress={() => setAmountMl((v) => Math.max(0, v - STEP_ML))}
                 />
                 <IconButton
-                  glyph='+'
+                  glyph="+"
                   label={`Add ${STEP_ML} millilitres`}
                   onPress={() => setAmountMl((v) => v + STEP_ML)}
                 />
@@ -257,47 +249,24 @@ export function LogHydrationModal({
           {settings && <Bar pct={progressPercentage} tone={colors.info} />}
         </View>
 
-        <View style={styles.errorRow}>
-          <Text style={styles.fieldLabel}>Measurement error</Text>
-          <IconButton
-            glyph={"−"}
-            label='Lower the measurement error'
-            onPress={() => setErrorPercent((v) => Math.max(0, v - 1))}
-          />
-          <Text style={styles.errorValue}>
-            {"±"}
-            {errorPercent}%
-          </Text>
-          <IconButton
-            glyph='+'
-            label='Raise the measurement error'
-            onPress={() => setErrorPercent((v) => Math.min(20, v + 1))}
-          />
-        </View>
-        {errorPercent > 0 && (
-          <Note>
-            Counted as somewhere between {rangeLow} and {rangeHigh}ml.
-          </Note>
-        )}
-
         <Text style={trackingStyles.inputLabel}>Exact amount (ml)</Text>
         <TextInput
           style={trackingStyles.input}
-          placeholder='500'
+          placeholder="500"
           placeholderTextColor={colors.textMuted}
           value={String(amountMl)}
           onChangeText={(text) =>
             setAmountMl(Math.max(0, Number.parseInt(text, 10) || 0))
           }
-          keyboardType='number-pad'
+          keyboardType="number-pad"
         />
 
         <View style={styles.presetHeader}>
           <Text style={trackingStyles.inputLabel}>Quick presets</Text>
           <Button
             label={editingPresets ? "Done" : "Edit"}
-            size='sm'
-            variant='quiet'
+            size="sm"
+            variant="quiet"
             onPress={() =>
               editingPresets ? savePresets() : setEditingPresets(true)
             }
@@ -321,7 +290,7 @@ export function LogHydrationModal({
                         Math.max(0, Number.parseInt(text, 10) || 0),
                       )
                     }
-                    keyboardType='number-pad'
+                    keyboardType="number-pad"
                     accessibilityLabel={`${preset.label} in millilitres`}
                   />
                 }
@@ -347,15 +316,21 @@ export function LogHydrationModal({
         </Text>
         <TextInput
           style={[trackingStyles.input, { minHeight: 64 }]}
-          placeholder='After a workout, before bed'
+          placeholder="After a workout, before bed"
           placeholderTextColor={colors.textMuted}
           value={note}
           maxLength={NOTE_MAX_LENGTH}
           onChangeText={setNote}
           multiline
           numberOfLines={2}
-          textAlignVertical='top'
+          textAlignVertical="top"
         />
+
+        <ErrorMarginStepper value={errorMargin} onChange={setErrorMargin} />
+        <Text style={trackingStyles.modalHint}>
+          Glasses and bottles are rarely filled exactly. This margin widens each
+          total into a min-max range, so ±3% on 500 ml shows as 485-515.
+        </Text>
 
         {!!error && <Text style={trackingStyles.inputError}>{error}</Text>}
       </ScrollView>
@@ -367,25 +342,6 @@ const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     amountBlock: { gap: space.md, paddingVertical: space.sm },
     stepperRow: { flexDirection: "row", gap: space.sm },
-    errorRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: space.sm,
-      paddingTop: space.md,
-    },
-    fieldLabel: {
-      flex: 1,
-      fontSize: 14,
-      fontWeight: "600",
-      color: colors.textPrimary,
-    },
-    errorValue: {
-      minWidth: 48,
-      textAlign: "center",
-      fontSize: 15,
-      fontWeight: "700",
-      color: colors.textPrimary,
-    },
     presetHeader: {
       flexDirection: "row",
       alignItems: "center",
@@ -426,24 +382,8 @@ export function HydrationSettingsWidget({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState(false);
-  const { user } = useAuth();
-  const userId = user?.id == null ? null : String(user.id);
-  const [notificationOn, setNotificationOn] = useState(false);
 
   const styles = useMemo(() => makeHydrationSettingsStyles(colors), [colors]);
-
-  useEffect(() => {
-    if (userId) void isHydrationNotificationEnabled(userId).then(setNotificationOn);
-  }, [userId]);
-
-  const toggleNotification = async (on: boolean) => {
-    if (!userId) return;
-    setNotificationOn(on);
-    if (!(await setHydrationNotificationEnabled(userId, on))) {
-      setNotificationOn(false);
-      setError("Allow notifications for OwnGains to use the quick-log notification.");
-    }
-  };
 
   useEffect(() => {
     if (!success) return;
@@ -484,7 +424,6 @@ export function HydrationSettingsWidget({
 
       setSuccess(true);
       onSettingsUpdate?.({ goalMl, measurementErrorPercent });
-
     } catch (err) {
       setError(describeError(err));
     } finally {
@@ -495,8 +434,8 @@ export function HydrationSettingsWidget({
   return (
     <View>
       <Row
-        title='Hydration settings'
-        meta={`${(goalMl / 1000).toFixed(1)}L a day, ±${measurementErrorPercent}% measurement error`}
+        title="Hydration settings"
+        meta={`${(goalMl / 1000).toFixed(1)}L a day`}
         onPress={() => setExpanded(!expanded)}
         right={
           <Text style={[styles.chevron, expanded && styles.chevronOpen]}>
@@ -516,8 +455,8 @@ export function HydrationSettingsWidget({
               onChangeText={(text) =>
                 setGoalMl(Math.max(500, Number.parseInt(text, 10) || 2000))
               }
-              keyboardType='number-pad'
-              accessibilityLabel='Daily hydration goal in millilitres'
+              keyboardType="number-pad"
+              accessibilityLabel="Daily hydration goal in millilitres"
             />
             <View style={styles.presetRow}>
               {PRESET_GOALS_ML.map((preset) => (
@@ -531,21 +470,6 @@ export function HydrationSettingsWidget({
             </View>
           </View>
 
-          {Platform.OS === "android" && (
-            <Row
-              title='Quick-log notification'
-              meta="Keeps a notification with today's total and buttons for your first three presets."
-              right={
-                <Switch
-                  value={notificationOn}
-                  onValueChange={toggleNotification}
-                  accessibilityLabel='Quick-log notification'
-                />
-              }
-              last
-            />
-          )}
-
           {!!error && <Text style={styles.error}>{error}</Text>}
           {success && <Text style={styles.success}>Settings saved.</Text>}
 
@@ -556,8 +480,8 @@ export function HydrationSettingsWidget({
               disabled={loading}
             />
             <Button
-              label='Close'
-              variant='quiet'
+              label="Close"
+              variant="quiet"
               onPress={() => setExpanded(false)}
               disabled={loading}
             />

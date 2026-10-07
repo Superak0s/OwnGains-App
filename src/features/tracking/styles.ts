@@ -1,11 +1,12 @@
 import { StyleSheet } from "react-native";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import { radius, space } from "./ui";
+import { SCREEN_PADDING } from "@shared/layout";
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    content: { paddingHorizontal: 14, paddingTop: 8, paddingBottom: 120 },
+    content: SCREEN_PADDING,
     header: { marginBottom: space.lg },
     title: {
       fontSize: 30,

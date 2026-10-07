@@ -1,3 +1,4 @@
+/* global __dirname */
 // Expo's flat config bundles the react, react-hooks, import and typescript
 // rule sets. Everything below either switches off a rule that does not apply
 // to this project or narrows one that would otherwise be pure noise.
@@ -28,6 +29,32 @@ module.exports = [
 
       "import/first": "off",
 
+      // A cycle can leave an import undefined while modules are still loading,
+      // which tsc cannot see.
+      "import/no-cycle": "warn",
+
+      // Hermes has no ES2023 copying array methods, so these throw
+      // "undefined is not a function" at runtime while tsc and jest pass.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression > MemberExpression.callee > Identifier.property[name=/^(toSorted|toReversed|toSpliced)$/]",
+          message: "Hermes lacks this. Copy then mutate: [...arr].sort().",
+        },
+      ],
+    },
+  },
+  {
+    // Type-aware rules need the tsconfig, so they only cover the files it includes.
+    files: ["src/**/*.ts", "src/**/*.tsx", "App.tsx", "index.ts"],
+    plugins: expo.find((c) => c.plugins?.["@typescript-eslint"]).plugins,
+    languageOptions: {
+      parserOptions: { projectService: true, tsconfigRootDir: __dirname },
+    },
+    rules: {
+      "@typescript-eslint/no-unsafe-call": "warn",
+      "@typescript-eslint/no-unsafe-member-access": "warn",
     },
   },
   {

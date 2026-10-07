@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
-import type { StyleProp, ViewStyle } from "react-native";
+import { useState } from "react";
 import { View, Text, StyleSheet, Modal } from "react-native";
 import type { WidgetDefinition } from "@shared/types";
 import { toDefaultWidgets } from "@shared/types";
 import { useTheme } from "@shared/context/ThemeContext";
-import { sorenessApi } from "../services";
-import type { ActiveSoreness, MuscleGroup } from "../types/muscleRecovery";
+import {
+  MUSCLE_GROUPS,
+  MUSCLE_GROUP_LABELS,
+  type MuscleGroup,
+} from "../types/muscleRecovery";
 
-import MuscleMap from "../components/MuscleMap";
 import { MuscleSorenessModal } from "../components/MuscleSorenessModal";
 import { DOMSFollowUp } from "../components/DOMSFollowUp";
 import { DOMSHeatmap } from "../components/DOMSHeatmap";
@@ -15,23 +16,24 @@ import { InjuryTracker } from "../components/InjuryTracker";
 import { LogInjuryModal } from "../components/LogInjuryModal";
 import { MuscleDashboard } from "../components/MuscleDashboard";
 import { Button, Chip, Note, radius, space } from "../ui";
-import { captureException, metric } from "@shared/services/crashReporting";
 
 export type SorenessWidgetType =
-  | "muscle_map"
+  | "soreness_log"
   | "doms_followup"
   | "doms_heatmap"
-  | "injury_tracker";
+  | "injury_tracker"
+  | "soreness_calendar"
+  | "soreness_history";
 
 export const SORENESS_WIDGET_REGISTRY: Record<
   SorenessWidgetType,
   WidgetDefinition<SorenessWidgetType>
 > = {
-  muscle_map: {
-    type: "muscle_map",
-    title: "Muscle Map",
-    description: "Tap any muscle to log soreness, front and back views",
-    availableSizes: ["large"],
+  soreness_log: {
+    type: "soreness_log",
+    title: "Log Soreness",
+    description: "Pick a muscle to log how sore it is",
+    availableSizes: ["medium", "large"],
     defaultSize: "large",
   },
   doms_followup: {
@@ -55,30 +57,37 @@ export const SORENESS_WIDGET_REGISTRY: Record<
     availableSizes: ["large"],
     defaultSize: "large",
   },
+  soreness_calendar: {
+    type: "soreness_calendar",
+    title: "Soreness Calendar",
+    description: "Calendar view of days you've logged soreness",
+    availableSizes: ["medium", "large"],
+    defaultSize: "large",
+  },
+  soreness_history: {
+    type: "soreness_history",
+    title: "Soreness History",
+    description: "Your recent soreness entries",
+    availableSizes: ["medium", "large"],
+    defaultSize: "medium",
+  },
 };
 
 export const DEFAULT_SORENESS_WIDGETS = toDefaultWidgets(
   SORENESS_WIDGET_REGISTRY,
-  ["muscle_map", "doms_followup"],
+  [
+    "soreness_log",
+    "doms_followup",
+    "doms_heatmap",
+    "soreness_calendar",
+    "soreness_history",
+  ],
 );
 
 export const SORENESS_TAB_CONFIG = {
   key: "soreness",
   label: "Recovery",
 };
-
-function buildSorenessMap(
-  activeSoreness: ActiveSoreness[],
-): Partial<Record<MuscleGroup, number>> {
-  const map: Partial<Record<MuscleGroup, number>> = {};
-  for (const s of activeSoreness) {
-    // A muscle with more than one active record shows the worse of the two.
-    if (!map[s.muscleGroup] || map[s.muscleGroup]! < s.intensity) {
-      map[s.muscleGroup] = s.intensity;
-    }
-  }
-  return map;
-}
 
 function MuscleDashboardOverlay({
   muscle,
@@ -88,76 +97,45 @@ function MuscleDashboardOverlay({
   readonly onClose: () => void;
 }) {
   return (
-    <Modal visible={!!muscle} animationType='slide' onRequestClose={onClose}>
+    <Modal visible={!!muscle} animationType="slide" onRequestClose={onClose}>
       {muscle && <MuscleDashboard muscleGroup={muscle} onClose={onClose} />}
     </Modal>
   );
 }
 
-function ViewToggle({
-  view,
-  onChange,
-  style,
+function MusclePicker({
+  onPick,
 }: {
-  readonly view: "front" | "back";
-  readonly onChange: (view: "front" | "back") => void;
-  readonly style?: StyleProp<ViewStyle>;
+  readonly onPick: (muscle: MuscleGroup) => void;
 }) {
   return (
-    <View style={[styles.viewToggle, style]}>
-      {(["front", "back"] as const).map((v) => (
-        <Chip
-          key={v}
-          label={v === "front" ? "Front" : "Back"}
-          selected={view === v}
-          onPress={() => onChange(v)}
-        />
+    <View style={styles.musclePicker}>
+      {MUSCLE_GROUPS.map((m) => (
+        <Chip key={m} label={MUSCLE_GROUP_LABELS[m]} selected={false} onPress={() => onPick(m)} />
       ))}
     </View>
   );
 }
 
-export function MuscleMapWidget() {
-  const [view, setView] = useState<"front" | "back">("front");
-  const [activeSoreness, setActiveSoreness] = useState<ActiveSoreness[]>([]);
+export function SorenessLogWidget({
+  onLogged,
+}: {
+  readonly onLogged: () => void;
+}) {
   const [tappedMuscle, setTappedMuscle] = useState<MuscleGroup | null>(null);
-
-  const loadActiveSoreness = useCallback(async () => {
-    try {
-      const response = await sorenessApi.getActiveSoreness();
-      setActiveSoreness(response.data ?? []);
-    } catch (err) {
-      console.error("Failed to load active soreness:", err);
-      metric.count("tracking.active_soreness_load_failed");
-      captureException(err, { stage: "loadActiveSoreness" });
-    }
-  }, []);
-
-  useEffect(() => {
-    loadActiveSoreness();
-  }, [loadActiveSoreness]);
-
-  const sorenessMap = buildSorenessMap(activeSoreness);
 
   return (
     <View>
-      <ViewToggle view={view} onChange={setView} style={styles.mapToggle} />
-      <MuscleMap
-        view={view}
-        selectedMuscles={new Set()}
-        sorenessMap={sorenessMap as Record<MuscleGroup, number>}
-        onPressMuscle={(muscle) => setTappedMuscle(muscle)}
-        showLabels
-      />
-      <View style={styles.mapHint}>
+      <MusclePicker onPick={setTappedMuscle} />
+      <View style={styles.pickerHint}>
         <Note>Tap a muscle to log soreness</Note>
       </View>
       {tappedMuscle && (
         <MuscleSorenessModal
-          visible={!!tappedMuscle}
+          visible
           muscleGroup={tappedMuscle}
           onClose={() => setTappedMuscle(null)}
-          onSuccess={loadActiveSoreness}
+          onSuccess={onLogged}
         />
       )}
     </View>
@@ -235,7 +213,6 @@ export function LogSorenessModal({
   prefillDate,
 }: LogSorenessModalProps) {
   const { colors } = useTheme();
-  const [view, setView] = useState<"front" | "back">("front");
   const [tappedMuscle, setTappedMuscle] = useState<MuscleGroup | null>(null);
 
   if (!visible) return null;
@@ -243,7 +220,7 @@ export function LogSorenessModal({
   return (
     <Modal
       visible={visible}
-      animationType='slide'
+      animationType="slide"
       transparent
       onRequestClose={onClose}
     >
@@ -255,18 +232,11 @@ export function LogSorenessModal({
         >
           <View style={styles.quickLogHeader}>
             <Text style={[styles.quickLogTitle, { color: colors.textPrimary }]}>
-              Tap a muscle to log soreness
+              Which muscle is sore?
             </Text>
-            <Button label='Done' size='sm' variant='quiet' onPress={onClose} />
+            <Button label="Done" size="sm" variant="quiet" onPress={onClose} />
           </View>
-          <ViewToggle view={view} onChange={setView} />
-          <MuscleMap
-            view={view}
-            selectedMuscles={new Set()}
-            sorenessMap={{} as Record<MuscleGroup, number>}
-            onPressMuscle={(muscle) => setTappedMuscle(muscle)}
-            showLabels
-          />
+          <MusclePicker onPick={setTappedMuscle} />
         </View>
       </View>
 
@@ -284,8 +254,8 @@ export function LogSorenessModal({
 }
 
 const styles = StyleSheet.create({
-  mapToggle: { alignSelf: "center", marginBottom: space.sm },
-  mapHint: { alignItems: "center", marginTop: space.xs },
+  musclePicker: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+  pickerHint: { alignItems: "center", marginTop: space.sm },
   quickLogBackdrop: { flex: 1, justifyContent: "flex-end" },
   quickLogSheet: {
     borderTopLeftRadius: radius.lg,
@@ -301,5 +271,4 @@ const styles = StyleSheet.create({
     marginBottom: space.md,
   },
   quickLogTitle: { fontSize: 17, fontWeight: "600", flexShrink: 1 },
-  viewToggle: { flexDirection: "row", gap: space.sm },
 });

@@ -132,9 +132,11 @@ import { useRestReminder } from "./hooks/useRestReminder";
 import {
   buildTrainingSetEntries,
   getUndertrainedMuscleGroups,
+  type UndertrainedCalculationMode,
 } from "../analytics/utils/trainingSummary";
 import { captureException, log, metric } from "@shared/services/crashReporting";
 import { tutorialAnchor } from "@features/tutorial/anchors";
+import { SCREEN_PADDING } from "@shared/layout";
 
 interface CurrentDayWorkout {
   dayNumber: number;
@@ -383,7 +385,7 @@ function WorkoutScreenBody({
     "banner" | "per_exercise" | "both" | "off"
   >("off");
   const [undertrainedCalculationMode, setUndertrainedCalculationMode] =
-    useState<"days_done" | "full_split">("days_done");
+    useState<UndertrainedCalculationMode>("days_done");
   const [dismissedUndertrainedBanner, setDismissedUndertrainedBanner] =
     useState<boolean>(false);
 
@@ -457,7 +459,7 @@ function WorkoutScreenBody({
         );
       }
       if (calcMode) {
-        setUndertrainedCalculationMode(calcMode as "days_done" | "full_split");
+        setUndertrainedCalculationMode(calcMode as UndertrainedCalculationMode);
       }
     })();
   }, [user?.id]);
@@ -2830,7 +2832,7 @@ export const makeStyles = (colors: ThemeColors) => {
       textAlign: "center",
     },
     exerciseList: { flex: 1 },
-    exerciseListContent: { padding: 15, paddingBottom: 120 },
+    exerciseListContent: SCREEN_PADDING,
     exerciseCard: {
       backgroundColor: colors.surface,
       borderRadius: 12,
@@ -3411,7 +3413,7 @@ export default function WorkoutScreen(): React.JSX.Element {
     () =>
       onActiveTraineeChange.subscribe((next) => {
         setTrainee(next);
-        if (!next) setActiveTab("me");
+        setActiveTab(next ? "trainees" : "me");
       }),
     [],
   );

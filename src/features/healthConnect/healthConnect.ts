@@ -4,8 +4,11 @@ import {
   getSdkStatus,
   initialize,
   openHealthConnectSettings,
+  readRecords,
   requestPermission,
   SdkAvailabilityStatus,
+  type RecordResult,
+  type RecordType,
 } from "react-native-health-connect";
 
 export const IMPORT_TYPES = ["Weight", "BodyFat", "Hydration", "Nutrition"] as const;
@@ -53,6 +56,24 @@ export async function connect(): Promise<HealthType[]> {
     [...IMPORT_TYPES, ...LIVE_TYPES].map((recordType) => ({ accessType: "read" as const, recordType })),
   );
   return getGrantedTypes();
+}
+
+export async function readAll<T extends RecordType>(
+  recordType: T,
+  startTime: string,
+  endTime: string,
+): Promise<RecordResult<T>[]> {
+  const records: RecordResult<T>[] = [];
+  let pageToken: string | undefined;
+  do {
+    const page = await readRecords(recordType, {
+      timeRangeFilter: { operator: "between", startTime, endTime },
+      pageToken,
+    });
+    records.push(...page.records);
+    pageToken = page.pageToken || undefined;
+  } while (pageToken);
+  return records;
 }
 
 export const openSettings = (): void => openHealthConnectSettings();

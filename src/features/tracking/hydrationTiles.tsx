@@ -1,13 +1,48 @@
 import { useEffect, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
-import { AppRegistry, Linking, Platform, ToastAndroid } from "react-native";
+import { AppRegistry, AppState, Linking, Platform, ToastAndroid } from "react-native";
 import { authService } from "@features/auth/services";
-import { quickLogHydration } from "./hydrationNotification";
+import { captureException, trackFeature } from "@shared/services/crashReporting";
+import {
+  getRecordStoreUser,
+  setRecordStoreUser,
+} from "@shared/services/offlineHelpers";
+import { hydrationApi } from "./services";
+import { DEFAULT_HYDRATION_ERROR_MARGIN } from "./services/types";
 import { LogHydrationModal } from "./tabs/HydrationTab";
 
 // Both names are shared with modules/hydration-tiles (HydrationTileService.kt).
 const TASK_NAME = "HydrationTileLog";
 const LOG_WATER_URL = "owngains://log-water";
+
+/** Logs a drink outside the app's UI. Returns false when nothing was logged. */
+const quickLogHydration = async (userId: string, ml: number): Promise<boolean> => {
+  if (!(ml > 0)) return false;
+
+  // A headless run starts with no account seated. One signed in as someone
+  // else must not get this drink.
+  const seated = getRecordStoreUser();
+  if (seated === null) setRecordStoreUser(userId);
+  else if (seated !== userId) return false;
+
+  try {
+    await hydrationApi.logHydration(
+      ml,
+      undefined,
+      null,
+      undefined,
+      DEFAULT_HYDRATION_ERROR_MARGIN,
+    );
+    trackFeature("hydration", "quick_log", {
+      source: "tile",
+      foreground: AppState.currentState === "active",
+    });
+    return true;
+  } catch (error) {
+    captureException(error, { stage: "hydrationQuickLog", source: "tile" });
+    return false;
+  }
+};
 
 export const logFromTile = async ({ ml }: { ml?: number }): Promise<void> => {
   const user = await authService.getStoredUser().catch(() => null);
@@ -15,7 +50,7 @@ export const logFromTile = async ({ ml }: { ml?: number }): Promise<void> => {
     ToastAndroid.show("Sign in to OwnGains to log water.", ToastAndroid.SHORT);
     return;
   }
-  const logged = await quickLogHydration(String(user.id), Number(ml), "tile");
+  const logged = await quickLogHydration(String(user.id), Number(ml));
   ToastAndroid.show(
     logged ? `Logged ${ml} ml of water` : "Couldn't log water. Open OwnGains to try again.",
     ToastAndroid.SHORT,
@@ -30,7 +65,7 @@ const isLogWaterUrl = (url: string | null): boolean =>
   url?.startsWith(LOG_WATER_URL) ?? false;
 
 /** Opens the log water sheet when the "Log water" tile launches the app. */
-export function HydrationTileModal({ onLogged }: { readonly onLogged: () => void }) {
+export function HydrationTileModal() {
   const [open, setOpen] = useState(false);
   const navigation = useNavigation();
 
@@ -49,10 +84,6 @@ export function HydrationTileModal({ onLogged }: { readonly onLogged: () => void
   }, [navigation]);
 
   return (
-    <LogHydrationModal
-      visible={open}
-      onClose={() => setOpen(false)}
-      onSuccess={onLogged}
-    />
+    <LogHydrationModal visible={open} onClose={() => setOpen(false)} />
   );
 }

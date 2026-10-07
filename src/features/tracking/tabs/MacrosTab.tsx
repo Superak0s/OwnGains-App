@@ -1,7 +1,8 @@
 import type { WidgetDefinition } from "@shared/types";
 import { toDefaultWidgets } from "@shared/types";
 
-export type MacrosWidgetType = "macros_calendar" | "macros_today";
+export type MacrosWidgetType =
+  "macros_calendar" | "macros_today" | "macros_chart" | "macros_history";
 
 export const MACROS_WIDGET_REGISTRY: Record<
   MacrosWidgetType,
@@ -21,11 +22,27 @@ export const MACROS_WIDGET_REGISTRY: Record<
     availableSizes: ["small", "medium", "large"],
     defaultSize: "medium",
   },
+  macros_chart: {
+    type: "macros_chart",
+    title: "Calories Chart",
+    description: "Calories eaten each day this week",
+    availableSizes: ["medium", "large"],
+    defaultSize: "medium",
+  },
+  macros_history: {
+    type: "macros_history",
+    title: "Macros History",
+    description: "Your logged meals, with delete",
+    availableSizes: ["medium", "large"],
+    defaultSize: "medium",
+  },
 };
 
 export const DEFAULT_MACROS_WIDGETS = toDefaultWidgets(MACROS_WIDGET_REGISTRY, [
   "macros_today",
+  "macros_chart",
   "macros_calendar",
+  "macros_history",
 ]);
 
 export const MACROS_TAB_CONFIG = {

@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { WEIGHT_TAB_CONFIG } from "./WeightTab";
 import { PHOTOS_TAB_CONFIG } from "./PhotosTab";
 import { MACROS_TAB_CONFIG } from "./MacrosTab";
@@ -16,4 +17,5 @@ export const TRACKING_TABS = [
   MEASUREMENTS_TAB_CONFIG,
   SORENESS_TAB_CONFIG,
   MENSTRUAL_TAB_CONFIG,
+  ...(Platform.OS === "android" ? [{ key: "health", label: "Health" }] : []),
 ];

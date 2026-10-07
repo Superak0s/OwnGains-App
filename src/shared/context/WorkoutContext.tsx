@@ -80,7 +80,6 @@ import {
 } from "../../utils/timeEstimation";
 
 import { AppState, Platform } from "react-native";
-import { hideHydrationNotification } from "@features/tracking/hydrationNotification";
 import {
   cancelAllSupplementReminders,
   initializeSupplementNotifications,
@@ -1118,7 +1117,6 @@ export const WorkoutProvider = ({
     if (!userId) return;
     const keys = Object.values(STORAGE_KEYS);
     await cancelAllSupplementReminders(userId);
-    await hideHydrationNotification();
     await deletePhotoFilesFor(userId);
     await removeMultipleFromStorage(keys, userId);
     // The named keys are only this feature's. Everything tracking-related is

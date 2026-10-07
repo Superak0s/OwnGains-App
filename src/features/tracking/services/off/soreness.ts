@@ -115,8 +115,8 @@ export const sorenessApi = {
     const entries = await store.getWhere({ muscleGroup: muscle })
     return {
       success: true,
-      data: entries
-        .toSorted(
+      data: [...entries]
+        .sort(
           (a, b) =>
             new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime(),
         ),

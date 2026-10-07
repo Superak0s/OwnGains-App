@@ -1,5 +1,5 @@
 import { create, act, type ReactTestRenderer, type ReactTestInstance } from "react-test-renderer";
-import { TouchableOpacity, TextInput } from "react-native";
+import { Switch, TouchableOpacity, TextInput } from "react-native";
 
 jest.mock("@shared/context/ThemeContext", () => ({
   useTheme: () => ({ colors: new Proxy({}, { get: () => "#000000" }) }),
@@ -9,7 +9,6 @@ jest.mock("@shared/components/CustomAlert", () => ({
   useAlert: () => ({ alert: mockAlert, AlertComponent: null }),
 }));
 jest.mock("../../motion", () => ({ Hand: () => null, PulseRing: () => null }));
-jest.mock("@features/tracking/components/MuscleMap", () => ({ __esModule: true, default: () => null }));
 
 import { Checklist, FriendRequestDemo, LogSetDemo, PermissionsDemo } from "../demos";
 
@@ -24,6 +23,11 @@ const render = (el: React.ReactElement) => {
 const press = (root: ReactTestInstance, label: string) =>
   act(() => {
     root.findAll((n) => n.type === TouchableOpacity && n.props.accessibilityLabel === label)[0].props.onPress();
+  });
+
+const toggle = (root: ReactTestInstance, label: string, on: boolean) =>
+  act(() => {
+    root.findAll((n) => n.type === Switch && n.props.accessibilityLabel === label)[0].props.onValueChange(on);
   });
 
 beforeEach(() => jest.clearAllMocks());
@@ -55,12 +59,21 @@ it("log-set demo saves only with weight and reps, and Use it fills them", () => 
 it("permissions demo asks before granting Trainer Access and completes after a revoke", () => {
   const onComplete = jest.fn();
   const tree = render(<PermissionsDemo onComplete={onComplete} />);
-  press(tree.root, "Grant Trainer Access for Alex");
+  toggle(tree.root, "Trainer Access for Alex", true);
   expect(mockAlert).toHaveBeenCalledWith("Make Alex your trainer?", expect.any(String), expect.any(Array), "warning");
   act(() => mockAlert.mock.calls[0][2][1].onPress());
   expect(onComplete).not.toHaveBeenCalled();
-  press(tree.root, "Revoke Trainer Access for Alex");
+  toggle(tree.root, "Trainer Access for Alex", false);
   expect(onComplete).toHaveBeenCalled();
+});
+
+it("permissions demo turns on History Access along with Analytics", () => {
+  const tree = render(<PermissionsDemo onComplete={jest.fn()} />);
+  toggle(tree.root, "Analytics Access for Alex", true);
+  const isOn = (label: string) =>
+    tree.root.findAll((n) => n.type === Switch && n.props.accessibilityLabel === label)[0].props.value;
+  expect(isOn("Analytics Access for Alex")).toBe(true);
+  expect(isOn("History Access for Alex")).toBe(true);
 });
 
 it("friend request completes on accept, not on decline", () => {

@@ -11,6 +11,7 @@ export interface HydrationEntry {
   amountMl: number;
   loggedAt: string;
   note?: string | null;
+  errorMargin?: number;
   createdAt: string;
 }
 
@@ -62,6 +63,8 @@ export const DEFAULT_HYDRATION_SETTINGS: HydrationSettings = {
   goalMl: 2500,
   measurementErrorPercent: 5,
 };
+
+export const DEFAULT_HYDRATION_ERROR_MARGIN = 3;
 
 export interface HydrationPreset {
   label: string;

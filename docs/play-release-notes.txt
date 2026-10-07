@@ -1,0 +1,9 @@
+• Tracking tabs show log, chart, calendar and history.
+• Health tab: steps, heart rate, sleep and trends, kept past 30 days.
+• Each drink has its own ±% error, like macros.
+• Log soreness from a muscle list, with a daily check-in on Home.
+• Weekly Sets and Exercises widgets. Records cover 1 to 12 reps.
+• Trainers can send a trainee a plan.
+• Friend search, QR scanner and permission switches.
+• The water quick-log notification is gone.
+• Clearer weight charts, plus crash and dark theme fixes.

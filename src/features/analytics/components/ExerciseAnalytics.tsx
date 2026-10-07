@@ -72,6 +72,7 @@ import {
   hasAutoSelectedExercise,
   setAutoSelectedExercise,
 } from "../utils/exerciseSelection";
+import { SCREEN_PADDING } from "@shared/layout";
 
 type FocusMode = "exercise" | "muscleGroup" | "training_summary";
 
@@ -1172,7 +1173,7 @@ export default function ExerciseAnalytics({
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    content: { padding: 10, paddingBottom: 40, flexGrow: 1 },
+    content: { ...SCREEN_PADDING, flexGrow: 1 },
 
     widgetLineMuted: {
       fontSize: 12,

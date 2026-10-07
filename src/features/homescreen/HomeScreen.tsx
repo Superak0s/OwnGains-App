@@ -48,6 +48,8 @@ import {
 } from "@shared/components/widgets/WidgetBoardChrome";
 import WidgetsPanel from "@shared/components/widgets/WidgetsPanel";
 import ForeignWidget from "./ForeignWidget";
+import { sorenessApi } from "@features/tracking/services";
+import { needsFollowUp } from "@features/tracking/utils";
 import HealthWidget from "@features/healthConnect/HealthWidget";
 import {
   HOME_WIDGET_REGISTRY,
@@ -79,6 +81,7 @@ import {
 } from "@shared/services/serverVersion";
 import { captureException, metric } from "@shared/services/crashReporting";
 import { tutorialAnchor } from "@features/tutorial/anchors";
+import { SCREEN_PADDING } from "@shared/layout";
 
 // One year of near-daily training. The weekly streak and the calendar dots
 // can only reach back as far as this fetch does, so it bounds both.
@@ -519,6 +522,17 @@ export default function HomeScreen(): React.JSX.Element {
     [isOffline, availableToAdd],
   );
 
+  const [sorenessDue, setSorenessDue] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!widgets.some((w) => w.type === "doms_followup")) return;
+      sorenessApi
+        .getActiveSoreness()
+        .then((res) => setSorenessDue((res.data ?? []).some((s) => needsFollowUp(s))))
+        .catch(() => setSorenessDue(false));
+    }, [widgets]),
+  );
+
   const widgetBoard = useWidgetBoard(addWidget, {
     onError: (message) => alert("Can't Add Widget", message, [{ text: "OK" }]),
   });
@@ -588,6 +602,9 @@ export default function HomeScreen(): React.JSX.Element {
       case "health_steps":
       case "health_heart_rate":
       case "health_sleep":
+      case "health_steps_trend":
+      case "health_heart_rate_trend":
+      case "health_sleep_trend":
         return (
           <HealthWidget
             type={instance.type}
@@ -885,7 +902,11 @@ export default function HomeScreen(): React.JSX.Element {
           )}
 
           <WidgetsPanel
-            widgets={widgets}
+            widgets={
+              sorenessDue || widgetBoard.editMode
+                ? widgets
+                : widgets.filter((w) => w.type !== "doms_followup")
+            }
             editMode={widgetBoard.editMode}
             onCycleSize={cycleWidgetSize}
             onRemove={removeWidget}
@@ -1270,11 +1291,7 @@ const makeStyles = (colors: ThemeColors) => {
       flex: 1,
       backgroundColor: colors.background,
     },
-    content: {
-      padding: 10,
-      paddingTop: 10,
-      paddingBottom: 120,
-    },
+    content: SCREEN_PADDING,
     errorBanner: {
       flexDirection: "row",
       alignItems: "center",

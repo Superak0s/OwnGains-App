@@ -1,4 +1,5 @@
 import type { MenstrualEntry } from "./services/types";
+import type { SorenessEntry, SorenessFollowUp } from "./types/muscleRecovery";
 import type { BodyFatEntryWithFields } from "./types";
 import { toDateString, formatDate, parseDate } from "@utils/format";
 
@@ -138,3 +139,86 @@ export function toFeetInches(cm: number): { feet: number; inches: number } {
 
 export const hasTapeMeasurements = (entry: BodyFatEntryWithFields): boolean =>
   entry.measurements?.waist != null || entry.waistCm != null;
+
+export interface TrendPoint {
+  at: string | null | undefined;
+  value: number;
+}
+
+export interface TrendChartData {
+  labels: string[];
+  datasets: { data: number[] }[];
+}
+
+const MAX_CHART_LABELS = 8;
+
+/** The newest `limit` points, oldest first, with at most eight x-axis labels so they don't overlap. */
+export function toTrendChartData(points: TrendPoint[], limit = 30): TrendChartData {
+  const recent = points
+    .filter((p) => parseDate(p.at) && Number.isFinite(p.value))
+    .sort((a, b) => parseDate(a.at)!.getTime() - parseDate(b.at)!.getTime())
+    .slice(-limit);
+  const every = Math.ceil(recent.length / MAX_CHART_LABELS);
+  return {
+    labels: recent.map((p, i) =>
+      i % every === 0 ? formatDate(p.at!, { month: "short", day: "numeric" }) : "",
+    ),
+    datasets: [{ data: recent.map((p) => p.value) }],
+  };
+}
+
+/** One bar per calendar day for the last `days` days, today last, empty days as 0. */
+export function toDailyTotalsChartData(
+  points: TrendPoint[],
+  days = 7,
+  today: Date = new Date(),
+): TrendChartData {
+  const totals = new Map<string, number>();
+  for (const p of points) {
+    const day = isoToLocalDateStr(p.at);
+    if (day && Number.isFinite(p.value)) totals.set(day, (totals.get(day) ?? 0) + p.value);
+  }
+  const dates = Array.from({ length: days }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - (days - 1 - i));
+    return d;
+  });
+  return {
+    labels: dates.map((d) => formatDate(d, { weekday: "short" })),
+    datasets: [{ data: dates.map((d) => totals.get(toDateString(d)) ?? 0) }],
+  };
+}
+
+/** Days between consecutive cycle starts, oldest cycle first. */
+export function cycleLengthPoints(entries: MenstrualEntry[]): TrendPoint[] {
+  const starts = entries
+    .map((e) => parseDate(e.cycleStart))
+    .filter((d): d is Date => d !== null)
+    .sort((a, b) => a.getTime() - b.getTime());
+  return starts.slice(1).map((start, i) => ({
+    at: start.toISOString(),
+    value: Math.round((start.getTime() - starts[i].getTime()) / 86_400_000),
+  }));
+}
+
+export const formatRange = (min: number, max: number): string | undefined => {
+  const low = min.toFixed(0);
+  const high = max.toFixed(0);
+  return low === high ? undefined : `${low}-${high}`;
+};
+
+export const followUpStatus = (
+  previous: number,
+  intensity: number,
+): SorenessFollowUp["status"] => {
+  if (intensity === 0) return "recovered";
+  return intensity < previous ? "better" : "still_sore";
+};
+
+/** A sore muscle is due a check-in once per day, starting the day after it was logged or last updated. */
+export const needsFollowUp = (
+  entry: SorenessEntry,
+  today: Date = new Date(),
+): boolean =>
+  entry.status !== "recovered" &&
+  isoToLocalDateStr(entry.updatedAt) < toDateString(today);

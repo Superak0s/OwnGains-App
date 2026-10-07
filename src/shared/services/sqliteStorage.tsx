@@ -1,7 +1,9 @@
 import * as SQLite from "expo-sqlite";
 import {
   appendWidgetTypes,
+  insertWidgetTypeBefore,
   mergeWidgetTypes,
+  orderWidgetTypes,
   runMigrations,
   type Migration,
 } from "./storageMigrations";
@@ -57,6 +59,88 @@ const MIGRATIONS: readonly Migration[] = [
         : merged;
       if (next !== value)
         db.runSync("UPDATE kv_store SET value = ? WHERE key = ?", [next, key]);
+    });
+  },
+  () => {
+    const rows = db.getAllSync<{ key: string; value: string }>(
+      "SELECT key, value FROM kv_store WHERE key IN ('friendsScreen_friendsWidgets', 'homeWidgets') " +
+        "OR key LIKE 'friendsScreen_friendsWidgets_user_%' OR key LIKE 'homeWidgets_user_%'",
+    );
+    rows.forEach(({ key, value }) => {
+      const next = key.startsWith("homeWidgets")
+        ? mergeWidgetTypes(value, {
+            search_qr: "friends_search",
+            search_users: "friends_search",
+          })
+        : appendWidgetTypes(
+            value,
+            [{ type: "friends_search", size: "medium" }],
+            true,
+          );
+      if (next !== value)
+        db.runSync("UPDATE kv_store SET value = ? WHERE key = ?", [next, key]);
+    });
+    db.runSync(
+      "DELETE FROM kv_store WHERE key = 'friendsScreen_searchWidgets' OR key LIKE 'friendsScreen_searchWidgets_user_%'",
+    );
+  },
+  () => {
+    db.runSync(
+      "DELETE FROM kv_store WHERE key = 'exerciseAnalytics_focusModeTabConfig' OR key LIKE 'exerciseAnalytics_focusModeTabConfig_user_%'",
+    );
+  },
+  () => {
+    const boards: Record<string, string> = {
+      weight:
+        "weight_overview:medium weight_chart:medium weight_calendar:large weight_history:medium",
+      bodyfat:
+        "bodyfat_latest:medium bodyfat_chart:medium bodyfat_calendar:large bodyfat_history:medium bodyfat_height:large",
+      macros:
+        "macros_today:medium macros_chart:medium macros_calendar:large macros_history:medium",
+      measurements:
+        "measurements_overview:medium measurements_chart:medium measurements_calendar:large measurements_history:medium",
+      hydration:
+        "hydration_overview:medium hydration_chart:medium hydration_calendar:large hydration_history:medium hydration_goal:medium",
+      soreness:
+        "soreness_log:large doms_followup:large doms_heatmap:large soreness_calendar:large soreness_history:medium",
+      menstrual:
+        "menstrual_overview:medium menstrual_chart:medium menstrual_calendar:large menstrual_history:medium menstrual_cycle:medium",
+      photos:
+        "photos_gallery:large photos_comparison:large photos_calendar:large",
+    };
+    Object.entries(boards).forEach(([tab, spec]) => {
+      const key = `trackingScreen_${tab}Widgets`;
+      const order = spec.split(" ").map((pair) => {
+        const [type, size] = pair.split(":");
+        return { type, size };
+      });
+      db.getAllSync<{ key: string; value: string }>(
+        "SELECT key, value FROM kv_store WHERE key = ? OR key LIKE ?",
+        [key, `${key}_user_%`],
+      ).forEach((row) => {
+        const next = orderWidgetTypes(row.value, order);
+        if (next !== row.value)
+          db.runSync("UPDATE kv_store SET value = ? WHERE key = ?", [
+            next,
+            row.key,
+          ]);
+      });
+    });
+  },
+  () => {
+    db.getAllSync<{ key: string; value: string }>(
+      "SELECT key, value FROM kv_store WHERE key = 'homeWidgets' OR key LIKE 'homeWidgets_user_%'",
+    ).forEach((row) => {
+      const next = insertWidgetTypeBefore(
+        row.value,
+        { type: "doms_followup", size: "large" },
+        "macros_today",
+      );
+      if (next !== row.value)
+        db.runSync("UPDATE kv_store SET value = ? WHERE key = ?", [
+          next,
+          row.key,
+        ]);
     });
   },
 ];

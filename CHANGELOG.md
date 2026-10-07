@@ -10,12 +10,17 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 - New Weekly Sets widget in Progress: working sets this week and the 4-week average. For a muscle group it compares them with the 10 to 20 sets a week most muscles need to grow, counting sets where the muscle only assists as half.
 - New Exercises widget for a muscle group: every exercise in the group with its own estimated 1RM and 30-day trend. Tap one to open its analytics.
+- Trainers can send their plan to a trainee from the Trainer section of their Actions tab. The trainee sees it in the trainer's Program tab and can tap Use this plan to make it their own. Any shared program now has the same Use this plan button.
+- Trend chart and history widgets for Body Fat, Macros, Measurements, Hydration and Cycle tracking, and a calendar and history for Soreness.
+- New Health tab in Tracking on Android, with your steps, heart rate and sleep from Health Connect, plus trend charts for each.
+- Keep Health Data in Settings, Health Connect (on by default) saves a daily copy of your steps, heart rate and sleep on this phone, so days older than Health Connect's 30-day limit remain. Turn it off to stop copying any Health Connect data and choose whether to delete what was saved.
 
 ### Changed
 
-- The active tab in the bottom bar is marked with a soft tint instead of a solid glowing bubble.
 - The Next Workout widget on Home is more compact.
-- Training Summary opens on the shortest range that has sets (today, this week or the last 30 days) and sits closer to the tabs above it.
+- The Analytics tabs are back in their default order (Exercise, Muscle Group, Training Summary). Any custom order or hidden tab there is reset once.
+- Every main screen (Home, Workout, Plan, Analytics, Tracking, Supplements, Friends, Settings) now uses the same spacing around its edges.
+- Training Summary opens on the last 90 days, with Last 30 Days, This Week and Custom as the other ranges, and sits closer to the tabs above it.
 - The custom date picker in Training Summary highlights the chosen start and end dates, shades the days between them and marks the days you trained.
 - Save and Log buttons stay pinned at the bottom of long forms instead of scrolling out of view.
 - Tracking no longer shows "Loading your entries" each time you come back to it. Entries refresh in the background.
@@ -23,12 +28,25 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The Migrate to Offline Account button and the other Settings action buttons no longer have an outline, and the Advanced section no longer has a colored strip on its left edge.
 - Muscle group analytics no longer show weight, 1RM, record or rest charts that pooled different exercises together. They focus on weekly sets, frequency and rep ranges instead.
 - Personal Records now also lists your best weight at each rep count from 1 to 12.
+- Your password manager now offers to save your username and password after you sign in or create an account.
+- The Search tab in Friends is gone. A Find Friends search bar now sits at the top of the Friends tab, with a camera button beside it that scans a friend's QR code. Your own code is one tap away in the scanner.
+- Starting a trainer session is quicker. Friends who gave you Trainer Access have a Train button in your friends list, Start Trainer Session is now at the top of a friend's Actions tab, and both open their workout right away.
+- Sharing with a friend is easier to manage. Each permission has an on/off switch, they are grouped into Progress, Live workouts and Coaching, and turning on Analytics also turns on the History Access it needs. The list of what a friend shared with you only shows what they actually granted.
+- The Compare against setting for undertrained muscles is now a row of buttons instead of a dropdown, with a new Last 30 days option that compares your sets over the past month with a month of your split.
 - Weight Progress, Reps Progress, All Set Data and Last Workout are no longer on the Progress board by default. Boards that had them get Estimated 1RM or Personal Records instead, and you can add them back from the widget gallery. The weight, reps and set data widgets show only for a single exercise.
+- The Macros Today widget shows its usual calorie and macro bars at 0 before anything is logged, instead of an empty placeholder.
 - Screen titles share one style and match the tab names: Home, Plan, Progress, Tracking, Supplements, Friends and Settings. The emoji and the Friends tagline are gone.
+- Every Tracking tab now shows the log widget first, then the trend chart, the calendar and the history. Existing boards are rearranged once and get any of these they were missing.
+- Soreness is now logged by picking a muscle from a list, in a new Log Soreness widget at the top of the Recovery tab and from the calendar. The Morning Recovery Check is the second widget.
+- The Morning Recovery Check no longer asks for a status next to the 0 to 10 intensity. Setting 0 marks a muscle recovered, and a lower number than last time counts as getting better. Each sore muscle comes up once a day, starting the day after you log it.
+- The Morning Recovery Check is now on Home, above Today's Macros, and only appears when a sore muscle is due a check-in. Existing Home boards get it once.
+- Hydration measurement error now works like the one for macros. Each drink gets its own ±% margin, set with + and - buttons in the Log hydration sheet (3% by default, also used by the Quick Settings tiles), and Water today shows the min-max range of your total next to it, like Macros Today does. Both leave the range out when it would only repeat the total. The margin is no longer a Hydration setting. Log Macros sets its margin with the same + and - buttons (5% by default).
 
 ### Removed
 
+- The Muscle Map body diagram, from the Recovery tab, the soreness log sheet and the tutorial.
 - The Rep Max Table widget. Personal Records now shows the same table, and boards that had it get Personal Records in its place.
+- The water quick-log notification and its switch in Hydration settings. A notification left on from an earlier version is cleared when you open the app. The Quick Settings tiles still log water.
 
 ### Fixed
 
@@ -36,14 +54,29 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The + and - buttons in tracking forms were invisible in dark theme.
 - The "No timer" and amount placeholders in supplement settings were hard to read in dark theme.
 - The friend search bar text was unreadable in dark theme.
+- Your friend QR code was too dark for a camera to scan in dark theme. It is now always black on white.
 - Fixed a "VirtualizedLists should never be nested" warning on the Friends screen.
+- Small weight changes were invisible on the weight chart because it always started at 0. Weight, body fat, measurement and cycle charts now fit their scale to your values.
+- Opening Tracking's photo comparison, the Friends workout details, deleting an exercise from a split day and some offline history lists crashed the app.
+
+### Security
+
+- The privacy policy explains that daily steps, heart rate and sleep summaries are kept on your device only.
 
 ### Internal
 
+- Shared `SCREEN_PADDING` in `src/shared/layout.ts` for screen content padding.
+- Fix the Kotlin compile error in the native autofill module (`Function` lambda must not early-return `Unit`).
 - Fixed SonarQube findings: mechanical cleanups, misleading indentation in the offline supplement update, a broken regex in the `api_audit.py` self-test, cognitive-complexity splits across screens, hooks and `api_audit.py`, and the unused muscle params dropped from `startSession`
 - Added tests for the Training Summary default range
 - Storage migration 2 rewrites saved Analytics and Home layouts for the widgets taken off the default board and adds the two new Analytics widgets
 - Added a shared `ScreenTitle` component
+- `docs/play-release-notes.txt` holds the Play Store "What's new" text (500 character limit), kept in step with `[Unreleased]` per `CLAUDE.md`
+- Deleted `hydrationNotification.ts`. The tile's quick-log moved into `hydrationTiles.tsx`. `expo-task-manager` is now unused.
+- ESLint warns on import cycles and on calls through `any` (`import/no-cycle`, `no-unsafe-call`, `no-unsafe-member-access`).
+- ESLint bans `toSorted`/`toReversed`/`toSpliced`, which Hermes lacks. Existing uses replaced.
+- Storage migration reorders saved Tracking boards (`orderWidgetTypes`). Shared tracking chart helpers in `tracking/utils.ts`.
+- `scripts/release.sh` uploads the AAB and Play release notes to Google Play when `.env` sets `PLAY_SERVICE_ACCOUNT` (`scripts/play-upload.js`, no new dependencies), then clears `docs/play-release-notes.txt`.
 
 ## [0.2.1] - 2026-10-06
 

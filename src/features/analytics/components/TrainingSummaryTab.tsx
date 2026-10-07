@@ -19,9 +19,9 @@ import {
   getPeriodDateRange,
   aggregateTrainingSummary,
   getUndertrainedMuscleGroups,
-  pickDefaultPeriod,
   type SummaryPeriod,
   type DateRange,
+  type UndertrainedCalculationMode,
 } from "../utils/trainingSummary";
 import { muscleLabel as formatMuscleLabel } from "@utils/exerciseDb";
 import { toDateString } from "@utils/format";
@@ -43,9 +43,9 @@ type Session = Pick<
 >;
 
 const PERIOD_OPTIONS: { key: SummaryPeriod; label: string }[] = [
-  { key: "today", label: "Today" },
-  { key: "week", label: "This Week" },
+  { key: "quarter", label: "Last 90 Days" },
   { key: "month", label: "Last 30 Days" },
+  { key: "week", label: "This Week" },
   { key: "custom", label: "Custom" },
 ];
 
@@ -71,16 +71,12 @@ export default function TrainingSummaryTab({
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  const [pickedPeriod, setSummaryPeriod] = useState<SummaryPeriod | null>(
-    null,
-  );
+  const [summaryPeriod, setSummaryPeriod] = useState<SummaryPeriod>("quarter");
   const [summaryCustomRange, setSummaryCustomRange] =
     useState<DateRange | null>(null);
   const [showSummaryRangePicker, setShowSummaryRangePicker] = useState(false);
   const [pendingRangeStart, setPendingRangeStart] = useState<Date | null>(null);
-  const [calculationMode, setCalculationMode] = useState<
-    "days_done" | "full_split"
-  >("days_done");
+  const [calculationMode, setCalculationMode] = useState<UndertrainedCalculationMode>("days_done");
 
   useEffect(() => {
     (async () => {
@@ -89,7 +85,7 @@ export default function TrainingSummaryTab({
         userId == null ? null : String(userId),
         false,
       );
-      if (mode) setCalculationMode(mode as "days_done" | "full_split");
+      if (mode) setCalculationMode(mode as UndertrainedCalculationMode);
     })();
   }, [userId]);
 
@@ -103,12 +99,6 @@ export default function TrainingSummaryTab({
       ),
     [sessions, workoutData, selectedSplit, completedDays],
   );
-
-  const defaultPeriod = useMemo(
-    () => pickDefaultPeriod(allSetEntries),
-    [allSetEntries],
-  );
-  const summaryPeriod = pickedPeriod ?? defaultPeriod;
 
   const trainedDays = useMemo(
     () => new Set(allSetEntries.map((entry) => toDateString(entry.date))),

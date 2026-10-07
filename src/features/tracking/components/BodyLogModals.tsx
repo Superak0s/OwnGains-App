@@ -13,7 +13,7 @@ import type {
   MeasurementLogResult,
 } from "../hooks/useMeasurementsTab";
 import { isValidTime, maskTimeInput, toFeetInches } from "../utils";
-import { Chip, space } from "../ui";
+import { Chip, ErrorMarginStepper, space } from "../ui";
 
 interface SheetProps {
   readonly visible: boolean;
@@ -329,14 +329,9 @@ export function MacrosLogModal({
           Enter a 24-hour time between 00:00 and 23:59
         </Text>
       )}
-      <Text style={styles.inputLabel}>Measurement Error (±%)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="e.g. 5  →  ±5%"
-        placeholderTextColor={colors.textMuted}
-        keyboardType="decimal-pad"
-        value={form.errorMargin}
-        onChangeText={field("errorMargin")}
+      <ErrorMarginStepper
+        value={Number(form.errorMargin) || 0}
+        onChange={(v) => field("errorMargin")(String(v))}
       />
       <Text style={styles.modalHint}>
         Nutrition labels and eyeballed portions are rarely exact. This margin

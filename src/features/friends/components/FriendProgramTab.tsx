@@ -104,6 +104,7 @@ interface FriendProgramTabProps {
   readonly receivedPrograms: ReceivedProgram[];
   readonly selectedProgram: string | null;
   readonly setSelectedProgram: (option: string | null) => void;
+  readonly onUsePlan: (program: ReceivedProgram) => void;
   readonly styles: ReturnType<typeof makeStyles>;
 }
 
@@ -112,6 +113,7 @@ export function FriendProgramTab({
   receivedPrograms,
   selectedProgram,
   setSelectedProgram,
+  onUsePlan,
   styles,
 }: FriendProgramTabProps): React.JSX.Element {
   const programsFromFriend = receivedPrograms.filter(
@@ -160,6 +162,14 @@ export function FriendProgramTab({
           <Text style={styles.programViewShared}>
             Shared {formatDate(program.sharedAt)}
           </Text>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => onUsePlan(program)}
+            accessibilityRole="button"
+            accessibilityLabel={`Use ${pd?.name || "this plan"} as your plan`}
+          >
+            <Text style={styles.primaryButtonText}>Use this plan</Text>
+          </TouchableOpacity>
         </View>
         {Array.isArray(pd?.days) &&
           pd.days.map((day, dayIdx) => (

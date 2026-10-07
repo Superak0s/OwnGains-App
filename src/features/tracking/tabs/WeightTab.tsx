@@ -2,10 +2,7 @@ import type { WidgetDefinition } from "@shared/types";
 import { toDefaultWidgets } from "@shared/types";
 
 export type WeightWidgetType =
-  | "weight_overview"
-  | "weight_calendar"
-  | "weight_history"
-  | "weight_chart";
+  "weight_overview" | "weight_calendar" | "weight_history" | "weight_chart";
 
 export const WEIGHT_WIDGET_REGISTRY: Record<
   WeightWidgetType,
@@ -43,9 +40,9 @@ export const WEIGHT_WIDGET_REGISTRY: Record<
 
 export const DEFAULT_WEIGHT_WIDGETS = toDefaultWidgets(WEIGHT_WIDGET_REGISTRY, [
   "weight_overview",
+  "weight_chart",
   "weight_calendar",
   "weight_history",
-  "weight_chart",
 ]);
 
 export const WEIGHT_TAB_CONFIG = {

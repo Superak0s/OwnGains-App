@@ -15,7 +15,6 @@ import { ANALYTICS_WIDGET_REGISTRY } from "@features/analytics/widgets";
 import {
   FRIENDS_WIDGET_REGISTRY,
   REQUESTS_WIDGET_REGISTRY,
-  SEARCH_WIDGET_REGISTRY,
 } from "@features/friends/widgets";
 import { WEIGHT_WIDGET_REGISTRY } from "@features/tracking/tabs/WeightTab";
 import { PHOTOS_WIDGET_REGISTRY } from "@features/tracking/tabs/PhotosTab";
@@ -33,7 +32,7 @@ const HOSTS: [EmbedHost, Record<string, unknown>[]][] = [
   [AnalyticsScreen as EmbedHost, [ANALYTICS_WIDGET_REGISTRY]],
   [
     FriendsScreen as EmbedHost,
-    [FRIENDS_WIDGET_REGISTRY, REQUESTS_WIDGET_REGISTRY, SEARCH_WIDGET_REGISTRY],
+    [FRIENDS_WIDGET_REGISTRY, REQUESTS_WIDGET_REGISTRY],
   ],
   [
     TrackingScreen as EmbedHost,

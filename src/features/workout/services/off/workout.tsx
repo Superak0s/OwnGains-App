@@ -340,8 +340,8 @@ export const workoutApi = {
       ...(dayNumber && { dayNumber }),
     };
     const sessions = await sessionsStore.getWhere(where, limit);
-    const filtered = sessions
-      .toSorted(
+    const filtered = [...sessions]
+      .sort(
         (a, b) =>
           new Date(b.startTime ?? 0).getTime() -
           new Date(a.startTime ?? 0).getTime(),
