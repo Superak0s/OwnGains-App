@@ -55,8 +55,8 @@ export function PermissionRow({
       <Switch
         value={granted}
         onValueChange={(on) => (on ? onGrant?.() : onRevoke?.())}
-        trackColor={{ false: colors.separator, true: colors.success }}
-        thumbColor={colors.surface}
+        trackColor={{ false: colors.surfaceBorder, true: colors.accent }}
+        thumbColor={granted ? colors.textOnAccent : colors.textMuted}
         accessibilityLabel={`${title}${target}`}
         style={permStyles.toggle}
       />
