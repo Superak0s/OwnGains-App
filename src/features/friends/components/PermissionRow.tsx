@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Switch, ActivityIndicator } from "react-native";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 
@@ -50,27 +50,16 @@ export function PermissionRow({
         </Text>
       </View>
     );
-  } else if (granted) {
-    actionBtn = (
-      <TouchableOpacity
-        style={permStyles.revokeBtn}
-        onPress={onRevoke}
-        accessibilityRole='button'
-        accessibilityLabel={`Revoke ${title}${target}`}
-      >
-        <Text style={permStyles.revokeBtnText}>Revoke</Text>
-      </TouchableOpacity>
-    );
   } else {
     actionBtn = (
-      <TouchableOpacity
-        style={permStyles.grantBtn}
-        onPress={onGrant}
-        accessibilityRole='button'
-        accessibilityLabel={`Grant ${title}${target}`}
-      >
-        <Text style={permStyles.grantBtnText}>Grant</Text>
-      </TouchableOpacity>
+      <Switch
+        value={granted}
+        onValueChange={(on) => (on ? onGrant?.() : onRevoke?.())}
+        trackColor={{ false: colors.separator, true: colors.success }}
+        thumbColor={colors.surface}
+        accessibilityLabel={`${title}${target}`}
+        style={permStyles.toggle}
+      />
     );
   }
 
@@ -130,26 +119,7 @@ export const makePermStyles = (colors: ThemeColors) =>
       marginBottom: 2,
     },
     desc: { fontSize: 12, color: colors.textMuted, lineHeight: 17 },
-    grantBtn: {
-      minHeight: 48,
-      justifyContent: "center",
-      backgroundColor: colors.accent,
-      paddingHorizontal: 14,
-      paddingVertical: 7,
-      borderRadius: 10,
-      marginLeft: 8,
-    },
-    grantBtnText: { color: colors.surface, fontSize: 13, fontWeight: "700" },
-    revokeBtn: {
-      minHeight: 48,
-      justifyContent: "center",
-      backgroundColor: colors.errorLight,
-      paddingHorizontal: 12,
-      paddingVertical: 7,
-      borderRadius: 10,
-      marginLeft: 8,
-    },
-    revokeBtnText: { color: colors.error, fontSize: 13, fontWeight: "600" },
+    toggle: { marginLeft: 8 },
     statusBadge: {
       paddingHorizontal: 12,
       paddingVertical: 7,

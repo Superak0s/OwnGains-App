@@ -5,7 +5,7 @@ import { useAlert } from "@shared/components/CustomAlert";
 import { IntensityPicker } from "@shared/components/IntensityPicker";
 import { useTwoFingerPull } from "@shared/context/hooks/useTwoFingerPull";
 import { PermissionRow } from "@features/friends/components/PermissionRow";
-import { PERMISSION_TYPES, trainerGrantConfirmation } from "@features/friends/components/FriendPermissions";
+import { PERMISSION_TYPES, permissionPrerequisites, trainerGrantConfirmation } from "@features/friends/components/FriendPermissions";
 import type { PermissionType } from "@features/friends/types";
 import { TrainerBanner, makeTrainerBannerStyles } from "@features/workout/components/TrainerBanner";
 import { PartnerBanner } from "@features/workout/components/PartnerBanner";
@@ -130,11 +130,11 @@ export function PermissionsDemo({ onComplete }: PracticeProps) {
   const titleOf = (type: PermissionType) => PERMISSION_TYPES.find((p) => p.type === type)?.title ?? type;
   const grant = (type: PermissionType) => {
     const apply = () => {
-      setGranted((g) => new Set(g).add(type));
+      setGranted((g) => new Set([...g, ...permissionPrerequisites(type), type]));
       if (type === "trainer") setTrainerSeen(true);
       setNote(
         type === "analytics" && !granted.has("history")
-          ? "Analytics needs History Access too, so grant that as well."
+          ? "Analytics needs History Access, so that was turned on too."
           : `${DEMO_FRIEND} now has ${titleOf(type)}.`,
       );
     };
@@ -179,7 +179,7 @@ export function FriendRequestDemo({ onComplete }: PracticeProps) {
   return (
     <View style={s.demo}>
       <View style={s.row}>
-        <TouchableOpacity style={s.chip} onPress={() => setHint("Scan a friend's QR code from Search to add them instantly.")} accessibilityRole="button" accessibilityLabel="Add by QR code">
+        <TouchableOpacity style={s.chip} onPress={() => setHint("Tap the camera next to the search bar in Friends to scan a friend's QR code.")} accessibilityRole="button" accessibilityLabel="Add by QR code">
           <Text style={s.chipText}>📷 Scan QR</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.chip} onPress={() => setHint("Search by username and tap Add to send a request.")} accessibilityRole="button" accessibilityLabel="Add by username">

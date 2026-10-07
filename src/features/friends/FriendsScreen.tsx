@@ -2492,6 +2492,13 @@ export const makeStyles = (colors: ThemeColors) =>
       letterSpacing: 0.9,
       marginBottom: 6,
     },
+    permissionGroupLabel: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      marginTop: 6,
+      marginBottom: 8,
+    },
     actionsTabSectionHint: {
       fontSize: 12,
       color: colors.textMuted,

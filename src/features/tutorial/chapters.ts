@@ -188,7 +188,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
   ]),
   friends: chapter("friends", "👥", "Friends", [
     tapTab("Friends", "Tap Friends."),
-    spot("Friends", "scrollTabs", "Friends, Requests and Search are all here.", "At the top of Friends, switch between Friends, Requests and Search."),
+    spot("Friends", "scrollTabs", "Friends and Requests are both here.", "At the top of Friends, switch between Friends and Requests. Search for people from the bar at the top of Friends."),
     practice("Add a friend by QR code or username. Alex sent you a request, so accept it.", { type: "friendRequest" }),
     checklist("Each friend has their own tabs.", [
       ["📅", "History", "Their workout calendar and sessions."],
@@ -206,7 +206,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     ]),
   ], true),
   sharing: chapter("sharing", "🔐", "Sharing & permissions", [
-    practice("You decide what each friend can see and do. Grant a few, give Alex Trainer Access, then revoke one.", { type: "permissions" }),
+    practice("You decide what each friend can see and do. Turn a few on, give Alex Trainer Access, then turn one off.", { type: "permissions" }),
     practice("While a trainer logs a session for you, this banner shows on your Workout screen. Try revoking their access.", { type: "banner", variant: "trainer" }),
   ], true),
   together: chapter("together", "🤝", "Training together", [

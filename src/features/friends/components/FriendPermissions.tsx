@@ -44,7 +44,7 @@ export const PERMISSION_TYPES: Array<{
     icon: "📊",
     title: "Analytics Access",
     describe: (username) =>
-      `Let ${username} view your workout analytics and progress charts. Needs History Access too.`,
+      `Let ${username} view your workout analytics and progress charts. Turns on History Access too.`,
   },
   {
     type: "program",
@@ -75,6 +75,20 @@ export const PERMISSION_TYPES: Array<{
       `Let ${username} log workouts for you, edit your program, and see your workout history, analytics and notes.`,
   },
 ];
+
+export const PERMISSION_GROUPS: ReadonlyArray<{
+  label: string;
+  types: readonly PermissionType[];
+}> = [
+  { label: "Progress", types: ["history", "analytics", "program"] },
+  { label: "Live workouts", types: ["joint_session", "watch_session"] },
+  { label: "Coaching", types: ["trainer"] },
+];
+
+/** Types that must be granted alongside `type` for it to work. */
+export const permissionPrerequisites = (
+  type: PermissionType,
+): PermissionType[] => (type === "analytics" ? ["history"] : []);
 
 export const trainerGrantConfirmation = (username: string) => ({
   title: `Make ${username} your trainer?`,
@@ -109,33 +123,49 @@ export function FriendGrantedPermissions({
   onRevokePermission,
 }: FriendGrantedPermissionsProps): React.JSX.Element {
   const friendId = selectedFriend?.id;
+  const isGranted = (type: PermissionType) =>
+    !!getGrantedPermission(friendId, type);
+  const grantedCount = PERMISSION_TYPES.filter((p) => isGranted(p.type)).length;
+  const grant = (type: PermissionType) => {
+    if (!selectedFriend) return;
+    for (const prerequisite of permissionPrerequisites(type))
+      if (!isGranted(prerequisite))
+        onGrantPermission(selectedFriend, prerequisite);
+    if (type === "program") onGrantProgramPermission(selectedFriend);
+    else onGrantPermission(selectedFriend, type);
+  };
   return (
     <>
       <Text style={styles.actionsTabSectionTitle}>
         Permissions for {selectedFriend?.username}
       </Text>
       <Text style={styles.actionsTabSectionHint}>
-        Control what {selectedFriend?.username} is allowed to see and do.
+        {grantedCount === 0
+          ? `${selectedFriend?.username} can't see anything of yours yet. Turn on what you want to share.`
+          : `${selectedFriend?.username} has ${grantedCount} of ${PERMISSION_TYPES.length}. Turn one off to take it back straight away.`}
       </Text>
 
-      {PERMISSION_TYPES.map(({ type, icon, title, describe }) => (
-        <PermissionRow
-          key={type}
-          icon={icon}
-          title={title}
-          description={describe(selectedFriend?.username, workoutData)}
-          friendName={selectedFriend?.username}
-          granted={!!getGrantedPermission(friendId, type)}
-          loading={isPermLoading(friendId, type)}
-          onGrant={() => {
-            if (!selectedFriend) return;
-            if (type === "program") onGrantProgramPermission(selectedFriend);
-            else onGrantPermission(selectedFriend, type);
-          }}
-          onRevoke={() => {
-            if (selectedFriend) onRevokePermission(selectedFriend, type);
-          }}
-        />
+      {PERMISSION_GROUPS.map(({ label, types }) => (
+        <React.Fragment key={label}>
+          <Text style={styles.permissionGroupLabel}>{label}</Text>
+          {PERMISSION_TYPES.filter((p) => types.includes(p.type)).map(
+            ({ type, icon, title, describe }) => (
+              <PermissionRow
+                key={type}
+                icon={icon}
+                title={title}
+                description={describe(selectedFriend?.username, workoutData)}
+                friendName={selectedFriend?.username}
+                granted={isGranted(type)}
+                loading={isPermLoading(friendId, type)}
+                onGrant={() => grant(type)}
+                onRevoke={() => {
+                  if (selectedFriend) onRevokePermission(selectedFriend, type);
+                }}
+              />
+            ),
+          )}
+        </React.Fragment>
       ))}
     </>
   );
@@ -155,32 +185,30 @@ export function FriendReceivedPermissions({
   styles,
   hasReceivedPermission,
 }: FriendReceivedPermissionsProps): React.JSX.Element {
+  const received = PERMISSION_TYPES.filter(({ type }) =>
+    hasReceivedPermission(selectedFriend?.id, type),
+  );
   return (
     <>
       <Text style={[styles.actionsTabSectionTitle, { marginTop: 28 }]}>
         {selectedFriend?.username}'s Permissions for You
       </Text>
       <Text style={styles.actionsTabSectionHint}>
-        What {selectedFriend?.username} has allowed you to do.
+        {received.length === 0
+          ? `${selectedFriend?.username} hasn't shared anything with you yet.`
+          : `What ${selectedFriend?.username} has allowed you to do.`}
       </Text>
 
-      {PERMISSION_TYPES.map(({ type, icon, title, receivedTitle }) => {
-        const has = hasReceivedPermission(selectedFriend?.id, type);
-        return (
-          <PermissionRow
-            key={type}
-            icon={icon}
-            title={receivedTitle ?? title}
-            description={
-              has
-                ? `${selectedFriend?.username} has granted you this.`
-                : `${selectedFriend?.username} hasn't granted this yet.`
-            }
-            granted={has}
-            readOnly
-          />
-        );
-      })}
+      {received.map(({ type, icon, title, receivedTitle }) => (
+        <PermissionRow
+          key={type}
+          icon={icon}
+          title={receivedTitle ?? title}
+          description={`${selectedFriend?.username} has granted you this.`}
+          granted
+          readOnly
+        />
+      ))}
     </>
   );
 }
