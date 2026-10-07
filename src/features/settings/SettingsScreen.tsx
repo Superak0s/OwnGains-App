@@ -102,10 +102,27 @@ const DISPLAY_MODE_OPTIONS = [
   { key: "off", label: "Off" },
 ] as const;
 
-const CALCULATION_MODE_OPTIONS = [
-  { key: "days_done", label: "Days done" },
-  { key: "full_split", label: "Full split" },
-] as const;
+const CALCULATION_MODE_OPTIONS: ReadonlyArray<{
+  key: UndertrainedCalculationMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    key: "days_done",
+    label: "Days done",
+    description: "Only days you've logged this week",
+  },
+  {
+    key: "full_split",
+    label: "Full split",
+    description: "Your full split cycle, regardless of what's logged",
+  },
+  {
+    key: "last_30_days",
+    label: "Last 30 days",
+    description: "Your sets over the last 30 days against 30 days of your split",
+  },
+];
 
 const ALERT_PREVIEWS: ReadonlyArray<{
   type: AlertType;
@@ -180,6 +197,7 @@ import {
   type DeviceBackup,
 } from "@utils/deviceBackup";
 import type { ImportMode } from "@shared/services/sqliteStorage";
+import type { UndertrainedCalculationMode } from "@features/analytics/utils/trainingSummary";
 import { getServerUrl, onServerUrlChange } from "@shared/services/config";
 import {
   describeLocalOnlyFeatures,
@@ -417,10 +435,8 @@ export default function SettingsScreen(): React.JSX.Element {
   const [undertrainedDisplayMode, setUndertrainedDisplayMode] =
     useState<UndertrainedDisplayMode>("per_exercise");
   const [undertrainedCalculationMode, setUndertrainedCalculationMode] =
-    useState<"days_done" | "full_split">("days_done");
-  const [activeDropdownMenu, setActiveDropdownMenu] = useState<
-    "display" | "calculation" | null
-  >(null);
+    useState<UndertrainedCalculationMode>("days_done");
+  const [showDisplayModeMenu, setShowDisplayModeMenu] = useState(false);
   const [prCelebration, setPrCelebration] = useState<boolean>(true);
   const [autoProgression, setAutoProgression] = useState<boolean>(true);
 
@@ -446,7 +462,7 @@ export default function SettingsScreen(): React.JSX.Element {
       );
       if (cancelled) return;
       if (calcMode) {
-        setUndertrainedCalculationMode(calcMode as "days_done" | "full_split");
+        setUndertrainedCalculationMode(calcMode as UndertrainedCalculationMode);
       }
       const pr = await loadFromStorage<boolean>(
         STORAGE_KEYS.PR_CELEBRATION,
@@ -485,7 +501,7 @@ export default function SettingsScreen(): React.JSX.Element {
   };
 
   const handleSetUndertrainedCalculationMode = (
-    mode: "days_done" | "full_split",
+    mode: UndertrainedCalculationMode,
   ) => {
     setUndertrainedCalculationMode(mode);
     void saveToStorage(
@@ -2536,29 +2552,17 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
       </ModalSheet>
 
       <ModalSheet
-        visible={activeDropdownMenu !== null}
-        onClose={() => setActiveDropdownMenu(null)}
-        title={
-          activeDropdownMenu === "calculation"
-            ? "Compare Against"
-            : "Show Undertrained Suggestions"
-        }
+        visible={showDisplayModeMenu}
+        onClose={() => setShowDisplayModeMenu(false)}
+        title="Show Undertrained Suggestions"
         showCancelButton={false}
-        showConfirmButton={activeDropdownMenu === "display"}
+        showConfirmButton
         confirmText="Done"
-        onConfirm={() => setActiveDropdownMenu(null)}
+        onConfirm={() => setShowDisplayModeMenu(false)}
       >
-        {activeDropdownMenu === "display" && (
-          <UndertrainedExample mode={undertrainedDisplayMode} styles={styles} />
-        )}
-        {(activeDropdownMenu === "calculation"
-          ? CALCULATION_MODE_OPTIONS
-          : DISPLAY_MODE_OPTIONS
-        ).map((option) => {
-          const isSelected =
-            activeDropdownMenu === "calculation"
-              ? undertrainedCalculationMode === option.key
-              : undertrainedDisplayMode === option.key;
+        <UndertrainedExample mode={undertrainedDisplayMode} styles={styles} />
+        {DISPLAY_MODE_OPTIONS.map((option) => {
+          const isSelected = undertrainedDisplayMode === option.key;
           return (
             <TouchableOpacity
               key={option.key}
@@ -2570,18 +2574,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                 styles.dropdownItem,
                 isSelected && styles.dropdownItemSelected,
               ]}
-              onPress={() => {
-                if (activeDropdownMenu === "calculation") {
-                  handleSetUndertrainedCalculationMode(
-                    option.key as "days_done" | "full_split",
-                  );
-                  setActiveDropdownMenu(null);
-                } else {
-                  handleSetUndertrainedDisplayMode(
-                    option.key as UndertrainedDisplayMode,
-                  );
-                }
-              }}
+              onPress={() => handleSetUndertrainedDisplayMode(option.key)}
             >
               <Text
                 style={[
@@ -3064,7 +3057,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                   style={styles.dropdownButton}
                   accessibilityRole="button"
                   accessibilityLabel="Change how undertrained muscles are surfaced"
-                  onPress={() => setActiveDropdownMenu("display")}
+                  onPress={() => setShowDisplayModeMenu(true)}
                 >
                   <Text style={styles.dropdownButtonText}>
                     {DISPLAY_MODE_OPTIONS.find(
@@ -3080,34 +3073,46 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                 </TouchableOpacity>
               </View>
               <View style={styles.divider} />
-              <View style={styles.settingRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Compare against</Text>
-                  <Text style={styles.settingDescription}>
-                    {undertrainedCalculationMode === "days_done"
-                      ? "Only days you've logged this week"
-                      : "Your full split cycle, regardless of what's logged"}
-                  </Text>
+              <View style={styles.compareSection}>
+                <Text style={styles.settingLabel}>Compare against</Text>
+                <View style={styles.compareRow} accessibilityRole="radiogroup">
+                  {CALCULATION_MODE_OPTIONS.map((option) => {
+                    const isSelected =
+                      undertrainedCalculationMode === option.key;
+                    return (
+                      <TouchableOpacity
+                        key={option.key}
+                        activeOpacity={0.7}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: isSelected }}
+                        accessibilityLabel={option.label}
+                        style={[
+                          styles.compareChip,
+                          isSelected && styles.compareChipActive,
+                        ]}
+                        onPress={() =>
+                          handleSetUndertrainedCalculationMode(option.key)
+                        }
+                      >
+                        <Text
+                          style={[
+                            styles.compareChipText,
+                            isSelected && styles.compareChipTextActive,
+                          ]}
+                        >
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  style={styles.dropdownButton}
-                  accessibilityRole="button"
-                  accessibilityLabel="Change what undertrained muscles are compared against"
-                  onPress={() => setActiveDropdownMenu("calculation")}
-                >
-                  <Text style={styles.dropdownButtonText}>
-                    {CALCULATION_MODE_OPTIONS.find(
+                <Text style={styles.settingDescription}>
+                  {
+                    CALCULATION_MODE_OPTIONS.find(
                       (o) => o.key === undertrainedCalculationMode,
-                    )?.label ?? undertrainedCalculationMode}
-                  </Text>
-                  <Text
-                    style={styles.dropdownArrow}
-                    importantForAccessibility="no"
-                  >
-                    ▼
-                  </Text>
-                </TouchableOpacity>
+                    )?.description
+                  }
+                </Text>
               </View>
             </View>
           </View>
@@ -3703,6 +3708,27 @@ const makeStyles = (colors: ThemeColors) =>
       marginBottom: 4,
     },
     settingDescription: { fontSize: 13, color: colors.textSecondary },
+    compareSection: { paddingVertical: 12, gap: 8 },
+    compareRow: { flexDirection: "row", gap: 6 },
+    compareChip: {
+      flex: 1,
+      paddingVertical: 8,
+      borderRadius: 8,
+      alignItems: "center",
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    compareChipActive: {
+      backgroundColor: colors.accent,
+      borderColor: colors.accent,
+    },
+    compareChipText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    compareChipTextActive: { color: colors.textOnAccent },
     settingValue: { fontSize: 16, fontWeight: "600", color: colors.accent },
     divider: { height: 1, backgroundColor: colors.surfaceBorder },
     tabOrderRow: {

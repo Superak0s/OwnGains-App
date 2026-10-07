@@ -22,6 +22,7 @@ import {
   pickDefaultPeriod,
   type SummaryPeriod,
   type DateRange,
+  type UndertrainedCalculationMode,
 } from "../utils/trainingSummary";
 import { muscleLabel as formatMuscleLabel } from "@utils/exerciseDb";
 import { toDateString } from "@utils/format";
@@ -78,9 +79,7 @@ export default function TrainingSummaryTab({
     useState<DateRange | null>(null);
   const [showSummaryRangePicker, setShowSummaryRangePicker] = useState(false);
   const [pendingRangeStart, setPendingRangeStart] = useState<Date | null>(null);
-  const [calculationMode, setCalculationMode] = useState<
-    "days_done" | "full_split"
-  >("days_done");
+  const [calculationMode, setCalculationMode] = useState<UndertrainedCalculationMode>("days_done");
 
   useEffect(() => {
     (async () => {
@@ -89,7 +88,7 @@ export default function TrainingSummaryTab({
         userId == null ? null : String(userId),
         false,
       );
-      if (mode) setCalculationMode(mode as "days_done" | "full_split");
+      if (mode) setCalculationMode(mode as UndertrainedCalculationMode);
     })();
   }, [userId]);
 

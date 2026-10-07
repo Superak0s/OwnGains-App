@@ -279,7 +279,12 @@ export function aggregateTrainingSummary(
   };
 }
 
-type UndertrainedCalculationMode = "days_done" | "full_split";
+export type UndertrainedCalculationMode =
+  | "days_done"
+  | "full_split"
+  | "last_30_days";
+
+const ROLLING_WINDOW_DAYS = 30;
 
 interface UndertrainedGroup {
   primaryMuscle: string;
@@ -323,11 +328,17 @@ export function getUndertrainedMuscleGroups(
 ): UndertrainedGroup[] {
   if (!workoutData?.days || !selectedSplit) return [];
 
-  const weekRange = getPeriodDateRange("week", null, now);
+  const isRolling = calculationMode === "last_30_days";
+  const range = isRolling
+    ? {
+        start: new Date(now.getTime() - ROLLING_WINDOW_DAYS * 86_400_000),
+        end: now,
+      }
+    : getPeriodDateRange("week", null, now);
   const weekEntries = entries.filter(
     (entry) =>
-      entry.date.getTime() >= weekRange.start.getTime() &&
-      entry.date.getTime() <= weekRange.end.getTime(),
+      entry.date.getTime() >= range.start.getTime() &&
+      entry.date.getTime() <= range.end.getTime(),
   );
 
   let targetDays = workoutData.days;
@@ -341,6 +352,8 @@ export function getUndertrainedMuscleGroups(
 
   const targets = sumPlannedSetsByMuscleGroup(targetDays, selectedSplit);
   if (targets.size === 0) return [];
+  // ponytail: assumes one program day per calendar day, so 30 days hold 30 / days.length cycles.
+  const cycles = isRolling ? ROLLING_WINDOW_DAYS / targetDays.length : 1;
 
   const actuals = new Map<string, number>();
   weekEntries.forEach((entry) => {
@@ -354,7 +367,8 @@ export function getUndertrainedMuscleGroups(
   });
 
   const rows = Array.from(targets.entries()).map(
-    ([key, { primaryMuscle, sets: targetSets }]) => {
+    ([key, { primaryMuscle, sets }]) => {
+      const targetSets = Math.round(sets * cycles);
       const actualSets = actuals.get(key) ?? 0;
       const completionPct =
         targetSets > 0 ? (actualSets / targetSets) * 100 : 0;

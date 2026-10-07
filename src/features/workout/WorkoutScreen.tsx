@@ -132,6 +132,7 @@ import { useRestReminder } from "./hooks/useRestReminder";
 import {
   buildTrainingSetEntries,
   getUndertrainedMuscleGroups,
+  type UndertrainedCalculationMode,
 } from "../analytics/utils/trainingSummary";
 import { captureException, log, metric } from "@shared/services/crashReporting";
 import { tutorialAnchor } from "@features/tutorial/anchors";
@@ -383,7 +384,7 @@ function WorkoutScreenBody({
     "banner" | "per_exercise" | "both" | "off"
   >("off");
   const [undertrainedCalculationMode, setUndertrainedCalculationMode] =
-    useState<"days_done" | "full_split">("days_done");
+    useState<UndertrainedCalculationMode>("days_done");
   const [dismissedUndertrainedBanner, setDismissedUndertrainedBanner] =
     useState<boolean>(false);
 
@@ -457,7 +458,7 @@ function WorkoutScreenBody({
         );
       }
       if (calcMode) {
-        setUndertrainedCalculationMode(calcMode as "days_done" | "full_split");
+        setUndertrainedCalculationMode(calcMode as UndertrainedCalculationMode);
       }
     })();
   }, [user?.id]);

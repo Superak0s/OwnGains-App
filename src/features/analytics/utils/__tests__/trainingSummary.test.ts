@@ -438,6 +438,28 @@ describe("getUndertrainedMuscleGroups", () => {
     expect(chest).toBeUndefined();
   });
 
+  it("last_30_days mode: counts sets from the last 30 days against 30 days of the split", () => {
+    const daysAgo = (days: number) =>
+      new Date(now.getTime() - days * 86_400_000);
+    const entries: TrainingSetEntry[] = [
+      ...Array.from({ length: 45 }, (_, i) =>
+        makeEntry({ date: daysAgo(i % 29), primaryMuscles: ["Chest"] }),
+      ),
+      makeEntry({ date: daysAgo(40), primaryMuscles: ["Legs"] }),
+    ];
+    const result = getUndertrainedMuscleGroups(
+      entries,
+      workoutData,
+      "solo",
+      now,
+      "last_30_days",
+    );
+    const legs = result.find((r) => r.primaryMuscle === "Legs");
+    expect(legs?.targetSets).toBe(45);
+    expect(legs?.actualSets).toBe(0);
+    expect(result.find((r) => r.primaryMuscle === "Chest")).toBeUndefined();
+  });
+
   it("full_split mode: includes every day's target regardless of what was logged", () => {
     const entries: TrainingSetEntry[] = [
       makeEntry({
