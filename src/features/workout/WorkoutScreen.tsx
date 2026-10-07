@@ -3412,7 +3412,7 @@ export default function WorkoutScreen(): React.JSX.Element {
     () =>
       onActiveTraineeChange.subscribe((next) => {
         setTrainee(next);
-        if (!next) setActiveTab("me");
+        setActiveTab(next ? "trainees" : "me");
       }),
     [],
   );

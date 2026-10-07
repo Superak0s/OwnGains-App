@@ -6,6 +6,8 @@ import React, {
   useRef,
 } from "react";
 import ScreenTitle from "@shared/components/ScreenTitle";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { trackScreenView, captureException, reportAndReturn } from "@shared/services/crashReporting";
 import {
   View,
@@ -48,7 +50,6 @@ import {
   LiftTogetherButton,
   makeLiftStyles,
 } from "./components/LiftTogetherButton";
-import { makePermStyles } from "./components/PermissionRow";
 import { trainerGrantConfirmation } from "./components/FriendPermissions";
 import {
   RequestsPendingWidget,
@@ -107,6 +108,7 @@ import type {
   WidgetInstance,
   WidgetDefinition,
   WorkoutData,
+  RootStackParamList,
 } from "@shared/types";
 import { Avatar } from "./components/Avatar";
 import { mapWithConcurrency } from "@utils/concurrency";
@@ -231,6 +233,8 @@ interface FriendsListWidgetProps {
   readonly onSelectFriend: (friend: Friend) => void;
   readonly onFindFriends: () => void;
   readonly onSendInvite: (friend: Friend) => void;
+  readonly canTrain: (friendId: FriendId, type: PermissionType) => boolean;
+  readonly onTrain: (friend: Friend) => void;
   readonly styles: ReturnType<typeof makeStyles>;
   readonly liftStyles: ReturnType<typeof makeLiftStyles>;
   readonly watchStyles: ReturnType<typeof makeWatchStyles>;
@@ -249,6 +253,8 @@ const FriendsListWidget = React.memo(function FriendsListWidget({
   onSelectFriend,
   onFindFriends,
   onSendInvite,
+  canTrain,
+  onTrain,
   styles,
   liftStyles,
   watchStyles,
@@ -333,6 +339,20 @@ const FriendsListWidget = React.memo(function FriendsListWidget({
                   </View>
                 </View>
                 <View style={styles.friendCardRight}>
+                  {canTrain(friend.id, "trainer") && (
+                    <TouchableOpacity
+                      style={[
+                        liftStyles.button,
+                        liftStyles.buttonSmall,
+                        { backgroundColor: colors.accent },
+                      ]}
+                      onPress={() => onTrain(friend)}
+                      accessibilityRole='button'
+                      accessibilityLabel={`Start a trainer session for ${friend.username}`}
+                    >
+                      <Text style={liftStyles.labelSmall}>Train</Text>
+                    </TouchableOpacity>
+                  )}
                   {showLiftButton && (
                     <LiftTogetherButton
                       small
@@ -403,7 +423,6 @@ export default function FriendsScreen({
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const liftStyles = useMemo(() => makeLiftStyles(colors), [colors]);
-  const permStyles = useMemo(() => makePermStyles(colors), [colors]);
   const watchStyles = useMemo(() => makeWatchStyles(colors), [colors]);
   const jointStyles = useMemo(() => makeJointStyles(colors), [colors]);
   const { user } = useAuth();
@@ -590,15 +609,22 @@ export default function FriendsScreen({
   const [trainee, setTrainee] = useState(() => getActiveTrainee());
   useEffect(() => onActiveTraineeChange.subscribe(setTrainee), []);
 
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const handleTrainFriend = useCallback(
+    (friend: Friend): void => {
+      setActiveTrainee({
+        userId: String(friend.id),
+        username: friend.username,
+      });
+      navigation.navigate("Workout");
+    },
+    [navigation],
+  );
+
   const handleStartTrainer = (friend: Friend): void => {
-    setActiveTrainee({ userId: String(friend.id), username: friend.username });
     closeFriendDetail();
-    alert(
-      "Trainer Session Started",
-      `You're now logging ${friend.username}'s session. Switch to the Workout tab to record their sets.`,
-      [{ text: "OK" }],
-      "success",
-    );
+    handleTrainFriend(friend);
   };
 
   const handleStopTrainer = (): void => {
@@ -1397,6 +1423,8 @@ export default function FriendsScreen({
             onSelectFriend={handleSelectFriend}
             onFindFriends={handleFindFriends}
             onSendInvite={handleSendInvite}
+            canTrain={hasReceivedPermission}
+            onTrain={handleTrainFriend}
             styles={styles}
             liftStyles={liftStyles}
             watchStyles={watchStyles}

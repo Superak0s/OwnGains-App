@@ -311,9 +311,7 @@ function TrainerAction({
 
   return (
     <>
-      <Text style={[styles.actionsTabSectionTitle, { marginTop: 28 }]}>
-        Trainer
-      </Text>
+      <Text style={styles.actionsTabSectionTitle}>Trainer</Text>
       {row}
     </>
   );
@@ -426,6 +424,20 @@ export function FriendActionsTab({
   return (
     <ScrollView style={styles.modalScroll}>
       <View style={styles.actionsTabContent}>
+        {hasTrainerAccess && (
+          <TrainerAction
+            selectedFriend={selectedFriend}
+            isActive={
+              activeTraineeUserId === String(selectedFriend?.id ?? "")
+            }
+            onStart={onStartTrainer}
+            onStop={onStopTrainer}
+            styles={styles}
+            jointStyles={jointStyles}
+            colors={colors}
+          />
+        )}
+
         <FriendGrantedPermissions
           selectedFriend={selectedFriend}
           workoutData={workoutData}
@@ -466,20 +478,6 @@ export function FriendActionsTab({
             getInviteStatusForFriend={getInviteStatusForFriend}
             onLeaveJointSession={onLeaveJointSession}
             onSendInvite={onSendInvite}
-            styles={styles}
-            jointStyles={jointStyles}
-            colors={colors}
-          />
-        )}
-
-        {hasTrainerAccess && (
-          <TrainerAction
-            selectedFriend={selectedFriend}
-            isActive={
-              activeTraineeUserId === String(selectedFriend?.id ?? "")
-            }
-            onStart={onStartTrainer}
-            onStop={onStopTrainer}
             styles={styles}
             jointStyles={jointStyles}
             colors={colors}

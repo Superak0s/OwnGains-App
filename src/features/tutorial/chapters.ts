@@ -258,7 +258,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
   ], true),
   trainerSession: chapter("trainerSession", "🏋️", "Trainer: running a session", [
     checklist("Start a session for your client.", [
-      ["👤", "Pick your client", "Open them from Friends."],
+      ["👤", "Pick your client", "Tap Train next to them in Friends, or open them."],
       ["⚙️", "Actions", "Once they've granted Trainer Access, their Actions tab has Start trainer session."],
       ["▶️", "Start", "Workout opens, and you're running their session."],
     ]),
