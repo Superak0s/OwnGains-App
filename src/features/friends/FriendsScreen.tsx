@@ -113,7 +113,6 @@ import type {
 import { Avatar } from "./components/Avatar";
 import { mapWithConcurrency } from "@utils/concurrency";
 import { userFacingError } from "@shared/services/apiError";
-import { markProgramDirty } from "@shared/services/programDirty";
 import { programApi } from "@features/plan/services";
 import {
   DEFAULT_SPLITS,
@@ -800,18 +799,16 @@ export default function FriendsScreen({
 
   const handleUsePlan = (program: ReceivedProgram) => {
     const apply = async () => {
-      const data = program.programData as WorkoutData;
+      // A friend wrote this payload, so the server's upload validator checks it
+      // before anything is stored on this device.
       try {
-        await saveWorkoutData(data);
+        const accepted = (await programApi.saveProgram(
+          program.programData as WorkoutData,
+        )) as WorkoutData;
+        await saveWorkoutData(accepted);
       } catch (e) {
-        alertError(userFacingError(e, "Couldn't save that plan"));
+        alertError(userFacingError(e, "Couldn't use that plan"));
         return;
-      }
-      try {
-        await programApi.saveProgram(data);
-      } catch (e) {
-        captureException(e, { stage: "useSharedPlan" }, "warning");
-        await markProgramDirty(user?.id ?? null);
       }
       closeFriendDetail();
       alert(
