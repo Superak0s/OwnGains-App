@@ -19,7 +19,7 @@ function Probe() {
   const { workoutData } = useWorkout();
   const { colors } = useTheme();
   useNavigation();
-  return <Text style={{ color: colors.primary }}>{`${user?.username}:${workoutData?.days.length ?? "none"}`}</Text>;
+  return <Text style={{ color: colors.textPrimary }}>{`${user?.username}:${workoutData?.days.length ?? "none"}`}</Text>;
 }
 
 it("hands screens the overridden context values so edge data can be mounted", async () => {

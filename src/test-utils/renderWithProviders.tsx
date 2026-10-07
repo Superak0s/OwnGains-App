@@ -209,8 +209,8 @@ export const themeModule = (() => {
     chartColorOverride: null,
     chartColorDarkOverride: null,
     setChartColorOverride: resolved(undefined),
-    resolvedChartColor: colors.primary ?? "#000",
-    resolvedChartColorDark: colors.primary ?? "#000",
+    resolvedChartColor: colors.accent,
+    resolvedChartColorDark: colors.accent,
   }
   return {
     ...actual,
