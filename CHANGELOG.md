@@ -6,6 +6,8 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-07
+
 ### Added
 
 - New Weekly Sets widget in Progress: working sets this week and the 4-week average. For a muscle group it compares them with the 10 to 20 sets a week most muscles need to grow, counting sets where the muscle only assists as half.
