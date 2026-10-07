@@ -26,6 +26,7 @@ import {
   isPrivateHost,
 } from "@shared/services/config";
 import { scanForLanServer } from "@shared/services/lanDiscovery";
+import { commitAutofill } from "../../../modules/autofill";
 import {
   describeLocalOnlyFeatures,
   refreshLocalOnlyFeatures,
@@ -154,7 +155,10 @@ export default function LoginScreen({
       // Deliberately kept on failure: a network error never rejected it, and
       // retyping a password to retry something that was never refused is the
       // worst moment to ask for it.
-      if (result.success) setPassword("");
+      if (result.success) {
+        commitAutofill();
+        setPassword("");
+      }
 
       if (!result.success) {
         alert(
