@@ -30,6 +30,8 @@ There is no `ios/`. iOS is configured in `app.json` but not maintained, and `ios
 
 Not every function needs a test. Write one for non-trivial logic: branches, loops, parsers, calculations, and anything touching sync, auth, or money. Skip trivial one-liners, pure pass-throughs, and UI glue that's obviously correct by inspection. Every test goes in a `__tests__/` folder beside the code it covers, named `*.test.ts(x)` (e.g. `src/features/analytics/utils/__tests__/trainingSummary.test.ts`), never as a sibling file next to the source. The existing tests cluster around sync/offline-queue logic, auth token handling, fuzzy matching, and analytics calculations, not blanket coverage.
 
+Every bug fix that gets a `Fixed` changelog entry also gets a regression test, committed with the fix. Check that it fails without the fix before relying on it.
+
 ### Release builds
 
 Builds are local only. This project does not use EAS. `scripts/sync-eas-version.js` only pushes the built `versionCode` up to EAS and no-ops when `app.json` has no `projectId`.
