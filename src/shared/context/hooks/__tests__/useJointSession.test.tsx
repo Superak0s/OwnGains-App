@@ -284,3 +284,267 @@ describe("useJointSession partner state", () => {
     )
   })
 })
+
+describe("useJointSession sending an invite", () => {
+  it("waits for the partner once the server returns an invite id", async () => {
+    api.sendJointInvite.mockResolvedValue({ inviteId: "i1" } as never)
+    const { result } = await setup()
+    let ok = false
+    await act(async () => {
+      ok = await result.current.sendInvite("u2")
+    })
+    expect(ok).toBe(true)
+    expect(result.current.inviteStatus).toBe("waiting")
+  })
+
+  it("shows an error instead of waiting forever when the server answers without an invite id", async () => {
+    api.sendJointInvite.mockResolvedValue({} as never)
+    const { result } = await setup()
+    let ok = true
+    await act(async () => {
+      ok = await result.current.sendInvite("u2")
+    })
+    expect(ok).toBe(false)
+    expect(result.current.inviteStatus).toBe("error")
+  })
+
+  it("shows an error when the invite request fails", async () => {
+    api.sendJointInvite.mockRejectedValue(new Error("Network request failed"))
+    const { result } = await setup()
+    await act(async () => {
+      await result.current.sendInvite("u2")
+    })
+    expect(result.current.inviteStatus).toBe("error")
+  })
+
+  it("joins the session when the partner accepts, and goes back to idle when they decline", async () => {
+    const { result } = await setup()
+    await act(async () =>
+      result.current.handleSocketMessage({ type: "invite_status", status: "accepted", jointSession: session }),
+    )
+    expect(result.current.isInJointSession).toBe(true)
+
+    await act(async () => result.current.handleSocketMessage({ type: "invite_status", status: "session_ended" }))
+    expect(result.current.isInJointSession).toBe(false)
+
+    await act(async () => result.current.handleSocketMessage({ type: "invite_status", status: "declined" }))
+    expect(result.current.inviteStatus).toBe("declined")
+  })
+
+  it("discards an invite with no id instead of sending an accept the server can't match", async () => {
+    const { result } = await setup()
+    await act(async () => result.current.handleSocketMessage({ type: "joint_invite", fromUsername: "buddy" }))
+    let ok = true
+    await act(async () => {
+      ok = await result.current.acceptInvite()
+    })
+    expect(ok).toBe(false)
+    expect(api.acceptJointInvite).not.toHaveBeenCalled()
+    expect(result.current.pendingInvite).toBeNull()
+  })
+})
+
+describe("useJointSession shared exercises", () => {
+  const exercises = [
+    { name: "Bench Press", sets: 3, split: "A" },
+    { name: "Squat", sets: 4, split: "B" },
+    { name: "squat ", sets: 4, split: "B" },
+  ]
+
+  async function joinedWith(socket: RealtimeSocket) {
+    api.acceptJointInvite.mockResolvedValue({ jointSession: session } as never)
+    api.pushJointProgress.mockResolvedValue(undefined as never)
+    const hook = await renderHook(() =>
+      useJointSession({
+        userId: "u1",
+        currentSessionId: "s1",
+        workoutStartTime: "2026-10-07T10:00:00.000Z",
+        currentDayExercises: exercises,
+        selectedSplit: "A",
+        socket,
+      }),
+    )
+    await act(async () => hook.result.current.handleSocketMessage(invite))
+    await act(async () => {
+      await hook.result.current.acceptInvite()
+    })
+    return hook
+  }
+
+  it("sends the partner this split's exercise list over the socket on joining", async () => {
+    const socket = makeSocket(true)
+    await joinedWith(socket)
+    expect(socket.send).toHaveBeenCalledWith({
+      type: "push_joint_progress",
+      jointSessionId: "js1",
+      progress: expect.objectContaining({ exerciseNames: [{ name: "Bench Press", sets: 3 }] }),
+    })
+  })
+
+  it("sends the exercise list over HTTP when the socket is down", async () => {
+    await joinedWith(makeSocket(false))
+    expect(api.pushJointProgress).toHaveBeenCalledWith(
+      "js1",
+      expect.objectContaining({ exerciseNames: [{ name: "Bench Press", sets: 3 }] }),
+    )
+  })
+
+  it("lists the other split's exercises for the partner once, ignoring case and spacing", async () => {
+    const { result } = await joinedWith(makeSocket(true))
+    expect(result.current.partnerExerciseList).toEqual([{ name: "Squat", sets: 4 }])
+  })
+
+  it("records each partner set once and pulses when the partner is ready for the next", async () => {
+    const { result } = await joinedWith(makeSocket(true))
+    const progress = { fromUserId: "u2", exerciseIndex: 0, setIndex: 0, exerciseName: "Squat", readyForNext: true }
+
+    await act(async () => result.current.handleSocketMessage({ type: "joint_progress", progress }))
+    await act(async () =>
+      result.current.handleSocketMessage({
+        type: "joint_progress",
+        progress: { ...progress, exerciseIndex: 1, exerciseName: "squat" },
+      }),
+    )
+
+    expect(result.current.partnerCompletedSets).toEqual([{ exerciseName: "Squat", setIndex: 0 }])
+    expect(result.current.isPartnerReady).toBe(true)
+    expect(result.current.syncPulse).toBe(true)
+  })
+
+  it("shows the partner's updated exercise list when they change their plan mid-session", async () => {
+    const { result } = await joinedWith(makeSocket(true))
+    await act(async () =>
+      result.current.handleSocketMessage({
+        type: "joint_progress",
+        progress: { fromUserId: "u2", exerciseNames: [{ name: "Deadlift", sets: 5 }] },
+      }),
+    )
+    expect(result.current.jointSession?.participants.find((p) => p.userId === "u2")).toMatchObject({
+      exerciseNames: [{ name: "Deadlift", sets: 5 }],
+    })
+  })
+})
+
+describe("useJointSession watching", () => {
+  it("shows the friend's live session", async () => {
+    api.getFriendLiveSession.mockResolvedValue({ id: "live" } as never)
+    const { result } = await setup()
+    let ok = false
+    await act(async () => {
+      ok = await result.current.startWatching("u2", "buddy", "s9")
+    })
+    expect(ok).toBe(true)
+    expect(result.current.watchSession).toEqual({ id: "live" })
+    expect(result.current.isWatching).toBe(true)
+  })
+
+  it("tells the user the session has ended instead of showing an empty watch screen", async () => {
+    api.getFriendLiveSession.mockResolvedValue(null as never)
+    const { result } = await setup()
+    await act(async () => {
+      await result.current.startWatching("u2", "buddy", "s9")
+    })
+    expect(result.current.watchError).toBe("session_ended")
+    expect(result.current.isWatching).toBe(false)
+  })
+
+  it("reports a load failure and stops watching", async () => {
+    api.getFriendLiveSession.mockRejectedValue(new Error("Network request failed"))
+    const { result } = await setup()
+    await act(async () => {
+      await result.current.startWatching("u2", "buddy", "s9")
+    })
+    expect(result.current.watchError).toBe("poll_error")
+    expect(result.current.watchLoading).toBe(false)
+  })
+
+  it("doesn't show the first friend's session under the second friend's name after a quick switch", async () => {
+    let resolveFirst: (v: unknown) => void = () => {}
+    api.getFriendLiveSession
+      .mockImplementationOnce(() => new Promise((r) => (resolveFirst = r)) as never)
+      .mockResolvedValueOnce({ id: "second" } as never)
+    const { result } = await setup()
+
+    let first: Promise<boolean> = Promise.resolve(true)
+    await act(async () => {
+      first = result.current.startWatching("u2", "buddy", "s1")
+      await result.current.startWatching("u3", "other", "s2")
+    })
+    let firstOk = true
+    await act(async () => {
+      resolveFirst({ id: "first" })
+      firstOk = await first
+    })
+
+    expect(firstOk).toBe(false)
+    expect(result.current.watchTarget?.friendUsername).toBe("other")
+    expect(result.current.watchSession).toEqual({ id: "second" })
+  })
+
+  it("leaves the watch screen when a later poll finds the session ended", async () => {
+    jest.useFakeTimers()
+    api.getFriendLiveSession.mockResolvedValueOnce({ id: "live" } as never).mockResolvedValue(null as never)
+    const { result } = await setup()
+    await act(async () => {
+      await result.current.startWatching("u2", "buddy", "s9")
+    })
+
+    await act(async () => {
+      jest.advanceTimersByTime(10_000)
+    })
+
+    expect(result.current.isWatching).toBe(false)
+    expect(result.current.watchError).toBe("session_ended")
+  })
+
+  it("clears everything on stop", async () => {
+    api.getFriendLiveSession.mockResolvedValue({ id: "live" } as never)
+    const { result } = await setup()
+    await act(async () => {
+      await result.current.startWatching("u2", "buddy", "s9")
+    })
+    await act(async () => result.current.stopWatching())
+    expect(result.current.isWatching).toBe(false)
+    expect(result.current.watchSession).toBeNull()
+  })
+})
+
+describe("useJointSession watchers", () => {
+  const watchStarted: WebSocketMessage = { type: "watch_started", watcherId: 7, watcherUsername: "alex" }
+
+  it("lists each friend watching this workout once and drops them when they stop", async () => {
+    const { result } = await setup()
+    await act(async () => result.current.handleSocketMessage(watchStarted))
+    await act(async () => result.current.handleSocketMessage(watchStarted))
+    expect(result.current.watchers).toEqual([{ id: "7", username: "alex" }])
+
+    await act(async () => result.current.handleSocketMessage({ type: "watch_stopped", watcherId: 7 }))
+    expect(result.current.watchers).toEqual([])
+  })
+
+  it("blocks a watcher by revoking only their watch grant", async () => {
+    api.getGrantedPermissions.mockResolvedValue([
+      { id: 1, toUserId: 7, permissionType: "watch_session" },
+      { id: 2, toUserId: 7, permissionType: "history" },
+      { id: 3, toUserId: 8, permissionType: "watch_session" },
+    ] as never)
+    api.revokePermission.mockResolvedValue(undefined as never)
+    const { result } = await setup()
+    await act(async () => result.current.handleSocketMessage(watchStarted))
+
+    await act(async () => {
+      await result.current.blockWatcher("7")
+    })
+
+    expect(api.revokePermission).toHaveBeenCalledTimes(1)
+    expect(api.revokePermission).toHaveBeenCalledWith(1)
+    expect(result.current.watchers).toEqual([])
+  })
+
+  it("forgets the watcher list when the workout ends", async () => {
+    const { result, rerender } = await setup()
+    await act(async () => result.current.handleSocketMessage(watchStarted))
+    await rerender({ socket: makeSocket(true), workoutStartTime: null })
+    expect(result.current.watchers).toEqual([])
+  })
+})
