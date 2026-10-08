@@ -9,6 +9,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 ### Fixed
 
 - Deleting a set from a workout started offline no longer warns that the server still has the set.
+- When the server can't be reached while you accept the privacy and terms screen, it now says so instead of blaming the device's storage.
 
 ### Internal
 

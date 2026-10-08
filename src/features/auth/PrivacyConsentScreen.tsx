@@ -36,10 +36,13 @@ import {
   TERMS_VERSION,
 } from "./termsAcceptance";
 import { authService } from "./services";
+import { userFacingError } from "@shared/services/apiError";
 import type { RootStackParamList } from "@shared/types";
 import { useAuth } from "@shared/context/AuthContext";
 
 const OFFICIAL_SERVER_HOST = "owngains.superak0s.com";
+const STORAGE_FAILURE =
+  "Your choices could not be saved because OwnGains's local storage is unreachable. Tap Continue to retry. If it keeps failing, restarting the app usually clears it.";
 const CONTACT_EMAIL = "kostissuperak0s@gmail.com";
 const HEALTH_FEATURE_DATA: Record<string, string> = {
   tracking:
@@ -80,7 +83,7 @@ export default function PrivacyConsentScreen({
   const canContinue =
     !termsNeeded || (termsAccepted && (healthConsent || !healthRequired));
   const [saving, setSaving] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const serverHost = getServerUrl().replace(/^\w+:\/\//, "").replace(/\/.*$/, "");
   const operator =
     serverHost === OFFICIAL_SERVER_HOST
@@ -96,7 +99,7 @@ export default function PrivacyConsentScreen({
     preset?: { crash: boolean; telemetry: boolean },
   ): Promise<void> => {
     setSaving(true);
-    setFailed(false);
+    setFailure(null);
     if (preset) {
       setCrashReports(preset.crash);
       setTelemetry(preset.telemetry);
@@ -114,7 +117,7 @@ export default function PrivacyConsentScreen({
       onDone();
     } catch (error) {
       captureException(error, { stage: "savePrivacyConsent" });
-      setFailed(true);
+      setFailure(userFacingError(error, STORAGE_FAILURE));
       setSaving(false);
     }
   }, [crashReports, telemetry, healthConsent, onDone, userId, termsNeeded, askDiagnostics]);
@@ -244,11 +247,9 @@ export default function PrivacyConsentScreen({
             </>,
           )}
 
-        {failed && (
+        {failure && (
           <Text style={styles.error} accessibilityLiveRegion='assertive'>
-            Your choices could not be saved because OwnGains's local storage is
-            unreachable. Tap Continue to retry. If it keeps failing, restarting
-            the app usually clears it.
+            {failure}
           </Text>
         )}
 

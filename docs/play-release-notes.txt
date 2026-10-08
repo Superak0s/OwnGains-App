@@ -1,1 +1,2 @@
+• The privacy screen now says when the server can't be reached instead of blaming device storage.
 • Deleting a set from a workout started offline no longer warns that the server still has it.
