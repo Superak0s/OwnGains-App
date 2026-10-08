@@ -6,6 +6,14 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Fixed
+
+- Deleting a set from a workout started offline no longer warns that the server still has the set.
+
+### Internal
+
+- Sets of a workout whose start hasn't synced yet go straight to the sync queue instead of first being posted under their `local_` session ID
+
 ## [0.3.0] - 2026-10-07
 
 ### Added

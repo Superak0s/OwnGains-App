@@ -572,27 +572,35 @@ export const useSessionOperations = ({
           );
         }
 
-        try {
-          await workoutApi.recordSet(sessionId, {
-            exerciseName,
-            setIndex,
-            startTime: setStartTime,
-            endTime: setEndTime,
-            weight,
-            reps,
-            note,
-            isWarmup,
-            rir,
-            primaryMuscles,
-            secondaryMuscles,
-            machineName,
-          });
-          console.debug("✓ Set recorded");
-          metric.count("workout.set_recorded", 1, {
-            attributes: { outcome: "server" },
-          });
-        } catch (error) {
-          console.error("Failed to record set:", error);
+        let recorded = false;
+        // The server doesn't know a local_ id. The set waits in the queue
+        // until the session start replays and remaps it.
+        if (!isLocalSessionId(sessionId)) {
+          try {
+            await workoutApi.recordSet(sessionId, {
+              exerciseName,
+              setIndex,
+              startTime: setStartTime,
+              endTime: setEndTime,
+              weight,
+              reps,
+              note,
+              isWarmup,
+              rir,
+              primaryMuscles,
+              secondaryMuscles,
+              machineName,
+            });
+            recorded = true;
+            console.debug("✓ Set recorded");
+            metric.count("workout.set_recorded", 1, {
+              attributes: { outcome: "server" },
+            });
+          } catch (error) {
+            console.error("Failed to record set:", error);
+          }
+        }
+        if (!recorded) {
           await addPendingSync({
             type: "recordSet",
             data: {
@@ -703,20 +711,23 @@ export const useSessionOperations = ({
                 sync.data.exerciseName === exerciseName &&
                 sync.data.setIndex === setIndex,
             );
-            try {
-              await workoutApi.deleteSet(
-                currentSessionId,
-                exerciseName,
-                setIndex,
-              );
-            } catch (error) {
-              if (!isSessionGone(error)) {
-                console.error("Failed to delete set on the server:", error);
-                captureException(error, { stage: "deleteSetDetails" });
-                Alert.alert(
-                  "Set removed here only",
-                  "The set was removed from this device but the server still has it. It may reappear after the next sync.",
+            // A local_ session was never on the server, and its queued set is removed above.
+            if (!isLocalSessionId(currentSessionId)) {
+              try {
+                await workoutApi.deleteSet(
+                  currentSessionId,
+                  exerciseName,
+                  setIndex,
                 );
+              } catch (error) {
+                if (!isSessionGone(error)) {
+                  console.error("Failed to delete set on the server:", error);
+                  captureException(error, { stage: "deleteSetDetails" });
+                  Alert.alert(
+                    "Set removed here only",
+                    "The set was removed from this device but the server still has it. It may reappear after the next sync.",
+                  );
+                }
               }
             }
           }
