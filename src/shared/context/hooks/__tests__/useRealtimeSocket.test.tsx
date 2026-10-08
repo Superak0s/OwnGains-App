@@ -1,5 +1,6 @@
 import React from "react";
 import { create, act, type ReactTestRenderer } from "react-test-renderer";
+import { AppState } from "react-native";
 import { useRealtimeSocket } from "../useRealtimeSocket";
 
 jest.mock("../../../services/appMode", () => ({
@@ -240,5 +241,86 @@ describe("useRealtimeSocket", () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+});
+
+describe("useRealtimeSocket after a long absence and logout", () => {
+  let appStateHandler: ((state: string) => void) | undefined;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest
+      .spyOn(AppState, "addEventListener")
+      .mockImplementation((_event, handler) => {
+        appStateHandler = handler as (state: string) => void;
+        return { remove: () => {} } as ReturnType<typeof AppState.addEventListener>;
+      });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("reconnects with the renewed token after returning from the background with an expired one (\"Live features are offline\")", async () => {
+    const nowSpy = jest.spyOn(Date, "now");
+    const start = 1_700_000_000_000;
+    nowSpy.mockReturnValue(start);
+    const first = jwtExpiringAt(start + 15 * 60_000);
+    await mount({ token: first });
+    act(() => FakeSocket.instances[0].open());
+
+    act(() => appStateHandler?.("background"));
+    expect(seen.current?.connected).toBe(false);
+
+    nowSpy.mockReturnValue(start + 3 * 60 * 60_000);
+    act(() => appStateHandler?.("active"));
+    expect(FakeSocket.instances).toHaveLength(1);
+    expect(seen.current?.authError).toBe(false);
+
+    const renewed = jwtExpiringAt(start + 3 * 60 * 60_000 + 15 * 60_000);
+    await rerender({ token: renewed });
+
+    expect(FakeSocket.instances).toHaveLength(2);
+    act(() => FakeSocket.instances[1].open());
+    expect(JSON.parse(FakeSocket.instances[1].sent[0])).toEqual({ type: "auth", token: renewed });
+    expect(seen.current?.connected).toBe(true);
+  });
+
+  it("tries again on foreground after giving up, instead of staying offline until restart", async () => {
+    await mount({ token: "t1" });
+    for (let i = 0; i < 11; i++) {
+      const ws = FakeSocket.instances.at(-1)!;
+      act(() => ws.close(1006, "network"));
+      act(() => jest.advanceTimersByTime(30_000));
+    }
+    expect(seen.current?.connectionFailed).toBe(true);
+    const before = FakeSocket.instances.length;
+
+    act(() => appStateHandler?.("active"));
+
+    expect(seen.current?.connectionFailed).toBe(false);
+    expect(FakeSocket.instances).toHaveLength(before + 1);
+  });
+
+  it("stops the reconnect backoff after logout so no socket opens without a session", async () => {
+    await mount({ token: "t1" });
+    act(() => FakeSocket.instances[0].open());
+    act(() => FakeSocket.instances[0].close(1006, "network"));
+
+    await rerender({ token: null });
+    act(() => jest.advanceTimersByTime(5 * 60_000));
+
+    expect(FakeSocket.instances).toHaveLength(1);
+    expect(seen.current?.connected).toBe(false);
+  });
+
+  it("does not reconnect on foreground after logout", async () => {
+    await mount({ token: "t1" });
+    act(() => FakeSocket.instances[0].open());
+    await rerender({ token: null });
+
+    act(() => appStateHandler?.("active"));
+
+    expect(FakeSocket.instances).toHaveLength(1);
   });
 });

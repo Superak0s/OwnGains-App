@@ -14,6 +14,8 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 ### Internal
 
 - Sets of a workout whose start hasn't synced yet go straight to the sync queue instead of first being posted under their `local_` session ID
+- Screen, service and sync tests for settings, auth, friends, tracking, workout and plan, with the offline migration moved out of `SettingsScreen` so it can be tested
+- Added `@testing-library/react-native` 14 and its `test-renderer` peer as dev dependencies for screen tests
 
 ## [0.3.0] - 2026-10-07
 

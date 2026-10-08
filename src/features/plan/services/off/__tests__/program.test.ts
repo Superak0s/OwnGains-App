@@ -180,3 +180,26 @@ describe("patchExerciseSets", () => {
     spies.forEach((s) => s.mockRestore())
   })
 })
+
+describe("updateExerciseMachines", () => {
+  it("clears the selected machine on null instead of storing a null the picker can't read", async () => {
+    await programApi.updateExerciseMachines(1, "A", 0, { selectedMachine: "Smith", defaultMachine: "Rack" })
+    await programApi.updateExerciseMachines(1, "A", 0, { selectedMachine: null })
+
+    const exercise = saved().days[0].split.A.exercises[0]
+    expect(exercise).not.toHaveProperty("selectedMachine")
+    expect(exercise.defaultMachine).toBe("Rack")
+  })
+
+  it("throws for an unknown exercise like the server's 404", async () => {
+    jest.spyOn(console, "warn").mockImplementation(() => {})
+    await expect(programApi.updateExerciseMachines(1, "A", 9, { selectedMachine: null })).rejects.toThrow("Exercise 9 not found")
+  })
+})
+
+describe("current day", () => {
+  it("has no server pointer offline so the device's stored day wins", async () => {
+    expect(await programApi.getCurrentDay()).toBeNull()
+    await expect(programApi.setCurrentDay()).resolves.toBeUndefined()
+  })
+})

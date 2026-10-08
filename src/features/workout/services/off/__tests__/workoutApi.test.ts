@@ -372,3 +372,38 @@ describe("deletion", () => {
     expect(programApi.deleteProgram).toHaveBeenCalled();
   });
 });
+
+describe("parity with the server routes", () => {
+  it("deletes every duplicate of a re-logged set so the row doesn't reappear", async () => {
+    const id = await startAt("2024-01-01T10:00:00.000Z");
+    await record(id, "Bench Press");
+    await record(id, "Bench Press");
+    await record(id, "Squat");
+
+    expect(await workoutApi.deleteSet(id, "Bench Press", 0)).toEqual({ deletedCount: 2 });
+    expect(await workoutApi.deleteSet(id, "Bench Press", 0)).toEqual({ deletedCount: 0 });
+    expect((await workoutApi.getSession(id)).setTimings?.map((t) => t.exerciseName)).toEqual(["Squat"]);
+  });
+
+  it("refuses to delete a set from an unknown session, like the server's 404", async () => {
+    await expect(workoutApi.deleteSet("off_999", "Bench Press", 0)).rejects.toThrow("session not found");
+  });
+
+  it("moves a running session to another day and ignores a session that no longer exists", async () => {
+    const id = await startAt("2024-01-01T10:00:00.000Z");
+
+    await workoutApi.updateSessionDay(id, 3, "Legs");
+    await expect(workoutApi.updateSessionDay("off_999", 3)).resolves.toBeUndefined();
+
+    expect(await workoutApi.getSession(id)).toMatchObject({ dayNumber: 3, dayTitle: "Legs" });
+  });
+
+  it("answers the record-sessions query with an array, never the online null for an old server", async () => {
+    const id = await startAt("2024-01-01T10:00:00.000Z");
+    await record(id, "Bench Press", { weight: 120 });
+
+    const records = await workoutApi.getRecordSessions();
+    expect(Array.isArray(records)).toBe(true);
+    expect(records?.[0].setTimings?.[0].weight).toBe(120);
+  });
+});
