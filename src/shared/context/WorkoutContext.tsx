@@ -1290,7 +1290,9 @@ export const WorkoutProvider = ({
   const { onReconnect: onSocketReconnect } = socket;
   useEffect(() => {
     if (!userId || !consented || actAs) return;
-    return onSocketReconnect(() => void syncPendingDataRef.current());
+    return onSocketReconnect(
+      () => void syncPendingDataRef.current({ reconnected: true }),
+    );
   }, [userId, consented, actAs, onSocketReconnect]);
 
   useEffect(() => {

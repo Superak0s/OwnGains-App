@@ -46,7 +46,8 @@ interface UseSyncManagerReturn {
   removePendingSyncs: (
     match: (sync: PendingSync) => boolean,
   ) => Promise<number>;
-  syncPendingData: () => Promise<void>;
+  /** `reconnected` skips the backoff of ops that only failed to reach the server. */
+  syncPendingData: (opts?: { reconnected?: boolean }) => Promise<void>;
   cleanupInvalidSyncs: () => Promise<void>;
   droppedSyncs: DroppedSync[];
   droppedSyncCount: number;
@@ -218,7 +219,7 @@ export const useSyncManager = ({
     [writeQueue],
   );
 
-  const syncPendingData = useCallback(async (): Promise<void> => {
+  const syncPendingData = useCallback(async ({ reconnected = false }: { reconnected?: boolean } = {}): Promise<void> => {
     const startingQueue = queueRef.current;
     if (syncingRef.current || startingQueue.length === 0) return;
 
@@ -482,7 +483,7 @@ export const useSyncManager = ({
       const mustWait = (
         sync: PendingSync,
         sessionKey: string | null | undefined,
-        retryState: { nextAttemptAt: number } | undefined,
+        retryState: { rejections: number; nextAttemptAt: number } | undefined,
       ): boolean => {
         // Its startSession hasn't synced yet (or isn't in this run), so keep it
         // queued rather than posting a local id the server can't resolve.
@@ -499,7 +500,10 @@ export const useSyncManager = ({
           return true;
         }
         if (sessionKey && blockedSessions.has(sessionKey)) return true;
-        if (retryState && retryState.nextAttemptAt > now) {
+        // The server answering again says nothing about an op it refused, so
+        // only ops that never got an answer skip their backoff on a reconnect.
+        const backoffLifted = reconnected && retryState?.rejections === 0;
+        if (retryState && retryState.nextAttemptAt > now && !backoffLifted) {
           if (sessionKey) blockedSessions.add(sessionKey);
           return true;
         }

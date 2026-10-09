@@ -62,7 +62,7 @@ beforeEach(() => {
 });
 
 type Control = {
-  syncPendingData: () => Promise<void>;
+  syncPendingData: (opts?: { reconnected?: boolean }) => Promise<void>;
   cleanupInvalidSyncs: () => Promise<void>;
   addPendingSync: (sync: PendingSync) => Promise<void>;
   getPendingSyncs: () => PendingSync[];
@@ -200,6 +200,42 @@ describe("useSyncManager retry/backoff", () => {
     expect(startSession).toHaveBeenCalledTimes(20);
     expect(controlRef.current!.getPendingSyncs()).toHaveLength(1);
     expect(controlRef.current!.getDroppedSyncs()).toEqual([]);
+  });
+
+  it("retries an unreachable-server failure at once on a reconnect, skipping its backoff", async () => {
+    startSession.mockRejectedValueOnce(new TypeError("Network request failed"));
+    startSession.mockResolvedValue(42);
+    const controlRef: React.MutableRefObject<Control | null> = { current: null };
+    act(() => {
+      create(<Harness initialSyncs={[makeSync("t1")]} controlRef={controlRef} />);
+    });
+    await act(async () => {
+      await controlRef.current!.syncPendingData();
+    });
+
+    await act(async () => {
+      await controlRef.current!.syncPendingData({ reconnected: true });
+    });
+
+    expect(startSession).toHaveBeenCalledTimes(2);
+    expect(controlRef.current!.getPendingSyncs()).toHaveLength(0);
+  });
+
+  it("keeps the backoff of an op the server refused, even on a reconnect", async () => {
+    startSession.mockRejectedValue(new ApiError("Invalid split", 400));
+    const controlRef: React.MutableRefObject<Control | null> = { current: null };
+    act(() => {
+      create(<Harness initialSyncs={[makeSync("t1")]} controlRef={controlRef} />);
+    });
+    await act(async () => {
+      await controlRef.current!.syncPendingData();
+    });
+
+    await act(async () => {
+      await controlRef.current!.syncPendingData({ reconnected: true });
+    });
+
+    expect(startSession).toHaveBeenCalledTimes(1);
   });
 
   it("keeps a rejected startSession while its sets are still queued", async () => {
