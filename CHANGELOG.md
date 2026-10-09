@@ -6,6 +6,12 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-10
+
+### Changed
+
+- The Continue with Google button shows the Google logo.
+
 ## [0.5.0] - 2026-10-10
 
 ### Added
