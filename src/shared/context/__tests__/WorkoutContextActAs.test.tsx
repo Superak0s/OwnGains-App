@@ -56,7 +56,7 @@ jest.mock("../AuthContext", () => ({
 }));
 
 jest.mock("../hooks/useRealtimeSocket", () => ({
-  useRealtimeSocket: jest.fn(() => ({ send: jest.fn(), isConnected: false })),
+  useRealtimeSocket: jest.fn(() => ({ send: jest.fn(), isConnected: false, onReconnect: () => () => {} })),
 }));
 
 jest.mock("@features/auth/services", () => ({

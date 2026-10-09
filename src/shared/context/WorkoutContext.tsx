@@ -1278,13 +1278,20 @@ export const WorkoutProvider = ({
     if (selectedSplit && !useManualTime && userId) void fetchAnalytics();
   }, [selectedSplit, currentDay, useManualTime, userId, fetchAnalytics]);
 
-  // There is no connectivity listener anywhere in the app, so this poll is the
-  // only thing that drains the queue after the network comes back. Depending on
-  // `pendingSyncs` would restart the timer on every queued op, starving the
-  // sync for as long as the user keeps training. syncPendingData already
-  // no-ops on an empty queue or an in-flight run, so don't gate on the queue.
+  // A socket reconnect drains the queue as soon as the server is reachable
+  // again, and this poll covers HTTP working while the socket is down.
+  // Depending on `pendingSyncs` would restart the timer on every queued op,
+  // starving the sync for as long as the user keeps training. syncPendingData
+  // already no-ops on an empty queue or an in-flight run, so don't gate on the
+  // queue, and a reconnect and a poll landing together are harmless.
   const syncPendingDataRef = useRef(syncManager.syncPendingData);
   syncPendingDataRef.current = syncManager.syncPendingData;
+
+  const { onReconnect: onSocketReconnect } = socket;
+  useEffect(() => {
+    if (!userId || !consented || actAs) return;
+    return onSocketReconnect(() => void syncPendingDataRef.current());
+  }, [userId, consented, actAs, onSocketReconnect]);
 
   useEffect(() => {
     if (!userId || !consented || actAs) return;

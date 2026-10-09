@@ -17,6 +17,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 ### Changed
 
 - Chart settings are saved per chart for each account on the device and also apply to the small chart.
+- Watching a friend's workout updates instantly.
 
 ### Fixed
 
@@ -35,6 +36,8 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Added `@testing-library/react-native` 14 and its `test-renderer` peer as dev dependencies for screen tests
 - TODO plan for an expanded, configurable chart view
 - Charts moved from `react-native-chart-kit` to `react-native-gifted-charts`, with `expo-screen-orientation` and `react-native-view-shot` added (new native modules, needs a prebuild)
+- The offline sync queue drains as soon as the realtime socket reconnects, with the 30s poll kept as a fallback
+- Watching uses `watch_progress` pushes on servers that send them, polling `/live` every 60s while connected and every 10s otherwise, and refetching on every socket reconnect
 
 ## [0.3.0] - 2026-10-07
 

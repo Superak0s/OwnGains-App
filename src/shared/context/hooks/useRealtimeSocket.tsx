@@ -53,6 +53,12 @@ export interface RealtimeSocket {
    */
   subscribe: (handler: SocketSubscriber) => () => void
   /**
+   * Registers a listener for every authenticated reopen after the first one
+   * (the server's `auth_success`), and returns its unsubscribe. It means the
+   * server is reachable again and any pushes sent while down were missed.
+   */
+  onReconnect: (handler: () => void) => () => void
+  /**
    * True once the server has rejected the current token (e.g. expired or
    * malformed JWT). Remains true (and the socket remains disconnected) until
    * a *different* token is supplied. Surface this in the UI (e.g. to force
@@ -110,6 +116,8 @@ export function useRealtimeSocket({
   // reads the current value instead of one captured at creation time.
   const offlineRef = useRef<boolean>(false)
   const subscribersRef = useRef<Set<SocketSubscriber>>(new Set())
+  const reconnectHandlersRef = useRef<Set<() => void>>(new Set())
+  const authenticatedOnceRef = useRef(false)
   const [connected, setConnected] = useState(false)
   const [authError, setAuthError] = useState(false)
   const [connectionFailed, setConnectionFailed] = useState(false)
@@ -123,6 +131,13 @@ export function useRealtimeSocket({
     subscribersRef.current.add(handler)
     return () => {
       subscribersRef.current.delete(handler)
+    }
+  }, [])
+
+  const onReconnect = useCallback((handler: () => void) => {
+    reconnectHandlersRef.current.add(handler)
+    return () => {
+      reconnectHandlersRef.current.delete(handler)
     }
   }, [])
 
@@ -237,6 +252,11 @@ export function useRealtimeSocket({
           serverTokenRef.current = pendingRefreshRef.current
           pendingRefreshRef.current = null
           return
+        }
+        if (msg.type === "auth_success") {
+          if (authenticatedOnceRef.current)
+            for (const handler of [...reconnectHandlersRef.current]) handler()
+          authenticatedOnceRef.current = true
         }
         onMessageRef.current?.(msg)
         // Copied before iterating: a handler may unsubscribe itself.
@@ -399,5 +419,5 @@ export function useRealtimeSocket({
     return () => sub.remove()
   }, [connect])
 
-  return { send, connected, subscribe, authError, connectionFailed }
+  return { send, connected, subscribe, onReconnect, authError, connectionFailed }
 }

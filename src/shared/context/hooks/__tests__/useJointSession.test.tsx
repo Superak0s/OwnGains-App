@@ -39,6 +39,7 @@ const makeSocket = (connected: boolean): RealtimeSocket => ({
   connected,
   send: jest.fn(() => connected),
   subscribe: jest.fn(() => () => {}),
+  onReconnect: jest.fn(() => () => {}),
   authError: false,
   connectionFailed: false,
 })
@@ -506,6 +507,103 @@ describe("useJointSession watching", () => {
     await act(async () => result.current.stopWatching())
     expect(result.current.isWatching).toBe(false)
     expect(result.current.watchSession).toBeNull()
+  })
+})
+
+describe("useJointSession watch pushes", () => {
+  const progress = (liveSession: unknown, friendId = "u2", sessionId = 9): WebSocketMessage => ({
+    type: "watch_progress",
+    friendId,
+    sessionId,
+    liveSession,
+  })
+
+  async function watching(socket: RealtimeSocket = makeSocket(true)) {
+    jest.useFakeTimers()
+    api.getFriendLiveSession.mockResolvedValue({ id: "live" } as never)
+    const hook = await setup({ socket })
+    await act(async () => {
+      await hook.result.current.startWatching("u2", "buddy", "9")
+    })
+    api.getFriendLiveSession.mockClear()
+    return hook
+  }
+
+  it("shows a pushed snapshot right away", async () => {
+    const { result } = await watching()
+    await act(async () => result.current.handleSocketMessage(progress({ id: "pushed" })))
+    expect(result.current.watchSession).toEqual({ id: "pushed" })
+  })
+
+  it("ignores a push for another friend's session", async () => {
+    const { result } = await watching()
+    await act(async () => result.current.handleSocketMessage(progress({ id: "other" }, "u3")))
+    expect(result.current.watchSession).toEqual({ id: "live" })
+  })
+
+  it("leaves the watch screen when a push says the session ended", async () => {
+    const { result } = await watching()
+    await act(async () => result.current.handleSocketMessage(progress(null)))
+    expect(result.current.isWatching).toBe(false)
+    expect(result.current.watchError).toBe("session_ended")
+  })
+
+  it("polls every 60s instead of 10s once pushes arrive over a connected socket", async () => {
+    const { result } = await watching()
+    await act(async () => result.current.handleSocketMessage(progress({ id: "pushed" })))
+    await act(async () => {
+      jest.advanceTimersByTime(50_000)
+    })
+    expect(api.getFriendLiveSession).not.toHaveBeenCalled()
+    await act(async () => {
+      jest.advanceTimersByTime(10_000)
+    })
+    expect(api.getFriendLiveSession).toHaveBeenCalledTimes(1)
+  })
+
+  it("goes back to the 10s poll while the socket is down", async () => {
+    const { result, rerender } = await watching()
+    await act(async () => result.current.handleSocketMessage(progress({ id: "pushed" })))
+    await rerender({ socket: makeSocket(false), workoutStartTime: "2026-10-07T10:00:00.000Z" })
+    await act(async () => {
+      jest.advanceTimersByTime(10_000)
+    })
+    expect(api.getFriendLiveSession).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps updating every 10s from a server that never pushes", async () => {
+    const { result } = await watching()
+    api.getFriendLiveSession.mockResolvedValue({ id: "polled" } as never)
+    await act(async () => {
+      jest.advanceTimersByTime(10_000)
+    })
+    expect(api.getFriendLiveSession).toHaveBeenCalledTimes(1)
+    expect(result.current.watchSession).toEqual({ id: "polled" })
+  })
+
+  it("refetches the live session when the socket reconnects, to fill in missed pushes", async () => {
+    let reconnect = () => {}
+    const socket = makeSocket(true)
+    socket.onReconnect = jest.fn((handler: () => void) => {
+      reconnect = handler
+      return () => {}
+    })
+    const { result } = await watching(socket)
+    api.getFriendLiveSession.mockResolvedValue({ id: "fresh" } as never)
+    await act(async () => reconnect())
+    expect(api.getFriendLiveSession).toHaveBeenCalledWith("u2", "9")
+    expect(result.current.watchSession).toEqual({ id: "fresh" })
+  })
+
+  it("ends the watch when the fast poll is refused after access is revoked", async () => {
+    const { result } = await watching()
+    await act(async () => result.current.handleSocketMessage(progress({ id: "pushed" })))
+    api.getFriendLiveSession.mockResolvedValue(null as never)
+    await act(async () => {
+      jest.advanceTimersByTime(60_000)
+    })
+    expect(result.current.isWatching).toBe(false)
+    expect(result.current.watchError).toBe("session_ended")
   })
 })
 

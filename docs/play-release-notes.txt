@@ -1,6 +1,7 @@
-• Tap any chart to open it full screen: time ranges, Y axis settings, landscape, pinch zoom and tap a point for details.
-• Trend lines, goal line with an estimated date, record markers and period comparison.
+• Tap any chart for full screen: time ranges, Y axis settings, landscape, pinch zoom and point details.
+• Trend lines, goal line with a target date, records and period comparison.
 • Exercise charts switch between weight, 1RM, volume and reps.
 • Save charts as an image or CSV.
-• On Xiaomi, Samsung and other phones that delay reminders, the app shows which battery settings to change.
-• Fixes for offline set deletion and the privacy screen when the server is down.
+• Watching a friend's workout updates instantly.
+• On Xiaomi, Samsung and other phones that delay reminders, see which battery settings to change.
+• Fixes for offline set deletion and the privacy screen.

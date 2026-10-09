@@ -11,11 +11,16 @@ jest.mock("../AuthContext", () => ({
 }))
 
 const mockSend = jest.fn((_msg: { type: string; sessionId?: string }) => true)
+const mockReconnectHandlers = new Set<() => void>()
 jest.mock("../hooks/useRealtimeSocket", () => ({
   useRealtimeSocket: () => ({
     send: mockSend,
     connected: true,
     subscribe: () => () => {},
+    onReconnect: (handler: () => void) => {
+      mockReconnectHandlers.add(handler)
+      return () => mockReconnectHandlers.delete(handler)
+    },
     authError: false,
     connectionFailed: false,
   }),
@@ -135,5 +140,38 @@ describe("WorkoutProvider workout started without a connection", () => {
     expect(ctx.current!.completedDays[1][0][0]).toMatchObject({ weight: 80, reps: 8 })
     expect(queue.current!.pendingSyncs.map((s) => s.type)).toEqual(["recordSet", "endSession"])
     expect(ctx.current!.currentSessionId).toBeNull()
+  })
+})
+
+describe("WorkoutProvider socket reconnect", () => {
+  async function queueOfflineSet() {
+    mockWorkoutApi.startSession.mockResolvedValue(42)
+    mockWorkoutApi.recordSet.mockImplementation(offline)
+    await act(async () => {
+      await ctx.current!.saveSetDetails(1, 0, 0, 80, 8)
+    })
+    expect(queue.current!.pendingSyncs.map((s) => s.type)).toEqual(["recordSet"])
+    mockWorkoutApi.recordSet.mockResolvedValue(undefined)
+  }
+
+  it("drains the offline queue as soon as the socket reconnects, without waiting for the poll", async () => {
+    await queueOfflineSet()
+    await act(async () => {
+      mockReconnectHandlers.forEach((h) => h())
+    })
+    expect(mockWorkoutApi.recordSet).toHaveBeenLastCalledWith("42", expect.anything(), expect.any(String))
+    expect(queue.current!.pendingSyncs).toEqual([])
+  })
+
+  it("does not drain on reconnect in trainer mode", async () => {
+    await act(async () => {
+      root?.unmount()
+      root = create(
+        <WorkoutProvider actAs={{ userId: "trainee-9", username: "sam" }}>
+          <Probe />
+        </WorkoutProvider>,
+      )
+    })
+    expect(mockReconnectHandlers.size).toBe(0)
   })
 })

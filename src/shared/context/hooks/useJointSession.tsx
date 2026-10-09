@@ -7,6 +7,9 @@ import { ApiError } from "../../services/apiError"
 
 const SYNC_PULSE_MS = 1_500
 const WATCH_POLL_MS = 10_000
+// Servers that push `watch_progress` keep the poll only as a fallback. Their
+// watch expires after 150s without a poll, so this must stay well under that.
+const WATCH_PUSHED_POLL_MS = 60_000
 // The socket closes on every AppState change, so an app switch must not be
 // mistaken for the partner going away. Answering a message takes longer than
 // a few seconds, and the cost of waiting is only a stale partner panel.
@@ -164,6 +167,7 @@ export const useJointSession = ({
   const [watchLoading, setWatchLoading] = useState(false)
   const [watchError, setWatchError] = useState<string | null>(null)
   const [watchers, setWatchers] = useState<Watcher[]>([])
+  const [watchPushed, setWatchPushed] = useState(false)
 
   const syncPulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const jointSessionIdRef = useRef<string | null>(null)
@@ -304,6 +308,16 @@ export const useJointSession = ({
     [userId, triggerSyncPulse],
   )
 
+  const applyWatchSnapshot = useCallback((live: unknown) => {
+    if (!live) {
+      setWatchError("session_ended")
+      setWatchTarget(null)
+      setWatchSession(null)
+      return
+    }
+    setWatchSession(live)
+  }, [])
+
   const handleSocketMessage = useCallback(
     (msg: WebSocketMessage) => {
       console.debug("[WS_MESSAGE]", msg.type, msg)
@@ -346,6 +360,19 @@ export const useJointSession = ({
           break
         }
 
+        case "watch_progress": {
+          const target = watchTargetRef.current
+          if (
+            !target ||
+            String(msg.friendId) !== target.friendId ||
+            String(msg.sessionId) !== target.sessionId
+          )
+            break
+          setWatchPushed(true)
+          applyWatchSnapshot(msg.liveSession ?? null)
+          break
+        }
+
         case "watch_started":
         case "watch_stopped": {
           const id = String(msg.watcherId)
@@ -361,7 +388,7 @@ export const useJointSession = ({
           break
       }
     },
-    [isInJointSession, applyJointProgress, resetJointState],
+    [isInJointSession, applyJointProgress, resetJointState, applyWatchSnapshot],
   )
 
   // Nothing else clears these, so the invite UI would stay in its failed state
@@ -562,6 +589,7 @@ export const useJointSession = ({
       const isCurrent = (): boolean => watchRequestRef.current === requestId
       setWatchTarget({ friendId, friendUsername, sessionId })
       setWatchSession(null)
+      setWatchPushed(false)
       setWatchError(null)
       setWatchLoading(true)
       try {
@@ -592,31 +620,41 @@ export const useJointSession = ({
     [],
   )
 
-  // The server has no "friend ended their session" event, so the snapshot has
-  // to be refreshed. Without this it renders the moment watching began forever.
+  // Older servers never push `watch_progress`, so the fast poll stays until the
+  // first push proves this one does. A revoked grant only shows up as a failed
+  // fetch, which is what ends the watch.
+  const socketConnected = !!socket?.connected
+  const refreshWatch = useCallback(
+    (target: WatchTarget, stage: string) => {
+      void sharingApi
+        .getFriendLiveSession(target.friendId, target.sessionId)
+        .then((live) => {
+          if (watchTargetRef.current === target) applyWatchSnapshot(live)
+        })
+        .catch((error) => captureException(error, { stage }))
+    },
+    [applyWatchSnapshot],
+  )
+
   useEffect(() => {
     if (!watchTarget) return
-    const timer = setInterval(() => {
-      void sharingApi
-        .getFriendLiveSession(watchTarget.friendId, watchTarget.sessionId)
-        .then((live) => {
-          if (watchTargetRef.current !== watchTarget) return
-          if (!live) {
-            setWatchError("session_ended")
-            setWatchTarget(null)
-            setWatchSession(null)
-            return
-          }
-          setWatchSession(live)
-        })
-        .catch((error) => captureException(error, { stage: "pollWatch" }))
-    }, WATCH_POLL_MS)
+    const timer = setInterval(
+      () => refreshWatch(watchTarget, "pollWatch"),
+      socketConnected && watchPushed ? WATCH_PUSHED_POLL_MS : WATCH_POLL_MS,
+    )
     return () => clearInterval(timer)
-  }, [watchTarget])
+  }, [watchTarget, socketConnected, watchPushed, refreshWatch])
+
+  const onSocketReconnect = socket?.onReconnect
+  useEffect(() => {
+    if (!watchTarget || !onSocketReconnect) return
+    return onSocketReconnect(() => refreshWatch(watchTarget, "reconnectWatch"))
+  }, [watchTarget, onSocketReconnect, refreshWatch])
 
   const stopWatching = useCallback(() => {
     setWatchTarget(null)
     setWatchSession(null)
+    setWatchPushed(false)
     setWatchError(null)
     setWatchLoading(false)
   }, [])

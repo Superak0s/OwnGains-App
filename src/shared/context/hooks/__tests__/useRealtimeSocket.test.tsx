@@ -242,6 +242,32 @@ describe("useRealtimeSocket", () => {
       jest.useRealTimers();
     }
   });
+
+  it("signals a reconnect once the server accepts a reopened socket, but not on the first connect", async () => {
+    jest.useFakeTimers();
+    try {
+      await mount({ token: "t1" });
+      const onReconnect = jest.fn();
+      seen.current!.onReconnect(onReconnect);
+      const authOk = { data: JSON.stringify({ type: "auth_success", userId: "u1" }) };
+
+      const [first] = FakeSocket.instances;
+      act(() => first.open());
+      act(() => first.onmessage?.(authOk));
+      expect(onReconnect).not.toHaveBeenCalled();
+
+      act(() => first.close(1006, "network"));
+      act(() => jest.advanceTimersByTime(60_000));
+      const second = FakeSocket.instances.at(-1)!;
+      act(() => second.open());
+      expect(onReconnect).not.toHaveBeenCalled();
+
+      act(() => second.onmessage?.(authOk));
+      expect(onReconnect).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 describe("useRealtimeSocket after a long absence and logout", () => {
