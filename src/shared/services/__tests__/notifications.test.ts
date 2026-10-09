@@ -50,3 +50,45 @@ describe("canScheduleExactAlarms without the native module", () => {
     expect(loadOnAndroid(33).canScheduleExactAlarms()).toBe(true);
   });
 });
+
+describe("promptForExactAlarms", () => {
+  const loadOn = (manufacturer: string, exactGranted = true) => {
+    jest.resetModules();
+    jest.doMock("../../../../modules/exact-alarms", () => ({
+      __esModule: true,
+      default: {
+        canScheduleExactAlarms: () => exactGranted,
+        openExactAlarmSettings: jest.fn(),
+      },
+    }));
+    jest.doMock("../sqliteStorage", () => require("test-utils/memorySqlite"));
+    const { Platform } = require("react-native");
+    Object.defineProperty(Platform, "OS", { get: () => "android", configurable: true });
+    Object.defineProperty(Platform, "constants", {
+      get: () => ({ Manufacturer: manufacturer }),
+      configurable: true,
+    });
+    return require("@shared/services/notifications") as typeof NotificationsService;
+  };
+
+  it("points a Xiaomi user at battery saver and autostart, only once", async () => {
+    const svc = loadOn("Xiaomi");
+    const alert = jest.fn<void, [string, string, ...unknown[]]>();
+    await svc.promptForExactAlarms(alert, "supplement reminders");
+    await svc.promptForExactAlarms(alert, "supplement reminders");
+    expect(alert).toHaveBeenCalledTimes(1);
+    expect(alert.mock.calls[0][1]).toContain("Autostart");
+  });
+
+  it("says nothing on a phone whose maker does not delay alarms", async () => {
+    const alert = jest.fn<void, [string, string, ...unknown[]]>();
+    await loadOn("Google").promptForExactAlarms(alert, "rest reminders");
+    expect(alert).not.toHaveBeenCalled();
+  });
+
+  it("asks for the exact-alarm grant first when it is missing", async () => {
+    const alert = jest.fn<void, [string, string, ...unknown[]]>();
+    await loadOn("Xiaomi", false).promptForExactAlarms(alert, "rest reminders");
+    expect(alert.mock.calls[0][0]).toBe("Allow on-time reminders");
+  });
+});

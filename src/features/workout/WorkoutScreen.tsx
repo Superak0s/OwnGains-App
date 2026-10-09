@@ -557,7 +557,7 @@ function WorkoutScreenBody({
         const secs = Number(stored ?? 0) || 0;
         setRestReminderSeconds(secs);
         setRestReminderEnabled(secs > 0);
-        if (secs > 0) promptForExactAlarms(alert, "rest reminders");
+        if (secs > 0) void promptForExactAlarms(alert, "rest reminders");
       } catch (err) {
         console.warn("Failed to load rest reminder setting:", err);
         metric.count("workout.rest_reminder_load_failed");
@@ -1105,7 +1105,7 @@ function WorkoutScreenBody({
       log.warn("workout.rest_reminder_save_failed");
     }
     setShowRestReminderModal(false);
-    if (secs > 0) promptForExactAlarms(alert, "rest reminders");
+    if (secs > 0) void promptForExactAlarms(alert, "rest reminders");
     showToast(
       secs > 0
         ? `Rest reminder set to ${formatDuration(secs)}`

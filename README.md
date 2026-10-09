@@ -87,7 +87,7 @@ Every tracking sub-tab is its own widget board: the calendar, the "today" card, 
 - Track your supplements and doses with fast quick-logging, per-supplement color/icon, and a daily streak.
 - **Multiple doses a day**: set how many doses a supplement takes and the gap between them. The day's count fills in as you log each one.
 - **Daily reminders**: local notifications at the times you set. They repeat on their own and keep working after a reboot, and they work offline like everything else.
-- **Next-dose reminders**: logging a dose of a multi-dose supplement schedules a reminder for the next one, on time (Android asks you once to allow exact alarms).
+- **Next-dose reminders**: logging a dose of a multi-dose supplement schedules a reminder for the next one, on time (Android asks you once to allow exact alarms, and on Xiaomi, Samsung, Huawei, Honor, OnePlus, OPPO, realme and vivo phones the app also points you once at the battery settings that would delay it).
 
 ### 👥 Train with friends _(server mode)_
 

@@ -12,6 +12,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Full screen charts can show a 7 day average or smoothed trend line, a goal line with an estimated date to reach it, record markers, and the previous period or last year for comparison. Switch between line, area and bar, and see min, max, average and change for the visible range.
 - Exercise charts can switch between average and heaviest weight, estimated 1RM, best set and session volume, and average and total reps.
 - Save a chart as an image or export its points as CSV.
+- On Xiaomi, Poco, Redmi, Samsung, Huawei, Honor, OnePlus, OPPO, realme and vivo phones, setting up a reminder now tells you once which battery settings to change so the phone doesn't delay it, with a button to open them.
 
 ### Changed
 

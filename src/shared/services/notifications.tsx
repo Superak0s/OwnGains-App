@@ -4,6 +4,7 @@ import ExactAlarms from "../../../modules/exact-alarms";
 import type { UseAlertReturn } from "../components/CustomAlert";
 import { captureException, metric } from "./crashReporting";
 import { withLock } from "./offlineHelpers";
+import { getStorageItem, setStorageItem } from "./sqliteStorage";
 
 const isExpoGo =
   Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
@@ -90,17 +91,54 @@ export function openExactAlarmSettings(): void {
   else void Linking.openSettings();
 }
 
-export function promptForExactAlarms(
+// These makers' battery savers delay even exact alarms, and Android reports
+// nothing an app can check, so the only fix is a setting the user changes.
+const BACKGROUND_SETTINGS: Record<string, string> = {
+  xiaomi: 'set Battery saver to "No restrictions" and turn on Autostart',
+  samsung: 'set Battery to "Unrestricted"',
+  huawei: "under Battery, set App launch to manage manually and allow everything",
+  honor: "under Battery, set App launch to manage manually and allow everything",
+  oneplus: "under Battery usage, allow background activity",
+  oppo: "under Battery usage, allow background activity",
+  realme: "under Battery usage, allow background activity",
+  vivo: "under Battery, allow high background power consumption",
+};
+
+export const BACKGROUND_HINT_SHOWN_KEY = "@background_restriction_hint_shown";
+
+export function backgroundSettingsForDevice(): string | null {
+  if (Platform.OS !== "android") return null;
+  const maker = String(Platform.constants.Manufacturer ?? "").toLowerCase();
+  return BACKGROUND_SETTINGS[maker] ?? null;
+}
+
+export async function promptForExactAlarms(
   alert: UseAlertReturn["alert"],
   reminderKind: string,
-): void {
-  if (canScheduleExactAlarms()) return;
+): Promise<void> {
+  if (!canScheduleExactAlarms()) {
+    alert(
+      "Allow on-time reminders",
+      `Android is delaying ${reminderKind} until you open OwnGains. Turn on "Alarms & reminders" for OwnGains so they arrive on time.`,
+      [
+        { text: "Not now", style: "cancel" },
+        { text: "Open settings", onPress: openExactAlarmSettings },
+      ],
+      "warning",
+    );
+    return;
+  }
+  const settings = backgroundSettingsForDevice();
+  if (!settings) return;
+  const shown = await getStorageItem(BACKGROUND_HINT_SHOWN_KEY).catch(() => "1");
+  if (shown) return;
+  await setStorageItem(BACKGROUND_HINT_SHOWN_KEY, "1").catch(() => {});
   alert(
-    "Allow on-time reminders",
-    `Android is delaying ${reminderKind} until you open OwnGains. Turn on "Alarms & reminders" for OwnGains so they arrive on time.`,
+    "Keep reminders on time",
+    `Your phone's battery saver can delay ${reminderKind} by up to an hour. In OwnGains's app settings, ${settings}.`,
     [
       { text: "Not now", style: "cancel" },
-      { text: "Open settings", onPress: openExactAlarmSettings },
+      { text: "Open settings", onPress: () => void Linking.openSettings() },
     ],
     "warning",
   );

@@ -157,7 +157,7 @@ export default function SupplementSettingsModal({
         "warning",
       );
     } else {
-      promptForExactAlarms(alert, "supplement reminders");
+      void promptForExactAlarms(alert, "supplement reminders");
     }
     return notifReady;
   };
