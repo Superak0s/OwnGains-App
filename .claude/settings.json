@@ -84,6 +84,12 @@
             "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-readme.js\"",
             "timeout": 30,
             "statusMessage": "Checking README..."
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-min-server-version.js\"",
+            "timeout": 120,
+            "statusMessage": "Checking server version floor..."
           }
         ]
       }

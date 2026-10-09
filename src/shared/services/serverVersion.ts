@@ -9,7 +9,7 @@ import { getServerUrl } from "./config";
  * instances upgrade on their operator's schedule, not with the app, so an
  * app newer than its server is the normal case, not an edge case.
  */
-export const MIN_SERVER_VERSION = "0.3.0";
+export const MIN_SERVER_VERSION = "0.5.0";
 
 const parse = (version: string): number[] =>
   version.split(".").map((part) => Number.parseInt(part, 10) || 0);

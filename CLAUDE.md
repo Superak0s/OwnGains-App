@@ -64,7 +64,7 @@ The `new-feature-service` skill creates the four files when adding a service mod
 
 ```
 src/
-  features/          # analytics, auth, friends, homescreen, plan, settings, supplements, tracking, workout
+  features/          # analytics, auth, friends, healthConnect, homescreen, plan, settings, supplements, tracking, tutorial, workout
                       # screen(s) + any of components/, hooks/, utils/, services/{on,off}/
                       # analytics, homescreen and settings have no services/ and read other features’ data
   data/              # bundled exercise database (exercises.json/.ts)
@@ -73,10 +73,10 @@ src/
     context/           # AuthContext, WorkoutContext, ThemeContext, TabBarContext, JointSessionContext
     context/hooks/      # useJointSession, useProgramOperations, useRealtimeSocket, useServerSync,
                          # useSessionOperations, useSyncManager, useTwoFingerPull, useWidgets
-    services/          # apiClient, apiError, appMode, authenticatedFetch, config, crashReporting, dispatchProxy,
-                        # jwt, lanDiscovery, localOnlyFeatures, notifications, offlineHelpers, programDirty,
-                        # serverVersion, sqliteStorage, storage, storageMigrations, supplementReminders, tabOrder, tokenStorage,
-                        # traineeFetch, trainerEvents
+    services/          # apiClient, apiError, apiErrorClasses, appMode, authenticatedFetch, config, crashReporting,
+                        # dispatchProxy, githubUpdate, jwt, lanDiscovery, localOnlyFeatures, notifications, offlineHelpers,
+                        # pendingSyncStore, programDirty, serverVersion, sqliteStorage, startCrashReporting, storage,
+                        # storageMigrations, supplementReminders, tabOrder, tokenStorage, traineeFetch, trainerEvents
     types.ts
   utils/              # format helpers, parsers
   test-utils/         # memorySqlite.ts: in-memory expo-sqlite used by __mocks__/expo-sqlite.js
@@ -89,11 +89,11 @@ plugins/              # Expo config plugins, all applied during prebuild: withGr
                       # withAbiSplits (one release APK per ABI; ignored for the AAB)
 ```
 
-`index.ts` is the entrypoint (`package.json` `main`): it imports `startCrashReporting` before `App` so Sentry is running before any other module loads. `App.tsx` imports with relative paths (`./src/...`), not the `@features/@shared/@utils` aliases used everywhere else (configured in `tsconfig.json` `paths`, which Metro reads natively, and mirrored in the Jest `moduleNameMapper` in `package.json`).
+`index.ts` is the entrypoint (`package.json` `main`): it imports `shared/services/startCrashReporting` before `App` so Sentry is running before any other module loads. `App.tsx` imports with relative paths (`./src/...`), not the `@features/@shared/@utils` aliases used everywhere else (configured in `tsconfig.json` `paths`, which Metro reads natively, and mirrored in the Jest `moduleNameMapper` in `package.json`).
 
 ### Widget system
 
-Each screen (Home, Analytics, Workout, Plan, Friends, and each Tracking sub-tab) has an independent, per-user widget board driven by `useWidgets.tsx`: a registry of available widgets, defaults, and a persisted layout. Widgets are reorderable/resizable/removable via a two-finger pull gesture or the "Edit Widgets" panel. Sixteen boards in total, each with its own `STORAGE_KEYS.*_WIDGETS`.
+Each screen (Home, Analytics, Workout, Plan, Friends, and each Tracking sub-tab) has an independent, per-user widget board driven by `useWidgets.tsx`: a registry of available widgets, defaults, and a persisted layout. Widgets are reorderable/resizable/removable via a two-finger pull gesture or the "Edit Widgets" panel. Fifteen boards in total, each with its own `STORAGE_KEYS.*_WIDGETS`.
 
 The layout is persisted per user, so the code on disk is only half the state. `useWidgets` drops any stored instance whose `type` is no longer in the registry, which means **renaming a widget type silently deletes that widget from every existing user's board**, while every test passes and the diff looks correct. A rename needs a migration that rewrites the stored `type`. No test enforces registry/defaults agreement. Run the `widget-board-reviewer` agent after touching a registry or `useWidgets`.
 
@@ -123,11 +123,11 @@ The layout is persisted per user, so the code on disk is only half the state. `u
 
 Checked into the repo under `.claude/` and `.mcp.json`, so it applies to every session here.
 
-- **Hooks.** `PostToolUse` on `Edit|Write` runs `.claude/hooks/post-edit.js`: `eslint --fix` on the edited file, `scripts/find-unlabeled-icons.py` for any `.tsx` (CI keeps that count at zero, so a hit is from the current edit), and for anything under `services/on|off/` an offline-twin existence check plus the `serviceModeContract` test. `Stop` runs `.claude/hooks/stop-typecheck.js` (`tsc --noEmit`) and `.claude/hooks/stop-readme.js`, which blocks once per distinct set of `src/features/` edits (tests excluded) when `README.md` wasn't touched, so the README gets updated or explicitly skipped. All three exit 2 to block, so a failure comes back as feedback rather than silently passing.
+- **Hooks.** `PostToolUse` on `Edit|Write` runs `.claude/hooks/post-edit.js`: `eslint --fix` on the edited file, `scripts/find-unlabeled-icons.py` for any `.tsx` (CI keeps that count at zero, so a hit is from the current edit), and for anything under `services/on|off/` an offline-twin existence check plus the `serviceModeContract` test. `Stop` runs `.claude/hooks/stop-typecheck.js` (`tsc --noEmit`) and `.claude/hooks/stop-readme.js`, which blocks once per distinct set of `src/features/` edits (tests excluded) when `README.md` wasn't touched, so the README gets updated or explicitly skipped, and `.claude/hooks/stop-min-server-version.js`, which (when the diff adds an `/api/` line) audits the app against the sibling server's `v<MIN_SERVER_VERSION>` tag via `api_audit.py --server-root` and blocks once per gap with the oldest server tag that closes it. All four exit 2 to block, so a failure comes back as feedback rather than silently passing.
 - **Permissions.** `.claude/settings.json` allows the read-only shell verbs plus the test/typecheck/lint scripts, and denies both reading **and** writing the signing material (`.env`, `*.jks`, `*.keystore`, `*.p12`, `keystore.properties`, `credentials.json`) and the generated trees (`android/`, `ios/`, `package-lock.json`, `src/data/exercises.*`).
 - **Agents.** `appmode-parity-reviewer` (on/off divergence, `local_` ID leaks, storage bypass, sync-queue drops) and `widget-board-reviewer` (registry/defaults mismatches, renamed widget types, storage-key collisions).
 - **Skills.** `api-request` (spec a missing server endpoint), `new-feature-service` (scaffold an on/off service pair), `release` (release pre-flight and handover), `comment-cleanup` (applying the Code Comments rules when writing or trimming comments), `readme-audit` (find and fix README drift against the code).
-- **MCP.** `.mcp.json` declares `context7` (version-accurate docs for the pinned Expo 57 / RN 0.86 / React 19 / Reanimated 4 surface. Don't answer API questions about these from memory), `glitchtip` (the self-hosted GlitchTip at `glitchtip.superak0s.com/mcp`, this project's crash reports. The instance must run with `GLITCHTIP_ENABLE_MCP=True` or the endpoint 404s) and `mobile-mcp` (drives an Android emulator/device over adb for screenshots and taps on the dev build, launched via `cmd /c npx` because it's configured for Windows). The two HTTP servers need a one-time OAuth approval in an interactive session. SonarQube MCP is separate (see the Gotchas entry below).
+- **MCP.** `.mcp.json` declares `context7` (version-accurate docs for the pinned Expo 57 / RN 0.86 / React 19 / Reanimated 4 surface. Don't answer API questions about these from memory), `glitchtip` (the self-hosted GlitchTip at `glitchtip.superak0s.com/mcp`, this project's crash reports. The instance must run with `GLITCHTIP_ENABLE_MCP=True` or the endpoint 404s) and `mobile-mcp` (drives an Android emulator/device over adb for screenshots and taps on the dev build, launched via `cmd /c npx` because it's configured for Windows). `github` (the hosted GitHub MCP at `api.githubcopilot.com/mcp/`: issues, PRs, CI runs). The HTTP servers need a one-time OAuth approval in an interactive session. SonarQube MCP is separate (see the Gotchas entry below).
 
 ## Gotchas
 

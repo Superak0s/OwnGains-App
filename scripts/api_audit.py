@@ -1775,7 +1775,10 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--json", action="store_true")
     p.add_argument("--self-test", action="store_true")
+    p.add_argument("--server-root", type=Path, help="server src/ to audit against (default: sibling checkout)")
     a = p.parse_args()
+    if a.server_root:
+        SERVER_ROOT = a.server_root.resolve()
     if a.self_test:
         self_test()
         sys.exit(0)
