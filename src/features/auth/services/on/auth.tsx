@@ -14,7 +14,7 @@ import { ApiError, ServerUnreachableError } from "@shared/services/apiError"
 import type { AuthResponse, AuthUser, ProfileUpdate } from "../../types"
 import { parseStoredUser } from "../../types"
 import { captureException, log, metric } from "@shared/services/crashReporting"
-import { getGoogleIdToken } from "../../googleSignIn"
+import { getGoogleIdToken, GoogleLinkNeedsPasswordError, type GoogleLink } from "../../googleSignIn"
 
 const USER_KEY = "@user"
 const FETCH_TIMEOUT_MS = 15000
@@ -101,13 +101,22 @@ export const authService = {
     return data
   },
 
-  signInWithGoogle: async (): Promise<AuthResponse> => {
-    const idToken = await getGoogleIdToken()
-    const data = await unauthenticatedCall<AuthResponse>("/api/auth/google", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken }),
-    })
+  signInWithGoogle: async (link?: GoogleLink): Promise<AuthResponse> => {
+    const idToken = link?.idToken ?? (await getGoogleIdToken())
+    let data: AuthResponse
+    try {
+      data = await unauthenticatedCall<AuthResponse>("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, password: link?.password }),
+      })
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "GOOGLE_LINK_NEEDS_PASSWORD") {
+        const username = (err.details as { username?: string } | undefined)?.username ?? ""
+        throw new GoogleLinkNeedsPasswordError(idToken, username)
+      }
+      throw err
+    }
 
     if (data.success && data.token) {
       await tokenStorage.set(data.token)
@@ -225,6 +234,15 @@ export const authService = {
     }
     await tokenStorage.clear()
     await removeStorageItem(USER_KEY)
+  },
+
+  unlinkGoogle: async (password: string): Promise<AuthUser> => {
+    const data = await apiCall<{ user: AuthUser }>("/api/auth/google", {
+      method: "DELETE",
+      body: JSON.stringify({ password }),
+    })
+    await persistUser(data.user)
+    return data.user
   },
 
   /** A null password proves the account with a fresh Google sign-in instead. */

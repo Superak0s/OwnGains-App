@@ -1,1 +1,2 @@
-• Sign in or sign up with Google on the official OwnGains server.
+• Sign in or sign up with Google on the official OwnGains server. An existing account is linked after you enter its password once.
+• Unlink Google in Settings → Account.

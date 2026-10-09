@@ -10,6 +10,7 @@ import { generateId } from "@utils/format"
 import { OFFLINE_UNAVAILABLE_MESSAGE } from "@shared/services/apiError"
 import type { AuthResponse, AuthUser, ProfileUpdate } from "../../types"
 import { parseStoredUser } from "../../types"
+import type { GoogleLink } from "../../googleSignIn"
 
 const LOCAL_USER_KEY = "@offline_user"
 const LOCAL_USER_ID = "local"
@@ -56,7 +57,11 @@ export const authService = {
     return { success: true, token: "offline", user }
   },
 
-  signInWithGoogle: async (): Promise<AuthResponse> => {
+  signInWithGoogle: async (_link?: GoogleLink): Promise<AuthResponse> => {
+    throw new Error(OFFLINE_UNAVAILABLE_MESSAGE)
+  },
+
+  unlinkGoogle: async (_password: string): Promise<AuthUser> => {
     throw new Error(OFFLINE_UNAVAILABLE_MESSAGE)
   },
 

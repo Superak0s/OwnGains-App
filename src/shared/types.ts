@@ -13,6 +13,7 @@ export interface User {
   healthConsentAt?: string | null;
   /** false for an account created through Google sign-in. Absent offline and on older servers. */
   hasPassword?: boolean;
+  googleLinked?: boolean;
   [key: string]: unknown;
 }
 

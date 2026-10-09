@@ -44,7 +44,7 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
   {
     title: "Sign in with Google",
     body:
-      "On the official server you can sign in with Google instead of a password. The app is then shown your Google account's email, name and a token from Google, and passes only the token to the official server. The server checks it with Google and stores your Google account ID and verified email with your account. If an account with that email already exists, Google sign-in is added to it. Google learns that you signed in to OwnGains, under Google's own privacy policy. The button is never shown when you use another server, so no other server receives a Google token. Deleting your account deletes the stored Google account ID with it.",
+      "On the official server you can sign in with Google instead of a password. The app is then shown your Google account's email, name and a token from Google, and passes only the token to the official server. The server checks it with Google and stores your Google account ID and verified email with your account. If an account with that email already exists, Google sign-in is added to it only after you enter that account's password. You can unlink Google in Settings, which removes the stored Google account ID. Google learns that you signed in to OwnGains, under Google's own privacy policy. The button is never shown when you use another server, so no other server receives a Google token. Deleting your account deletes the stored Google account ID with it.",
   },
   {
     title: "Server logs",

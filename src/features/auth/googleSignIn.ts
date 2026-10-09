@@ -7,6 +7,21 @@ export class GoogleSignInCancelledError extends Error {
   }
 }
 
+export interface GoogleLink {
+  readonly idToken: string
+  readonly password: string
+}
+
+/** The Google email matches an existing account, whose password must be sent with the same token. */
+export class GoogleLinkNeedsPasswordError extends Error {
+  constructor(
+    readonly idToken: string,
+    readonly username: string,
+  ) {
+    super("An OwnGains account already uses this email")
+  }
+}
+
 // The Android OAuth client is bound to our package and signing key, and only the
 // official server sets GOOGLE_WEB_CLIENT_ID, so no other server is ever offered a token.
 export const isGoogleSignInAvailable = (): boolean =>

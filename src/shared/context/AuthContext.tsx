@@ -21,7 +21,11 @@ import { Alert, AppState } from "react-native";
 import { refreshTokenStorage, tokenStorage } from "../services/tokenStorage";
 import { accessTokenExpiresAt, accessTokenLifetimeMs } from "../services/jwt";
 import { hasAcceptedCurrentTerms } from "@features/auth/termsAcceptance";
-import { GoogleSignInCancelledError } from "@features/auth/googleSignIn";
+import {
+  GoogleLinkNeedsPasswordError,
+  GoogleSignInCancelledError,
+  type GoogleLink,
+} from "@features/auth/googleSignIn";
 import { applyPrivacyChoicesFor, setUserContext, metric, log, captureException, reportAndReturn } from "../services/crashReporting";
 import { setRecordStoreUser } from "../services/offlineHelpers";
 import type { ProfileUpdate } from "@features/auth/types";
@@ -37,6 +41,11 @@ interface AuthResult {
   code?: string;
 }
 
+interface GoogleAuthResult extends AuthResult {
+  /** Set when the Google email belongs to an existing account: retry with its password. */
+  linkRequired?: { idToken: string; username: string };
+}
+
 interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
@@ -49,7 +58,8 @@ interface AuthContextValue {
   ) => Promise<AuthResult>;
   signin: (username: string, password: string) => Promise<AuthResult>;
   /** Resolves `{ success: false }` with no error when the user closes the Google sheet. */
-  signInWithGoogle: () => Promise<AuthResult>;
+  signInWithGoogle: (link?: GoogleLink) => Promise<GoogleAuthResult>;
+  unlinkGoogle: (password: string) => Promise<AuthResult>;
   logout: () => Promise<void>;
   updateProfile: (profile: ProfileUpdate) => Promise<AuthResult>;
   refreshUser: () => Promise<AuthResult>;
@@ -534,9 +544,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     [startSession],
   );
 
-  const signInWithGoogle = useCallback(async (): Promise<AuthResult> => {
+  const signInWithGoogle = useCallback(async (link?: GoogleLink): Promise<GoogleAuthResult> => {
     try {
-      const data = (await authService.signInWithGoogle()) as {
+      const data = (await authService.signInWithGoogle(link)) as {
         success: boolean;
         user?: User;
         token?: string;
@@ -552,6 +562,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return { success: false, error: data.error ?? "Google sign-in failed" };
     } catch (error) {
       if (error instanceof GoogleSignInCancelledError) return { success: false };
+      if (error instanceof GoogleLinkNeedsPasswordError)
+        return {
+          success: false,
+          linkRequired: { idToken: error.idToken, username: error.username },
+        };
       metric.count("auth.google", 1, { attributes: { outcome: "error" } });
       log.warn("auth.google_failed", { reason: (error as Error).message });
       return {
@@ -572,6 +587,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return {
           success: false,
           error: userFacingError(error, "Update failed"),
+        };
+      }
+    },
+    [seatUser],
+  );
+
+  const unlinkGoogle = useCallback(
+    async (password: string): Promise<AuthResult> => {
+      try {
+        seatUser(await authService.unlinkGoogle(password));
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: userFacingError(error, "Couldn't unlink Google"),
         };
       }
     },
@@ -623,6 +653,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       signup,
       signin,
       signInWithGoogle,
+      unlinkGoogle,
       logout,
       updateProfile,
       refreshUser,
@@ -641,6 +672,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       signup,
       signin,
       signInWithGoogle,
+      unlinkGoogle,
       logout,
       updateProfile,
       refreshUser,

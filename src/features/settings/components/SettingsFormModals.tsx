@@ -182,6 +182,43 @@ export function DeleteAccountModal({
   );
 }
 
+export function UnlinkGoogleModal({
+  visible,
+  onClose,
+  onSubmit,
+  busy,
+  styles,
+}: SheetProps & {
+  readonly onSubmit: (password: string) => void;
+}) {
+  const { colors } = useTheme();
+  const [form, field] = useSheetForm(visible, { password: "" });
+  return (
+    <ModalSheet
+      visible={visible}
+      onClose={onClose}
+      title="Unlink Google"
+      onConfirm={() => onSubmit(form.password)}
+      confirmText={busy ? "Unlinking…" : "Unlink"}
+      confirmDisabled={busy || !form.password}
+    >
+      <Text style={styles.modalDescription}>
+        You will sign in with your password only. Signing in with Google again later asks for this password to link it back.
+      </Text>
+      <TextInput
+        style={styles.input}
+        value={form.password}
+        onChangeText={field("password")}
+        secureTextEntry
+        autoCapitalize="none"
+        placeholder="Current password"
+        accessibilityLabel="Current password to confirm unlinking Google"
+        placeholderTextColor={colors.textMuted}
+      />
+    </ModalSheet>
+  );
+}
+
 export function ClearDataPasswordModal({
   visible,
   onClose,

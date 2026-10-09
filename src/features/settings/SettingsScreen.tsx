@@ -53,6 +53,7 @@ import {
 import ThemeEditorModal from "@shared/components/ThemeEditorModal";
 import {
   ChangePasswordModal,
+  UnlinkGoogleModal,
   ClearDataPasswordModal,
   DeleteAccountModal,
   ExportPassphraseModal,
@@ -303,7 +304,7 @@ export default function SettingsScreen(): React.JSX.Element {
   const switchThumbColor = (on: boolean) =>
     on ? colors.textOnAccent : colors.textMuted;
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { user, logout, updateProfile, refreshUser } = useAuth();
+  const { user, logout, updateProfile, refreshUser, unlinkGoogle } = useAuth();
   // Server-granted, so offline profiles are never admin.
   const isAdmin = user?.isAdmin === true;
   const navigation =
@@ -312,6 +313,8 @@ export default function SettingsScreen(): React.JSX.Element {
   const [showClearDataModal, setShowClearDataModal] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showUnlinkGoogleModal, setShowUnlinkGoogleModal] = useState(false);
+  const [unlinkingGoogle, setUnlinkingGoogle] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [exportingData, setExportingData] = useState(false);
   const [showExportPassphraseModal, setShowExportPassphraseModal] =
@@ -1024,6 +1027,18 @@ export default function SettingsScreen(): React.JSX.Element {
       );
     } finally {
       setChangingPassword(false);
+    }
+  };
+
+  const handleUnlinkGoogle = async (password: string) => {
+    setUnlinkingGoogle(true);
+    const result = await unlinkGoogle(password);
+    setUnlinkingGoogle(false);
+    if (result.success) {
+      setShowUnlinkGoogleModal(false);
+      alert("Google Unlinked", "Sign in with your password from now on.", [{ text: "OK" }], "success");
+    } else {
+      alert("Error", result.error ?? "Couldn't unlink Google", [{ text: "OK" }], "error");
     }
   };
 
@@ -2524,6 +2539,14 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
         styles={styles}
       />
 
+      <UnlinkGoogleModal
+        visible={showUnlinkGoogleModal}
+        onClose={() => setShowUnlinkGoogleModal(false)}
+        onSubmit={(password) => void handleUnlinkGoogle(password)}
+        busy={unlinkingGoogle}
+        styles={styles}
+      />
+
       <ChangePasswordModal
         visible={showChangePasswordModal}
         onClose={() => setShowChangePasswordModal(false)}
@@ -2822,6 +2845,25 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                   </TouchableOpacity>
                   )}
                   {!googleOnly && <View style={styles.divider} />}
+                  {!googleOnly && user?.googleLinked && (
+                    <>
+                      <TouchableOpacity
+                        style={styles.settingRow}
+                        onPress={() => setShowUnlinkGoogleModal(true)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Unlink your Google account"
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.settingLabel}>Google Account</Text>
+                          <Text style={styles.settingDescription}>
+                            Linked. You can also sign in with Google
+                          </Text>
+                        </View>
+                        <Text style={styles.settingValue}>Unlink</Text>
+                      </TouchableOpacity>
+                      <View style={styles.divider} />
+                    </>
+                  )}
                   <TouchableOpacity
                     style={styles.settingRow}
                     onPress={handleLogout}

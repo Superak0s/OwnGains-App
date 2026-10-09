@@ -17,9 +17,11 @@ jest.mock("@shared/services/config", () => ({
 jest.mock("@shared/services/sqliteStorage", () => require("test-utils/memorySqlite"))
 
 import { authService } from "@features/auth/services/on/auth"
-import { GoogleSignInCancelledError } from "@features/auth/googleSignIn"
+import { GoogleLinkNeedsPasswordError, GoogleSignInCancelledError } from "@features/auth/googleSignIn"
 
 const fetchMock = jest.fn()
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } })
 
 beforeEach(() => {
   mockOfficial = true
@@ -62,5 +64,26 @@ describe("signInWithGoogle", () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe("https://self-hosted.example/api/auth/google")
     expect(JSON.parse(init.body as string)).toEqual({ idToken: "goog-token" })
+  })
+
+  it("asks for the password when the Google email belongs to an existing account", async () => {
+    mockSignIn.mockResolvedValue({ type: "success", data: { idToken: "goog-token" } })
+    fetchMock.mockResolvedValue(
+      json(
+        { success: false, message: "exists", code: "GOOGLE_LINK_NEEDS_PASSWORD", details: { username: "kostis" } },
+        409,
+      ),
+    )
+    const err = await authService.signInWithGoogle().catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(GoogleLinkNeedsPasswordError)
+    expect(err).toMatchObject({ idToken: "goog-token", username: "kostis" })
+  })
+
+  it("links with the same token and the password, without opening Google again", async () => {
+    fetchMock.mockResolvedValue(json({ success: true, token: "t", refreshToken: "r", user: { id: "u", username: "kostis" } }))
+    await authService.signInWithGoogle({ idToken: "goog-token", password: "pw" })
+    expect(mockSignIn).not.toHaveBeenCalled()
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(JSON.parse(init.body as string)).toEqual({ idToken: "goog-token", password: "pw" })
   })
 })

@@ -104,5 +104,26 @@ describe("LoginScreen", () => {
       await mount(jest.fn())
       expect(screen.queryByLabelText("Continue with Google")).toBeNull()
     })
+
+    it("asks for the existing account's password and retries with the same Google token", async () => {
+      mockOfficial = true
+      const signInWithGoogle = jest
+        .fn()
+        .mockResolvedValueOnce({ success: false, linkRequired: { idToken: "goog", username: "kostis" } })
+        .mockResolvedValueOnce({ success: false, error: "Incorrect password" })
+      await renderWithProviders(
+        <LoginScreen
+          navigation={current.navigation as unknown as NativeStackNavigationProp<RootStackParamList, "Login">}
+        />,
+        { auth: { signin: jest.fn(), signInWithGoogle } },
+      )
+      await fireEvent.press(screen.getByLabelText("Continue with Google"))
+      expect(await screen.findByText(/The OwnGains account kostis already uses this email/)).toBeTruthy()
+
+      await fireEvent.changeText(screen.getByLabelText("Password of the existing OwnGains account"), "pw")
+      await fireEvent.press(screen.getByText("Link"))
+      expect(signInWithGoogle).toHaveBeenLastCalledWith({ idToken: "goog", password: "pw" })
+      expect(await screen.findByText("Incorrect password")).toBeTruthy()
+    })
   })
 })
