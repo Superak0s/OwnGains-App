@@ -1,9 +1,0 @@
-• Tap any chart for full screen: time ranges, Y axis, zoom and point details.
-• Trend lines, goal line with a target date, records and period comparison.
-• Exercise charts show weight, 1RM, volume or reps. Save as image or CSV.
-• Tutorial covers charts and Health.
-• Watching a friend's workout updates instantly.
-• Plan is now the 7th tab.
-• Battery tips for delayed reminders.
-• Phone number removed from Edit Account.
-• Fixes for offline set deletion, the privacy screen and Training Summary.

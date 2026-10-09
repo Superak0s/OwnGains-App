@@ -241,15 +241,54 @@ if [ -f "$BUILD/.env" ]; then
     . <(tr -d '\r' < "$BUILD/.env")
     set +a
 fi
+PREBUILD_STAMP="$BUILD/.expo/prebuild.stamp"
+# Hash of everything that makes a clean prebuild differ: dependencies, app.json minus the
+# per-release version fields, config plugins and assets.
+prebuild_inputs_hash() {
+    node -e '
+const fs = require("fs"), path = require("path"), crypto = require("crypto");
+const h = crypto.createHash("sha1");
+const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+h.update(JSON.stringify([pkg.dependencies, pkg.devDependencies]));
+const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
+delete app.expo.version;
+if (app.expo.android) delete app.expo.android.versionCode;
+h.update(JSON.stringify(app));
+const walk = (d) => { if (!fs.existsSync(d)) return; for (const f of fs.readdirSync(d).sort()) { const p = path.join(d, f); fs.statSync(p).isDirectory() ? walk(p) : (h.update(p), h.update(fs.readFileSync(p))); } };
+["plugins", "assets"].forEach(walk);
+if (fs.existsSync("package-lock.json")) h.update(fs.readFileSync("package-lock.json"));
+process.stdout.write(h.digest("hex"));
+'
+}
+# With nothing changed since the last clean prebuild, asks whether to redo it.
+# No answer within 30 seconds (or no terminal) keeps the clean prebuild.
+maybe_skip_prebuild() {
+    [ "$DO_CLEAN" = true ] || return 0
+    [ -f "$PREBUILD_STAMP" ] && [ -d "$BUILD/android" ] || return 0
+    PREBUILD_HASH="$(prebuild_inputs_hash)"
+    [ "$PREBUILD_HASH" = "$(cat "$PREBUILD_STAMP")" ] || return 0
+    local ans=""
+    read -t 30 -rp "${B}No packages, config or assets changed since the last prebuild. Run a clean prebuild?${R} [Y/n] (clean in 30s) " ans || true
+    echo ""
+    case "$ans" in [nN]*) DO_CLEAN=false ;; esac
+}
+save_prebuild_stamp() {
+    [ "$DO_CLEAN" = true ] || return 0
+    mkdir -p "$(dirname "$PREBUILD_STAMP")"
+    prebuild_inputs_hash > "$PREBUILD_STAMP"
+}
+
 if [ "$DEBUG_ONLY" = true ]; then
     step debug "npm install"
     npm install --legacy-peer-deps
+    maybe_skip_prebuild
     step debug "Prebuild ($([ "$DO_CLEAN" = true ] && echo clean || echo incremental))"
     if [ "$DO_CLEAN" = true ]; then
         npx expo prebuild --platform android --clean
     else
         npx expo prebuild --platform android
     fi
+    save_prebuild_stamp
     sed -i 's/signingConfig = signingConfigs\.debug/signingConfig signingConfigs.debug/' "$BUILD/android/app/build.gradle"
     rm -f "$BUILD"/android/app/build/outputs/apk/debug/*.apk "$SRC"/release/OwnGains-debug-*.apk
     step debug "Building debug APK"
@@ -303,7 +342,9 @@ if [ "$BUILD_AAB" = true ] && [ "$SKIP_PLAY" = false ]; then
     esac
     if [ "$PLAY_UPLOAD" = true ]; then
         export PLAY_SERVICE_ACCOUNT
-        ok "Google Play upload to the $PLAY_TRACK track"
+        node scripts/play-upload.js --check \
+            || die "The Play service account has no access to this app. Grant it release permissions in Play Console (Users and permissions), or pass --no-play."
+        ok "Google Play upload to the $PLAY_TRACK track (permission verified)"
     elif [ -n "$PLAY_TRACK_ARG" ]; then
         die "--play=$PLAY_TRACK_ARG, but $play_skip."
     else
@@ -505,13 +546,15 @@ fi
 # SheetJS publishes no version endpoint, so this prompts a look rather than checking.
 warn "xlsx is pinned to $(grep -o 'xlsx-[0-9.]*' "$BUILD/package.json" | head -1), invisible to 'npm audit'. Check https://cdn.sheetjs.com/ for a newer release."
 
+maybe_skip_prebuild
 if [ "$DO_CLEAN" = true ]; then
     info "Running full clean prebuild"
     npx expo prebuild --platform android --clean
 else
-    info "Running incremental prebuild (--no-prebuild set)"
+    info "Running incremental prebuild"
     npx expo prebuild --platform android
 fi
+save_prebuild_stamp
 
 # Expo's template writes `signingConfig = signingConfigs.debug`, which local-expo-build's
 # release wiring (it matches `signingConfig signingConfigs.debug`) skips, shipping a debug-signed build.

@@ -6,6 +6,17 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Internal
+
+- `scripts/release.sh` asks whether to run a clean prebuild when no dependencies, config, plugins or assets changed since the last one, and runs it after 30 seconds without an answer.
+
+## [0.4.1] - 2026-10-09
+
+### Internal
+
+- `scripts/release.sh` checks the Play service account's permission before building and stops early if it has none.
+- Tests use a stub for `react-native-gifted-charts`, so its delayed animation timer can no longer crash an unrelated suite.
+
 ## [0.4.0] - 2026-10-09
 
 ### Added

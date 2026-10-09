@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Uploads an AAB to a Google Play track with docs/play-release-notes.txt as "What's new".
 //   play-upload.js <aab> <track>
+//   play-upload.js --check
+// --check opens and discards an edit, so a missing Play Console permission fails before a build.
 // PLAY_SERVICE_ACCOUNT is the service-account JSON itself or a path to it.
 const crypto = require("node:crypto");
 const fs = require("node:fs");
@@ -11,8 +13,9 @@ const API = "https://androidpublisher.googleapis.com";
 const NOTES_LANGUAGE = "en-US";
 
 const [aab, track] = process.argv.slice(2);
-if (!aab || !track) {
-  console.error("Usage: play-upload.js <aab> <track>");
+const checkOnly = aab === "--check";
+if (!checkOnly && (!aab || !track)) {
+  console.error("Usage: play-upload.js <aab> <track> | --check");
   process.exit(1);
 }
 
@@ -62,6 +65,11 @@ async function main() {
 
   const edit = await call(`${API}${app}/edits`, { method: "POST", headers: auth });
   const editPath = `${app}/edits/${edit.id}`;
+
+  if (checkOnly) {
+    await call(`${API}${editPath}`, { method: "DELETE", headers: auth });
+    return;
+  }
 
   console.log(`Uploading ${path.basename(aab)} to ${pkg}...`);
   const bundle = await call(`${API}/upload${editPath}/bundles?uploadType=media`, {
