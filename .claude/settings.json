@@ -78,6 +78,12 @@
             "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-typecheck.js\"",
             "timeout": 180,
             "statusMessage": "Typechecking..."
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-readme.js\"",
+            "timeout": 30,
+            "statusMessage": "Checking README..."
           }
         ]
       }

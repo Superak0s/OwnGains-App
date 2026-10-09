@@ -17,7 +17,11 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Screen, service and sync tests for settings, auth, friends, tracking, workout and plan, with the offline migration moved out of `SettingsScreen` so it can be tested
 - CLAUDE.md requires a regression test for every `Fixed` entry
 - Tests for the offline auth service, program edits that fail to reach the server, joint sessions, watching and the tip jar
+- `release.sh` strips CRLF from `.env` and converts a Windows `PLAY_SERVICE_ACCOUNT` path under WSL
+- Claude Code `stop-readme` hook flags feature changes without a README update, and a `readme-audit` skill fixes README drift
+- README updated for 0.3.0 (Health tab, Recovery and Cycle tabs, new Progress widgets, Friends changes, permissions, native modules, release flags)
 - Added `@testing-library/react-native` 14 and its `test-renderer` peer as dev dependencies for screen tests
+- TODO plan for an expanded, configurable chart view
 
 ## [0.3.0] - 2026-10-07
 

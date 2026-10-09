@@ -236,8 +236,9 @@ cd "$BUILD"
 # environment - Expo inlines EXPO_PUBLIC_* into the bundle but exports nothing.
 if [ -f "$BUILD/.env" ]; then
     set -a
-    # shellcheck disable=SC1091
-    . "$BUILD/.env"
+    # A .env saved on Windows has CRLF endings, which would leave a \r on every value.
+    # shellcheck disable=SC1090
+    . <(tr -d '\r' < "$BUILD/.env")
     set +a
 fi
 if [ "$DEBUG_ONLY" = true ]; then
@@ -289,6 +290,9 @@ if [ "$BUILD_AAB" = true ] && [ "$SKIP_PLAY" = false ]; then
         "") play_skip="no PLAY_SERVICE_ACCOUNT in .env" ;;
         "{"*) PLAY_UPLOAD=true ;;
         *)
+            case "$PLAY_SERVICE_ACCOUNT" in
+                [A-Za-z]:*) command -v wslpath >/dev/null && PLAY_SERVICE_ACCOUNT="$(wslpath -u "$PLAY_SERVICE_ACCOUNT")" ;;
+            esac
             if [ -f "$PLAY_SERVICE_ACCOUNT" ]; then
                 # Windows node can't open Git Bash's /c/... paths.
                 command -v cygpath >/dev/null && PLAY_SERVICE_ACCOUNT="$(cygpath -w "$PLAY_SERVICE_ACCOUNT")"

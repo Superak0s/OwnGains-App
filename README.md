@@ -12,7 +12,7 @@ OwnGains is a fitness tracking app that puts you in control. Build your split, l
 
 **You can use every core part of OwnGains without ever creating an account, connecting to the internet, or trusting anyone else's server.**
 
-Open the app, pick Offline mode in onboarding, and you're in, without an email, password or login screen. A local profile is created for you on the spot. From then on, **everything is stored on your device**: your program, every logged set, body weight, progress photos, macros, measurements, supplements, streaks, and all your analytics. Nothing is uploaded. The only network requests are exercise demonstration photos (switchable off) and any crash reports you opt into. There is no account to delete, because there was never an account.
+Open the app, pick Offline mode in onboarding, and you're in, without an email, password or login screen. A local profile is created for you on the spot. From then on, **everything is stored on your device**: your program, every logged set, body weight, progress photos, macros, measurements, supplements, streaks, and all your analytics. Nothing is uploaded. The only network requests are exercise demonstration photos (switchable off), any crash reports you opt into, and a daily check for a newer version in the APKs from GitHub releases. There is no account to delete, because there was never an account.
 
 - **No server required, ever.** The full workout tracker, planner, split builder, body tracking, supplements, analytics, themes, and widgets all work with zero infrastructure.
 - **Works in a dead-zone gym.** Concrete basement with no signal is the normal case, not an edge case. The app never waits on a network call to let you log a set.
@@ -55,13 +55,14 @@ Split creation is a core feature. You can start from a template, from a spreadsh
 
 - **Per-exercise analytics** with charts for weight and rep trends over time.
 - **Estimated 1RM**: current estimate, all-time best, and trend across sessions.
-- **Personal records**: heaviest set, most reps, best estimated 1RM, each with the date you hit it.
-- **Rep max table**: your actual best weight at every rep count from 1 to 12.
+- **Personal records**: heaviest set, most reps, best estimated 1RM, each with the date you hit it, plus your best weight at every rep count from 1 to 12.
 - **Progress rate**: how fast your estimated 1RM is moving in kg/week, with a stall warning.
 - **Rep range split**: share of working sets trained in the strength, hypertrophy, and endurance ranges.
 - **Training frequency**: sessions per week, typical gap between sessions, days since the last one.
 - **Rest & fatigue**: average rest between sets and how far reps fall off from the first set to the last.
-- **Training summary**: volume and set counts by muscle group over today / this week / this month / a custom range, with undertrained muscle groups called out.
+- **Weekly sets**: working sets this week and your 4-week average. For a muscle group they are compared with the 10 to 20 sets a week most muscles need to grow.
+- **Muscle group view**: every exercise in a muscle group with its own estimated 1RM and 30-day trend, plus weekly sets, frequency and rep ranges for the group.
+- **Training summary**: volume and set counts by muscle group over the last 90 days, the last 30 days, this week or a custom range, with undertrained muscle groups called out.
 - Overlay your body weight against your lifting numbers to see the full picture.
 
 ### 📈 Track your body
@@ -70,12 +71,14 @@ Every tracking sub-tab is its own widget board: the calendar, the "today" card, 
 
 - **Weight**: daily weigh-ins in your preferred unit (kg/lb), with history and a trend chart.
 - **Progress photos**: capture and store photos privately, with gallery view, zoomable full-screen view, side-by-side comparison, and muscle-group tagging. Photos are compressed on capture.
-- **Macros**: log protein, carbs, fat, and calories against your goals.
+- **Macros**: log protein, carbs, fat, and calories against your goals, with a ± margin of error per entry.
 - **Body fat**: track body-fat measurements over time (height-aware).
 - **Body measurements**: log waist, arms, chest, and define your own custom measurement types.
-- **Hydration**: daily water intake against a goal, plus a weekly goal view and history.
-- **Soreness & DOMS**: log muscle soreness on an interactive muscle map, with a DOMS heat map, morning recovery check, follow-up tracking, a per-muscle dashboard with personal notes, recovery analytics, and injury logging/history.
-- **Menstrual cycle**: log cycles, per-day flow intensity, and symptoms, with cycle status, predicted period windows, and calendar decorations.
+- **Hydration**: daily water intake against a goal, with a ± margin per drink, a weekly goal view and history. Android Quick Settings tiles log water without opening the app.
+- **Recovery**: log muscle soreness by picking a muscle, with a calendar, history, a morning recovery check (also on Home when a sore muscle is due), a per-muscle dashboard with personal notes, recovery analytics, and injury logging/history.
+- **Cycle**: log cycles, per-day flow intensity, and symptoms, with cycle status, predicted period windows, and calendar decorations.
+- **Health** _(Android)_: steps, heart rate and sleep from Health Connect, with trend charts. Weight, body fat, hydration and nutrition can be imported from it too. A daily copy is kept on the phone, so days older than Health Connect's 30-day limit remain.
+- Every metric has a trend chart and a history list.
 - A universal calendar lets you jump to any date for any metric.
 
 ### 💊 Never miss a supplement
@@ -87,23 +90,24 @@ Every tracking sub-tab is its own widget board: the calendar, the "today" card, 
 
 ### 👥 Train with friends _(server mode)_
 
-- Add friends by username search or **QR friend codes**.
-- **Granular sharing**: choose exactly what each friend can see: workout history, analytics, or your program.
+- Add friends from the **Find Friends** search bar or by scanning their **QR friend code**.
+- **Granular sharing**: switch each permission on or off per friend, grouped into Progress, Live workouts and Coaching.
+- **Use a friend's plan**: any program shared with you can be made your own with one tap.
 - **Joint sessions**: work out together in real time, synced set-for-set.
 - **Watch sessions**: spectate a friend's live workout as it happens.
-- **Trainer mode**: grant a friend the trainer scope and they can drive your workout live from their own phone. The grant is workout read/write only: a trainer request can never touch your account or delete anything.
+- **Trainer mode**: grant a friend the trainer scope and they can drive your workout live from their own phone, and send you their plan. The grant is workout read/write only: a trainer request can never touch your account or delete anything.
 - **Blocking and reporting**: block or report an account, and manage blocked users from Settings.
 
 ### 🧩 Widget boards everywhere
 
 Every screen has a customizable widget board. Add, remove, resize, and reorder widgets with a two-finger downward pull or the "Edit Widgets" panel. Each screen has an independent, per-user layout, fifteen boards in total:
 
-- **Home:** next workout, weekly progress, workout history calendar, streak, **plus any widget from any other board**, so the home screen can borrow your weight trend, weekly volume, or friends list.
-- **Analytics:** exercise/muscle selector, all set data, last workout, workout history, weight and rep progress, estimated 1RM, personal records, rep max table, progress rate, rep range split, training frequency, rest & fatigue
+- **Home:** next workout, weekly progress, workout history calendar, streak, morning recovery check, **plus any widget from any other board**, so the home screen can borrow your weight trend, weekly volume, or friends list.
+- **Progress:** exercise/muscle selector, workout history, weekly sets, exercises in a muscle group, estimated 1RM, personal records, progress rate, rep range split, training frequency, rest & fatigue, plus weight progress, reps progress, all set data and last workout from the gallery
 - **Workout:** day, total sets, progress, session stats
 - **Plan:** build your plan, your splits, weekly volume, program
-- **Friends:** friends list, pending requests, sent requests, QR code, username search
-- **Tracking:** each sub-tab (Weight, Photos, Macros, Body Fat, Measurements, Hydration, Soreness, Menstrual) has its own board
+- **Friends:** find friends and your friends on one tab, pending and sent requests on the other
+- **Tracking:** each sub-tab (Hydration, Weight, Photos, Macros, Body Fat, Measurements, Recovery, Cycle, and Health on Android) has its own board
 
 ### 🎨 Make it yours
 
@@ -120,6 +124,7 @@ Every screen has a customizable widget board. Add, remove, resize, and reorder w
 - Analytics comparison target, theme editor and lifetime stats
 - Connected server, its version, and which features it keeps on-device
 - Workout history editing, and importing history from a Strength Level CSV export
+- **Health Connect** _(Android)_: sync now, and Keep Health Data to keep or delete the daily copy of steps, heart rate and sleep
 - An admin/test mode for recording data without touching your real stats
 
 **About → What's New** shows the release notes for the installed version, with every earlier version a tap away and a filter for added, changed, fixed or removed.
@@ -128,12 +133,13 @@ Under **Privacy and Data**: the privacy policy, **Export My Data**, **full devic
 
 ## Privacy
 
-- Offline mode sends none of your data anywhere. There is no account and no telemetry by default. The only requests are exercise photos from GitHub (switchable off) and any crash reports you opt into.
+- Offline mode sends none of your data anywhere. There is no account and no telemetry by default. The only requests are exercise photos from GitHub (switchable off), any crash reports you opt into, and the GitHub APK's daily update check.
+- Health Connect data is only read, never written, and the steps, heart rate and sleep summaries are kept on your device only.
 - The official server (`owngains.superak0s.com`) is run by the developer on their own hardware in Greece. It stores accounts, workouts, programs and friends, but not tracking or supplement data, which stay on the device.
 - Crash reporting and usage metrics are both opt-in, chosen on first sign-in, changeable in Settings at any time. Reports go to the developer's self-hosted [GlitchTip](https://glitchtip.com) instance (`glitchtip.superak0s.com`), not to Sentry's cloud.
 - Backups are encrypted with a passphrase you choose, so an exported file is useless to anyone else.
 - Delete Account wipes everything: the local profile and database offline, and your account with every row attached to it on the server you are signed in to. Only moderation reports are kept after the account is deleted, unlinked from it.
-- Android permissions are limited to notifications, vibrate, boot-completed (to restore reminders), exact alarms (so a next-dose reminder isn't delayed), internet, and Wi-Fi state/multicast (for LAN server discovery). Unused permissions are actively pruned out of the manifest at build time.
+- Android permissions are limited to notifications, vibrate, boot-completed (to restore reminders), exact alarms (so a next-dose reminder isn't delayed), internet, Wi-Fi state/multicast (for LAN server discovery), wake lock (for the Quick Settings water tiles), and read-only Health Connect access to weight, body fat, hydration, nutrition, steps, heart rate and sleep. Unused permissions are actively pruned out of the manifest at build time.
 
 The web copies of the legal text are generated from the in-app screens: [privacy policy](docs/privacy-policy.html), [terms of service](docs/terms-of-service.html), [account deletion](docs/delete-account.html). Run `npm run build:privacy-policy` after editing either screen.
 
@@ -150,6 +156,8 @@ The web copies of the legal text are generated from the in-app screens: [privacy
 - **Charts:** `react-native-chart-kit` + `react-native-svg`.
 - **UI/animation:** `react-native-reanimated`, `react-native-worklets`, `react-native-gesture-handler`, `expo-linear-gradient`, `react-native-pager-view`, `react-native-safe-area-context`, `react-native-screens`.
 - **Media/files:** `expo-camera` (also scans friend QR codes), `expo-image`, `expo-image-picker`, `expo-image-manipulator`, `expo-document-picker`, `expo-sharing`, `xlsx`, `react-native-qrcode-svg`.
+- **Health:** `react-native-health-connect` (Android Health Connect, read only).
+- **Payments:** `expo-iap` (Google Play Billing tip jar).
 - **Crypto:** `expo-crypto` for AES-GCM backup encryption over a PBKDF2-derived key.
 - **Notifications:** `expo-notifications` (local, repeating daily triggers).
 - **Networking/discovery:** `react-native-zeroconf` (mDNS LAN server discovery) and a WebSocket for real-time features.
@@ -158,7 +166,7 @@ The web copies of the legal text are generated from the in-app screens: [privacy
 
 ### Architecture
 
-- Feature-based layout under `src/features/<feature>/`: screen(s) plus, where needed, `components/`, `hooks/`, `utils/`, `widgets.ts`, and a `services/` folder split into **`on/`** (server) and **`off/`** (offline) versions. `friends` is the exception: it is server-mediated by nature and has no `off/` twin. `analytics`, `homescreen` and `settings` have no services of their own and read other features' data.
+- Feature-based layout under `src/features/<feature>/`: screen(s) plus, where needed, `components/`, `hooks/`, `utils/`, `widgets.ts`, and a `services/` folder split into **`on/`** (server) and **`off/`** (offline) versions. `friends` is the exception: it is server-mediated by nature and has no `off/` twin. `analytics`, `homescreen`, `settings`, `healthConnect` and `tutorial` have no `services/` folder.
 - **App mode dispatch** (`src/shared/services/appMode.tsx` + `dispatchProxy.tsx`): every service call is routed to the `on/` or `off/` version at call time based on the current mode (persisted under `appMode`). A contract test fails if an `on/` module exports something its `off/` twin doesn't, so the two modes can't silently diverge.
 - **Per-feature local-only override** (`src/shared/services/localOnlyFeatures.ts`): a server publishes on `/healthz` the features it does not store, and those dispatch to `off/` even in online mode. The list is cached against the server URL it came from, so a cold start with no network doesn't post to routes that would 404.
 - **Split building** (`src/features/plan/utils/`): `splitTemplates.tsx` turns the built-in templates (`defaultSplits.json`) into a program, `splitDraft.ts` converts a program back into editable day drafts and writes edits into the right split column, and `matchProgram.ts` + `src/utils/exerciseDb.ts` do the fuzzy matching against the bundled 873-exercise database.
@@ -166,16 +174,17 @@ The web copies of the legal text are generated from the in-app screens: [privacy
 - **Auth** (server mode): JWT refreshed a minute before it expires, plus one deduplicated refresh-and-retry on any 401. Only an explicit credential rejection logs you out. A server error or dropped connection keeps the session. Tokens in `expo-secure-store`. Default server `https://owngains.superak0s.com`, overridable in Settings (`@server_url`). A minimum-server-version check (`serverVersion.ts`) warns when a self-hosted server is too old for the app build.
 - **Real-time:** one persistent WebSocket (JWT-authenticated, exponential backoff) powers joint, watch, and trainer sessions in server mode.
 - **Trainer mode:** every trainee-targeted request goes through `traineeFetch(traineeId)`, which refuses `/api/auth/*` routes and any `DELETE` client-side, so the grant covers workout read/write and nothing else.
-- **Reminders:** local scheduled notifications using `expo-notifications`' repeating `DAILY` trigger (`tasks/supplementReminders.tsx`).
+- **Reminders:** local scheduled notifications using `expo-notifications`' repeating `DAILY` trigger (`src/shared/services/supplementReminders.tsx`).
 - **Widget system** (`src/shared/context/hooks/useWidgets.tsx`): a shared placement/drag engine. Each screen defines its own registry, defaults, and storage key. A two-finger pull opens the gallery (a dev-only button does the same on emulators, which can't produce the gesture).
 - **Storage migrations** (`src/shared/services/storageMigrations.ts`): versioned, append-only rewrites of persisted data, run once each against SQLite's `user_version`, each in its own transaction.
 - **Backup** (`src/utils/deviceBackup.ts` + `src/utils/exportEncryption.ts`): exports the whole SQLite store plus base64 progress photos to one passphrase-encrypted file, and re-points photo URIs on restore so images still load after a reinstall.
-- **Expo config plugins** (applied during prebuild): `withGradleTuning` (JVM tuning), `withDebugAppIdSuffix` (debug build installs side by side with the release build), `withAndroidNetworkSecurity` (cleartext to a self-hosted LAN server), `withAbiSplits` (one release APK per CPU architecture instead of one universal APK. The AAB is unaffected).
-- **Local native module** (`modules/exact-alarms`): checks Android's exact-alarm permission and opens its settings page, so next-dose reminders fire on time.
+- **Expo config plugins** (applied during prebuild): `withGradleTuning` (JVM tuning), `withDebugAppIdSuffix` (debug build installs side by side with the release build), `withAndroidNetworkSecurity` (cleartext to a self-hosted LAN server), `withAbiSplits` (one release APK per CPU architecture instead of one universal APK. The AAB is unaffected), `withHealthConnectRationale` (Health Connect's permission screen opens the privacy policy, as Play review requires).
+- **Local native modules** (`modules/`): `exact-alarms` checks Android's exact-alarm permission and opens its settings page, so next-dose reminders fire on time. `autofill` asks Android to offer saving the login after sign-in. `hydration-tiles` provides the Quick Settings water tiles.
+- **Update check** (`src/shared/services/githubUpdate.ts`): GitHub release builds check the latest GitHub release once a day and offer the download.
 
 ### Main screens
 
-Home · Workout · Plan · Progress (Analytics) · Track (Weight / Photos / Macros / Body Fat / Measurements / Hydration / Soreness / Menstrual) · Supps · Friends · Settings.
+Home · Workout · Plan · Progress (Analytics) · Track (Hydration / Weight / Photos / Macros / Body Fat / Measurements / Recovery / Cycle / Health on Android) · Supps · Friends · Settings.
 
 ### Path aliases
 
@@ -233,7 +242,7 @@ npm run build:android:apk:debug   # debug APK, no prebuild
 npm run build:android:aab         # AAB
 ```
 
-`scripts/release.sh` is the full release path: version bump → lint/typecheck/test → prebuild → signed APKs + AAB → git push → `gh release create`. One script for Windows (Git Bash), WSL, and native Linux. It prompts for the version and commit message, stamps `CHANGELOG.md` (the `Unreleased` section becomes the release notes, so it must not be empty), and takes the words `apk`/`aab` (build only that artifact), `debug` and `wsl`, plus `--no-prebuild`, `--no-push`, `--no-test`, `--no-version-code`, `--32bit` and `--no-sourcemaps` (`-h` lists them all).
+`scripts/release.sh` is the full release path: version bump → lint/typecheck/test → prebuild → signed APKs + AAB → git push → `gh release create`. One script for Windows (Git Bash), WSL, and native Linux. It prompts for the version and commit message, stamps `CHANGELOG.md` (the `Unreleased` section becomes the release notes, so it must not be empty), and takes the words `apk`/`aab` (build only that artifact), `debug` and `wsl`, plus `--bump=X`, `--message=MSG`, `--no-prebuild`, `--no-push`, `--no-release`, `--draft`, `--prerelease`, `--no-test`, `--no-version-code`, `--32bit`, `--no-sourcemaps`, `--play=TRACK` and `--no-play` (`-h` lists them all). When `.env` sets `PLAY_SERVICE_ACCOUNT`, the AAB is uploaded to Google Play (the `internal` track by default) with `docs/play-release-notes.txt` as its "What's new" text.
 
 Signing uses `keystore.properties` plus a secrets file (`~/.owngains-secrets`, or `%USERPROFILE%\.owngains-secrets.bat` on Windows), all gitignored. Without them Gradle silently falls back to the debug key and the APK can't update an installed release. [`docs/release-checklist.md`](docs/release-checklist.md) covers the manual smoke test and Play Console checks.
 
@@ -252,7 +261,7 @@ OwnGains and the official server are built and run by one developer. If the app 
 ## App identity
 
 - Name: **OwnGains** · slug `owngains` · package `com.owngains.app` (debug installs alongside as `com.owngains.app.debug`)
-- Android permissions: `POST_NOTIFICATIONS`, `VIBRATE`, `RECEIVE_BOOT_COMPLETED`, `SCHEDULE_EXACT_ALARM`, `INTERNET`, `ACCESS_WIFI_STATE`, `CHANGE_WIFI_MULTICAST_STATE`, `WAKE_LOCK`.
+- Android permissions: `POST_NOTIFICATIONS`, `VIBRATE`, `RECEIVE_BOOT_COMPLETED`, `SCHEDULE_EXACT_ALARM`, `INTERNET`, `ACCESS_WIFI_STATE`, `CHANGE_WIFI_MULTICAST_STATE`, `WAKE_LOCK` (from the `hydration-tiles` module), and Health Connect `READ_WEIGHT`, `READ_BODY_FAT`, `READ_HYDRATION`, `READ_NUTRITION`, `READ_STEPS`, `READ_HEART_RATE`, `READ_SLEEP`.
 
 ## License
 
