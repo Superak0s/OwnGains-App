@@ -20,7 +20,7 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
   {
     title: "Where your account lives",
     body:
-      "In online mode your account exists only on the server you sign in to. On the official server, the developer runs it, sets its rules, can see and administer the data you sync to it, can reset your password, and can remove your account. On a server someone else runs, all of that is up to them, and your agreement about how it is operated is with that person, not with OwnGains.",
+      "In online mode your account exists only on the server you sign in to. On the official server, the developer runs it, sets its rules, can see and administer the data you sync to it, can reset your password, and can remove your account. If you sign in with Google there, you also need a working Google account to sign in, and Google's terms apply to that account. On a server someone else runs, all of that is up to them, and your agreement about how it is operated is with that person, not with OwnGains.",
   },
   {
     title: "Acceptable use",

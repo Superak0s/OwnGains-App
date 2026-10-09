@@ -116,10 +116,13 @@ export function DeleteAccountModal({
   onSubmit,
   busy,
   isOffline,
+  googleOnly,
   styles,
 }: SheetProps & {
   readonly onSubmit: (input: DeleteAccountInput) => void;
   readonly isOffline: boolean;
+  /** The account has no password, so a fresh Google sign-in confirms instead. */
+  readonly googleOnly: boolean;
 }) {
   const { colors } = useTheme();
   const [form, field] = useSheetForm<DeleteAccountInput>(visible, {
@@ -159,6 +162,10 @@ export function DeleteAccountModal({
             accessibilityLabel="Type DELETE to confirm account deletion"
           />
         </>
+      ) : googleOnly ? (
+        <Text style={styles.modalDescription}>
+          You will be asked to sign in with Google to confirm.
+        </Text>
       ) : (
         <TextInput
           style={styles.input}

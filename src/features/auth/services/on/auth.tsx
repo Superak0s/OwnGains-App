@@ -14,6 +14,7 @@ import { ApiError, ServerUnreachableError } from "@shared/services/apiError"
 import type { AuthResponse, AuthUser, ProfileUpdate } from "../../types"
 import { parseStoredUser } from "../../types"
 import { captureException, log, metric } from "@shared/services/crashReporting"
+import { getGoogleIdToken } from "../../googleSignIn"
 
 const USER_KEY = "@user"
 const FETCH_TIMEOUT_MS = 15000
@@ -89,6 +90,23 @@ export const authService = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
+    })
+
+    if (data.success && data.token) {
+      await tokenStorage.set(data.token)
+      if (data.refreshToken) await refreshTokenStorage.set(data.refreshToken)
+      await persistUser(data.user)
+    }
+
+    return data
+  },
+
+  signInWithGoogle: async (): Promise<AuthResponse> => {
+    const idToken = await getGoogleIdToken()
+    const data = await unauthenticatedCall<AuthResponse>("/api/auth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken }),
     })
 
     if (data.success && data.token) {
@@ -209,10 +227,12 @@ export const authService = {
     await removeStorageItem(USER_KEY)
   },
 
-  deleteAccount: async (password: string): Promise<void> => {
+  /** A null password proves the account with a fresh Google sign-in instead. */
+  deleteAccount: async (password: string | null): Promise<void> => {
+    const proof = password === null ? { idToken: await getGoogleIdToken() } : { password }
     await apiCall("/api/auth/account", {
       method: "DELETE",
-      body: JSON.stringify({ password }),
+      body: JSON.stringify(proof),
     })
     await tokenStorage.clear()
     await removeStorageItem(USER_KEY)

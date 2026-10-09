@@ -86,7 +86,7 @@ profile and its database, or simply uninstall the app. Both remove all of it.</p
 <h2>You signed in to a server</h2>
 <ol>
   <li>Open OwnGains and go to <strong>Settings &rarr; Privacy and Data</strong>.</li>
-  <li>Tap <strong>Delete Account</strong> and confirm with your password.</li>
+  <li>Tap <strong>Delete Account</strong> and confirm with your password, or with Google if you signed up with Google.</li>
 </ol>
 <p>This deletes your account on the server you are signed in to. Everything that
 belongs to you there (workout sessions and sets, programs, friendships,

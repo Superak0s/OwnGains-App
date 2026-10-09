@@ -18,6 +18,7 @@ import { useAlert } from "@shared/components/CustomAlert";
 import { captureException } from "@shared/services/crashReporting";
 import { commitAutofill } from "../../../modules/autofill";
 import type { RootStackParamList } from "./types";
+import GoogleSignInButton from "./components/GoogleSignInButton";
 import { PASSWORD_HINT, passwordPolicyError } from "./utils/passwordPolicy";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 
@@ -473,6 +474,13 @@ export default function SignupScreen({
                   <Text style={styles.signupButtonText}>Create Account</Text>
                 )}
               </TouchableOpacity>
+
+              <GoogleSignInButton
+                disabled={isLoading || !ageConfirmed}
+                onError={(message) =>
+                  alert("Signup Failed", message, [{ text: "OK" }], "error")
+                }
+              />
 
               <Text style={styles.termsText}>Read the</Text>
               <View style={styles.termsLinkRow}>

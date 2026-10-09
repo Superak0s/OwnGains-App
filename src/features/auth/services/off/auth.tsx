@@ -7,6 +7,7 @@ import {
 import { buildDeviceBackup, deletePhotoFilesFor } from "@utils/deviceBackup"
 import { tokenStorage } from "@shared/services/tokenStorage"
 import { generateId } from "@utils/format"
+import { OFFLINE_UNAVAILABLE_MESSAGE } from "@shared/services/apiError"
 import type { AuthResponse, AuthUser, ProfileUpdate } from "../../types"
 import { parseStoredUser } from "../../types"
 
@@ -55,6 +56,10 @@ export const authService = {
     return { success: true, token: "offline", user }
   },
 
+  signInWithGoogle: async (): Promise<AuthResponse> => {
+    throw new Error(OFFLINE_UNAVAILABLE_MESSAGE)
+  },
+
   getCurrentUser: async (): Promise<AuthUser> => {
     const user = await authService.getStoredUser()
     if (!user) throw new Error("No local profile found")
@@ -91,7 +96,7 @@ export const authService = {
     await tokenStorage.clear()
   },
 
-  deleteAccount: async (_password: string): Promise<void> => {
+  deleteAccount: async (_password: string | null): Promise<void> => {
     // Photo files are referenced only from the user's rows, so they have to be
     // removed before those rows go.
     await deletePhotoFilesFor(LOCAL_USER_ID)

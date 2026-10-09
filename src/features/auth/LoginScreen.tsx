@@ -38,6 +38,7 @@ import {
 } from "@shared/services/appMode";
 import type { AppMode } from "@shared/services/appMode";
 import type { RootStackParamList } from "./types";
+import GoogleSignInButton from "./components/GoogleSignInButton";
 import type { ThemeColors } from "@shared/context/ThemeContext"
 import { captureException, log, metric } from "@shared/services/crashReporting";
 
@@ -465,6 +466,15 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
                   </Text>
                 )}
               </TouchableOpacity>
+
+              {isOnline && (
+                <GoogleSignInButton
+                  disabled={isLoading}
+                  onError={(message) =>
+                    alert("Login Failed", message, [{ text: "OK" }], "error")
+                  }
+                />
+              )}
 
               {isOnline && (
                 <>

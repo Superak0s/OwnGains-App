@@ -21,6 +21,7 @@ import { Alert, AppState } from "react-native";
 import { refreshTokenStorage, tokenStorage } from "../services/tokenStorage";
 import { accessTokenExpiresAt, accessTokenLifetimeMs } from "../services/jwt";
 import { hasAcceptedCurrentTerms } from "@features/auth/termsAcceptance";
+import { GoogleSignInCancelledError } from "@features/auth/googleSignIn";
 import { applyPrivacyChoicesFor, setUserContext, metric, log, captureException, reportAndReturn } from "../services/crashReporting";
 import { setRecordStoreUser } from "../services/offlineHelpers";
 import type { ProfileUpdate } from "@features/auth/types";
@@ -47,6 +48,8 @@ interface AuthContextValue {
     name: string,
   ) => Promise<AuthResult>;
   signin: (username: string, password: string) => Promise<AuthResult>;
+  /** Resolves `{ success: false }` with no error when the user closes the Google sheet. */
+  signInWithGoogle: () => Promise<AuthResult>;
   logout: () => Promise<void>;
   updateProfile: (profile: ProfileUpdate) => Promise<AuthResult>;
   refreshUser: () => Promise<AuthResult>;
@@ -531,6 +534,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     [startSession],
   );
 
+  const signInWithGoogle = useCallback(async (): Promise<AuthResult> => {
+    try {
+      const data = (await authService.signInWithGoogle()) as {
+        success: boolean;
+        user?: User;
+        token?: string;
+        error?: string;
+      };
+      if (data.success && data.user && data.token) {
+        noteReceivedToken(data.token);
+        startSession(data.user, data.token);
+        metric.count("auth.google", 1, { attributes: { outcome: "ok" } });
+        return { success: true };
+      }
+      metric.count("auth.google", 1, { attributes: { outcome: "rejected" } });
+      return { success: false, error: data.error ?? "Google sign-in failed" };
+    } catch (error) {
+      if (error instanceof GoogleSignInCancelledError) return { success: false };
+      metric.count("auth.google", 1, { attributes: { outcome: "error" } });
+      log.warn("auth.google_failed", { reason: (error as Error).message });
+      return {
+        success: false,
+        error: userFacingError(error, "Google sign-in failed"),
+        code: error instanceof ApiError ? error.code : undefined,
+      };
+    }
+  }, [startSession]);
+
   const updateProfile = useCallback(
     async (profile: ProfileUpdate): Promise<AuthResult> => {
       try {
@@ -591,6 +622,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isLoading,
       signup,
       signin,
+      signInWithGoogle,
       logout,
       updateProfile,
       refreshUser,
@@ -608,6 +640,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isLoading,
       signup,
       signin,
+      signInWithGoogle,
       logout,
       updateProfile,
       refreshUser,

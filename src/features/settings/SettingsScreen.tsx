@@ -88,6 +88,7 @@ import { clearDemoTracking, fillDemoTracking } from "./utils/demoTracking";
 import { doMigrateOffline as runOfflineMigration } from "./utils/offlineMigration";
 import { authService } from "@features/auth/services/index";
 import { passwordPolicyError } from "@features/auth/utils/passwordPolicy";
+import { GoogleSignInCancelledError } from "@features/auth/googleSignIn";
 import { KOFI_URL } from "@shared/distribution";
 
 // The same rule the signup screen states for the same field.
@@ -427,6 +428,7 @@ export default function SettingsScreen(): React.JSX.Element {
   } | null>(null);
   const [loadingProgress, setLoadingProgress] = useState<boolean>(false);
   const [isOffline, setIsOffline] = useState<boolean>(false);
+  const googleOnly = !isOffline && user?.hasPassword === false;
   const [progressError, setProgressError] = useState<boolean>(false);
   const [blockedError, setBlockedError] = useState<boolean>(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -1308,7 +1310,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
       );
       return;
     }
-    if (!isOffline && !deleteAccountPassword) {
+    if (!isOffline && !googleOnly && !deleteAccountPassword) {
       alert(
         "Password Required",
         "Enter your password to confirm account deletion.",
@@ -1319,8 +1321,12 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
     }
     setDeletingAccount(true);
     try {
-      await authService.deleteAccount(deleteAccountPassword);
+      await authService.deleteAccount(googleOnly ? null : deleteAccountPassword);
     } catch (error) {
+      if (error instanceof GoogleSignInCancelledError) {
+        setDeletingAccount(false);
+        return;
+      }
       console.error("Error deleting account:", error);
       alert(
         "Error",
@@ -2514,6 +2520,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
         onSubmit={handleDeleteAccount}
         busy={deletingAccount}
         isOffline={isOffline}
+        googleOnly={googleOnly}
         styles={styles}
       />
 
@@ -2798,6 +2805,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
               </TouchableOpacity>
               {!isOffline && (
                 <>
+                  {!googleOnly && (
                   <TouchableOpacity
                     style={styles.settingRow}
                     onPress={() => setShowChangePasswordModal(true)}
@@ -2812,7 +2820,8 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                     </View>
                     <Text style={styles.settingValue}>Change</Text>
                   </TouchableOpacity>
-                  <View style={styles.divider} />
+                  )}
+                  {!googleOnly && <View style={styles.divider} />}
                   <TouchableOpacity
                     style={styles.settingRow}
                     onPress={handleLogout}

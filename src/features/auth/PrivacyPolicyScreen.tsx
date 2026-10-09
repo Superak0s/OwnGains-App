@@ -42,6 +42,11 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
       "In online mode the server stores your username, email, password (hashed, never in plain text), and an optional display name to authenticate you, plus sign-in tokens that expire on their own. Failed sign-in attempts are counted against a hashed form of the name you typed, to slow down password guessing, and the count is deleted after a day. Anyone with an account on the same server can find your username by searching for its first few letters. Your display name and workout activity are shared only with people you've added as friends. A friend can see that you are working out, or watch a workout live, only if you have granted them that permission. While anyone is watching, the workout screen shows who, with a button to stop them.",
   },
   {
+    title: "Sign in with Google",
+    body:
+      "On the official server you can sign in with Google instead of a password. The app is then shown your Google account's email, name and a token from Google, and passes only the token to the official server. The server checks it with Google and stores your Google account ID and verified email with your account. If an account with that email already exists, Google sign-in is added to it. Google learns that you signed in to OwnGains, under Google's own privacy policy. The button is never shown when you use another server, so no other server receives a Google token. Deleting your account deletes the stored Google account ID with it.",
+  },
+  {
     title: "Server logs",
     body:
       "To diagnose problems and protect the service, the official server and the proxy in front of it log each request: the time, the address requested (which can include your account’s random identifier), and the IP address it came from, which is always recorded. These logs never contain request or response contents, passwords, or health data, and are deleted after at most 14 days. The server also keeps a short in-memory record of recent failed and slow requests, including your username and IP address, capped to the most recent entries and lost whenever the server restarts.",

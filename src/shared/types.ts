@@ -11,6 +11,8 @@ export interface User {
   termsVersion?: string | null;
   /** When the server recorded health-data consent. null = none, absent = server doesn't report it. */
   healthConsentAt?: string | null;
+  /** false for an account created through Google sign-in. Absent offline and on older servers. */
+  hasPassword?: boolean;
   [key: string]: unknown;
 }
 

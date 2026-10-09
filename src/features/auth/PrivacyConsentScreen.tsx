@@ -26,7 +26,7 @@ import {
   recordDiagnosticsPrompt,
 } from "@shared/services/crashReporting";
 import { restartOnboarding } from "@shared/services/appMode";
-import { getServerUrl } from "@shared/services/config";
+import { getServerUrl, isOfficialServer } from "@shared/services/config";
 import { getServerStoredFeatures } from "@shared/services/localOnlyFeatures";
 import {
   hasAcceptedCurrentTerms,
@@ -40,7 +40,6 @@ import { userFacingError } from "@shared/services/apiError";
 import type { RootStackParamList } from "@shared/types";
 import { useAuth } from "@shared/context/AuthContext";
 
-const OFFICIAL_SERVER_HOST = "owngains.superak0s.com";
 const STORAGE_FAILURE =
   "Your choices could not be saved because OwnGains's local storage is unreachable. Tap Continue to retry. If it keeps failing, restarting the app usually clears it.";
 const CONTACT_EMAIL = "kostissuperak0s@gmail.com";
@@ -86,7 +85,7 @@ export default function PrivacyConsentScreen({
   const [failure, setFailure] = useState<string | null>(null);
   const serverHost = getServerUrl().replace(/^\w+:\/\//, "").replace(/\/.*$/, "");
   const operator =
-    serverHost === OFFICIAL_SERVER_HOST
+    isOfficialServer()
       ? "run by the OwnGains developer in Greece"
       : "run by whoever operates it, not the OwnGains developer";
   const serverFeatures = getServerStoredFeatures();

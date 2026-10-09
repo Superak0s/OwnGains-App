@@ -18,6 +18,12 @@ jest.mock("@shared/services/appMode", () => ({
   restartOnboarding: jest.fn(async () => {}),
 }))
 
+let mockOfficial = false
+jest.mock("@shared/services/config", () => ({
+  ...jest.requireActual("@shared/services/config"),
+  isOfficialServer: () => mockOfficial,
+}))
+
 const unreachable = new ServerUnreachableError().message
 
 const mount = (signin: jest.Mock) =>
@@ -70,5 +76,33 @@ describe("LoginScreen", () => {
 
     expect(await screen.findByText("Missing details")).toBeTruthy()
     expect(signin).not.toHaveBeenCalled()
+  })
+
+  describe("Continue with Google", () => {
+    beforeEach(() => {
+      process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID = "web-client"
+    })
+    afterEach(() => {
+      mockOfficial = false
+      delete process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+    })
+
+    it("is offered on the official server", async () => {
+      mockOfficial = true
+      await mount(jest.fn())
+      expect(screen.getByLabelText("Continue with Google")).toBeTruthy()
+    })
+
+    it("is hidden on any other server", async () => {
+      await mount(jest.fn())
+      expect(screen.queryByLabelText("Continue with Google")).toBeNull()
+    })
+
+    it("is hidden on the official server when the build has no client ID", async () => {
+      mockOfficial = true
+      delete process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+      await mount(jest.fn())
+      expect(screen.queryByLabelText("Continue with Google")).toBeNull()
+    })
   })
 })

@@ -3,7 +3,8 @@ import { metric } from "@shared/services/crashReporting"
 import { createEmitter } from "@utils/emitter"
 
 const SERVER_URL_KEY = "@server_url"
-const DEFAULT_API_BASE_URL = __DEV__ ? "http://192.168.10.243:5000" : "https://owngains.superak0s.com"
+export const OFFICIAL_SERVER_HOST = "owngains.superak0s.com"
+const DEFAULT_API_BASE_URL = __DEV__ ? "http://192.168.10.243:5000" : `https://${OFFICIAL_SERVER_HOST}`
 
 function readStoredServerUrl(): string {
   try {
@@ -26,6 +27,11 @@ export const onServerUrlChange = serverUrlChange.subscribe
 const notify = serverUrlChange.trigger
 
 export const getServerUrl = (): string => currentServerUrl
+
+// An exact string match, not URL parsing: React Native's URL.hostname is a regex
+// that reads "https://evil.com/@<official host>" as the official host.
+export const isOfficialServer = (): boolean =>
+  getServerUrl().trim().replace(/\/+$/, "").toLowerCase() === `https://${OFFICIAL_SERVER_HOST}`
 
 interface ServerUrlValidation {
   valid: boolean

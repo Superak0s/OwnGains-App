@@ -18,7 +18,7 @@ Open the app, pick Offline mode in onboarding, and you're in, without an email, 
 - **Works in a dead-zone gym.** Concrete basement with no signal is the normal case, not an edge case. The app never waits on a network call to let you log a set.
 - **Your data is yours, on your hardware.** In offline mode none of your data leaves the phone, and a full backup (including progress photos) exports to one passphrase-encrypted file you can keep, move to a new phone, and restore.
 - **Offline-first even when you're online.** In server mode, sets logged without connectivity are queued locally and replayed automatically when you reconnect. Local session IDs are remapped to server IDs, and anything that fails remains in the queue instead of disappearing.
-- **Optional server, on your terms.** Server mode only adds cross-device sync and the social/live features. You can use the official server at `owngains.superak0s.com`, run by the developer in Greece, or your own self-hosted [OwnGains Server](https://github.com/Superak0s/OwnGains-Server), and the login screen can find a self-hosted server on your LAN over mDNS so you never type an IP.
+- **Optional server, on your terms.** Server mode only adds cross-device sync and the social/live features. You can use the official server at `owngains.superak0s.com`, run by the developer in Greece, or your own self-hosted [OwnGains Server](https://github.com/Superak0s/OwnGains-Server), and the login screen can find a self-hosted server on your LAN over mDNS so you never type an IP. On the official server you can also sign in with Google. The button is never shown for any other server, so no self-hosted server receives a Google token.
 - **A server can keep features on-device.** It can declare features it would rather not store (tracking and supplements, today). The official server does exactly that, so body tracking, progress photos, cycle data and supplements never leave your phone even in server mode. The app picks that list up and keeps those features local-only while everything else still syncs. Settings shows which ones under "Kept On This Device".
 - **Switch anytime.** Offline vs. server mode is chosen at onboarding, and Settings or the login screen can take you back there. The change applies immediately, with no restart.
 
@@ -195,7 +195,7 @@ Home · Workout · Plan · Progress (Analytics) · Track (Hydration / Weight / P
 
 ## Development
 
-Requires Node 22 and Python 3 (used by `lint:a11y` and the audit scripts). Copy `.env.example` to `.env` to set `EXPO_PUBLIC_SENTRY_DSN` (crash reports. Dev builds send nothing unless `EXPO_PUBLIC_SENTRY_FORCE_ENABLE=true`).
+Requires Node 22 and Python 3 (used by `lint:a11y` and the audit scripts). Copy `.env.example` to `.env` to set `EXPO_PUBLIC_SENTRY_DSN` (crash reports. Dev builds send nothing unless `EXPO_PUBLIC_SENTRY_FORCE_ENABLE=true`) and `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (the Web OAuth client ID that the official server also sets as `GOOGLE_WEB_CLIENT_ID`. Without it the Google button stays hidden).
 
 ```bash
 npm install --legacy-peer-deps   # required: peer deps are not resolvable otherwise

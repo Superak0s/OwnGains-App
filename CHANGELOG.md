@@ -6,8 +6,15 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Added
+
+- Sign in or sign up with Google on the official server. The button is shown only when the server address is exactly https://owngains.superak0s.com, and an account created this way confirms deletion with Google instead of a password.
+
 ### Internal
 
+- Added `@react-native-google-signin/google-signin`, `isOfficialServer()` in `config.tsx` (shared with `PrivacyConsentScreen`) and `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` in `.env.example`.
+- Tests for `isOfficialServer`, `signInWithGoogle` and the Google button's visibility, plus a Jest mock for the Google sign-in package.
+- Regression test that checks the official server address against React Native's own URL parser, which read "https://evil.com/@owngains.superak0s.com" as the official host.
 - `scripts/release.sh` asks whether to run a clean prebuild when no dependencies, config, plugins or assets changed since the last one, and runs it after 30 seconds without an answer.
 
 ## [0.4.1] - 2026-10-09

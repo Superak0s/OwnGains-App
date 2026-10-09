@@ -232,3 +232,35 @@ describe("normalizeServerUrl", () => {
     expect(config.validateServerUrl("https://example.com/").valid).toBe(true);
   });
 });
+
+describe("isOfficialServer", () => {
+  const officialFor = (url: string) => {
+    mockGetStorageItemSync.mockImplementation((k: string) => mockKv[k] ?? null);
+    mockKv["@server_url"] = url;
+    load();
+    return config.isOfficialServer();
+  };
+
+  it("accepts only https on the exact official host", () => {
+    expect(officialFor("https://owngains.superak0s.com")).toBe(true);
+    expect(officialFor("https://owngains.superak0s.com.evil.com")).toBe(false);
+    expect(officialFor("https://evil-owngains.superak0s.com")).toBe(false);
+    expect(officialFor("https://owngains.superak0s.com@evil.com")).toBe(false);
+    expect(officialFor("http://owngains.superak0s.com")).toBe(false);
+    expect(officialFor("ws://owngains.superak0s.com")).toBe(false);
+    expect(officialFor("https://evil.com/@owngains.superak0s.com")).toBe(false);
+    expect(officialFor("https://evil.com#@owngains.superak0s.com")).toBe(false);
+    expect(officialFor("https://owngains.superak0s.com/")).toBe(true);
+    expect(officialFor("not a url")).toBe(false);
+  });
+
+  it("is not fooled by React Native's URL parser", () => {
+    const nodeUrl = global.URL;
+    global.URL = jest.requireActual("react-native/Libraries/Blob/URL").URL;
+    try {
+      expect(officialFor("https://evil.com/@owngains.superak0s.com")).toBe(false);
+    } finally {
+      global.URL = nodeUrl;
+    }
+  });
+});
