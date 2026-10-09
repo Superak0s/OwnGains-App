@@ -133,6 +133,7 @@ export const STORAGE_KEYS = {
   UNDERTRAINED_DISPLAY_MODE: "undertrainedDisplayMode",
   UNDERTRAINED_CALCULATION_MODE: "undertrainedCalculationMode",
   PR_CELEBRATION: "prCelebration",
+  CHART_SETTINGS: "chartSettings",
   AUTO_PROGRESSION: "autoProgression",
   PROGRAM_DIRTY: "programDirty",
   HEALTH_CONNECT_IMPORTED: "healthConnectImported",

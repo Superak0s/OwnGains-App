@@ -444,21 +444,12 @@ export const MuscleDashboard: React.FC<MuscleDashboardProps> = ({
                   title='Severity, last 7 logs'
                   chartType='bar'
                   chartWidth={SCREEN_WIDTH - 64}
-                  barColors={recentTrend.map((point) =>
-                    getSeverityColor(point.averageIntensity, 3),
-                  )}
-                  data={{
-                    labels: recentTrend.map((point) =>
-                      String(new Date(point.date).getDate()),
-                    ),
-                    datasets: [
-                      {
-                        data: recentTrend.map(
-                          (point) => point.averageIntensity,
-                        ),
-                      },
-                    ],
-                  }}
+                  chartId='muscle_severity'
+                  points={recentTrend.map((point) => ({
+                    date: new Date(point.date),
+                    value: point.averageIntensity,
+                    color: getSeverityColor(point.averageIntensity, 3),
+                  }))}
                 />
               )}
             </View>

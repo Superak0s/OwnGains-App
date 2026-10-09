@@ -13,7 +13,10 @@ import {
   Dimensions,
 } from "react-native";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
-import ProgressChart from "@shared/components/ProgressChart";
+import ProgressChart, {
+  type ChartMetric,
+  type ChartPoint,
+} from "@shared/components/ProgressChart";
 import ModalSheet from "@shared/components/ModalSheet";
 import ScrollTabBar from "@shared/components/ScrollTabBar";
 import TrainingSummaryTab from "./TrainingSummaryTab";
@@ -54,14 +57,16 @@ import type { CompletedDays, ExerciseHistoryEntry } from "../types";
 import {
   buildAvailableExercises,
   buildExerciseHistory,
-  buildProgressChartData,
+  buildProgressPoints,
+  PROGRESS_METRICS,
+  type PersonalRecord,
+  type ProgressMetric,
   computeExerciseInsights,
   computeExerciseStats,
   dedupeHistory,
   exerciseBreakdown,
   workingSets,
 } from "../utils/exerciseStats";
-import type { ChartData, PersonalRecord } from "../utils/exerciseStats";
 import { STORAGE_KEYS } from "@shared/services/storage";
 import { useWorkoutPick } from "@shared/context/WorkoutContext";
 import { KG_TO_LBS, kgToDisplay } from "@features/workout/utils";
@@ -104,7 +109,7 @@ const PROGRESS_WIDGET_CONFIG: Record<
   {
     title: string;
     icon: string;
-    metric: "weight" | "reps";
+    metric: ProgressMetric;
     emptyText: string;
   }
 > = {
@@ -122,15 +127,16 @@ const PROGRESS_WIDGET_CONFIG: Record<
   },
 };
 
-const chartInUnit = (chart: ChartData, unit: "kg" | "lbs"): ChartData =>
-  unit === "kg"
-    ? chart
-    : {
-        ...chart,
-        datasets: chart.datasets.map((set) => ({
-          data: set.data.map((kg) => Math.round(kg * KG_TO_LBS * 10) / 10),
-        })),
-      };
+const METRIC_LABELS: Record<ProgressMetric, string> = {
+  weight: "Average weight",
+  heaviest: "Heaviest weight",
+  oneRepMax: "Estimated 1RM",
+  bestSetVolume: "Best set volume",
+  sessionVolume: "Session volume",
+  reps: "Average reps",
+  totalReps: "Total reps",
+};
+const COUNT_METRICS = new Set<ProgressMetric>(["reps", "totalReps"]);
 
 const fmt = (value?: number | null): string => {
   const n = Number.parseFloat(String(value ?? 0));
@@ -294,20 +300,27 @@ export default function ExerciseAnalytics({
     () => computeExerciseStats(workingSetData),
     [workingSetData],
   );
-  const chartDataByMetric = useMemo(
-    () => ({
-      weight: chartInUnit(
-        buildProgressChartData(workingSetData, "weight"),
-        weightUnit,
-      ),
-      reps: buildProgressChartData(workingSetData, "reps"),
-      oneRepMax: chartInUnit(
-        buildProgressChartData(workingSetData, "oneRepMax"),
-        weightUnit,
-      ),
-    }),
+  const chartMetrics = useMemo<ChartMetric[]>(
+    () =>
+      PROGRESS_METRICS.map((key) => {
+        const isCount = COUNT_METRICS.has(key);
+        const factor = isCount || weightUnit === "kg" ? 1 : KG_TO_LBS;
+        return {
+          key,
+          label: METRIC_LABELS[key],
+          suffix: isCount ? "" : weightUnit,
+          points: buildProgressPoints(workingSetData, key).map((p) => ({
+            ...p,
+            value: Math.round(p.value * factor * 10) / 10,
+          })),
+        };
+      }),
     [workingSetData, weightUnit],
   );
+  const metricsFirst = (first: ProgressMetric) => [
+    ...chartMetrics.filter((m) => m.key === first),
+    ...chartMetrics.filter((m) => m.key !== first),
+  ];
 
   const trainingEntries = useMemo(
     () =>
@@ -352,6 +365,7 @@ export default function ExerciseAnalytics({
     setSelectedDate(date);
     setShowDateSets(true);
   };
+  const openPoint = (point: ChartPoint) => handleDatePress(point.date);
 
   const filteredExercises = useMemo(
     () =>
@@ -506,9 +520,10 @@ export default function ExerciseAnalytics({
       <ProgressChart
         title={config.title}
         icon={config.icon}
-        data={chartDataByMetric[config.metric]}
-        yAxisSuffix={config.metric === "weight" ? weightUnit : undefined}
+        chartId={`analytics_${type}`}
+        metrics={metricsFirst(config.metric)}
         chartWidth={chartWidth}
+        onPointPress={openPoint}
       />
     );
   };
@@ -626,9 +641,10 @@ export default function ExerciseAnalytics({
         </View>
         <ProgressChart
           title='Estimated 1RM'
-          data={chartDataByMetric.oneRepMax}
-          yAxisSuffix={weightUnit}
+          chartId='analytics_1rm'
+          metrics={metricsFirst("oneRepMax")}
           chartWidth={chartWidth}
+          onPointPress={openPoint}
         />
         {historyWindowNote}
       </View>

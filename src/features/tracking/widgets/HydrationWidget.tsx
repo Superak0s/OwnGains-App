@@ -9,7 +9,7 @@ import {
   formatDateLabel,
   formatRange,
   isoToLocalDateStr,
-  toDailyTotalsChartData,
+  toDailyTotalPoints,
 } from "../utils";
 import type { HydrationEntry } from "../services/types";
 import {
@@ -98,7 +98,9 @@ export function renderHydrationWidget(
       return (
         <ProgressChart
           chartType='bar'
-          data={toDailyTotalsChartData(
+          chartId='hydration'
+          defaultRange='1W'
+          points={toDailyTotalPoints(
             entries.map((h) => ({ at: h.loggedAt, value: Number(h.amountMl) })),
           )}
           yAxisSuffix='ml'

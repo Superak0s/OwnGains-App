@@ -8,7 +8,7 @@ import type { DailyMacrosStats } from "../hooks/useMacrosTab";
 import type { MacrosEntryWithFields } from "../types";
 import {
   formatDateLabel,
-  toDailyTotalsChartData,
+  toDailyTotalPoints,
   formatRange,
 } from "../utils";
 import {
@@ -67,7 +67,9 @@ export function renderMacrosWidget(
       return (
         <ProgressChart
           chartType='bar'
-          data={toDailyTotalsChartData(
+          chartId='calories'
+          defaultRange='1W'
+          points={toDailyTotalPoints(
             entries.map((e) => ({
               at: e.date ?? e.loggedAt,
               value: Number(e.calories ?? 0),

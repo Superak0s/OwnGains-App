@@ -2,7 +2,7 @@ import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { TrackingStyles } from "../styles";
 import React from "react";
 import { View } from "react-native";
-import ProgressChart from "@shared/components/ProgressChart";
+import ProgressChart, { type ChartPoint } from "@shared/components/ProgressChart";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import type { WeightEntry } from "@shared/types";
 import {
@@ -28,7 +28,7 @@ interface WeightRenderCtx {
     diff: number;
     percentChange: number;
   } | null;
-  chartData: { labels: string[]; datasets: { data: number[] }[] };
+  chartData: ChartPoint[];
   loadMoreEntries: () => void;
   deleteWeightEntry: (entry: WeightEntry) => void;
   openWeightModal: () => void;
@@ -215,7 +215,8 @@ export function renderWeightWidget(
         );
       return (
         <ProgressChart
-          data={chartData}
+          chartId='weight'
+          points={chartData}
           yAxisSuffix={weightUnit}
           fromZero={false}
         />

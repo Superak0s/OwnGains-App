@@ -5,7 +5,7 @@ import { View } from "react-native";
 import ProgressChart from "@shared/components/ProgressChart";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import type { MeasurementEntry } from "../services/types";
-import { toTrendChartData } from "../utils";
+import { toTrendPoints } from "../utils";
 import {
   Button,
   Chip,
@@ -67,7 +67,8 @@ function MeasurementChart({
         </Note>
       ) : (
         <ProgressChart
-          data={toTrendChartData(points)}
+          chartId={`measurement_${site}`}
+          points={toTrendPoints(points)}
           yAxisSuffix='cm'
           fromZero={false}
         />

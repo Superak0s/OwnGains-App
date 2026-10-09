@@ -19,7 +19,7 @@ import {
   formatDateLabel,
   hasTapeMeasurements,
   toFeetInches,
-  toTrendChartData,
+  toTrendPoints,
 } from "../utils";
 
 interface BodyFatRenderCtx {
@@ -160,7 +160,8 @@ export function renderBodyFatWidget(
         );
       return (
         <ProgressChart
-          data={toTrendChartData(
+          chartId='bodyfat'
+          points={toTrendPoints(
             history.map((e) => ({ at: readingDate(e), value: readingPercent(e) })),
           )}
           yAxisSuffix='%'

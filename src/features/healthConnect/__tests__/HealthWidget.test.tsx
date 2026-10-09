@@ -20,8 +20,8 @@ jest.mock("../dailyHealth", () => ({
 jest.mock("@shared/context/AuthContext", () => ({ useAuth: () => ({ user: { id: "u1" } }) }));
 jest.mock("@shared/components/ProgressChart", () => ({
   __esModule: true,
-  default: ({ data }: { data: { datasets: { data: number[] }[] } }) =>
-    `chart:${data.datasets[0].data.join(",")}`,
+  default: ({ points }: { points: { value: number }[] }) =>
+    `chart:${points.map((p) => p.value).join(",")}`,
 }));
 jest.mock("@features/tracking/ui", () => ({
   Metric: ({ value }: { value: string }) => `metric:${value}`,

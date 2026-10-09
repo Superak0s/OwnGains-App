@@ -2,6 +2,7 @@ import type { MenstrualEntry } from "./services/types";
 import type { SorenessEntry, SorenessFollowUp } from "./types/muscleRecovery";
 import type { BodyFatEntryWithFields } from "./types";
 import { toDateString, formatDate, parseDate } from "@utils/format";
+import type { ChartPoint } from "@shared/components/chart/chartMath";
 
 export function isoToLocalDateStr(isoStr: string | null | undefined): string {
   if (!isoStr) return "";
@@ -145,48 +146,35 @@ export interface TrendPoint {
   value: number;
 }
 
-export interface TrendChartData {
-  labels: string[];
-  datasets: { data: number[] }[];
+export function toTrendPoints(points: TrendPoint[]): ChartPoint[] {
+  return points
+    .map((p) => ({ date: parseDate(p.at), value: p.value }))
+    .filter((p): p is ChartPoint => p.date !== null && Number.isFinite(p.value))
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
-const MAX_CHART_LABELS = 8;
-
-/** The newest `limit` points, oldest first, with at most eight x-axis labels so they don't overlap. */
-export function toTrendChartData(points: TrendPoint[], limit = 30): TrendChartData {
-  const recent = points
-    .filter((p) => parseDate(p.at) && Number.isFinite(p.value))
-    .sort((a, b) => parseDate(a.at)!.getTime() - parseDate(b.at)!.getTime())
-    .slice(-limit);
-  const every = Math.ceil(recent.length / MAX_CHART_LABELS);
-  return {
-    labels: recent.map((p, i) =>
-      i % every === 0 ? formatDate(p.at!, { month: "short", day: "numeric" }) : "",
-    ),
-    datasets: [{ data: recent.map((p) => p.value) }],
-  };
-}
-
-/** One bar per calendar day for the last `days` days, today last, empty days as 0. */
-export function toDailyTotalsChartData(
+/** One point per calendar day from the first entry (at least a week back) to today, empty days as 0. */
+export function toDailyTotalPoints(
   points: TrendPoint[],
-  days = 7,
   today: Date = new Date(),
-): TrendChartData {
+): ChartPoint[] {
   const totals = new Map<string, number>();
   for (const p of points) {
     const day = isoToLocalDateStr(p.at);
     if (day && Number.isFinite(p.value)) totals.set(day, (totals.get(day) ?? 0) + p.value);
   }
-  const dates = Array.from({ length: days }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - (days - 1 - i));
-    return d;
-  });
-  return {
-    labels: dates.map((d) => formatDate(d, { weekday: "short" })),
-    datasets: [{ data: dates.map((d) => totals.get(toDateString(d)) ?? 0) }],
-  };
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+  const first = [...totals.keys()].sort()[0];
+  if (first) {
+    const [y, m, d] = first.split("-").map(Number);
+    const firstDay = new Date(y, m - 1, d);
+    if (firstDay < start) start.setTime(firstDay.getTime());
+  }
+  const result: ChartPoint[] = [];
+  for (const d = new Date(start); toDateString(d) <= toDateString(today); d.setDate(d.getDate() + 1)) {
+    result.push({ date: new Date(d), value: totals.get(toDateString(d)) ?? 0 });
+  }
+  return result;
 }
 
 /** Days between consecutive cycle starts, oldest cycle first. */

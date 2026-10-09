@@ -1,5 +1,5 @@
 import {
-  buildProgressChartData,
+  buildProgressPoints,
   computeExerciseInsights,
   exerciseBreakdown,
   sessionOneRepMaxes,
@@ -246,25 +246,28 @@ describe("computeExerciseInsights", () => {
   })
 })
 
-describe("buildProgressChartData", () => {
-  it("caps a long history at 60 points, keeping the peak and the latest", () => {
-    const entries = Array.from({ length: 300 }, (_, i) =>
-      entry({ date: daysAgo(300 - i), weight: i === 137 ? 999 : 50 + (i % 10) }),
-    )
-    const data = buildProgressChartData(entries, "weight").datasets[0].data
+describe("buildProgressPoints", () => {
+  const entries = [
+    entry({ date: daysAgo(2, 9), weight: 80, load: 80, reps: 5 }),
+    entry({ date: daysAgo(2, 18), weight: 100, load: 100, reps: 3 }),
+    entry({ date: daysAgo(1), weight: 110, load: 110, reps: 2 }),
+  ]
+  const values = (metric: Parameters<typeof buildProgressPoints>[1]) =>
+    buildProgressPoints(entries, metric).map((p) => p.value)
 
-    expect(data.length).toBeLessThanOrEqual(60)
-    expect(data).toContain(999)
-    expect(data.at(-1)).toBe(50 + (299 % 10))
+  it("gives one point per training day", () => {
+    expect(values("weight")).toEqual([90, 110])
+    expect(values("heaviest")).toEqual([100, 110])
   })
 
-  it("keeps every point of a short history, one per training day", () => {
-    const entries = [
-      entry({ date: daysAgo(2, 9), weight: 80 }),
-      entry({ date: daysAgo(2, 18), weight: 100 }),
-      entry({ date: daysAgo(1), weight: 110 }),
-    ]
-    expect(buildProgressChartData(entries, "weight").datasets[0].data).toEqual([90, 110])
+  it("sums or maxes volume and reps per day", () => {
+    expect(values("bestSetVolume")).toEqual([400, 220])
+    expect(values("sessionVolume")).toEqual([700, 220])
+    expect(values("totalReps")).toEqual([8, 2])
+  })
+
+  it("is empty without history", () => {
+    expect(buildProgressPoints(null, "weight")).toEqual([])
   })
 })
 

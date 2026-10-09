@@ -11,7 +11,7 @@ import {
   computeUpcomingPredictedDays,
   cycleLengthPoints,
   formatDateLabel,
-  toTrendChartData,
+  toTrendPoints,
 } from "../utils";
 import { toDateString } from "@utils/format";
 import type { MenstrualEntry } from "../services/types";
@@ -224,7 +224,8 @@ export function renderMenstrualWidget(
         );
       return (
         <ProgressChart
-          data={toTrendChartData(lengths)}
+          chartId='cycle_length'
+          points={toTrendPoints(lengths)}
           yAxisSuffix='d'
           fromZero={false}
         />

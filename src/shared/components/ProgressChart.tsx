@@ -1,158 +1,158 @@
-import { useMemo } from "react";
-import { View, Text, StyleSheet, useWindowDimensions } from "react-native";
-import { LineChart, BarChart } from "react-native-chart-kit";
-import { useTheme } from "../context/ThemeContext";
-import { isDarkColor } from "@utils/color";
+import { useMemo, useState } from "react";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
+import { useTheme, type ThemeColors } from "../context/ThemeContext";
 import { useWidgetSize } from "./widgets/widgetSize";
-import type { ThemeColors } from "@shared/context/ThemeContext"
+import ChartView from "./chart/ChartView";
+import ExpandedChart from "./chart/ExpandedChart";
+import { useChartSettings } from "./chart/useChartSettings";
+import {
+  chartModel,
+  decimalsFor,
+  type ChartPoint,
+  type ChartRange,
+  type ChartSettings,
+} from "./chart/chartMath";
 
-interface ChartData {
-  labels: string[];
-  datasets: { data: number[] }[];
+export type { ChartPoint } from "./chart/chartMath";
+
+export interface ChartMetric {
+  key: string;
+  label: string;
+  points: ChartPoint[];
+  suffix?: string;
 }
 
 interface ProgressChartProps {
   readonly title?: string;
   readonly icon?: string;
-  readonly data: ChartData;
+  readonly points?: ChartPoint[];
+  /** Alternative series the expanded view can switch between. The first is the default. */
+  readonly metrics?: ChartMetric[];
+  /** Keys the saved view settings. Without it, changes last until the screen closes. */
+  readonly chartId?: string;
   readonly yAxisSuffix?: string;
   readonly chartWidth?: number;
   readonly chartType?: "line" | "bar";
-  /** Per-bar color override, only used when chartType is "bar". */
-  readonly barColors?: string[];
-  readonly showValuesOnTopOfBars?: boolean;
   /** Line charts only. Off for body metrics, where a 0 baseline flattens a few kg into a straight line. */
   readonly fromZero?: boolean;
+  readonly defaultRange?: ChartRange;
+  readonly onPointPress?: (point: ChartPoint) => void;
 }
 
 const CHART_HEIGHT = 220;
 const LARGE_CHART_HEIGHT = 320;
+const MAX_SMALL_POINTS = 60;
 
 export default function ProgressChart({
   title,
   icon,
-  data,
+  points = [],
+  metrics,
+  chartId,
   yAxisSuffix = "",
   chartWidth,
   chartType = "line",
-  barColors,
-  showValuesOnTopOfBars,
   fromZero = true,
+  defaultRange = "all",
+  onPointPress,
 }: ProgressChartProps) {
-  const { colors, resolvedChartColor, resolvedChartColorDark } = useTheme();
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { width } = useWindowDimensions();
   const widgetSize = useWidgetSize();
-  const resolvedHeight =
-    widgetSize === "large" ? LARGE_CHART_HEIGHT : CHART_HEIGHT;
-  const resolvedWidth = chartWidth ?? width - 40;
-  const safeData = useMemo<ChartData>(
-    () => ({
-      ...data,
-      datasets: data.datasets.map((d) => ({
-        ...d,
-        data: d.data.map((v) => (Number.isFinite(v) ? v : 0)),
-      })),
-    }),
-    [data],
-  );
-  const values = safeData.datasets.flatMap((d) => d.data);
-  const hasData = values.length > 0;
-  // The gradient behind the chart is user-configurable, so the labels drawn on
-  // top of it can't assume a dark background.
-  const onChartRgb = isDarkColor(resolvedChartColor) ? "255, 255, 255" : "0, 0, 0";
-  // Whole-number series (volume, reps) read as "12500.0" with a fixed scale,
-  // but a narrow range like 80 to 82 needs the decimal or its axis labels repeat.
-  const decimalPlaces =
-    values.every((v) => Math.abs(v) >= 10) &&
-    Math.max(...values) - Math.min(...values) >= 10
-      ? 0
-      : 1;
-  const chartConfig = {
-    backgroundColor: resolvedChartColor,
-    backgroundGradientFrom: resolvedChartColor,
-    backgroundGradientTo: resolvedChartColorDark,
-    decimalPlaces,
-    color: (opacity = 1) => `rgba(${onChartRgb}, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(${onChartRgb}, ${opacity})`,
-    style: { borderRadius: 16 },
-    propsForDots: { r: "6", strokeWidth: "2", stroke: resolvedChartColorDark },
-  };
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const height = widgetSize === "large" ? LARGE_CHART_HEIGHT : CHART_HEIGHT;
+  const [expanded, setExpanded] = useState(false);
 
-  const barData = useMemo(() => {
-    if (chartType !== "bar" || !barColors) return safeData;
-    const colorFns = barColors.map((barColor) => () => barColor);
-    return {
-      ...safeData,
-      datasets: safeData.datasets.map((dataset) => ({
-        ...dataset,
-        colors: colorFns,
-      })),
-    };
-  }, [chartType, barColors, safeData]);
+  const defaults = useMemo<Partial<ChartSettings>>(
+    () => ({
+      kind: chartType,
+      yAxis: chartType === "bar" || fromZero ? "zero" : "auto",
+      range: defaultRange,
+    }),
+    [chartType, fromZero, defaultRange],
+  );
+  const { settings, update, reset } = useChartSettings(chartId, defaults);
+
+  const metric =
+    metrics?.find((m) => m.key === settings.metric) ?? metrics?.[0];
+  const series = metric?.points ?? points;
+  const suffix = metric?.suffix ?? yAxisSuffix;
+  const label = metric && metrics!.length > 1 ? metric.label : title;
+  const finite = useMemo(
+    () => series.filter((p) => Number.isFinite(p.value)),
+    [series],
+  );
+  const model = useMemo(
+    () => chartModel(finite, settings, { maxPoints: MAX_SMALL_POINTS }),
+    [finite, settings],
+  );
 
   const summary = useMemo(() => {
-    if (values.length === 0) return `${title ?? "Chart"}: no data yet`;
-    const first = values[0];
-    const last = values.at(-1)!;
-    const round = (v: number) => v.toFixed(decimalPlaces);
+    const name = label ?? "Chart";
+    const values = model.visible.map((p) => p.value);
+    if (values.length === 0) return `${name}: no data yet`;
+    const decimals = decimalsFor(values);
+    const round = (v: number) => `${v.toFixed(decimals)}${suffix}`;
     return [
-      `${title ?? "Chart"}: ${values.length} points`,
-      `from ${round(first)}${yAxisSuffix} to ${round(last)}${yAxisSuffix}`,
-      `low ${round(Math.min(...values))}${yAxisSuffix}`,
-      `high ${round(Math.max(...values))}${yAxisSuffix}`,
+      `${name}: ${values.length} points`,
+      `from ${round(values[0])} to ${round(values.at(-1)!)}`,
+      `low ${round(Math.min(...values))}`,
+      `high ${round(Math.max(...values))}`,
     ].join(", ");
-  }, [values, title, yAxisSuffix, decimalPlaces]);
+  }, [model.visible, label, suffix]);
 
   return (
-    <View
-      style={styles.chartSection}
-      accessible
-      accessibilityRole='image'
-      accessibilityLabel={summary}
-    >
+    <View style={styles.chartSection}>
       {title && (
         <Text style={styles.chartTitle} accessibilityElementsHidden importantForAccessibility='no-hide-descendants'>
           {icon ? `${icon} ` : ""}
-          {title}
+          {label}
         </Text>
       )}
-      {!hasData && (
-        <View style={[styles.empty, { height: resolvedHeight }]}>
-          <Text style={styles.emptyText}>No data yet</Text>
-        </View>
+      <Pressable
+        onPress={() => setExpanded(true)}
+        accessibilityRole='button'
+        accessibilityLabel={summary}
+        accessibilityHint='Opens the chart full screen with more options'
+      >
+        {model.visible.length === 0 ? (
+          <View style={[styles.empty, { height }]}>
+            <Text style={styles.emptyText}>
+              {finite.length ? "No data in this range" : "No data yet"}
+            </Text>
+          </View>
+        ) : (
+          <View pointerEvents='none'>
+            <ChartView
+              model={model}
+              settings={settings}
+              width={chartWidth ?? width - 40}
+              height={height}
+              suffix={suffix}
+            />
+          </View>
+        )}
+      </Pressable>
+      {expanded && (
+        <ExpandedChart
+          visible
+          onClose={() => setExpanded(false)}
+          title={label ?? "Chart"}
+          points={finite}
+          suffix={suffix}
+          settings={settings}
+          update={update}
+          reset={reset}
+          metrics={metrics?.map(({ key, label: name }) => ({ key, label: name }))}
+          onPointPress={onPointPress}
+        />
       )}
-      {hasData && (chartType === "bar" ? (
-        <BarChart
-          data={barData}
-          width={resolvedWidth}
-          height={resolvedHeight}
-          chartConfig={chartConfig}
-          style={styles.chart}
-          yAxisLabel=""
-          yAxisSuffix={yAxisSuffix}
-          withInnerLines={false}
-          fromZero
-          withCustomBarColorFromData={!!barColors}
-          flatColor={!!barColors}
-          showValuesOnTopOfBars={showValuesOnTopOfBars}
-        />
-      ) : (
-        <LineChart
-          data={safeData}
-          width={resolvedWidth}
-          height={resolvedHeight}
-          chartConfig={chartConfig}
-          bezier
-          style={styles.chart}
-          yAxisSuffix={yAxisSuffix}
-          withInnerLines={false}
-          withOuterLines
-          withVerticalLines={false}
-          withHorizontalLines
-          fromZero={fromZero}
-        />
-      ))}
     </View>
   );
 }
@@ -166,7 +166,6 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.textPrimary,
       marginBottom: 15,
     },
-    chart: { marginVertical: 8, borderRadius: 16 },
     empty: {
       marginVertical: 8,
       borderRadius: 16,

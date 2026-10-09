@@ -1,2 +1,5 @@
-• The privacy screen now says when the server can't be reached instead of blaming device storage.
-• Deleting a set from a workout started offline no longer warns that the server still has it.
+• Tap any chart to open it full screen: time ranges, Y axis and label settings, landscape, pinch zoom and tap a point for details.
+• Trend lines, goal line with an estimated date, record markers and period comparison.
+• Exercise charts switch between weight, 1RM, volume and reps.
+• Save charts as an image or CSV.
+• Fixes for offline set deletion and the privacy screen when the server is down.

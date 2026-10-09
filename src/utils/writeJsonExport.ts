@@ -54,6 +54,20 @@ export async function writeBinaryExport(
   });
 }
 
+export async function writeTextExport(
+  namePrefix: string,
+  extension: string,
+  text: string,
+  mimeType: string,
+): Promise<ExportResult> {
+  return writeExportFile({
+    fileName: `${namePrefix}-${Date.now()}.${extension}`,
+    contents: text,
+    mimeType,
+    encoding: FileSystem.EncodingType.UTF8,
+  });
+}
+
 async function writeExportFile(file: ExportFile): Promise<ExportResult> {
   const { fileName, contents, mimeType, encoding } = file;
 
@@ -112,7 +126,7 @@ export async function sweepStaleExports(): Promise<void> {
   );
   await Promise.all(
     names
-      .filter((name) => /-\d+\.(json|xlsx)$/.test(name))
+      .filter((name) => /-\d+\.(json|xlsx|csv|png)$/.test(name))
       .map((name) =>
         FileSystem.deleteAsync(`${dir}${name}`, { idempotent: true }).catch(
           () => undefined,

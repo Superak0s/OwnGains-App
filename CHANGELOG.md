@@ -6,6 +6,17 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Added
+
+- Tap any progress chart to open it full screen. Pick a time range (1W to All, or custom dates), set the Y axis to fit the data, start at zero or use your own min and max, change label count and size, and rotate to landscape. Pinch to zoom, double tap to reset, and tap a point to see its value or open that day's workout.
+- Full screen charts can show a 7 day average or smoothed trend line, a goal line with an estimated date to reach it, record markers, and the previous period or last year for comparison. Switch between line, area and bar, and see min, max, average and change for the visible range.
+- Exercise charts can switch between average and heaviest weight, estimated 1RM, best set and session volume, and average and total reps.
+- Save a chart as an image or export its points as CSV.
+
+### Changed
+
+- Chart settings are saved per chart for each account on the device and also apply to the small chart.
+
 ### Fixed
 
 - Deleting a set from a workout started offline no longer warns that the server still has the set.
@@ -22,6 +33,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - README updated for 0.3.0 (Health tab, Recovery and Cycle tabs, new Progress widgets, Friends changes, permissions, native modules, release flags)
 - Added `@testing-library/react-native` 14 and its `test-renderer` peer as dev dependencies for screen tests
 - TODO plan for an expanded, configurable chart view
+- Charts moved from `react-native-chart-kit` to `react-native-gifted-charts`, with `expo-screen-orientation` and `react-native-view-shot` added (new native modules, needs a prebuild)
 
 ## [0.3.0] - 2026-10-07
 

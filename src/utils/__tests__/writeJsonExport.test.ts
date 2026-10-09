@@ -140,13 +140,14 @@ it("clears exports left in the cache by an earlier session", async () => {
   (FileSystem.readDirectoryAsync as jest.Mock).mockResolvedValue([
     "owngains-account-export-1700000000000.json",
     "workout-program-1700000000000.xlsx",
+    "chart-weight-1700000000000.csv",
     "ImagePicker",
     "notes.json",
   ]);
 
   await sweepStaleExports();
 
-  expect(FileSystem.deleteAsync).toHaveBeenCalledTimes(2);
+  expect(FileSystem.deleteAsync).toHaveBeenCalledTimes(3);
   expect(FileSystem.deleteAsync).toHaveBeenCalledWith(
     "file:///cache/owngains-account-export-1700000000000.json",
     { idempotent: true },

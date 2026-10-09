@@ -5,7 +5,8 @@ import { aggregateRecord, readRecords } from "react-native-health-connect";
 import ProgressChart from "@shared/components/ProgressChart";
 import { useAuth } from "@shared/context/AuthContext";
 import { Metric, Placeholder } from "@features/tracking/ui";
-import { toTrendChartData, type TrendChartData } from "@features/tracking/utils";
+import { toTrendPoints } from "@features/tracking/utils";
+import type { ChartPoint } from "@shared/components/ProgressChart";
 import { captureException } from "@shared/services/crashReporting";
 import { loadHealthHistory, mergeHistory, readRecentDays, type DailyHealth } from "./dailyHealth";
 import { getGrantedTypes, type HealthType } from "./healthConnect";
@@ -17,7 +18,7 @@ interface Reading {
   meta: string;
 }
 
-type Result = { kind: "metric"; reading: Reading } | { kind: "chart"; data: TrendChartData };
+type Result = { kind: "metric"; reading: Reading } | { kind: "chart"; points: ChartPoint[] };
 
 interface Reader {
   label: string;
@@ -26,8 +27,6 @@ interface Reader {
   suffix?: string;
   read: (userId: string | null) => Promise<Result | null>;
 }
-
-const TREND_DAYS = 90;
 
 const startOfToday = () => {
   const date = new Date();
@@ -53,7 +52,7 @@ const trend = (
     const value = pick(day);
     return value == null ? [] : [{ at: `${date}T12:00:00`, value }];
   });
-  return points.length ? { kind: "chart", data: toTrendChartData(points, TREND_DAYS) } : null;
+  return points.length ? { kind: "chart", points: toTrendPoints(points) } : null;
 };
 
 const READERS: Record<HealthWidgetType, Reader> = {
@@ -168,7 +167,9 @@ export default function HealthWidget({
     );
   if (state === "error") return <Placeholder text="Couldn't read from Health Connect." />;
   if (!state) return <Placeholder text={reader.empty} />;
-  if (state.kind === "chart") return <ProgressChart data={state.data} yAxisSuffix={reader.suffix} />;
+  if (state.kind === "chart") return (
+      <ProgressChart chartId={type} defaultRange="3M" points={state.points} yAxisSuffix={reader.suffix} />
+    );
   const { reading } = state;
   return <Metric label={reader.label} value={reading.value} unit={reading.unit} meta={reading.meta} />;
 }

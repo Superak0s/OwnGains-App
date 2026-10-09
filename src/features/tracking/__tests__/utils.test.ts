@@ -3,8 +3,8 @@ import {
   cycleLengthPoints,
   followUpStatus,
   needsFollowUp,
-  toDailyTotalsChartData,
-  toTrendChartData,
+  toDailyTotalPoints,
+  toTrendPoints,
   computeUpcomingPredictedDays,
   daysSinceLocal,
   formatDateLabel,
@@ -238,45 +238,38 @@ describe("describeError", () => {
   });
 });
 
-describe("toTrendChartData", () => {
-  it("sorts oldest first, keeps the newest points and drops invalid ones", () => {
-    const data = toTrendChartData(
-      [
-        { at: "2026-01-03T09:00:00", value: 81 },
-        { at: "2026-01-01T09:00:00", value: 80 },
-        { at: "2026-01-02T09:00:00", value: 82 },
-        { at: null, value: 90 },
-        { at: "2026-01-04T09:00:00", value: Number.NaN },
-      ],
-      2,
-    );
-    expect(data.datasets[0].data).toEqual([82, 81]);
-    expect(data.labels).toHaveLength(2);
-  });
-
-  it("labels at most eight points", () => {
-    const points = Array.from({ length: 30 }, (_, i) => ({
-      at: new Date(2026, 0, i + 1).toISOString(),
-      value: i,
-    }));
-    expect(toTrendChartData(points).labels.filter(Boolean)).toHaveLength(8);
+describe("toTrendPoints", () => {
+  it("sorts oldest first and drops invalid points", () => {
+    const points = toTrendPoints([
+      { at: "2026-01-03T09:00:00", value: 81 },
+      { at: "2026-01-01T09:00:00", value: 80 },
+      { at: null, value: 90 },
+      { at: "2026-01-04T09:00:00", value: Number.NaN },
+    ]);
+    expect(points.map((p) => p.value)).toEqual([80, 81]);
   });
 });
 
-describe("toDailyTotalsChartData", () => {
-  it("sums each day and fills empty days with 0, today last", () => {
-    const today = new Date(2026, 0, 7, 12);
-    const data = toDailyTotalsChartData(
+describe("toDailyTotalPoints", () => {
+  const today = new Date(2026, 0, 14, 12);
+
+  it("sums each day and fills empty days with 0 from the first entry to today", () => {
+    const points = toDailyTotalPoints(
       [
-        { at: new Date(2026, 0, 7, 8).toISOString(), value: 250 },
-        { at: new Date(2026, 0, 7, 9).toISOString(), value: 500 },
+        { at: new Date(2026, 0, 14, 8).toISOString(), value: 250 },
+        { at: new Date(2026, 0, 14, 9).toISOString(), value: 500 },
         { at: new Date(2026, 0, 5, 9).toISOString(), value: 300 },
-        { at: new Date(2025, 11, 1, 9).toISOString(), value: 999 },
       ],
-      3,
       today,
     );
-    expect(data.datasets[0].data).toEqual([300, 0, 750]);
+    expect(points).toHaveLength(10);
+    expect(points[0].value).toBe(300);
+    expect(points.at(-1)!.value).toBe(750);
+    expect(points.slice(1, -1).every((p) => p.value === 0)).toBe(true);
+  });
+
+  it("covers at least the last week", () => {
+    expect(toDailyTotalPoints([], today)).toHaveLength(7);
   });
 });
 

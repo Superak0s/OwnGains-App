@@ -1,6 +1,7 @@
 import { estimateOneRepMax } from "@utils/oneRepMax";
 import { RECORD_REP_LIMIT } from "@utils/recordSets";
-import { formatDate, parseDate, toDateString } from "@utils/format";
+import { parseDate, toDateString } from "@utils/format";
+import type { ChartPoint } from "@shared/components/chart/chartMath";
 import { REST_WINDOW_MAX_SEC, REST_WINDOW_MIN_SEC } from "@utils/session";
 import type {
   FullSessionWithGroups,
@@ -344,11 +345,6 @@ export function computeExerciseInsights(
   };
 }
 
-export interface ChartData {
-  labels: string[];
-  datasets: { data: number[] }[];
-}
-
 export type AnalyticsSession = Pick<
   FullSessionWithGroups,
   "dayNumber" | "startTime" | "setTimings"
@@ -620,18 +616,23 @@ export function computeExerciseStats(
   };
 }
 
-const NO_CHART_DATA: ChartData = {
-  labels: ["No data"],
-  datasets: [{ data: [0] }],
-};
-const MAX_CHART_LABELS = 8;
-const MAX_CHART_POINTS = 60;
+export const PROGRESS_METRICS = [
+  "weight",
+  "heaviest",
+  "oneRepMax",
+  "bestSetVolume",
+  "sessionVolume",
+  "reps",
+  "totalReps",
+] as const;
+export type ProgressMetric = (typeof PROGRESS_METRICS)[number];
 
-export function buildProgressChartData(
+/** One point per training day. */
+export function buildProgressPoints(
   entries: ExerciseHistoryEntry[] | null,
-  metric: "weight" | "reps" | "oneRepMax",
-): ChartData {
-  if (!entries?.length) return NO_CHART_DATA;
+  metric: ProgressMetric,
+): ChartPoint[] {
+  if (!entries?.length) return [];
 
   const byDate = new Map<string, ExerciseHistoryEntry[]>();
   entries.forEach((entry) => {
@@ -641,15 +642,21 @@ export function buildProgressChartData(
     else byDate.set(key, [entry]);
   });
 
-  const allSessions = [...byDate.values()].sort(
-    (a, b) => a[0].date.getTime() - b[0].date.getTime(),
-  );
   const value = (session: ExerciseHistoryEntry[]): number => {
+    const volumes = session.map((e) => finite(e.load) * finite(e.reps));
     switch (metric) {
       case "weight":
         return average(session.map((entry) => finite(entry.weight)));
+      case "heaviest":
+        return Math.max(...session.map((entry) => finite(entry.weight)));
       case "reps":
         return average(session.map((entry) => finite(entry.reps)));
+      case "totalReps":
+        return session.reduce((sum, entry) => sum + finite(entry.reps), 0);
+      case "bestSetVolume":
+        return Math.max(...volumes);
+      case "sessionVolume":
+        return volumes.reduce((sum, v) => sum + v, 0);
       default:
         return Math.max(
           ...session.map((entry) => estimateOneRepMax(entry.load, entry.reps)),
@@ -657,37 +664,10 @@ export function buildProgressChartData(
     }
   };
 
-  const allPoints = allSessions.map((session) => ({
-    date: session[0].date,
-    value: round(value(session)),
-  }));
-  const points = downsample(allPoints, MAX_CHART_POINTS);
-  const labelInterval = Math.ceil(points.length / MAX_CHART_LABELS);
-
-  return {
-    labels: points.map((point, index) =>
-      points.length <= MAX_CHART_LABELS || index % labelInterval === 0
-        ? formatDate(point.date, { month: "short", day: "numeric" })
-        : "",
-    ),
-    datasets: [{ data: points.map((point) => point.value) }],
-  };
+  return [...byDate.values()]
+    .sort((a, b) => a[0].date.getTime() - b[0].date.getTime())
+    .map((session) => ({ date: session[0].date, value: round(value(session)) }));
 }
-
-/** Every chart point is an SVG node, so render cost would otherwise grow with history. */
-function downsample<T extends { value: number }>(points: T[], max: number): T[] {
-  if (points.length <= max) return points;
-  const step = Math.ceil(points.length / (max - 2));
-  let peak = 0;
-  points.forEach((point, index) => {
-    if (point.value > points[peak].value) peak = index;
-  });
-  return points.filter(
-    (_, index) =>
-      index % step === 0 || index === peak || index === points.length - 1,
-  );
-}
-
 
 export interface ExerciseBreakdownRow {
   exerciseName: string;

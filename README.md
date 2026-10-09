@@ -54,6 +54,7 @@ Split creation is a core feature. You can start from a template, from a spreadsh
 ### 📊 See your progress
 
 - **Per-exercise analytics** with charts for weight and rep trends over time.
+- **Full screen charts**: tap any chart for time ranges, Y axis and label settings, landscape, pinch zoom, point details, trend and goal lines, record markers, period comparison, and image or CSV export. Settings are saved per chart.
 - **Estimated 1RM**: current estimate, all-time best, and trend across sessions.
 - **Personal records**: heaviest set, most reps, best estimated 1RM, each with the date you hit it, plus your best weight at every rep count from 1 to 12.
 - **Progress rate**: how fast your estimated 1RM is moving in kg/week, with a stall warning.
@@ -153,7 +154,7 @@ The web copies of the legal text are generated from the in-app screens: [privacy
 - **Navigation:** React Navigation v7 (native-stack + a custom animated, collapsible bottom tab bar).
 - **State:** React Context (no Redux): `AuthContext`, `WorkoutContext`, `ThemeContext`, `TabBarContext`, `JointSessionContext`, plus custom hooks under `src/shared/context/hooks`.
 - **Local storage:** **`expo-sqlite`** (WAL mode) behind `src/shared/services/sqliteStorage.tsx`, a key/value + record store. Plus `expo-file-system` for photos and `expo-secure-store` for auth tokens.
-- **Charts:** `react-native-chart-kit` + `react-native-svg`.
+- **Charts:** `react-native-gifted-charts` + `react-native-svg`, with `expo-screen-orientation` for the landscape chart view and `react-native-view-shot` for chart image export.
 - **UI/animation:** `react-native-reanimated`, `react-native-worklets`, `react-native-gesture-handler`, `expo-linear-gradient`, `react-native-pager-view`, `react-native-safe-area-context`, `react-native-screens`.
 - **Media/files:** `expo-camera` (also scans friend QR codes), `expo-image`, `expo-image-picker`, `expo-image-manipulator`, `expo-document-picker`, `expo-sharing`, `xlsx`, `react-native-qrcode-svg`.
 - **Health:** `react-native-health-connect` (Android Health Connect, read only).

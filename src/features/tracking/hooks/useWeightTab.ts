@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import type { WeightEntry, HeightData } from "@shared/types";
 import { bodyTrackingApi } from "../services";
 import { createDeleteHandler, withConfirm, describeError } from "../helpers";
-import { isoToLocalDateStr, toTrendChartData } from "../utils";
+import { isoToLocalDateStr, toTrendPoints } from "../utils";
 import { toDateString } from "@utils/format";
 import { getUserKey as sharedGetUserKey } from "@shared/services/storage";
 import { getStorageItem, setStorageItem } from "@shared/services/sqliteStorage";
@@ -181,8 +181,8 @@ export function useWeightTab(deps: UseWeightTabDeps) {
   }, [weightHistory, trendAverageDays]);
 
   const getWeightChartData = useCallback(() => {
-    if (weightHistory.length < 2) return { labels: [], datasets: [{ data: [] }] };
-    return toTrendChartData(
+    if (weightHistory.length < 2) return [];
+    return toTrendPoints(
       weightHistory.map((entry) => ({
         at: entry.recordedAt,
         value:
