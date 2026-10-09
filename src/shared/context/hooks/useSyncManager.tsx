@@ -108,6 +108,12 @@ export const useSyncManager = ({
   if (!ownWritesRef.current.has(pendingSyncs)) queueRef.current = pendingSyncs;
 
   const syncingRef = useRef(false);
+  // A reconnect that lands mid-run would otherwise be lost, leaving the ops
+  // that run backed off waiting out their full backoff.
+  const reconnectedDuringRunRef = useRef(false);
+  const syncPendingDataRef = useRef<UseSyncManagerReturn["syncPendingData"]>(
+    async () => {},
+  );
   // A replay run works on a clone of the queue, so a removal during one would
   // be written straight back by the run's own persist. The run consults this.
   const removedIdsRef = useRef(new Set<string>());
@@ -221,7 +227,11 @@ export const useSyncManager = ({
 
   const syncPendingData = useCallback(async ({ reconnected = false }: { reconnected?: boolean } = {}): Promise<void> => {
     const startingQueue = queueRef.current;
-    if (syncingRef.current || startingQueue.length === 0) return;
+    if (syncingRef.current) {
+      if (reconnected) reconnectedDuringRunRef.current = true;
+      return;
+    }
+    if (startingQueue.length === 0) return;
 
     syncingRef.current = true;
     setIsSyncing(true);
@@ -633,6 +643,10 @@ export const useSyncManager = ({
       syncingRef.current = false;
       removedIdsRef.current.clear();
       setIsSyncing(false);
+      if (reconnectedDuringRunRef.current) {
+        reconnectedDuringRunRef.current = false;
+        void syncPendingDataRef.current({ reconnected: true });
+      }
     }
   }, [
     setIsSyncing,
@@ -646,6 +660,8 @@ export const useSyncManager = ({
     fetchAnalytics,
     workoutApi,
   ]);
+
+  syncPendingDataRef.current = syncPendingData;
 
   const cleanupInvalidSyncs = useCallback(async (): Promise<void> => {
     const current = queueRef.current;

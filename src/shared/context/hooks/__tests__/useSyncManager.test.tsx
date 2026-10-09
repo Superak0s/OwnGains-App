@@ -221,6 +221,28 @@ describe("useSyncManager retry/backoff", () => {
     expect(controlRef.current!.getPendingSyncs()).toHaveLength(0);
   });
 
+  it("reruns a reconnect drain that lands while a run is in flight", async () => {
+    let failFirst!: (error: unknown) => void;
+    startSession.mockImplementationOnce(
+      () => new Promise((_resolve, reject) => (failFirst = reject)),
+    );
+    startSession.mockResolvedValue(42);
+    const controlRef: React.MutableRefObject<Control | null> = { current: null };
+    act(() => {
+      create(<Harness initialSyncs={[makeSync("t1")]} controlRef={controlRef} />);
+    });
+
+    await act(async () => {
+      const run = controlRef.current!.syncPendingData();
+      await controlRef.current!.syncPendingData({ reconnected: true });
+      failFirst(new TypeError("Network request failed"));
+      await run;
+    });
+
+    expect(startSession).toHaveBeenCalledTimes(2);
+    expect(controlRef.current!.getPendingSyncs()).toHaveLength(0);
+  });
+
   it("keeps the backoff of an op the server refused, even on a reconnect", async () => {
     startSession.mockRejectedValue(new ApiError("Invalid split", 400));
     const controlRef: React.MutableRefObject<Control | null> = { current: null };
