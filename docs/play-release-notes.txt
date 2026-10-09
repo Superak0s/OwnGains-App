@@ -1,7 +1,9 @@
-• Tap any chart for full screen: time ranges, Y axis settings, landscape, pinch zoom and point details.
+• Tap any chart for full screen: time ranges, Y axis, zoom and point details.
 • Trend lines, goal line with a target date, records and period comparison.
-• Exercise charts switch between weight, 1RM, volume and reps.
-• Save charts as an image or CSV.
+• Exercise charts show weight, 1RM, volume or reps. Save as image or CSV.
+• Tutorial covers charts and Health.
 • Watching a friend's workout updates instantly.
-• On Xiaomi, Samsung and other phones that delay reminders, see which battery settings to change.
-• Fixes for offline set deletion and the privacy screen.
+• Plan is now the 7th tab.
+• Battery tips for delayed reminders.
+• Phone number removed from Edit Account.
+• Fixes for offline set deletion, the privacy screen and Training Summary.

@@ -25,11 +25,11 @@ describe("normalizeTabOrder", () => {
       "Settings",
       "Home",
       "Workout",
-      "Plan",
       "Analytics",
       "Tracking",
       "Supplements",
       "Friends",
+      "Plan",
     ]);
   });
 });

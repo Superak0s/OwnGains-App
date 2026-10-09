@@ -39,7 +39,7 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
   {
     title: "Account data",
     body:
-      "In online mode the server stores your username, email, password (hashed, never in plain text), and an optional display name to authenticate you, plus sign-in tokens that expire on their own. An optional phone number in your profile stays on this device and is never sent to a server. Failed sign-in attempts are counted against a hashed form of the name you typed, to slow down password guessing, and the count is deleted after a day. Anyone with an account on the same server can find your username by searching for its first few letters. Your display name and workout activity are shared only with people you've added as friends. A friend can see that you are working out, or watch a workout live, only if you have granted them that permission. While anyone is watching, the workout screen shows who, with a button to stop them.",
+      "In online mode the server stores your username, email, password (hashed, never in plain text), and an optional display name to authenticate you, plus sign-in tokens that expire on their own. Failed sign-in attempts are counted against a hashed form of the name you typed, to slow down password guessing, and the count is deleted after a day. Anyone with an account on the same server can find your username by searching for its first few letters. Your display name and workout activity are shared only with people you've added as friends. A friend can see that you are working out, or watch a workout live, only if you have granted them that permission. While anyone is watching, the workout screen shows who, with a button to stop them.",
   },
   {
     title: "Server logs",

@@ -43,7 +43,6 @@ const migrate = (withdrawHealthConsent = false) =>
   doMigrateOffline({
     user,
     selectedSplit: "ppl",
-    profilePhone: "",
     profileAvatarUri: null,
     withdrawHealthConsent,
   })

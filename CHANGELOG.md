@@ -6,6 +6,8 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-09
+
 ### Added
 
 - Tap any progress chart to open it full screen. Pick a time range (1W to All, or custom dates), set the Y axis to fit the data, start at zero or use your own min and max, change label count and size, and rotate to landscape. Pinch to zoom, double tap to reset, and tap a point to see its value or open that day's workout.
@@ -18,11 +20,18 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 - Chart settings are saved per chart for each account on the device and also apply to the small chart.
 - Watching a friend's workout updates instantly.
+- Plan is now the 7th tab by default, after Friends. Tabs you already reordered keep your order.
+- The tutorial now covers full screen charts, the Health tab, the Weekly Sets and Exercises widgets, sending a plan to a trainee and the battery settings tip for reminders. It no longer mentions the removed Rep Max Table.
+
+### Removed
+
+- The Phone field in Edit Account. Phone numbers already saved are deleted from the device.
 
 ### Fixed
 
 - Deleting a set from a workout started offline no longer warns that the server still has the set.
 - When the server can't be reached while you accept the privacy and terms screen, it now says so instead of blaming the device's storage.
+- Analytics Training Summary now lines up with the rest of the screen, and its period buttons keep their labels on one line.
 
 ### Internal
 
@@ -35,6 +44,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - README updated for 0.3.0 (Health tab, Recovery and Cycle tabs, new Progress widgets, Friends changes, permissions, native modules, release flags)
 - Added `@testing-library/react-native` 14 and its `test-renderer` peer as dev dependencies for screen tests
 - TODO plan for an expanded, configurable chart view
+- Regression test for the Training Summary padding and period buttons
 - Charts moved from `react-native-chart-kit` to `react-native-gifted-charts`, with `expo-screen-orientation` and `react-native-view-shot` added (new native modules, needs a prebuild)
 - The offline sync queue drains as soon as the realtime socket reconnects (or right after the sync run in progress), skipping the retry backoff of ops that only failed to reach the server, with the 30s poll kept as a fallback
 - Watching uses `watch_progress` pushes on servers that send them, polling `/live` every 60s while connected and every 10s otherwise, and refetching on every socket reconnect

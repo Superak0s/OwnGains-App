@@ -4,11 +4,11 @@ import { createEmitter } from "@utils/emitter";
 export const DEFAULT_TAB_ORDER = [
   "Home",
   "Workout",
-  "Plan",
   "Analytics",
   "Tracking",
   "Supplements",
   "Friends",
+  "Plan",
   "Settings",
 ] as const;
 

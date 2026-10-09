@@ -210,6 +210,8 @@ export default function TrainingSummaryTab({
             }}
           >
             <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
               style={[
                 styles.periodChipText,
                 summaryPeriod === option.key && styles.periodChipTextActive,
@@ -296,7 +298,7 @@ export default function TrainingSummaryTab({
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    container: { flex: 1, paddingHorizontal: 20, paddingBottom: 20 },
+    container: { flex: 1, paddingBottom: 20 },
     undertrainedCard: {
       backgroundColor: colors.warningLight,
       borderRadius: 10,
@@ -315,6 +317,7 @@ const makeStyles = (colors: ThemeColors) =>
     periodChip: {
       flex: 1,
       paddingVertical: 8,
+      paddingHorizontal: 4,
       borderRadius: 8,
       alignItems: "center",
       backgroundColor: colors.surface,

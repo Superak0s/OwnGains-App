@@ -1554,7 +1554,6 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
   const [profileName, setProfileName] = useState<string>(user?.name ?? "");
   const [profileEmail, setProfileEmail] = useState<string>(user?.email ?? "");
   const [profileEmailPassword, setProfileEmailPassword] = useState<string>("");
-  const [profilePhone, setProfilePhone] = useState<string>("");
   const [profileAvatarUri, setProfileAvatarUri] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState<boolean>(false);
 
@@ -1568,8 +1567,8 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
   }, [user?.name, user?.email, showAccountModal]);
 
   // Namespaced like every other per-user key: un-namespaced, a second account
-  // on the phone reads the first one's phone number and photo, clearUserData
-  // never removes them, and every export includes both.
+  // on the phone reads the first one's photo, clearUserData never removes it,
+  // and every export includes it.
   const profileExtraKey = useCallback(
     (key: string) => getUserKey(key, user?.id == null ? null : String(user.id)),
     [user?.id],
@@ -1579,10 +1578,8 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
     let cancelled = false;
     (async () => {
       try {
-        const phone = await getStorageItem(profileExtraKey("@profile_phone"));
         const avatar = await getStorageItem(profileExtraKey("@profile_avatar"));
         if (cancelled) return;
-        setProfilePhone(phone ?? "");
         setProfileAvatarUri(avatar);
       } catch (err) {
         console.warn("Failed loading profile extras:", err);
@@ -1672,7 +1669,6 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
       setProfileName(name);
       setProfileEmail(email);
       setProfileEmailPassword("");
-      await setStorageItem(profileExtraKey("@profile_phone"), profilePhone);
       if (profileAvatarUri)
         await setStorageItem(
           profileExtraKey("@profile_avatar"),
@@ -1694,7 +1690,6 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
     runOfflineMigration({
       user,
       selectedSplit,
-      profilePhone,
       profileAvatarUri,
       withdrawHealthConsent,
     });
@@ -2391,16 +2386,6 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                     />
                   </>
                 )}
-              <Text style={styles.fieldLabel}>Phone</Text>
-              <TextInput
-                value={profilePhone}
-                onChangeText={setProfilePhone}
-                placeholder="+1 555 0100"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="phone-pad"
-                style={styles.input}
-                accessibilityLabel="Phone number"
-              />
             </View>
           </View>
 

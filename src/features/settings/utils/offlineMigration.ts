@@ -61,7 +61,6 @@ export const migrateUserData = async (
 export interface OfflineMigrationInput {
   user: User | null | undefined;
   selectedSplit: string | null;
-  profilePhone: string;
   profileAvatarUri: string | null;
   withdrawHealthConsent?: boolean;
 }
@@ -69,7 +68,6 @@ export interface OfflineMigrationInput {
 export const doMigrateOffline = async ({
   user,
   selectedSplit,
-  profilePhone,
   profileAvatarUri,
   withdrawHealthConsent = false,
 }: OfflineMigrationInput): Promise<boolean> => {
@@ -100,8 +98,6 @@ export const doMigrateOffline = async ({
         }),
       }),
     );
-    if (profilePhone)
-      await setStorageItem(getUserKey("@profile_phone", "local"), profilePhone);
     if (profileAvatarUri)
       await setStorageItem(
         getUserKey("@profile_avatar", "local"),

@@ -145,16 +145,24 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     spot("Analytics", "scrollTabs", "Switch between one exercise, a muscle group, or your Training Summary.", "At the top of Progress, switch between Exercise, Muscle Group and Training Summary."),
     checklist("Every chart on the Progress board.", [
       ["🎯", "Select Exercise", "Choose which exercise or muscle group the charts show."],
-      ["🗂️", "All Set Data", "Every set you've ever logged for it."],
-      ["🕒", "Last Workout", "What you did last time, so you know what to beat."],
       ["📅", "Workout History", "Every session that included it."],
+      ["🧮", "Weekly Sets", "Working sets this week against your 4-week average. For a muscle group, against the 10 to 20 sets most muscles need to grow."],
+      ["📋", "Exercises", "For a muscle group, every exercise in it with its own 1RM and 30-day trend."],
       ["💯", "Estimated 1RM", "Your estimated one-rep max over time."],
-      ["🏆", "Personal Records", "Your best weight at each rep count."],
-      ["🔢", "Rep Max Table", "What you should manage for 1-12 reps."],
+      ["🏆", "Personal Records", "Your best weight at each rep count from 1 to 12."],
       ["📈", "Progress Rate", "How fast you're improving."],
       ["🎚️", "Rep Range Split", "How your sets divide between strength, hypertrophy and endurance ranges."],
       ["📆", "Training Frequency", "How often you train it each week."],
       ["😮‍💨", "Rest & Fatigue", "How your rest times and performance change across a session."],
+      ["➕", "More in the gallery", "All Set Data, Last Workout, and weight and reps charts can be added from the widget gallery."],
+    ]),
+    checklist("Tap any chart to open it full screen.", [
+      ["📆", "Range", "Pick 1W to All, or your own dates."],
+      ["🔍", "Zoom", "Pinch to zoom, double tap to reset, and tap a point to see its value or open that day's workout."],
+      ["📉", "Trend and goal", "Add a 7 day average or trend line, a goal line with an estimated date, and record markers."],
+      ["🔁", "Compare", "Show the previous period or last year beside this one."],
+      ["⚙️", "Chart options", "Switch between line, area and bar, and set the Y axis and labels. Settings are kept per chart."],
+      ["💾", "Export", "Save the chart as an image or its points as CSV."],
     ]),
   ]),
   tracking: chapter("tracking", "📈", "Tracking", [
@@ -169,6 +177,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
       ["💧", "Hydration", "Log water against a weekly goal."],
       ["🩹", "Recovery", "Soreness, a morning recovery check, recovery analytics and an injury log."],
       ["🌙", "Cycle", "Your cycle status, with your period and cycle length."],
+      ["❤️", "Health", "On Android, your steps, heart rate and sleep from Health Connect."],
     ]),
     practice("Tap the muscles that feel sore to log recovery.", { type: "soreness" }),
     card("🩹", "More recovery tools", "Recovery also has the morning recovery check, recovery analytics, and Log injury."),
@@ -184,6 +193,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     checklist("Never miss a dose.", [
       ["🔔", "Reminders", "Choose how many doses a day and at what time."],
       ["📳", "Notification type", "A quiet notification or a louder alert."],
+      ["🔋", "Battery settings", "On phones that delay notifications to save battery, OwnGains tells you once which settings to change."],
     ]),
   ]),
   friends: chapter("friends", "👥", "Friends", [
@@ -193,7 +203,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     checklist("Each friend has their own tabs.", [
       ["📅", "History", "Their workout calendar and sessions."],
       ["📊", "Analytics", "Their progress charts."],
-      ["📋", "Program", "The program they shared with you."],
+      ["📋", "Program", "The program they shared with you. Use this plan makes it your own."],
       ["🔴", "Live", "Their session as it happens."],
       ["⚙️", "Actions", "Permissions, sessions and more."],
       ["🔒", "Locked tab", "They haven't given you access to this yet. Tap it to see what they'd need to allow."],
@@ -264,6 +274,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     ]),
     practice("Me and Trainees switch between your workout and your client's. The bar shows who you're logging for.", { type: "banner", variant: "trainerSession" }),
     practice("Log their sets exactly like your own.", { type: "logSet" }),
+    card("📤", "Send a plan", "In your client's Actions tab, Send a Plan shares your program. They see it in your Program tab and tap Use this plan to follow it."),
     card("🛡️", "Built-in limits", "You can edit their program, but you can't delete their sets, remove their only machine, touch their account, or do anything destructive."),
   ], true),
   trainerFollow: chapter("trainerFollow", "📈", "Trainer: following clients", [

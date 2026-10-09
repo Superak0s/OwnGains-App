@@ -143,6 +143,11 @@ const MIGRATIONS: readonly Migration[] = [
         ]);
     });
   },
+  () => {
+    db.runSync(
+      "DELETE FROM kv_store WHERE key = '@profile_phone' OR key LIKE '@profile_phone_user_%'",
+    );
+  },
 ];
 
 runMigrations(db, MIGRATIONS);
