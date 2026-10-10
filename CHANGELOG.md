@@ -6,6 +6,8 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-10
+
 ### Added
 
 - When your server sets a minimum app version and yours is lower, the Google Play version opens Play's full-screen update flow and blocks use until it finishes. It checks again each time you come back to the app.
@@ -22,6 +24,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ### Internal
 
+- `scripts/release.sh` deletes the WSL mirror before syncing, so a stale or partial `node_modules` can no longer break a build.
 - The Google Play API auth used by `scripts/play-upload.js` moved to `scripts/play-auth.js`.
 - `sp-react-native-in-app-updates` drives the Play immediate update from `playUpdate.ts`, gated by `minAppVersion` on `/healthz` (server env `MIN_APP_VERSION`). Only builds that include it can be forced, so users on older versions still update by hand once.
 - `findExerciseByName` in `exerciseDb` resolves a database name ignoring case, punctuation and plurals, without following aliases.

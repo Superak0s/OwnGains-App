@@ -1,4 +1,0 @@
-• Required updates: when your server sets a minimum app version and yours is older, Play asks you to update first.
-• Edit Workout History has an Exercises tab to rename any exercise or change its muscles in one place.
-• Edit Exercise can browse exercises by muscle, like the Workout screen.
-• Names that only differ from the exercise database by case or a plural "s" are fixed automatically, with muscles filled in.

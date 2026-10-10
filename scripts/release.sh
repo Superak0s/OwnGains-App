@@ -214,6 +214,7 @@ trap 'echo ""; ABORTED=true; err "Aborted."; exit 130' INT TERM
 # [1/6] Mirror to the native filesystem (WSL only)
 if [ "$BUILD" != "$SRC" ]; then
     step 1/6 "Syncing project to $BUILD"
+    rm -rf "$BUILD"
     rsync -a --delete \
       --exclude='node_modules' \
       --exclude='/android' \
