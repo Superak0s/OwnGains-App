@@ -84,3 +84,6 @@ docs/superpowers/
 .mcp.json
 .vale/
 .vale.ini
+
+# Local-only Play Console helper
+scripts/play-recover.js

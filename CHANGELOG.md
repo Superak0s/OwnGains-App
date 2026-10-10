@@ -22,6 +22,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ### Internal
 
+- The Google Play API auth used by `scripts/play-upload.js` moved to `scripts/play-auth.js`.
 - `sp-react-native-in-app-updates` drives the Play immediate update from `playUpdate.ts`, gated by `minAppVersion` on `/healthz` (server env `MIN_APP_VERSION`). Only builds that include it can be forced, so users on older versions still update by hand once.
 - `findExerciseByName` in `exerciseDb` resolves a database name ignoring case, punctuation and plurals, without following aliases.
 
