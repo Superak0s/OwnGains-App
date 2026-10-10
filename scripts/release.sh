@@ -73,8 +73,9 @@ ${B}Git and GitHub${R}
 ${B}Google Play${R}
   Uploads the AAB with docs/play-release-notes.txt whenever .env sets
   PLAY_SERVICE_ACCOUNT (the service-account JSON or a path to it). Skipped otherwise.
-  --play=TRACK        Track to upload to: internal (default), alpha (closed testing),
-                      beta, production (as a draft) or a custom track. PLAY_TRACK in .env also works.
+  --play=TRACKS       Comma-separated tracks to upload to: internal (default), alpha (closed
+                      testing), beta, production (as a draft) or custom ones, e.g. internal,alpha.
+                      PLAY_TRACK in .env takes the same list.
   --no-play           Don't upload
 
 ${B}Other${R}

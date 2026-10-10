@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Uploads an AAB to a Google Play track with docs/play-release-notes.txt as "What's new".
-//   play-upload.js <aab> <track>
+// Uploads an AAB to one or more Google Play tracks with docs/play-release-notes.txt as "What's new".
+//   play-upload.js <aab> <track>[,<track>...]
 //   play-upload.js --check
 // --check opens and discards an edit, so a missing Play Console permission fails before a build.
 // PLAY_SERVICE_ACCOUNT is the service-account JSON itself or a path to it.
@@ -12,10 +12,11 @@ const ROOT = path.join(__dirname, "..");
 const API = "https://androidpublisher.googleapis.com";
 const NOTES_LANGUAGE = "en-US";
 
-const [aab, track] = process.argv.slice(2);
+const [aab, trackArg = ""] = process.argv.slice(2);
+const tracks = trackArg.split(",").map((t) => t.trim()).filter(Boolean);
 const checkOnly = aab === "--check";
-if (!checkOnly && (!aab || !track)) {
-  console.error("Usage: play-upload.js <aab> <track> | --check");
+if (!checkOnly && (!aab || !tracks.length)) {
+  console.error("Usage: play-upload.js <aab> <track>[,<track>...] | --check");
   process.exit(1);
 }
 
@@ -80,24 +81,26 @@ async function main() {
 
   const notesFile = path.join(ROOT, "docs", "play-release-notes.txt");
   const notes = fs.existsSync(notesFile) ? fs.readFileSync(notesFile, "utf8").trim() : "";
-  await call(`${API}${editPath}/tracks/${track}`, {
-    method: "PUT",
-    headers: json,
-    body: JSON.stringify({
-      track,
-      releases: [
-        {
-          versionCodes: [String(bundle.versionCode)],
-          // A production upload waits as a draft so rolling it out stays a manual step in Play Console.
-          status: track === "production" ? "draft" : "completed",
-          ...(notes && { releaseNotes: [{ language: NOTES_LANGUAGE, text: notes }] }),
-        },
-      ],
-    }),
-  });
+  for (const track of tracks) {
+    await call(`${API}${editPath}/tracks/${track}`, {
+      method: "PUT",
+      headers: json,
+      body: JSON.stringify({
+        track,
+        releases: [
+          {
+            versionCodes: [String(bundle.versionCode)],
+            // A production upload waits as a draft so rolling it out stays a manual step in Play Console.
+            status: track === "production" ? "draft" : "completed",
+            ...(notes && { releaseNotes: [{ language: NOTES_LANGUAGE, text: notes }] }),
+          },
+        ],
+      }),
+    });
+  }
 
   await call(`${API}${editPath}:commit`, { method: "POST", headers: auth });
-  console.log(`versionCode ${bundle.versionCode} is on the ${track} track.`);
+  console.log(`versionCode ${bundle.versionCode} is on ${tracks.join(", ")}.`);
 }
 
 main().catch((e) => {
