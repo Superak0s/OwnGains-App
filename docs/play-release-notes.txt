@@ -1,0 +1,4 @@
+• Edit Workout History has an Exercises tab to rename any exercise or change its muscles without opening each workout.
+• Edit Exercise in your history can browse exercises by muscle, like the Workout screen.
+• Exercise names that only miss an "s" or differ in case from the exercise database (Tricep for Triceps) are fixed automatically, with their muscles filled in.
+• Removed the separate exercise database suggestion list from Edit Exercise.

@@ -6,6 +6,25 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Added
+
+- Edit Workout History has an Exercises tab that lists every exercise in the split, so you can rename one or change its muscles without opening each workout. Exercises already in the exercise database are marked with a checkmark, and filters show only the ones with no muscles set, or not in the database.
+
+### Changed
+
+- Renaming a history exercise to one from the exercise database now fills in both its primary and secondary muscles, and Edit Exercise has the same "Browse by muscle" list as the Workout screen to pick the new name from, opened on the exercise's own muscle.
+- Exercise names that differ from the exercise database only by case, punctuation or a plural "s" (Machine Tricep Extension for Machine Triceps Extension) now take the database spelling and its muscles. Strength Level imports are fixed as they are imported, and existing history is fixed when you open Edit Workout History.
+
+### Removed
+
+- The "Exercise database" suggestion list in Edit Exercise. The "Did you mean" suggestions remain.
+
+### Internal
+
+- `findExerciseByName` in `exerciseDb` resolves a database name ignoring case, punctuation and plurals, without following aliases.
+
+- `scripts/release.sh --play` and `PLAY_TRACK` take a comma-separated list of tracks (e.g. `internal,alpha`), and `play-upload.js` puts the bundle on each in one edit.
+
 ## [0.5.1] - 2026-10-10
 
 ### Changed

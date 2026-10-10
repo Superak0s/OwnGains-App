@@ -5,6 +5,7 @@ import {
   toSuggestions,
   muscleGroups,
   getExercises,
+  findExerciseByName,
 } from "../exerciseDb";
 import { EXERCISE_ALIASES } from "../exerciseAliases";
 
@@ -141,6 +142,28 @@ describe("toSuggestions", () => {
       (suggestion) => !suggestion.meta.includes("·"),
     );
     expect(noEquipment).toBeDefined();
+  });
+});
+
+describe("findExerciseByName", () => {
+  it("finds a database name regardless of case and spacing", () => {
+    const exercise = getExercises()[0];
+    expect(findExerciseByName(`  ${exercise.name.toUpperCase()} `)?.id).toBe(exercise.id);
+  });
+
+  it("ignores a missing or extra plural s", () => {
+    expect(findExerciseByName("Machine Tricep Extensions")?.name).toBe(
+      "Machine Triceps Extension",
+    );
+  });
+
+  it("does not follow aliases to a different exercise", () => {
+    expect(findExerciseByName("Tricep extension")).toBeUndefined();
+  });
+
+  it("does not guess at a partial name", () => {
+    expect(findExerciseByName("Bench")).toBeUndefined();
+    expect(findExerciseByName("")).toBeUndefined();
   });
 });
 

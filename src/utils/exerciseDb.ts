@@ -126,6 +126,22 @@ const getNameIndex = once(() => {
   return nameIndex;
 });
 
+// Aliases are left out on purpose: the result replaces what the user typed, and
+// an alias names a different exercise ("tricep extension" is a pushdown).
+const getSpellingIndex = once(() => {
+  const index = new Map<string, CanonicalExercise>();
+  for (const exercise of getExercises()) {
+    const key = normalizeTokens(exercise.name).join(" ");
+    if (!index.has(key)) index.set(key, exercise);
+  }
+  return index;
+});
+
+export const findExerciseByName = (
+  name: string,
+): CanonicalExercise | undefined =>
+  getSpellingIndex().get(normalizeTokens(name).join(" "));
+
 const computeMatch = (name: string): MatchResult => {
   const tokens = normalizeTokens(name);
   if (tokens.length === 0) return { status: "uncertain", candidates: [] };

@@ -56,6 +56,17 @@ describe("importStrengthLevelCSV", () => {
     );
   });
 
+  it("imports a name that differs from the exercise database only by a plural s with the database spelling", async () => {
+    await importStrengthLevelCSV(
+      csv("2026-01-13,Machine Tricep Extension,40,88,10,80,176,50,0"),
+      "Push",
+    );
+
+    expect(recordSet.mock.calls[0][1].exerciseName).toBe(
+      "Machine Triceps Extension",
+    );
+  });
+
   it("numbers sets per exercise within a session and spaces them a minute apart", async () => {
     await importStrengthLevelCSV(
       csv(

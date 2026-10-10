@@ -13,10 +13,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { workoutApi } from "@features/workout/services/index";
 import {
-  getExerciseById,
+  findExerciseByName,
   muscleLabel,
   parseMuscleList,
-  toSuggestions,
 } from "@utils/exerciseDb";
 import type {
   WorkoutSession,
@@ -46,6 +45,13 @@ import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { SimilarityMatch } from "@utils/exerciseMatching";
 import { captureException, metric } from "@shared/services/crashReporting";
 import { userFacingError } from "@shared/services/apiError";
+import {
+  BROWSE_MUSCLES,
+  exercisesForMuscle,
+  muscleDisplayName,
+} from "@features/workout/utils";
+
+const BROWSE_PAGE_SIZE = 3;
 
 /** dayTitle stamped on every session created by the CSV importer. */
 const IMPORTED_DAY_TITLE = "Imported (Strength Level)";
@@ -291,6 +297,130 @@ function renderEmptyState({
   );
 }
 
+const EXERCISE_FILTERS = [
+  { key: "noMuscles", label: "No muscles set" },
+  { key: "notInDb", label: "Not in database" },
+] as const;
+
+type ExerciseFilterKey = (typeof EXERCISE_FILTERS)[number]["key"];
+
+function ExerciseListView({
+  exercises,
+  loading,
+  failed,
+  openEditExercise,
+  styles,
+  colors,
+}: {
+  readonly exercises: GroupedExercise[];
+  readonly loading: boolean;
+  readonly failed: boolean;
+  readonly openEditExercise: (group: GroupedExercise) => void;
+  readonly styles: ReturnType<typeof makeStyles>;
+  readonly colors: ThemeColors;
+}): React.JSX.Element {
+  const [filters, setFilters] = useState<Set<ExerciseFilterKey>>(new Set());
+
+  const rows = useMemo(
+    () =>
+      exercises
+        .map((group) => ({
+          group,
+          inDb: !!findExerciseByName(group.exerciseName),
+          hasMuscles: !!muscleLabel(group.primaryMuscles, group.secondaryMuscles),
+        }))
+        .filter(
+          (row) =>
+            (!filters.has("noMuscles") || !row.hasMuscles) &&
+            (!filters.has("notInDb") || !row.inDb),
+        ),
+    [exercises, filters],
+  );
+
+  const toggleFilter = (key: ExerciseFilterKey) =>
+    setFilters((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+
+  let empty: React.JSX.Element;
+  if (loading) {
+    empty = <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />;
+  } else if (failed) {
+    empty = (
+      <Text style={styles.errorText}>
+        Your exercises could not be loaded. Nothing has been changed.
+      </Text>
+    );
+  } else if (filters.size > 0) {
+    empty = <Text style={styles.emptyText}>No exercises match these filters.</Text>;
+  } else {
+    empty = <Text style={styles.emptyText}>No exercises logged in this split.</Text>;
+  }
+
+  return (
+    <FlatList
+      contentContainerStyle={styles.listContent}
+      data={rows}
+      keyExtractor={(row) => row.group.exerciseName}
+      ListHeaderComponent={
+        <View style={styles.filterRow}>
+          {EXERCISE_FILTERS.map(({ key, label }) => {
+            const active = filters.has(key);
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[styles.filterPill, active && styles.filterPillActive]}
+                onPress={() => toggleFilter(key)}
+                accessibilityRole="switch"
+                accessibilityLabel={`Show only exercises with ${label.toLowerCase()}`}
+                accessibilityState={{ checked: active }}
+              >
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    active && styles.filterPillTextActive,
+                  ]}
+                >
+                  {active ? `✓ ${label}` : label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      }
+      ListEmptyComponent={empty}
+      renderItem={({ item: { group, inDb, hasMuscles } }) => (
+        <TouchableOpacity
+          style={styles.sessionRow}
+          onPress={() => openEditExercise(group)}
+          accessibilityRole="button"
+          accessibilityLabel={`Edit ${group.exerciseName}${inDb ? ", in the exercise database" : ""}`}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sessionTitle}>{group.exerciseName}</Text>
+            <Text style={styles.sessionSubtitle}>
+              {hasMuscles
+                ? muscleLabel(group.primaryMuscles, group.secondaryMuscles)
+                : "No muscle group set"}
+            </Text>
+          </View>
+          <Text
+            style={[styles.dbMark, { color: colors.success }]}
+            importantForAccessibility="no"
+          >
+            {inDb ? "✓" : ""}
+          </Text>
+          <Text style={styles.chevron} importantForAccessibility="no">
+            ›
+          </Text>
+        </TouchableOpacity>
+      )}
+    />
+  );
+}
+
 interface SessionDetailViewProps {
   readonly loadingDetail: boolean;
   readonly groupedExercises: GroupedExercise[];
@@ -388,8 +518,14 @@ export default function EditWorkoutHistoryModal({
 
   // Known exercise names / muscle groups across this split's history, used to
   // catch typos/near-duplicates via exerciseMatching when renaming.
-  const [knownExerciseNames, setKnownExerciseNames] = useState<string[]>([]);
+  const [knownExercises, setKnownExercises] = useState<GroupedExercise[]>([]);
   const [knownMuscleGroups, setKnownMuscleGroups] = useState<string[]>([]);
+  const [loadingNameIndex, setLoadingNameIndex] = useState(false);
+  const [listMode, setListMode] = useState<"sessions" | "exercises">("sessions");
+  const knownExerciseNames = useMemo(
+    () => knownExercises.map((group) => group.exerciseName),
+    [knownExercises],
+  );
 
   // Edit-exercise (name + muscle group, applies everywhere) form state
   const [editingExercise, setEditingExercise] =
@@ -397,6 +533,8 @@ export default function EditWorkoutHistoryModal({
   const [exerciseNameInput, setExerciseNameInput] = useState("");
   const [muscleGroupInput, setMuscleGroupInput] = useState("");
   const [savingExercise, setSavingExercise] = useState(false);
+  const [browseMuscle, setBrowseMuscle] = useState<string | null>(null);
+  const [browseVisible, setBrowseVisible] = useState(BROWSE_PAGE_SIZE);
   const [nameSuggestions, setNameSuggestions] = useState<SimilarityMatch[]>([]);
   const [muscleGroupSuggestions, setMuscleGroupSuggestions] = useState<
     SimilarityMatch[]
@@ -431,10 +569,13 @@ export default function EditWorkoutHistoryModal({
     }
   }, [split]);
 
-  // The typo/duplicate index is only used by the "Edit Exercise" sheet, so it
-  // is built on first use instead of on every open of the history modal.
-  const buildNameIndex = useCallback(async () => {
-    if (!split) return;
+  // Built on first use (the Edit Exercise sheet or the Exercises list) instead
+  // of on every open of the history modal.
+  const buildNameIndex = useCallback(async (): Promise<
+    GroupedExercise[] | null
+  > => {
+    if (!split) return null;
+    setLoadingNameIndex(true);
     try {
       const withTimings = await workoutApi.getSessionHistory(
         split,
@@ -442,13 +583,21 @@ export default function EditWorkoutHistoryModal({
         200,
         true,
       );
-      const names = new Set<string>();
+      const exercises = new Map<string, GroupedExercise>();
       const groups = new Set<string>();
       const sessionsWithTimings = (withTimings ??
         []) as (WorkoutSession & { setTimings?: SetTiming[] })[];
       for (const session of sessionsWithTimings) {
         for (const set of session.setTimings ?? []) {
-          if (set.exerciseName) names.add(set.exerciseName.trim());
+          const name = set.exerciseName?.trim();
+          if (name && !exercises.has(name)) {
+            exercises.set(name, {
+              exerciseName: name,
+              primaryMuscles: set.exercisePrimaryMuscles,
+              secondaryMuscles: set.exerciseSecondaryMuscles,
+              sets: [],
+            });
+          }
           for (const muscle of [
             ...(set.exercisePrimaryMuscles ?? []),
             ...(set.exerciseSecondaryMuscles ?? []),
@@ -458,10 +607,14 @@ export default function EditWorkoutHistoryModal({
           }
         }
       }
-      setKnownExerciseNames(Array.from(names));
+      const sorted = Array.from(exercises.values()).sort((a, b) =>
+        a.exerciseName.localeCompare(b.exerciseName),
+      );
+      setKnownExercises(sorted);
       setKnownMuscleGroups(Array.from(groups));
       nameIndexBuiltRef.current = true;
       setNameIndexFailed(false);
+      return sorted;
     } catch (error) {
       console.error("Error building exercise name index:", error);
       metric.count("history.name_index_failed");
@@ -469,6 +622,9 @@ export default function EditWorkoutHistoryModal({
       // Re-arm so reopening the exercise editor retries the build.
       nameIndexBuiltRef.current = false;
       setNameIndexFailed(true);
+      return null;
+    } finally {
+      setLoadingNameIndex(false);
     }
   }, [split]);
 
@@ -492,11 +648,43 @@ export default function EditWorkoutHistoryModal({
     }
   }, [alert]);
 
+  // Imports write names as the source app spelled them ("Tricep" for the
+  // database's "Triceps"), which leaves them unmatched until fixed.
+  const fixDbSpellings = useCallback(async () => {
+    const fixes = (await buildNameIndex() ?? []).flatMap((group) => {
+      const db = findExerciseByName(group.exerciseName);
+      return db && db.name !== group.exerciseName
+        ? [{ oldName: group.exerciseName, db }]
+        : [];
+    });
+    let fixed = 0;
+    for (const { oldName, db } of fixes) {
+      try {
+        await workoutApi.renameExercise(split, oldName, {
+          newName: db.name,
+          primaryMuscles: db.primaryMuscles,
+          secondaryMuscles: db.secondaryMuscles,
+        });
+        fixed += 1;
+      } catch (error) {
+        captureException(error, { stage: "fixDbSpelling" });
+      }
+    }
+    if (fixed === 0) return;
+    showToast(
+      `Matched ${fixed} exercise name${fixed === 1 ? "" : "s"} to the exercise database.`,
+    );
+    await Promise.all([buildNameIndex(), loadSessions()]);
+    onDataChanged?.();
+  }, [buildNameIndex, loadSessions, onDataChanged, split]);
+
   const handleShow = useCallback(() => {
     setSelectedSession(null);
+    setListMode("sessions");
     nameIndexBuiltRef.current = false;
     void loadSessions();
-  }, [loadSessions]);
+    void fixDbSpellings();
+  }, [loadSessions, fixDbSpellings]);
 
   const openEditExercise = (group: GroupedExercise) => {
     setEditingExercise(group);
@@ -504,6 +692,11 @@ export default function EditWorkoutHistoryModal({
     setMuscleGroupInput((group.primaryMuscles ?? []).join(", "));
     setNameSuggestions([]);
     setMuscleGroupSuggestions([]);
+    const primary = group.primaryMuscles?.map((m) => m.trim().toLowerCase());
+    setBrowseMuscle(
+      BROWSE_MUSCLES.find((muscle) => primary?.includes(muscle)) ?? null,
+    );
+    setBrowseVisible(BROWSE_PAGE_SIZE);
     if (!nameIndexBuiltRef.current) void buildNameIndex();
   };
 
@@ -539,23 +732,24 @@ export default function EditWorkoutHistoryModal({
     setMuscleGroupSuggestions(t.suggestions.length > 0 ? t.suggestions : []);
   }, [muscleGroupInput, editingExercise, knownMuscleGroups]);
 
-  // Imported history carries the machine/exercise name as the source app wrote
-  // it, so the database has to be searchable here, not just the names already
-  // in this split's history.
-  const dbSuggestions = useMemo(
-    () =>
-      editingExercise && exerciseNameInput.trim().length > 1
-        ? toSuggestions(exerciseNameInput, 5)
-        : [],
+  const dbMatch = useMemo(
+    () => (editingExercise ? findExerciseByName(exerciseNameInput) : undefined),
     [editingExercise, exerciseNameInput],
   );
 
-  const handleDbSuggestionPress = (label: string) => {
-    const picked = dbSuggestions.find((s) => s.label === label);
-    if (!picked) return;
-    setExerciseNameInput(picked.label);
-    setNameSuggestions([]);
-    const muscles = getExerciseById(picked.id)?.primaryMuscles;
+  const muscleBrowseResults = useMemo(
+    () => (browseMuscle ? exercisesForMuscle(browseMuscle, []) : []),
+    [browseMuscle],
+  );
+
+  const toggleBrowseMuscle = (muscle: string) => {
+    setBrowseMuscle((prev) => (prev === muscle ? null : muscle));
+    setBrowseVisible(BROWSE_PAGE_SIZE);
+  };
+
+  const handleNameChange = (name: string) => {
+    setExerciseNameInput(name);
+    const muscles = findExerciseByName(name)?.primaryMuscles;
     if (muscles?.length) setMuscleGroupInput(muscles.join(", "));
   };
 
@@ -567,7 +761,7 @@ export default function EditWorkoutHistoryModal({
       setMuscleGroupInput(name);
       setMuscleGroupSuggestions([]);
     } else {
-      setExerciseNameInput(name);
+      handleNameChange(name);
       setNameSuggestions([]);
     }
   };
@@ -577,10 +771,14 @@ export default function EditWorkoutHistoryModal({
     setSavingExercise(true);
     try {
       const primaryMuscles = finalGroup ? parseMuscleList(finalGroup) : null;
+      // Secondaries have no input of their own, so only a database exercise
+      // overwrites them. A custom name keeps whatever was logged.
+      const secondaryMuscles = findExerciseByName(finalName)?.secondaryMuscles;
       await workoutApi.renameExercise(split, editingExercise.exerciseName, {
         newName:
           finalName === editingExercise.exerciseName ? undefined : finalName,
         primaryMuscles,
+        secondaryMuscles,
       });
 
       setSelectedSession((prev) => {
@@ -593,6 +791,8 @@ export default function EditWorkoutHistoryModal({
                   ...s,
                   exerciseName: finalName,
                   exercisePrimaryMuscles: primaryMuscles ?? undefined,
+                  exerciseSecondaryMuscles:
+                    secondaryMuscles ?? s.exerciseSecondaryMuscles,
                 }
               : s,
           ),
@@ -600,6 +800,7 @@ export default function EditWorkoutHistoryModal({
       });
 
       closeEditExercise();
+      void buildNameIndex();
       onDataChanged?.();
       showToast(
         `"${editingExercise.exerciseName}" was updated everywhere it appears.`,
@@ -643,7 +844,8 @@ export default function EditWorkoutHistoryModal({
     // Case/whitespace-only difference from an existing exercise → silently
     // normalize to that exercise's canonical spelling instead of creating a
     // near-duplicate.
-    const canonicalName = getCanonicalName(newName, otherNames);
+    const canonicalName =
+      findExerciseByName(newName)?.name ?? getCanonicalName(newName, otherNames);
     const canonicalGroup = newMuscleGroup
       ? getCanonicalName(newMuscleGroup, otherGroups)
       : newMuscleGroup;
@@ -904,7 +1106,47 @@ export default function EditWorkoutHistoryModal({
           </TouchableOpacity>
         </View>
 
-        {!selectedSession && !loadingDetail ? (
+        {!selectedSession && !loadingDetail && (
+          <View style={styles.modeRow}>
+            {(["sessions", "exercises"] as const).map((mode) => (
+              <TouchableOpacity
+                key={mode}
+                style={[
+                  styles.filterPill,
+                  listMode === mode && styles.filterPillActive,
+                ]}
+                onPress={() => {
+                  setListMode(mode);
+                  if (mode === "exercises" && !nameIndexBuiltRef.current) {
+                    void buildNameIndex();
+                  }
+                }}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: listMode === mode }}
+              >
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    listMode === mode && styles.filterPillTextActive,
+                  ]}
+                >
+                  {mode === "sessions" ? "Sessions" : "Exercises"}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {!selectedSession && !loadingDetail && listMode === "exercises" ? (
+          <ExerciseListView
+            exercises={knownExercises}
+            loading={loadingNameIndex}
+            failed={nameIndexFailed}
+            openEditExercise={openEditExercise}
+            styles={styles}
+            colors={colors}
+          />
+        ) : !selectedSession && !loadingDetail ? (
           <SessionListView
             showImportedOnly={showImportedOnly}
             setShowImportedOnly={setShowImportedOnly}
@@ -954,7 +1196,7 @@ export default function EditWorkoutHistoryModal({
         <TextInput
           style={styles.input}
           value={exerciseNameInput}
-          onChangeText={setExerciseNameInput}
+          onChangeText={handleNameChange}
           placeholder="e.g. Bench Press"
           placeholderTextColor={colors.textMuted}
         />
@@ -969,12 +1211,59 @@ export default function EditWorkoutHistoryModal({
             onSelect={(name) => handleSuggestionPress(name, "name")}
           />
         )}
-        {dbSuggestions.length > 0 && (
+        <Text style={styles.fieldLabel}>Browse by muscle</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.chipRow}
+        >
+          {BROWSE_MUSCLES.map((muscle) => {
+            const selected = browseMuscle === muscle;
+            const label = muscleDisplayName(muscle);
+            return (
+              <TouchableOpacity
+                key={muscle}
+                style={[styles.chip, selected && styles.chipActive]}
+                accessibilityRole="radio"
+                accessibilityLabel={`${label} exercises`}
+                accessibilityState={{ selected }}
+                onPress={() => toggleBrowseMuscle(muscle)}
+              >
+                <Text
+                  style={[styles.chipText, selected && styles.chipTextActive]}
+                >
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+        {browseMuscle && (
           <SuggestionsBox
-            title="Exercise database"
-            items={dbSuggestions}
-            onSelect={handleDbSuggestionPress}
+            title={`${muscleDisplayName(browseMuscle)} exercises:`}
+            variant="highlight"
+            items={muscleBrowseResults
+              .slice(0, browseVisible)
+              .map((item) => ({ label: item.name, meta: item.meta }))}
+            onSelect={(name) => {
+              handleNameChange(name);
+              setNameSuggestions([]);
+              setBrowseMuscle(null);
+            }}
           />
+        )}
+        {browseMuscle && muscleBrowseResults.length > browseVisible && (
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => setBrowseVisible((v) => v + BROWSE_PAGE_SIZE)}
+            accessibilityRole="button"
+            accessibilityLabel={`Show ${Math.min(BROWSE_PAGE_SIZE, muscleBrowseResults.length - browseVisible)} more exercises`}
+          >
+            <Text style={styles.retryButtonText}>
+              Load more ({muscleBrowseResults.length - browseVisible})
+            </Text>
+          </TouchableOpacity>
         )}
         <Text style={styles.fieldLabel}>Muscle Group</Text>
         <TextInput
@@ -994,6 +1283,17 @@ export default function EditWorkoutHistoryModal({
             }))}
             onSelect={(name) => handleSuggestionPress(name, "muscleGroup")}
           />
+        )}
+        {dbMatch && dbMatch.name !== exerciseNameInput.trim() && (
+          <Text style={styles.modalDescription}>
+            Will be saved as "{dbMatch.name}" from the exercise database.
+          </Text>
+        )}
+        {!!dbMatch?.secondaryMuscles.length && (
+          <Text style={styles.modalDescription}>
+            Secondary muscles from the exercise database:{" "}
+            {dbMatch.secondaryMuscles.join(", ")}
+          </Text>
         )}
       </ModalSheet>
 
@@ -1109,6 +1409,27 @@ const makeStyles = (colors: ThemeColors) =>
       justifyContent: "center",
     },
     retryButtonText: { fontSize: 16, fontWeight: "600", color: colors.accent },
+    chipRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
+    chip: {
+      minWidth: 44,
+      minHeight: 44,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 10,
+      borderRadius: 10,
+      borderWidth: 2,
+      borderColor: colors.surfaceBorder,
+      backgroundColor: colors.background,
+    },
+    chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+    chipText: { fontSize: 16, fontWeight: "600", color: colors.textPrimary },
+    chipTextActive: { color: colors.textOnAccent },
+    modeRow: {
+      flexDirection: "row",
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+    },
     headerTitle: { fontSize: 17, fontWeight: "700", color: colors.textPrimary },
     listContent: { padding: 16, paddingBottom: 60 },
     emptyText: {
@@ -1155,6 +1476,8 @@ const makeStyles = (colors: ThemeColors) =>
     },
     sessionSubtitle: { fontSize: 13, color: colors.textSecondary },
     chevron: { fontSize: 22, color: colors.textMuted, marginLeft: 8 },
+    dbMark: { width: 20, fontSize: 16, fontWeight: "700", textAlign: "center" },
+    filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     exerciseCard: {
       backgroundColor: colors.surface,
       borderRadius: 12,

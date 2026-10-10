@@ -6,6 +6,7 @@
 
 import { workoutApi } from "@features/workout/services/index"
 import { userFacingError } from "@shared/services/apiError"
+import { findExerciseByName } from "./exerciseDb"
 
 interface StrengthLevelRow {
   /** ISO calendar day, e.g. "2026-01-13". */
@@ -96,7 +97,7 @@ function parseStrengthLevelCSV(csvText: string): StrengthLevelRow[] {
 
     rows.push({
       date,
-      exercise,
+      exercise: findExerciseByName(exercise)?.name ?? exercise,
       weightKg: Number.isNaN(weightKg) ? 0 : weightKg,
       reps,
       isWarmup,

@@ -124,7 +124,7 @@ Every screen has a customizable widget board. Add, remove, resize, and reorder w
 - Rest-time, manual-time, auto-progression, exercise-photo and PR-celebration preferences
 - Analytics comparison target, theme editor and lifetime stats
 - Connected server, its version, and which features it keeps on-device
-- Workout history editing, and importing history from a Strength Level CSV export
+- Workout history editing (per set, or per exercise across the whole split, with muscles filled in from the exercise database), and importing history from a Strength Level CSV export
 - **Health Connect** _(Android)_: sync now, and Keep Health Data to keep or delete the daily copy of steps, heart rate and sleep
 - An admin/test mode for recording data without touching your real stats
 
