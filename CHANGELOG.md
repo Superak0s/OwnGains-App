@@ -8,6 +8,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ### Added
 
+- When your server sets a minimum app version and yours is lower, the Google Play version opens Play's full-screen update flow and blocks use until it finishes. It checks again each time you come back to the app.
 - Edit Workout History has an Exercises tab that lists every exercise in the split, so you can rename one or change its muscles without opening each workout. Exercises already in the exercise database are marked with a checkmark, and filters show only the ones with no muscles set, or not in the database.
 
 ### Changed
@@ -21,6 +22,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ### Internal
 
+- `sp-react-native-in-app-updates` drives the Play immediate update from `playUpdate.ts`, gated by `minAppVersion` on `/healthz` (server env `MIN_APP_VERSION`). Only builds that include it can be forced, so users on older versions still update by hand once.
 - `findExerciseByName` in `exerciseDb` resolves a database name ignoring case, punctuation and plurals, without following aliases.
 
 - `scripts/release.sh --play` and `PLAY_TRACK` take a comma-separated list of tracks (e.g. `internal,alpha`), and `play-upload.js` puts the bundle on each in one edit.

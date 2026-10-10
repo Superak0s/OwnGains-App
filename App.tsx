@@ -136,6 +136,7 @@ import {
 import { getNotifications } from "./src/shared/services/notifications";
 import { sweepStaleExports } from "./src/utils/writeJsonExport";
 import { useGitHubUpdateCheck } from "./src/shared/services/githubUpdate";
+import { usePlayForcedUpdate } from "./src/shared/services/playUpdate";
 import { useHealthConnectSync } from "./src/features/healthConnect/importer";
 import { HydrationTileModal } from "./src/features/tracking/hydrationTiles";
 
@@ -476,6 +477,7 @@ function MainTabs() {
   useTutorialGate();
   useHealthConnectSync(user?.id ?? null);
   const updateAlert = useGitHubUpdateCheck();
+  usePlayForcedUpdate();
   const [isOffline, setIsOffline] = useState(
     () => getAppModeSync() === "offline",
   );

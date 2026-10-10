@@ -182,6 +182,7 @@ The web copies of the legal text are generated from the in-app screens: [privacy
 - **Expo config plugins** (applied during prebuild): `withGradleTuning` (JVM tuning), `withDebugAppIdSuffix` (debug build installs side by side with the release build), `withAndroidNetworkSecurity` (cleartext to a self-hosted LAN server), `withAbiSplits` (one release APK per CPU architecture instead of one universal APK. The AAB is unaffected), `withHealthConnectRationale` (Health Connect's permission screen opens the privacy policy, as Play review requires).
 - **Local native modules** (`modules/`): `exact-alarms` checks Android's exact-alarm permission and opens its settings page, so next-dose reminders fire on time. `autofill` asks Android to offer saving the login after sign-in. `hydration-tiles` provides the Quick Settings water tiles.
 - **Update check** (`src/shared/services/githubUpdate.ts`): GitHub release builds check the latest GitHub release once a day and offer the download.
+- **Forced update** (`src/shared/services/playUpdate.ts`): Play builds run Play's in-app immediate update flow only when the app version is below `minAppVersion` from `/healthz` (server env `MIN_APP_VERSION`), checked at launch and each time the app returns to the foreground. Offline mode is never forced.
 
 ### Main screens
 
