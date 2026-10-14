@@ -1975,17 +1975,23 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
 
   const renderWorkoutPage = (): React.JSX.Element => (
     <>
-      <SettingsGroup
-        title="During a workout"
-        footer={
-          useManualTime
-            ? "Using your manual time setting for workout estimates"
-            : "Using server analytics when available, manual time as fallback"
-        }
-      >
+      <SettingsGroup title="During a workout">
         <SettingsRow
+          icon="⏱️"
+          label="Time Between Sets"
+          description={
+            useManualTime
+              ? "Used for rest reminders and workout estimates"
+              : "Fallback when the server has no timing data yet"
+          }
+          value={formatDuration(timeBetweenSets)}
+          onPress={() => setShowTimeBetweenSetsModal(true)}
+          accessibilityLabel="Change the time between sets"
+        />
+        <SettingsRow
+          icon="🕐"
           label="Use Manual Time"
-          description="Use your manually set time instead of server analytics"
+          description="Always use your own time instead of server timing"
           toggle={{
             value: useManualTime,
             label: "Use manual time between sets",
@@ -1997,8 +2003,9 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
           }}
         />
         <SettingsRow
+          icon="🏆"
           label="PR Celebration"
-          description="Play an animation in-session when a set exceeds your best estimated 1RM"
+          description="Celebrate a set that beats your best estimated 1RM"
           toggle={{
             value: prCelebration,
             label: "Celebrate personal records",
@@ -2007,8 +2014,9 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
           }}
         />
         <SettingsRow
+          icon="📈"
           label="Auto-Progression Prompt"
-          description="Suggest the next set's weight from your last set's reps and reps in reserve"
+          description="Suggest the next weight from your reps and reps in reserve"
           toggle={{
             value: autoProgression,
             label: "Suggest auto-progression between sets",
@@ -2016,82 +2024,51 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
               saveWorkoutPref(STORAGE_KEYS.AUTO_PROGRESSION, setAutoProgression, on),
           }}
         />
+      </SettingsGroup>
+
+      <SettingsGroup title="Undertrained muscles">
         <SettingsRow
-          label="Time Between Sets"
-          description={
-            useManualTime
-              ? "Manual time (used for estimates)"
-              : "Manual fallback (auto mode active)"
+          icon="🎯"
+          label="Suggestions"
+          description="Exercises for muscles that are behind this week"
+          value={
+            DISPLAY_MODE_OPTIONS.find((o) => o.key === undertrainedDisplayMode)
+              ?.label ?? undertrainedDisplayMode
           }
-          value={formatDuration(timeBetweenSets)}
-          onPress={() => setShowTimeBetweenSetsModal(true)}
-          accessibilityLabel="Change the time between sets"
+          onPress={() => setShowDisplayModeMenu(true)}
+          accessibilityLabel="Change how undertrained muscles are surfaced"
         />
       </SettingsGroup>
 
-      <SettingsGroup title="Undertrained suggestions">
-        <SettingsRow
-          label="Show"
-          description="How to show exercise suggestions for muscle groups behind this week"
-          right={
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.dropdownButton}
-              accessibilityRole="button"
-              accessibilityLabel="Change how undertrained muscles are surfaced"
-              onPress={() => setShowDisplayModeMenu(true)}
-            >
-              <Text style={styles.dropdownButtonText}>
-                {DISPLAY_MODE_OPTIONS.find((o) => o.key === undertrainedDisplayMode)
-                  ?.label ?? undertrainedDisplayMode}
-              </Text>
-              <Text style={styles.dropdownArrow} importantForAccessibility="no">
-                ▼
-              </Text>
-            </TouchableOpacity>
-          }
-        />
-        <View style={styles.compareSection}>
-          <Text style={styles.settingLabel}>Compare against</Text>
-          <View style={styles.compareRow} accessibilityRole="radiogroup">
-            {CALCULATION_MODE_OPTIONS.map((option) => {
-              const isSelected = undertrainedCalculationMode === option.key;
-              return (
-                <TouchableOpacity
-                  key={option.key}
-                  activeOpacity={0.7}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: isSelected }}
-                  accessibilityLabel={option.label}
-                  style={[styles.compareChip, isSelected && styles.compareChipActive]}
-                  onPress={() => handleSetUndertrainedCalculationMode(option.key)}
+      <SettingsGroup title="Compare against">
+        {CALCULATION_MODE_OPTIONS.map((option) => {
+          const isSelected = undertrainedCalculationMode === option.key;
+          return (
+            <SettingsRow
+              key={option.key}
+              label={option.label}
+              description={option.description}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: isSelected }}
+              onPress={() => handleSetUndertrainedCalculationMode(option.key)}
+              right={
+                <Text
+                  style={[styles.radioMark, isSelected && styles.radioMarkActive]}
+                  importantForAccessibility="no"
                 >
-                  <Text
-                    style={[
-                      styles.compareChipText,
-                      isSelected && styles.compareChipTextActive,
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          <Text style={styles.settingDescription}>
-            {
-              CALCULATION_MODE_OPTIONS.find(
-                (o) => o.key === undertrainedCalculationMode,
-              )?.description
-            }
-          </Text>
-        </View>
+                  {isSelected ? "✓" : ""}
+                </Text>
+              }
+            />
+          );
+        })}
       </SettingsGroup>
 
       <SettingsGroup title="History">
         <SettingsRow
+          icon="✏️"
           label="Edit Workout History"
-          description="Update the name, muscle group, or time of already logged/imported sets"
+          description="Fix the name, muscles or time of logged and imported sets"
           onPress={() => {
             if (!selectedSplit) {
               alert(
@@ -2107,28 +2084,36 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
           accessibilityLabel="Edit workout history"
         />
         <SettingsRow
-          label="Unlock All Days"
-          description={
-            noLocalProgress ? NO_LOCAL_PROGRESS_HINT : "Clear local sets & unlock days"
-          }
-          busy={busyAction === "unlockAll"}
-          disabled={progressActionsDisabled}
-          onPress={handleUnlockAllDays}
-          accessibilityLabel="Unlock all days"
-        />
-        <SettingsRow
+          icon="📅"
           label="Unlock Single Day"
           description={
-            noLocalProgress ? NO_LOCAL_PROGRESS_HINT : "Clear local sets for one day"
+            noLocalProgress ? NO_LOCAL_PROGRESS_HINT : "Clear this device's sets for one day"
           }
           disabled={progressActionsDisabled}
           onPress={() => setShowResetDayModal(true)}
           accessibilityLabel="Unlock one day"
         />
+        <SettingsRow
+          icon="🔓"
+          label="Unlock All Days"
+          description={
+            noLocalProgress ? NO_LOCAL_PROGRESS_HINT : "Clear this device's sets for every day"
+          }
+          destructive
+          busy={busyAction === "unlockAll"}
+          disabled={progressActionsDisabled}
+          onPress={handleUnlockAllDays}
+          accessibilityLabel="Unlock all days"
+        />
       </SettingsGroup>
 
       {selectedSplit && workoutData && (
-        <SettingsGroup title="Progress">{renderProgressCard()}</SettingsGroup>
+        <View style={styles.progressGroup}>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            Progress
+          </Text>
+          {renderProgressCard()}
+        </View>
       )}
     </>
   );
@@ -2568,14 +2553,16 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
   const renderProgressCard = (): React.JSX.Element => {
     if (loadingProgress)
       return (
-        <ActivityIndicator
-          color={colors.accent}
-          style={{ paddingVertical: 20 }}
-        />
+        <View style={styles.card}>
+          <ActivityIndicator
+            color={colors.accent}
+            style={{ paddingVertical: 20 }}
+          />
+        </View>
       );
     if (progressError)
       return (
-        <>
+        <View style={[styles.card, styles.progressErrorCard]}>
           <Text style={styles.errorText}>
             Progress could not be loaded from the server. Your progress on
             this device is unaffected.
@@ -2588,45 +2575,28 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
           >
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
-        </>
+        </View>
       );
+    const stats: ReadonlyArray<[string, string | number]> = [
+      ["Days with activity", serverProgress?.daysCount ?? getCompletedDaysCount()],
+      ["Sets completed", serverProgress?.setsCount ?? getTotalCompletedSets()],
+      ["Locked days", serverProgress?.lockedCount ?? getLockedDaysCount()],
+      ["Current day", `Day ${currentDay}`],
+    ];
     return (
-      <>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>
-            Days with Activity
-          </Text>
-          <Text style={styles.infoValue}>
-            {serverProgress?.daysCount ??
-              getCompletedDaysCount()}
-          </Text>
-        </View>
-        <View style={styles.divider} />
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>
-            Total Sets Completed
-          </Text>
-          <Text style={styles.infoValue}>
-            {serverProgress?.setsCount ??
-              getTotalCompletedSets()}
-          </Text>
-        </View>
-        <View style={styles.divider} />
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Locked Days</Text>
-          <Text style={styles.infoValue}>
-            {serverProgress?.lockedCount ??
-              getLockedDaysCount()}
-          </Text>
-        </View>
-        <View style={styles.divider} />
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Current Day</Text>
-          <Text style={styles.infoValue}>
-            Day {currentDay}
-          </Text>
-        </View>
-      </>
+      <View style={styles.statGrid}>
+        {stats.map(([label, value]) => (
+          <View
+            key={label}
+            style={styles.statTile}
+            accessible
+            accessibilityLabel={`${label}: ${value}`}
+          >
+            <Text style={styles.statValue}>{value}</Text>
+            <Text style={styles.statLabel}>{label}</Text>
+          </View>
+        ))}
+      </View>
     );
   };
 
@@ -3175,6 +3145,23 @@ const makeStyles = (colors: ThemeColors) =>
     container: { flex: 1, backgroundColor: colors.background },
     contentContainer: SCREEN_PADDING,
     section: { marginBottom: 24 },
+    progressGroup: { marginBottom: 24 },
+    progressErrorCard: { paddingVertical: 16 },
+    statGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+    statTile: {
+      flexGrow: 1,
+      flexBasis: "45%",
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+    },
+    statValue: { fontSize: 24, fontWeight: "800", color: colors.textPrimary },
+    statLabel: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+    radioMark: { width: 24, fontSize: 18, fontWeight: "800", textAlign: "center" },
+    radioMarkActive: { color: colors.accent },
     sectionTitle: {
       fontSize: 13,
       fontWeight: "700",
@@ -3251,29 +3238,11 @@ const makeStyles = (colors: ThemeColors) =>
       marginBottom: 4,
     },
     settingDescription: { fontSize: 13, color: colors.textSecondary },
-    compareSection: { paddingVertical: 12, gap: 8 },
-    compareRow: { flexDirection: "row", gap: 6 },
-    compareChip: {
-      flex: 1,
-      minHeight: 44,
-      justifyContent: "center",
-      paddingVertical: 8,
-      borderRadius: 8,
-      alignItems: "center",
-      backgroundColor: colors.background,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
-    },
-    compareChipActive: {
-      backgroundColor: colors.accent,
-      borderColor: colors.accent,
-    },
-    compareChipText: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: colors.textSecondary,
-    },
-    compareChipTextActive: { color: colors.textOnAccent },
+    
+    
+    
+    
+    
     settingValue: { fontSize: 16, fontWeight: "600", color: colors.accent },
     divider: { height: 1, backgroundColor: colors.surfaceBorder },
     tabOrderRow: {
@@ -3302,25 +3271,6 @@ const makeStyles = (colors: ThemeColors) =>
       borderColor: colors.surfaceBorder,
     },
     tabOrderArrow: { fontSize: 16, color: colors.accent },
-    dropdownButton: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      backgroundColor: colors.background,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
-      paddingVertical: 12,
-      paddingHorizontal: 12,
-      marginLeft: 12,
-      maxWidth: "45%",
-    },
-    dropdownButtonText: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: colors.textPrimary,
-    },
-    dropdownArrow: { fontSize: 12, color: colors.accent, marginLeft: 12 },
     dropdownItem: {
       flexDirection: "row",
       justifyContent: "space-between",

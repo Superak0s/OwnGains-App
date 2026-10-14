@@ -40,7 +40,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Closing session details returns to that day's list, and sets are shown as compact rows.
 - Tapping a calendar day with no workouts no longer opens an empty sheet.
 - Home shows placeholder cards while widgets load, and the Next Workout widget is one tinted card.
-- Settings is now a short menu that opens separate pages for Account, Workout, Appearance, Storage and Sync, Privacy and Data, and About, with a cleaner layout. Editing past sessions and unlocking days are under Workout, Health Connect is under Storage and Sync, and actions that can't be undone are grouped in a Danger zone at the bottom of their page. Android Back returns from a page to the menu.
+- Settings is now a short menu that opens separate pages for Account, Workout, Appearance, Storage and Sync, Privacy and Data, and About, with a cleaner layout. Editing past sessions and unlocking days are under Workout, Health Connect is under Storage and Sync, and actions that can't be undone are grouped in a Danger zone at the bottom of their page. Android Back returns from a page to the menu. On the Workout page every setting has an icon, the comparison choices are a checklist with a short explanation each, and your progress is shown as four stat tiles.
 - Manual sync starts right away and reports how many changes synced.
 - Unblocking someone asks you to confirm first.
 - Sign out uses the same wording everywhere.
