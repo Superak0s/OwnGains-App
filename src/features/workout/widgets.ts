@@ -33,8 +33,8 @@ export const WORKOUT_WIDGET_REGISTRY: Record<
     description:
       "Sets completed, progress bar, estimated time remaining, and estimated finish time",
     icon: "📊",
-    availableSizes: ["large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   session_stats: {
     type: "session_stats",

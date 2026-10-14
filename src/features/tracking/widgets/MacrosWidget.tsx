@@ -7,14 +7,13 @@ import UniversalCalendar from "@shared/components/UniversalCalendar";
 import type { DailyMacrosStats } from "../hooks/useMacrosTab";
 import type { MacrosEntryWithFields } from "../types";
 import {
-  formatDateLabel,
+  dayLabel,
   toDailyTotalPoints,
   formatRange,
 } from "../utils";
 import {
   Bar,
   Button,
-  IconButton,
   Metric,
   Note,
   Placeholder,
@@ -90,22 +89,20 @@ export function renderMacrosWidget(
       return (
         <ShowMoreList
           items={entries}
-          renderItem={(e, i, isLast) => (
+          collapsible
+          groupBy={(e) => dayLabel(e.date ?? e.loggedAt)}
+          groupMeta={(day) =>
+            `${day.reduce((sum, e) => sum + Number(e.calories ?? 0), 0).toFixed(0)} kcal`
+          }
+          renderItem={(e, _i, isLast) => (
             <Row
-              key={e.id ?? i}
-              title={e.name || formatDateLabel(e.date ?? e.loggedAt)}
-              meta={`${e.name ? `${formatDateLabel(e.date ?? e.loggedAt)} · ` : ""}P ${Number(e.protein ?? 0).toFixed(0)}g · C ${Number(e.carbs ?? 0).toFixed(0)}g · F ${Number(e.fat ?? 0).toFixed(0)}g`}
+              title={e.name || "Meal"}
+              meta={`P ${Number(e.protein ?? 0).toFixed(0)}g · C ${Number(e.carbs ?? 0).toFixed(0)}g · F ${Number(e.fat ?? 0).toFixed(0)}g`}
               value={`${Number(e.calories ?? 0).toFixed(0)} kcal`}
               dot={tone}
               last={isLast}
-              right={
-                <IconButton
-                  glyph='🗑'
-                  label='Delete macros entry'
-                  tone='danger'
-                  onPress={() => deleteMacroEntry(e)}
-                />
-              }
+              onDelete={() => deleteMacroEntry(e)}
+              deleteLabel='Delete macros entry'
             />
           )}
         />

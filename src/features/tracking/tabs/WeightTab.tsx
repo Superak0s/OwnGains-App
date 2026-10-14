@@ -19,14 +19,14 @@ export const WEIGHT_WIDGET_REGISTRY: Record<
     type: "weight_calendar",
     title: "Weight Calendar",
     description: "Calendar view of days you've logged weight",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   weight_history: {
     type: "weight_history",
     title: "Weight History",
     description: "Your recent weight entries, with delete and load-more",
-    availableSizes: ["medium", "large"],
+    availableSizes: ["medium"],
     defaultSize: "medium",
   },
   weight_chart: {

@@ -77,7 +77,11 @@ export function useWidgets<T extends string>(
         if (cancelled) return
         // Drop instances whose type is no longer in the registry, so a widget
         // removed from the app doesn't linger in an already-saved layout.
-        const known = stored?.filter((w) => w.type in registryRef.current) ?? []
+        // A size the widget no longer offers falls back to its default.
+        const known = (stored?.filter((w) => w.type in registryRef.current) ?? []).map((w) => {
+          const def = registryRef.current[w.type]
+          return def.availableSizes.includes(w.size) ? w : { ...w, size: def.defaultSize }
+        })
         if (stored && known.length < stored.length) {
           metric.count("widgets.dropped", stored.length - known.length, {
             attributes: { board: storageKey },

@@ -22,14 +22,14 @@ export const MEASUREMENTS_WIDGET_REGISTRY: Record<
     type: "measurements_calendar",
     title: "Measurements Calendar",
     description: "Calendar view of days you've logged measurements",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   measurements_history: {
     type: "measurements_history",
     title: "Measurements History",
     description: "Your recent measurement entries",
-    availableSizes: ["medium", "large"],
+    availableSizes: ["medium"],
     defaultSize: "medium",
   },
   measurements_chart: {

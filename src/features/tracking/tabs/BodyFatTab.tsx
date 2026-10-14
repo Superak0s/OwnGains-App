@@ -16,15 +16,15 @@ export const BODYFAT_WIDGET_REGISTRY: Record<
     type: "bodyfat_height",
     title: "Height",
     description: "Your height, used for the body fat calculation",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   bodyfat_calendar: {
     type: "bodyfat_calendar",
     title: "Body Fat Calendar",
     description: "Calendar view of days you've taken a body fat measurement",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   bodyfat_latest: {
     type: "bodyfat_latest",
@@ -44,7 +44,7 @@ export const BODYFAT_WIDGET_REGISTRY: Record<
     type: "bodyfat_history",
     title: "Body Fat History",
     description: "Your past body fat readings",
-    availableSizes: ["medium", "large"],
+    availableSizes: ["medium"],
     defaultSize: "medium",
   },
 };

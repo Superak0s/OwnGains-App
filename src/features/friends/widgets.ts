@@ -17,7 +17,7 @@ export const FRIENDS_WIDGET_REGISTRY: Record<
     title: "Find Friends",
     description:
       "Search by username, or scan a friend's QR code to add them",
-    availableSizes: ["medium", "large"],
+    availableSizes: ["medium"],
     defaultSize: "medium",
   },
   friends_list: {
@@ -25,8 +25,8 @@ export const FRIENDS_WIDGET_REGISTRY: Record<
     title: "Your Friends",
     description:
       "Everyone you're connected with, and who's working out right now",
-    availableSizes: ["large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
 };
 
@@ -45,15 +45,15 @@ export const REQUESTS_WIDGET_REGISTRY: Record<
     type: "requests_pending",
     title: "Pending Requests",
     description: "Friend requests waiting on your response",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   requests_sent: {
     type: "requests_sent",
     title: "Sent Requests",
     description: "Friend requests you've sent that are still pending",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
 };
 

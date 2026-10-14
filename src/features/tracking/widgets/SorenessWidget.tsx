@@ -10,8 +10,8 @@ import {
   SorenessLogWidget,
 } from "../tabs/SorenessTab";
 import { getSeverityColor } from "@utils/severityColor";
+import { dayLabel } from "../utils";
 import {
-  IconButton,
   Note,
   Placeholder,
   Row,
@@ -75,24 +75,18 @@ export function renderSorenessWidget(
       return (
         <ShowMoreList
           items={entries}
-          renderItem={(s, i, isLast) => {
+          collapsible
+          groupBy={(s) => dayLabel(s.loggedAt)}
+          renderItem={(s, _i, isLast) => {
             const val = Number(s.intensity ?? 0);
             return (
               <Row
-                key={s.id ?? i}
                 title={s.muscleGroup ?? "—"}
-                meta={new Date(s.loggedAt).toLocaleDateString()}
                 value={`${val}/10`}
                 dot={getSeverityColor(val, 3)}
                 last={isLast}
-                right={
-                  <IconButton
-                    glyph='🗑'
-                    label='Delete soreness entry'
-                    tone='danger'
-                    onPress={() => deleteSorenessEntry(s)}
-                  />
-                }
+                onDelete={() => deleteSorenessEntry(s)}
+                deleteLabel='Delete soreness entry'
               />
             );
           }}

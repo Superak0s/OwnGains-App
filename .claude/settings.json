@@ -87,6 +87,12 @@
           },
           {
             "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-tutorial.js\"",
+            "timeout": 30,
+            "statusMessage": "Checking tutorial..."
+          },
+          {
+            "type": "command",
             "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-min-server-version.js\"",
             "timeout": 120,
             "statusMessage": "Checking server version floor..."

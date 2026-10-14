@@ -5,11 +5,10 @@ import { View } from "react-native";
 import ProgressChart from "@shared/components/ProgressChart";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import type { MeasurementEntry } from "../services/types";
-import { toTrendPoints } from "../utils";
+import { monthLabel, toTrendPoints } from "../utils";
 import {
   Button,
   Chip,
-  IconButton,
   Note,
   Placeholder,
   Row,
@@ -156,25 +155,18 @@ export function renderMeasurementWidget(
       return (
         <ShowMoreList
           items={history}
-          renderItem={(entry, index, isLast) => (
+          groupBy={(entry) => monthLabel(entry.measuredAt)}
+          renderItem={(entry, _index, isLast) => (
             <Row
-              key={entry.id ?? index}
               title={new Date(entry.measuredAt).toLocaleDateString([], {
                 weekday: "short",
                 month: "short",
                 day: "numeric",
               })}
               meta={`Waist ${Number(entry.waistCm ?? 0).toFixed(1)} cm · Chest ${Number(entry.chestCm ?? 0).toFixed(1)} cm`}
-              dot={tone}
               last={isLast}
-              right={
-                <IconButton
-                  glyph='🗑'
-                  label='Delete measurement entry'
-                  tone='danger'
-                  onPress={() => deleteMeasurementEntry(entry)}
-                />
-              }
+              onDelete={() => deleteMeasurementEntry(entry)}
+              deleteLabel='Delete measurement entry'
             />
           )}
         />

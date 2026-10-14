@@ -5,8 +5,9 @@ import { View } from "react-native";
 import ProgressChart from "@shared/components/ProgressChart";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import { HydrationSettingsWidget } from "../tabs/HydrationTab";
+import { formatClockTime } from "@utils/format";
 import {
-  formatDateLabel,
+  dayLabel,
   formatRange,
   isoToLocalDateStr,
   toDailyTotalPoints,
@@ -15,7 +16,6 @@ import type { HydrationEntry } from "../services/types";
 import {
   Bar,
   Button,
-  IconButton,
   Metric,
   Note,
   Placeholder,
@@ -131,21 +131,19 @@ export function renderHydrationWidget(
       return (
         <ShowMoreList
           items={entries}
-          renderItem={(h, i, isLast) => (
+          collapsible
+          groupBy={(h) => dayLabel(h.loggedAt)}
+          groupMeta={(day) =>
+            `${day.reduce((sum, h) => sum + Number(h.amountMl), 0).toFixed(0)} / ${goal} ml`
+          }
+          renderItem={(h, _i, isLast) => (
             <Row
-              key={h.id ?? i}
-              title={formatDateLabel(h.loggedAt)}
+              title={formatClockTime(h.loggedAt)}
               value={`${Number(h.amountMl).toFixed(0)} ml`}
               dot={tone}
               last={isLast}
-              right={
-                <IconButton
-                  glyph='🗑'
-                  label='Delete water entry'
-                  tone='danger'
-                  onPress={() => deleteHydrationEntry(h)}
-                />
-              }
+              onDelete={() => deleteHydrationEntry(h)}
+              deleteLabel='Delete water entry'
             />
           )}
         />

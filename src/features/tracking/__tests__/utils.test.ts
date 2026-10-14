@@ -7,7 +7,9 @@ import {
   toTrendPoints,
   computeUpcomingPredictedDays,
   daysSinceLocal,
+  dayLabel,
   formatDateLabel,
+  signedTrend,
   formatRange,
   getCycleDuration,
   getCyclePhaseInfo,
@@ -321,5 +323,31 @@ describe("needsFollowUp", () => {
     expect(
       needsFollowUp(entry(new Date(2026, 9, 1), "recovered"), today),
     ).toBe(false);
+  });
+});
+
+describe("dayLabel", () => {
+  const now = new Date(2026, 9, 14, 10);
+  it("names today and yesterday", () => {
+    expect(dayLabel(new Date(2026, 9, 14, 1).toISOString(), now)).toBe("Today");
+    expect(dayLabel(new Date(2026, 9, 13, 23).toISOString(), now)).toBe("Yesterday");
+  });
+  it("adds the year only for other years", () => {
+    expect(dayLabel(new Date(2026, 9, 1).toISOString(), now)).not.toMatch(/2026/);
+    expect(dayLabel(new Date(2025, 9, 1).toISOString(), now)).toMatch(/2025/);
+  });
+  it("handles missing dates", () => {
+    expect(dayLabel(null, now)).toBe("Unknown date");
+  });
+});
+
+describe("signedTrend", () => {
+  const colors = { textMuted: "m", error: "e", success: "s" };
+  it("treats tiny changes as flat", () => {
+    expect(signedTrend(0.04, colors)).toEqual({ text: "→ 0.0", tone: "m" });
+  });
+  it("signs and colors rises and drops", () => {
+    expect(signedTrend(1.25, colors)).toEqual({ text: "↗ +1.3", tone: "e" });
+    expect(signedTrend(-0.5, colors)).toEqual({ text: "↘ -0.5", tone: "s" });
   });
 });

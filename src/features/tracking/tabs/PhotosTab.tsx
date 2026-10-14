@@ -52,22 +52,22 @@ export const PHOTOS_WIDGET_REGISTRY: Record<
     type: "photos_calendar",
     title: "Photos Calendar",
     description: "Calendar view of days you've taken progress photos",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   photos_gallery: {
     type: "photos_gallery",
     title: "Progress Photos",
     description: "Recent progress photos grouped by day, with quick capture",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   photos_comparison: {
     type: "photos_comparison",
     title: "Side-by-Side Comparison",
     description: "Compare two progress photos from different dates",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
 };
 

@@ -26,22 +26,22 @@ export const ANALYTICS_WIDGET_REGISTRY: Record<
     title: "Select Exercise / Muscle Group",
     description:
       "Pick an exercise or a muscle group to analyze, with search and filters",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   workout_history: {
     type: "workout_history",
     title: "Workout History",
     description: "Calendar view of past sets for this exercise",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   weekly_volume: {
     type: "weekly_volume",
     title: "Weekly Sets",
     description:
       "Working sets this week and the 4-week average, against the 10 to 20 sets a muscle needs to grow",
-    availableSizes: ["medium", "large"],
+    availableSizes: ["medium"],
     defaultSize: "medium",
   },
   group_exercises: {
@@ -49,8 +49,8 @@ export const ANALYTICS_WIDGET_REGISTRY: Record<
     title: "Exercises",
     description:
       "Every exercise in the muscle group with its own estimated 1RM and 30-day trend",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   one_rep_max: {
     type: "one_rep_max",
@@ -65,15 +65,15 @@ export const ANALYTICS_WIDGET_REGISTRY: Record<
     title: "Personal Records",
     description:
       "Heaviest set, most reps, best estimated 1RM and your best weight at each rep count",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   progress_rate: {
     type: "progress_rate",
     title: "Progress Rate",
     description:
       "How fast your estimated 1RM is moving, in kg per week, with a stall warning",
-    availableSizes: ["small", "medium", "large"],
+    availableSizes: ["small", "medium"],
     defaultSize: "medium",
   },
   rep_distribution: {
@@ -81,7 +81,7 @@ export const ANALYTICS_WIDGET_REGISTRY: Record<
     title: "Rep Range Split",
     description:
       "Share of working sets trained in the strength, hypertrophy and endurance rep ranges",
-    availableSizes: ["medium", "large"],
+    availableSizes: ["medium"],
     defaultSize: "medium",
   },
   training_frequency: {
@@ -89,7 +89,7 @@ export const ANALYTICS_WIDGET_REGISTRY: Record<
     title: "Training Frequency",
     description:
       "Sessions per week, typical days between sessions, and days since the last one",
-    availableSizes: ["medium", "large"],
+    availableSizes: ["medium"],
     defaultSize: "medium",
   },
   set_efficiency: {
@@ -97,7 +97,7 @@ export const ANALYTICS_WIDGET_REGISTRY: Record<
     title: "Rest & Fatigue",
     description:
       "Average rest between sets and how far reps fall from the first set to the last",
-    availableSizes: ["medium", "large"],
+    availableSizes: ["medium"],
     defaultSize: "medium",
   },
   weight_progress: {
@@ -117,14 +117,14 @@ export const ANALYTICS_WIDGET_REGISTRY: Record<
     title: "All Set Data",
     description:
       "Total sets, workouts, max weight/reps, and averages for the selected exercise",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   last_workout: {
     type: "last_workout",
     title: "Last Workout",
     description: "The most recent date you trained this exercise or muscle group",
-    availableSizes: ["small", "medium", "large"],
+    availableSizes: ["small", "medium"],
     defaultSize: "medium",
   },
 };

@@ -21,31 +21,31 @@ export const PLAN_WIDGET_REGISTRY: Record<
     title: "Build your plan",
     description:
       "Start a split from scratch, import a spreadsheet, or pick a ready-made template",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   select_split: {
     type: "select_split",
     title: "Your splits",
     description:
       "Pick the split you're training, see its weekly volume, and export your program",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   muscle_frequency: {
     type: "muscle_frequency",
     title: "Weekly volume",
     description:
       "Sets each muscle gets per week. A primary muscle counts 1, a secondary one 0.5",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   view_program: {
     type: "view_program",
     title: "Program",
     description: "Every day in your program, exercise by exercise",
-    availableSizes: ["large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
 };
 

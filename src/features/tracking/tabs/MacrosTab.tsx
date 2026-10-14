@@ -12,14 +12,14 @@ export const MACROS_WIDGET_REGISTRY: Record<
     type: "macros_calendar",
     title: "Macros Calendar",
     description: "Calendar view of days you've logged macros",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   macros_today: {
     type: "macros_today",
     title: "Today's Macros",
     description: "Today's nutrition intake vs. your goals, with quick log",
-    availableSizes: ["small", "medium", "large"],
+    availableSizes: ["small", "medium"],
     defaultSize: "medium",
   },
   macros_chart: {
@@ -33,7 +33,7 @@ export const MACROS_WIDGET_REGISTRY: Record<
     type: "macros_history",
     title: "Macros History",
     description: "Your logged meals, with delete",
-    availableSizes: ["medium", "large"],
+    availableSizes: ["medium"],
     defaultSize: "medium",
   },
 };

@@ -42,15 +42,18 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Tapping a calendar day with no workouts no longer opens an empty sheet.
 - Home shows placeholder cards while widgets load, and the Next Workout widget is one tinted card.
 - Settings is now a short menu that opens separate pages for Account, Workout, Appearance, Storage and Sync, Privacy and Data, and About, with a cleaner layout. Editing past sessions and unlocking days are under Workout, Health Connect is under Storage and Sync, and actions that can't be undone are grouped in a Danger zone at the bottom of their page. Android Back returns from a page to the menu. On the Workout page every setting has an icon, the comparison choices are a checklist with a short explanation each, and your progress is shown as four stat tiles.
+- Tracking history lists are grouped by month, or by day for water, macros and soreness. Days start collapsed and show their entry count and water or calorie total, and tapping a day opens its entries. Weight and body fat entries show the change from the previous one, times replace repeated dates, and the red delete buttons are now a quiet ✕.
 - Manual sync starts right away and reports how many changes synced.
 - Unblocking someone asks you to confirm first.
 - Sign out uses the same wording everywhere.
 - Error messages on Home, Workout and Settings say what failed and what to do next.
 - Small text, buttons and chips on Home, Workout and Settings are larger and easier to tap, and several emoji icons were replaced with plain text.
 - Animations on the personal record card and the partner banner respect the system Reduce Motion setting.
+- The tutorial covers logging a past workout, Undo for added sets, per-exercise kg or lbs, the rest and supplement alarms, minutes and seconds rest times, restoring default widgets, profile photos and renaming exercises in Edit Workout History, and calls finished days Done.
 
 ### Fixed
 
+- Medium and Large widgets looked the same. Large is now taller and offered only on chart widgets, where the chart grows with it. Other widgets drop the Large option, and any set to Large return to their usual size.
 - A long exercise name in the workout rest timer is cut off with "..." instead of pushing the timer off the screen.
 - Browsing by muscle while editing an exercise shows only that muscle's exercises, not a second box of swap suggestions below them.
 - Leaving a joint session asks you to confirm first and says your logged sets are kept, so a stray tap no longer ends it.
@@ -89,6 +92,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - `profilePhotoApi` (auth on/off pair, dispatched by app mode only) calls the new `/api/profile/photo` server routes, and `friendPhoto.ts` caches friends' photos by hash.
 - CLAUDE.md feature workflow chooses between a rebase and a squash merge per branch, with squash as the default.
 - Alarm-type supplement reminders are scheduled, re-armed after reboot and rung natively by the `exact-alarms` module (`setAlarmClock`, `AlarmReceiver`, `BootReceiver`), which starts an `AlarmActivity` rendering the `AlarmScreen` root.
+- New Stop hook `stop-tutorial.js` asks whether the tutorial needs updating when new user-visible changelog entries are added without a tutorial change.
 - Settings → Developer (debug builds and admins) has a Test Alarm button that rings a supplement alarm in 10 seconds and reports missing alarm permissions.
 
 ## [0.6.0] - 2026-10-10

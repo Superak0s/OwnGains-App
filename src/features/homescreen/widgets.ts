@@ -67,8 +67,8 @@ const HOME_OWN_REGISTRY: Record<
     title: "Next Workout",
     description:
       "Today's day, lock status, and quick actions to change day or start",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   weekly_progress: {
     type: "weekly_progress",
@@ -82,8 +82,8 @@ const HOME_OWN_REGISTRY: Record<
     title: "Workout History",
     description:
       "Calendar view of past workout sessions. Tap a day to see details",
-    availableSizes: ["medium", "large"],
-    defaultSize: "large",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
   workout_streak: {
     type: "workout_streak",

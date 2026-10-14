@@ -96,6 +96,42 @@ const makeUi = (colors: ThemeColors) =>
     rowMeta: { fontSize: 12, color: colors.textMuted },
     rowValue: { fontSize: 15, fontWeight: "700", color: colors.textPrimary },
     rowSide: { flexDirection: "row", alignItems: "center", gap: space.sm },
+    rowValueCol: { alignItems: "flex-end", gap: 1 },
+    rowTrend: { fontSize: 11, fontWeight: "700" },
+    rowDelete: {
+      width: 28,
+      height: 28,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    rowDeleteGlyph: { fontSize: 14, color: colors.textMuted },
+
+    groupHeader: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      justifyContent: "space-between",
+      paddingTop: space.lg,
+      paddingBottom: space.xs,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.separator,
+    },
+    groupHeaderFirst: { paddingTop: 0 },
+    groupTitle: {
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 0.6,
+      textTransform: "uppercase",
+      color: colors.textSecondary,
+    },
+    groupMeta: { fontSize: 12, fontWeight: "600", color: colors.textMuted },
+    groupToggle: {
+      minHeight: 44,
+      alignItems: "center",
+      paddingTop: space.sm,
+      paddingBottom: space.sm,
+      gap: space.sm,
+    },
+    groupChevron: { width: 14, fontSize: 12, color: colors.textMuted },
 
     placeholder: { alignItems: "center", gap: space.sm, paddingVertical: space.xl },
     placeholderIcon: { fontSize: 26, opacity: 0.5 },
@@ -361,9 +397,12 @@ interface RowProps {
   readonly title: string;
   readonly meta?: string;
   readonly value?: string;
+  readonly trend?: { readonly text: string; readonly tone: string };
   readonly dot?: string;
   readonly last?: boolean;
   readonly onPress?: () => void;
+  readonly onDelete?: () => void;
+  readonly deleteLabel?: string;
   readonly right?: React.ReactNode;
 }
 
@@ -371,9 +410,12 @@ export function Row({
   title,
   meta,
   value,
+  trend,
   dot,
   last,
   onPress,
+  onDelete,
+  deleteLabel = "Delete entry",
   right,
 }: RowProps): React.ReactElement {
   const { ui } = useUi();
@@ -385,8 +427,26 @@ export function Row({
         {meta ? <Text style={ui.rowMeta}>{meta}</Text> : null}
       </View>
       <View style={ui.rowSide}>
-        {value ? <Text style={ui.rowValue}>{value}</Text> : null}
+        {value ? (
+          <View style={ui.rowValueCol}>
+            <Text style={ui.rowValue}>{value}</Text>
+            {trend ? (
+              <Text style={[ui.rowTrend, { color: trend.tone }]}>{trend.text}</Text>
+            ) : null}
+          </View>
+        ) : null}
         {right}
+        {onDelete ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={deleteLabel}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={onDelete}
+            style={ui.rowDelete}
+          >
+            <Text style={ui.rowDeleteGlyph}>✕</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     </>
   );
@@ -492,21 +552,122 @@ export function Bar({
 
 export const HISTORY_PAGE_SIZE = 20;
 
-/** Renders the first `pageSize` items and reveals more on demand, so long histories remain cheap to mount. */
+/** Renders the first `pageSize` items and reveals more on demand, so long histories remain cheap to mount.
+ *  `groupBy` expects items already sorted so each group is contiguous. */
 export function ShowMoreList<T>({
   items,
   pageSize = HISTORY_PAGE_SIZE,
   renderItem,
+  groupBy,
+  groupMeta,
+  collapsible,
 }: {
   readonly items: readonly T[];
   readonly pageSize?: number;
   readonly renderItem: (item: T, index: number, isLast: boolean) => React.ReactNode;
+  readonly groupBy?: (item: T) => string;
+  readonly groupMeta?: (items: readonly T[]) => string;
+  /** Groups start collapsed and paging counts groups instead of items. */
+  readonly collapsible?: boolean;
 }): React.ReactElement {
+  const { ui } = useUi();
   const [visible, setVisible] = useState(pageSize);
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+
+  if (collapsible && groupBy) {
+    const sections: { key: string; start: number; items: T[] }[] = [];
+    items.forEach((item, i) => {
+      const key = groupBy(item);
+      const current = sections.at(-1);
+      if (current?.key === key) current.items.push(item);
+      else sections.push({ key, start: i, items: [item] });
+    });
+    const toggle = (key: string) =>
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+      });
+
+    return (
+      <View>
+        {sections.slice(0, visible).map((section, si) => {
+          const open = expanded.has(section.key);
+          const count = `${section.items.length} ${section.items.length === 1 ? "entry" : "entries"}`;
+          const meta = groupMeta ? `${count} · ${groupMeta(section.items)}` : count;
+          return (
+            <View key={`${section.key}-${section.start}`}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={`${section.key}, ${meta}`}
+                accessibilityState={{ expanded: open }}
+                onPress={() => toggle(section.key)}
+                style={[ui.groupHeader, ui.groupToggle, si === 0 && ui.groupHeaderFirst]}
+              >
+                <Text style={ui.groupChevron}>{open ? "▾" : "▸"}</Text>
+                <Text style={[ui.groupTitle, { flex: 1 }]}>{section.key}</Text>
+                <Text style={ui.groupMeta}>{meta}</Text>
+              </TouchableOpacity>
+              {open &&
+                section.items.map((item, j) => (
+                  <React.Fragment key={j}>
+                    {renderItem(item, section.start + j, j === section.items.length - 1)}
+                  </React.Fragment>
+                ))}
+            </View>
+          );
+        })}
+        {visible < sections.length && (
+          <View style={localStyles.showMore}>
+            <Button
+              label={`Show more (${sections.length - visible})`}
+              variant="quiet"
+              size="sm"
+              onPress={() => setVisible((v) => v + pageSize)}
+            />
+          </View>
+        )}
+      </View>
+    );
+  }
+
   const shown = items.slice(0, visible);
+  const keys = groupBy ? shown.map(groupBy) : null;
+  let groups: Map<string, T[]> | null = null;
+  if (groupBy && groupMeta) {
+    groups = new Map();
+    for (const item of items) {
+      const key = groupBy(item);
+      const list = groups.get(key);
+      if (list) list.push(item);
+      else groups.set(key, [item]);
+    }
+  }
+
   return (
     <View>
-      {shown.map((item, i) => renderItem(item, i, i === shown.length - 1))}
+      {shown.map((item, i) => {
+        const key = keys?.[i];
+        const isLast = i === shown.length - 1 || (!!keys && keys[i + 1] !== key);
+        if (key === undefined || (i > 0 && keys?.[i - 1] === key))
+          return <React.Fragment key={i}>{renderItem(item, i, isLast)}</React.Fragment>;
+        const groupItems = groups?.get(key);
+        return (
+          <React.Fragment key={i}>
+            <View
+              accessibilityRole="header"
+              style={[ui.groupHeader, i === 0 && ui.groupHeaderFirst]}
+            >
+              <Text style={ui.groupTitle}>{key}</Text>
+              {groupItems && groupMeta ? (
+                <Text style={ui.groupMeta}>{groupMeta(groupItems)}</Text>
+              ) : null}
+            </View>
+            {renderItem(item, i, isLast)}
+          </React.Fragment>
+        );
+      })}
       {visible < items.length && (
         <View style={localStyles.showMore}>
           <Button

@@ -60,6 +60,11 @@ describe("useWidgets", () => {
     expect(board.current!.availableToAdd.map((d) => d.type)).toEqual(["b"]);
   });
 
+  it("resets a stored size the widget no longer offers to its default", async () => {
+    const board = await mount([inst("1", "a", 0, "large"), inst("2", "c", 1, "medium")]);
+    expect(board.current!.widgets.map((w) => w.size)).toEqual(["small", "medium"]);
+  });
+
   it("falls back to the defaults when nothing known is stored", async () => {
     expect((await mount(null)).current!.widgets).toEqual(defaults);
     expect((await mount([inst("x", "gone", 0)])).current!.widgets).toEqual(defaults);

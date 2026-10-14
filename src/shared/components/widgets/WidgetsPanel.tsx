@@ -49,11 +49,12 @@ const WIDTH_BY_SIZE: Record<WidgetSize, "48%" | "100%"> = {
 }
 
 // medium and large share a width (both full-row), so size only reads as a
-// visible change if it also grows the card's height.
+// visible change if it also grows the card's height. Large has to clear a
+// medium card's usual content (a 220px chart plus header), or it looks the same.
 const MIN_HEIGHT_BY_SIZE: Record<WidgetSize, number> = {
   small: 70,
   medium: 70,
-  large: 160,
+  large: 340,
 }
 
 const SIZE_LABEL: Record<WidgetSize, string> = {

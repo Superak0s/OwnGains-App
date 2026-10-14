@@ -8,14 +8,15 @@ import type { WeightEntry } from "@shared/types";
 import {
   Button,
   Chip,
-  IconButton,
   Metric,
   Note,
   Placeholder,
   Row,
+  ShowMoreList,
   space,
   useUi,
 } from "../ui";
+import { monthLabel, signedTrend } from "../utils";
 
 interface WeightRenderCtx {
   history: WeightEntry[];
@@ -123,6 +124,7 @@ function renderWeightHistory(ctx: WeightRenderCtx): React.ReactNode {
     entriesShown,
     loadMoreEntries,
     deleteWeightEntry,
+    colors,
   } = ctx;
 
   if (history.length === 0)
@@ -131,37 +133,42 @@ function renderWeightHistory(ctx: WeightRenderCtx): React.ReactNode {
   const shown = history.slice(0, entriesShown);
   return (
     <View>
-      {shown.map((entry, index) => {
-        const recordedAt = new Date(entry.recordedAt);
-        return (
-          <Row
-            key={entry.id ?? index}
-            title={recordedAt.toLocaleDateString([], {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-            })}
-            meta={
-              index === 0
-                ? `Latest · ${recordedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                : recordedAt.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-            }
-            value={`${toDisplayWeight(entry.weightKg, weightUnit)} ${weightUnit}`}
-            last={index === shown.length - 1 && entriesShown >= history.length}
-            right={
-              <IconButton
-                glyph='🗑'
-                label='Delete weight entry'
-                tone='danger'
-                onPress={() => deleteWeightEntry(entry)}
-              />
-            }
-          />
-        );
-      })}
+      <ShowMoreList
+        items={shown}
+        pageSize={shown.length}
+        groupBy={(entry) => monthLabel(entry.recordedAt)}
+        renderItem={(entry, index, isLast) => {
+          const recordedAt = new Date(entry.recordedAt);
+          const time = recordedAt.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          const older = history[index + 1];
+          return (
+            <Row
+              title={recordedAt.toLocaleDateString([], {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+              })}
+              meta={index === 0 ? `Latest · ${time}` : time}
+              value={`${toDisplayWeight(entry.weightKg, weightUnit)} ${weightUnit}`}
+              trend={
+                older
+                  ? signedTrend(
+                      Number(toDisplayWeight(entry.weightKg, weightUnit)) -
+                        Number(toDisplayWeight(older.weightKg, weightUnit)),
+                      colors,
+                    )
+                  : undefined
+              }
+              last={isLast}
+              onDelete={() => deleteWeightEntry(entry)}
+              deleteLabel='Delete weight entry'
+            />
+          );
+        }}
+      />
       {entriesShown < history.length && (
         <Button
           label={`Show ${history.length - entriesShown} older`}

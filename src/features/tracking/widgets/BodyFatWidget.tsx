@@ -7,7 +7,6 @@ import UniversalCalendar from "@shared/components/UniversalCalendar";
 import type { BodyFatEntryWithFields } from "../types";
 import {
   Button,
-  IconButton,
   Metric,
   Note,
   Placeholder,
@@ -18,6 +17,8 @@ import {
 import {
   formatDateLabel,
   hasTapeMeasurements,
+  monthLabel,
+  signedTrend,
   toFeetInches,
   toTrendPoints,
 } from "../utils";
@@ -175,23 +176,25 @@ export function renderBodyFatWidget(
       return (
         <ShowMoreList
           items={history}
-          renderItem={(entry, i, isLast) => (
-            <Row
-              key={entry.id ?? i}
-              title={formatDateLabel(readingDate(entry))}
-              meta={hasTapeMeasurements(entry) ? "US Navy method" : "Health Connect"}
-              value={`${readingPercent(entry).toFixed(1)} %`}
-              last={isLast}
-              right={
-                <IconButton
-                  glyph='🗑'
-                  label='Delete body fat reading'
-                  tone='danger'
-                  onPress={() => deleteBodyFatEntry(entry)}
-                />
-              }
-            />
-          )}
+          groupBy={(entry) => monthLabel(readingDate(entry))}
+          renderItem={(entry, i, isLast) => {
+            const older = history[i + 1];
+            return (
+              <Row
+                title={formatDateLabel(readingDate(entry))}
+                meta={hasTapeMeasurements(entry) ? "US Navy method" : "Health Connect"}
+                value={`${readingPercent(entry).toFixed(1)} %`}
+                trend={
+                  older
+                    ? signedTrend(readingPercent(entry) - readingPercent(older), colors)
+                    : undefined
+                }
+                last={isLast}
+                onDelete={() => deleteBodyFatEntry(entry)}
+                deleteLabel='Delete body fat reading'
+              />
+            );
+          }}
         />
       );
 

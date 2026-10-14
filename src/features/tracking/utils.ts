@@ -17,6 +17,41 @@ export function formatDateLabel(isoStr: string | null | undefined): string {
   return date ? formatDate(date) : "Unknown date";
 }
 
+export function monthLabel(isoStr: string | null | undefined): string {
+  const date = parseDate(isoStr);
+  return date
+    ? date.toLocaleDateString(undefined, { month: "long", year: "numeric" })
+    : "Unknown date";
+}
+
+export function dayLabel(
+  isoStr: string | null | undefined,
+  now: Date = new Date(),
+): string {
+  const date = parseDate(isoStr);
+  if (!date) return "Unknown date";
+  const days = daysSinceLocal(date, now);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return date.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    ...(date.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
+  });
+}
+
+/** Change vs the previous reading. Colored like the weight trend: a rise reads as a warning. */
+export function signedTrend(
+  diff: number,
+  colors: { readonly textMuted: string; readonly error: string; readonly success: string },
+): { text: string; tone: string } {
+  if (Math.abs(diff) < 0.05) return { text: "→ 0.0", tone: colors.textMuted };
+  return diff > 0
+    ? { text: `↗ +${diff.toFixed(1)}`, tone: colors.error }
+    : { text: `↘ ${diff.toFixed(1)}`, tone: colors.success };
+}
+
 export function buildLocalISOForDate(date: Date, timeStr = "09:00"): string {
   const dateStr = toDateString(date);
   return `${dateStr}T${timeStr}:00`;

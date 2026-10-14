@@ -92,11 +92,12 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     tapTab("Home", "Tap Home."),
     card("🏠", "Your Home board", "Next Workout shows the day you'll train next, Weekly Progress your week at a glance, Workout History every finished session, and Streak how many weeks in a row you've trained."),
     spot("Home", "home.changeDay", "Change Day picks which program day you'll train next.", "Once you have a plan, Change Day on the Next Workout card picks the day you'll train next."),
-    checklist("Finished days lock. Try the locked-day actions.", [
-      ["✓", "Day 1 — Push · Locked", "A finished day locks, so the workout you logged can't be changed by accident."],
+    checklist("Finished days are marked Done. Try the finished-day actions.", [
+      ["✓", "Day 1: Push · Done", "A finished day is locked, so the workout you logged can't be changed by accident."],
       ["👀", "Tap to view", "Opens the finished session with every set, weight and rep."],
       ["🔓", "Unlock", "Settings → Workout → Unlock Single Day unlocks one day if you need to fix something."],
     ]),
+    card("🗓️", "Log a past workout", "Forgot to log at the gym? Log a past workout on Home lets you pick the day you trained and log its sets afterwards, without set times or rest."),
     card("🧩", "Widgets from other screens", "Home can also show widgets from any other screen. The Widgets chapter shows you how."),
   ]),
   plan: chapter("plan", "📋", "Plan", [
@@ -120,15 +121,17 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     card("📊", "Session at a glance", "The Day, Total Sets, Progress and Session Stats widgets, plus the stats ticker, keep score while you train."),
     practice("Log a set: enter the weight and reps, rate the effort, then save. Tap Use it to copy last time's numbers.", { type: "logSet" }),
     checklist("Build the day as you go.", [
-      ["➕", "Add Sets", "Adds more sets to an exercise, and − removes one."],
-      ["🏋️", "Add Exercise", "Adds an exercise to today, from the library or one of your own."],
+      ["➕", "Add Sets", "Adds more sets to an exercise, and − removes one. Undo takes back a set you just added."],
+      ["🏋️", "Add Exercise", "Adds an exercise to today, from the library, by muscle, or one of your own."],
       ["💡", "Suggestions", "One tap adds a suggested exercise for muscles you haven't trained yet."],
+      ["⚖️", "kg or lbs", "Switch the unit while logging a set. Each exercise remembers its own."],
       ["🔧", "Machines", "Save the machines at your gym and pick one per exercise, so your weights stay comparable."],
       ["✏️", "Edit a set", "Tap a logged set to fix its weight, reps or notes, or to delete it."],
     ]),
     checklist("Rest between sets.", [
       ["⏱️", "Presets", "Choose a rest reminder such as 1:30 or 3:00."],
-      ["🔢", "Custom", "Type any number of seconds."],
+      ["🔢", "Custom", "Type seconds, or minutes and seconds such as 1:30."],
+      ["⏰", "Alarm", "Ring full screen like an alarm clock when rest is over, instead of a notification."],
       ["🔕", "Turn Off", "No reminder until you choose one again."],
     ]),
     checklist("OwnGains notices when you beat your best.", [
@@ -137,7 +140,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     ]),
     spot("Workout", "workout.addExercise", "Add Exercise adds a movement to today's workout.", "Once a day is loaded, Add Exercise sits below the exercise list."),
     card("🔄", "Change day mid-workout", "Picked the wrong day? You can change it mid-workout, and exercises you've already logged come with you."),
-    spot("Workout", "workout.complete", "Complete workout ends the session and locks the day.", "During a session, Complete workout at the bottom ends it and locks the day."),
+    spot("Workout", "workout.complete", "Complete workout ends the session and marks the day Done.", "During a session, Complete workout at the bottom ends it and marks the day Done."),
     card("📶", "Offline is fine", "Sessions logged without a connection sync on their own when you're back online."),
   ]),
   progress: chapter("progress", "📊", "Progress", [
@@ -192,7 +195,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     ]),
     checklist("Never miss a dose.", [
       ["🔔", "Reminders", "Choose how many doses a day and at what time."],
-      ["📳", "Notification type", "A quiet notification or a louder alert."],
+      ["⏰", "Notification or Alarm", "A notification, or an Alarm that rings full screen like a clock alarm until you Snooze or Dismiss it."],
       ["🔋", "Battery settings", "On phones that delay notifications to save battery, OwnGains tells you once which settings to change."],
     ]),
   ]),
@@ -231,12 +234,13 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
   widgets: chapter("widgets", "🧩", "Widgets", [
     practice("Pull down with two fingers anywhere on a board to open its widget gallery.", { type: "twoFingerPull" }),
     spot("Home", "widgets.edit", "Or tap here to add, reorder, resize or remove widgets.", "At the bottom of every board, Add or edit widgets opens the same panel."),
+    card("↩️", "Start over", "Tap Done editing when you're finished. The widget gallery can also restore a board's default widgets."),
     card("🧩", "Every screen has its own board", "Home, Workout, Plan, Progress, Friends and every Track sub-tab each have their own widgets."),
   ]),
   settings: chapter("settings", "⚙️", "Settings", [
     tapTab("Settings", "Tap Settings."),
     checklist("Tune how OwnGains works.", [
-      ["👤", "Profile", "Your name, height and details, plus Change Password when you're online."],
+      ["👤", "Profile", "Your name, height, details and profile photo, plus Change Password when you're online."],
       ["🕐", "Use Manual Time", "Enter set times yourself instead of using the clock."],
       ["🏆", "PR Celebration", "Turn the personal-record celebration on or off."],
       ["📈", "Auto-Progression Prompt", "Turn the add-weight suggestion on or off."],
@@ -248,7 +252,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     spot("Settings", "settings.sync", "Sync Now sends anything waiting to your server.", "Settings → Storage and Sync shows your server, and Sync Now whenever something is waiting."),
     checklist("Your data, your call.", [
       ["🔓", "Locked Days", "Unlock one day to fix it."],
-      ["✏️", "Edit workout history", "Correct past sessions."],
+      ["✏️", "Edit workout history", "Correct past sessions, or rename an exercise and set its muscles across your whole split."],
       ["📤", "Export My Data", "Save everything to an encrypted file."],
       ["📥", "Restore Data", "Load a backup or a Strength Level export."],
       ["🐞", "Crash reports", "Choose whether crash reports are sent."],

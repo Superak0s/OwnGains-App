@@ -69,7 +69,7 @@ Split creation is a core feature. You can start from a template, from a spreadsh
 
 ### 📈 Track your body
 
-Every tracking sub-tab is its own widget board: the calendar, the "today" card, the history list, and the charts are all widgets you can add, remove, resize, and reorder.
+Every tracking sub-tab is its own widget board: the calendar, the "today" card, the history list, and the charts are all widgets you can add, remove and reorder. Charts can also be made larger, and the "today" card half-width.
 
 - **Weight**: daily weigh-ins in your preferred unit (kg/lb), with history and a trend chart.
 - **Progress photos**: capture and store photos privately, with gallery view, zoomable full-screen view, side-by-side comparison, and muscle-group tagging. Photos are compressed on capture.

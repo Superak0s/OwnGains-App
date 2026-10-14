@@ -61,12 +61,14 @@ describe("an account with entries", () => {
   it("shows today's logged water", async () => {
     await hydrationApi.logHydration(400, undefined, new Date().toISOString())
     await openTab("hydration")
+    await fireEvent.press(await screen.findByLabelText(/^Today, \d+ entr/))
     expect(await screen.findByText("400 ml")).toBeOnTheScreen()
   })
 
   it("shows a logged meal once the entries finish loading", async () => {
     await macrosTrackingApi.logMacros({ name: "Oats", protein: 12, carbs: 60, fat: 5, calories: 330 })
     await openTab("macros")
+    await fireEvent.press(await screen.findByLabelText(/^Today, \d+ entr/))
     expect(await screen.findByText(/Oats/)).toBeOnTheScreen()
     expect(screen.queryByText(/Nothing logged yet/)).toBeNull()
   })
@@ -108,6 +110,7 @@ describe("changing data", () => {
   it("removes a water entry after the confirm", async () => {
     await hydrationApi.logHydration(400, undefined, new Date().toISOString())
     await openTab("hydration")
+    await fireEvent.press(await screen.findByLabelText(/^Today, \d+ entr/))
     await fireEvent.press(await screen.findByLabelText("Delete water entry"))
     await fireEvent.press(await screen.findByText("Delete"))
     await waitFor(() => expect(screen.queryByText("400 ml")).toBeNull())

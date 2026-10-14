@@ -1,8 +1,8 @@
 • Supplement and rest alarms ring full screen, even on silent, until dismissed
-• Log a past workout for any day from Home, without timings
-• Faster logging: weight and reps first, Undo for added sets, auto-filled muscles
+• Log a past workout for any day from Home
+• Faster logging: weight and reps first, Undo for added sets
 • Each exercise remembers its own kg or lbs unit
-• Restore default widgets, clearer editing
+• Tracking history grouped by day or month, with totals and changes
 • Profile photos sync across devices and show for friends
-• New reminder time picker
-• A simpler Settings menu, plus accessibility and error message fixes
+• Restore default widgets, new reminder time picker
+• Simpler Settings, updated tutorial, accessibility and widget fixes
