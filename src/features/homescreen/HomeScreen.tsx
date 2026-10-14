@@ -101,6 +101,7 @@ type NextWorkoutWidgetProps = {
   readonly hasActiveSession: () => boolean;
   readonly onChangeDay: () => void;
   readonly onGoToWorkout: () => void;
+  readonly onLogPastWorkout: () => void;
   readonly onCreatePlan: () => void;
   readonly styles: ReturnType<typeof makeStyles>;
 };
@@ -119,6 +120,7 @@ function NextWorkoutWidget({
   hasActiveSession,
   onChangeDay,
   onGoToWorkout,
+  onLogPastWorkout,
   onCreatePlan,
   styles,
 }: NextWorkoutWidgetProps): React.JSX.Element {
@@ -172,6 +174,16 @@ function NextWorkoutWidget({
           <Text style={styles.goToWorkoutButtonText}>{`${goLabel} →`}</Text>
         </TouchableOpacity>
       </View>
+      {!locked && !sessionActive && (
+        <TouchableOpacity
+          style={styles.logPastButton}
+          accessibilityRole='button'
+          accessibilityLabel='Log a past workout without timings'
+          onPress={onLogPastWorkout}
+        >
+          <Text style={styles.logPastButtonText}>Log a past workout</Text>
+        </TouchableOpacity>
+      )}
       {locked && (
         <Text style={styles.lockedHintText}>
           You finished this day. Pick another to keep training.
@@ -500,6 +512,7 @@ export default function HomeScreen(): React.JSX.Element {
     fetchSessionHistory,
     syncFromServer,
     hasActiveSession,
+    startWorkout,
     currentSessionId,
     userId,
     weightUnit,
@@ -512,6 +525,7 @@ export default function HomeScreen(): React.JSX.Element {
     "fetchSessionHistory",
     "syncFromServer",
     "hasActiveSession",
+    "startWorkout",
     "currentSessionId",
     "userId",
     "weightUnit",
@@ -645,6 +659,31 @@ export default function HomeScreen(): React.JSX.Element {
     [visibleDays, currentDay],
   );
 
+  const [pastWorkoutDate, setPastWorkoutDate] = useState<Date | null>(null);
+
+  const logPastWorkout = async (): Promise<void> => {
+    if (!pastWorkoutDate) return;
+    const startAt = new Date();
+    startAt.setFullYear(
+      pastWorkoutDate.getFullYear(),
+      pastWorkoutDate.getMonth(),
+      pastWorkoutDate.getDate(),
+    );
+    setPastWorkoutDate(null);
+    const sessionId = await startWorkout(true, startAt).catch(() => null);
+    if (sessionId) navigation.navigate("Workout");
+    else alert("Couldn't start", "Couldn't start the workout. Try again.", [{ text: "OK" }]);
+  };
+
+  const pickPastWorkoutDate = (date: Date): void => {
+    if (date <= new Date()) setPastWorkoutDate(date);
+  };
+
+  const pastWorkoutDayDecoration = (date: Date) =>
+    pastWorkoutDate && toDateString(date) === toDateString(pastWorkoutDate)
+      ? { backgroundColor: colors.accent, textColor: colors.textOnAccent }
+      : null;
+
   const renderWidgetContent = (
     instance: WidgetInstance<HomeWidgetType>,
   ): React.ReactNode => {
@@ -660,6 +699,7 @@ export default function HomeScreen(): React.JSX.Element {
             hasActiveSession={hasActiveSession}
             onChangeDay={openDayPicker}
             onGoToWorkout={() => navigation.navigate("Workout")}
+            onLogPastWorkout={() => setPastWorkoutDate(new Date())}
             onCreatePlan={() => navigation.navigate("Plan")}
             styles={styles}
           />
@@ -1152,6 +1192,21 @@ export default function HomeScreen(): React.JSX.Element {
               />
             ))
           )}
+        </ModalSheet>
+
+        <ModalSheet
+          visible={pastWorkoutDate !== null}
+          onClose={() => setPastWorkoutDate(null)}
+          title='Log a past workout'
+          subtitle='Pick the day you trained. Timings are not recorded.'
+          confirmText='Start logging'
+          onConfirm={() => void logPastWorkout()}
+        >
+          <UniversalCalendar
+            onDatePress={pickPastWorkoutDate}
+            initialView='month'
+            getDayDecoration={pastWorkoutDayDecoration}
+          />
         </ModalSheet>
 
         <ModalSheet
@@ -1691,6 +1746,18 @@ const makeStyles = (colors: ThemeColors) => {
       fontSize: 14,
       fontWeight: "600",
       textAlign: "center",
+    },
+    logPastButton: {
+      alignSelf: "center",
+      minHeight: 44,
+      justifyContent: "center",
+      paddingHorizontal: 12,
+    },
+    logPastButtonText: {
+      color: onTint,
+      fontSize: 13,
+      fontWeight: "600",
+      textDecorationLine: "underline",
     },
     lockedHintText: {
       marginTop: 8,

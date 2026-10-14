@@ -81,17 +81,18 @@ export const isDayLocked = (
   return !!lockedDays[dayNumber];
 };
 
+/** Local midnight of the Monday that starts `date`'s week, when weekly progress resets. */
+export const weekStart = (date: Date = new Date()): Date => {
+  const monday = new Date(date);
+  monday.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+};
+
 export const shouldResetForMonday = (
   lastResetDate: string | null,
 ): string | null => {
-  const today = new Date();
-
-  const thisMonday = new Date(today);
-  const daysFromMonday = (today.getDay() + 6) % 7;
-  thisMonday.setDate(today.getDate() - daysFromMonday);
-  thisMonday.setHours(0, 0, 0, 0);
-
-  const thisMondayString = toDateString(thisMonday);
+  const thisMondayString = toDateString(weekStart());
 
   // Any day of the week can trigger the reset: checking "is it Monday" means
   // missing that one day leaves everything locked for the rest of the week.

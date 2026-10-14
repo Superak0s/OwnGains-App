@@ -238,6 +238,7 @@ function WorkoutScreenBody({
     getExerciseRestTime,
     getLastSetExercise,
     workoutStartTime,
+    untimedSession,
     endWorkout,
     updateExerciseName,
     updateExerciseMachines,
@@ -269,6 +270,7 @@ function WorkoutScreenBody({
     "getExerciseRestTime",
     "getLastSetExercise",
     "workoutStartTime",
+    "untimedSession",
     "endWorkout",
     "updateExerciseName",
     "updateExerciseMachines",
@@ -524,7 +526,7 @@ function WorkoutScreenBody({
 
   const isCurrentDayLocked = isDayLocked(currentDay);
   useRestReminder({
-    enabled: !actAs,
+    enabled: !actAs && !untimedSession,
     workoutStartTime,
     isCurrentDayLocked,
     restReminderEnabled,
@@ -1867,8 +1869,10 @@ Note: ${existing.note}`;
     completedSetsCount,
     totalSetsCount,
   );
-  const estimatedRemaining = getEstimatedTimeRemaining(currentDay);
-  const estimatedEnd = getEstimatedEndTime(currentDay);
+  const estimatedRemaining = untimedSession
+    ? null
+    : getEstimatedTimeRemaining(currentDay);
+  const estimatedEnd = untimedSession ? null : getEstimatedEndTime(currentDay);
 
   const partnerParticipant = isInJointSession ? partner : null;
 
@@ -1959,6 +1963,13 @@ Note: ${existing.note}`;
         );
 
       case "session_stats":
+        if (untimedSession) {
+          return (
+            <Text style={styles.widgetLineMuted}>
+              Logging a past workout. Timings aren't recorded.
+            </Text>
+          );
+        }
         return (
           <SessionStatsWidget
             workoutStartTime={workoutStartTime}

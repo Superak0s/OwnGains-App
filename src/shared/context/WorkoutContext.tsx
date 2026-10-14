@@ -132,6 +132,7 @@ interface WorkoutContextValue {
   isLoading: boolean;
   timeBetweenSets: number;
   workoutStartTime: string | null;
+  untimedSession: boolean;
   currentSessionId: string | null;
   serverAnalytics: ServerAnalyticsType;
   useManualTime: boolean;
@@ -147,7 +148,7 @@ interface WorkoutContextValue {
   saveTimeBetweenSets: (seconds: number) => Promise<void>;
   toggleUseManualTime: (enabled: boolean) => Promise<void>;
   hasActiveSession: () => boolean;
-  startWorkout: () => Promise<string | null>;
+  startWorkout: (untimed?: boolean, startAt?: Date) => Promise<string | null>;
   endWorkout: (autoCompleted?: boolean) => Promise<boolean>;
   saveWeightUnit: (unit: "kg" | "lbs") => Promise<void>;
 
@@ -406,6 +407,7 @@ export const WorkoutProvider = ({
   const [restHistory, setRestHistory] = useState<RestHistory>({});
 
   const [workoutStartTime, setWorkoutStartTime] = useState<string | null>(null);
+  const [untimedSession, setUntimedSession] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [lastSetEndTime, setLastSetEndTime] = useState<string | null>(null);
   const [lastActivityTime, setLastActivityTime] = useState<number | null>(null);
@@ -558,6 +560,8 @@ export const WorkoutProvider = ({
   const sessionOps = useSessionOperations({
     workoutStartTime,
     setWorkoutStartTime,
+    untimedSession,
+    setUntimedSession,
     currentSessionId,
     setCurrentSessionId,
     lastSetEndTime,
@@ -874,6 +878,7 @@ export const WorkoutProvider = ({
     setLockedDays({});
     setUnlockedOverrides({});
     setWorkoutStartTime(null);
+    setUntimedSession(false);
     setCurrentSessionId(null);
     setLastSetEndTime(null);
     setLastActivityTime(null);
@@ -967,6 +972,7 @@ export const WorkoutProvider = ({
           STORAGE_KEYS.TIME_BETWEEN_SETS,
           STORAGE_KEYS.REST_BY_EXERCISE,
           STORAGE_KEYS.WORKOUT_START_TIME,
+          STORAGE_KEYS.UNTIMED_SESSION,
           STORAGE_KEYS.CURRENT_SESSION_ID,
           STORAGE_KEYS.USE_MANUAL_TIME,
           STORAGE_KEYS.LAST_ACTIVITY_TIME,
@@ -1044,6 +1050,9 @@ export const WorkoutProvider = ({
       applyIfSet(timeBetween, (v) => applyIfSet(intOrNull(v), setTimeBetweenSets));
       applyIfSet(storedRestHistory, setRestHistory);
       applyIfSet(startTimeUsable, setWorkoutStartTime);
+      setUntimedSession(
+        !!startTimeUsable && json<boolean>(STORAGE_KEYS.UNTIMED_SESSION) === true,
+      );
       if (startTimeUsable) {
         applyIfSet(json<DayOverride>(STORAGE_KEYS.SESSION_DAY_OVERRIDE), setDayOverride);
       }
@@ -1433,7 +1442,8 @@ export const WorkoutProvider = ({
   // the foreground, so it can't be relied on to catch the same moment.
   const { subscribe: subscribeSocket, send: sendSocket } = socket;
   useEffect(() => {
-    if (!currentSessionId || actAs) return;
+    // A past workout's sets are stamped at its start, so the server sees it as idle from the first set.
+    if (!currentSessionId || actAs || untimedSession) return;
     return subscribeSocket((msg) => {
       if (msg.type !== "session_auto_ended") return;
       if (String(msg.sessionId) !== currentSessionId) return;
@@ -1441,14 +1451,15 @@ export const WorkoutProvider = ({
       // normal path (day locked, analytics refreshed) rather than a second one.
       void sessionOpsRef.current.endWorkout(true);
     });
-  }, [currentSessionId, actAs, subscribeSocket]);
+  }, [currentSessionId, actAs, untimedSession, subscribeSocket]);
 
   // Depend on sendSocket (stable across messages) rather than the socket
   // object itself (a fresh reference on every message) so these (and the
   // memoised value below, which depends on them) don't churn on every
   // incoming WebSocket message.
   const startWorkout = useCallback(
-    (): Promise<string | null> => sessionOps.startWorkout(),
+    (untimed?: boolean, startAt?: Date): Promise<string | null> =>
+      sessionOps.startWorkout(untimed, startAt),
     [sessionOps],
   );
 
@@ -1523,6 +1534,7 @@ export const WorkoutProvider = ({
       isLoading,
       timeBetweenSets,
       workoutStartTime,
+      untimedSession,
       currentSessionId,
       serverAnalytics,
       useManualTime,
@@ -1581,6 +1593,7 @@ export const WorkoutProvider = ({
       isLoading,
       timeBetweenSets,
       workoutStartTime,
+      untimedSession,
       currentSessionId,
       serverAnalytics,
       useManualTime,

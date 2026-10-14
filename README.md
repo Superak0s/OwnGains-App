@@ -43,6 +43,7 @@ Split creation is a core feature. You can start from a template, from a spreadsh
 ### 🏋️ Track your workouts
 
 - **Log sets as you lift**: weight, reps, notes, and warm-up flags, set by set. Quick-added sets can be undone, and each exercise remembers its own kg or lb unit.
+- **Log a past workout**: forgot to log, or would rather log later? "Log a past workout" on Home lets you pick the day you trained, then opens a normal workout session that records your sets but no durations, rest or session time.
 - **Reps in reserve**: rate each set's effort as reps left in the tank (sets logged with the old RPE scale are converted automatically).
 - **Auto-progression prompt**: the next set's weight is suggested from your last set's reps and reps in reserve (toggleable).
 - **Demonstration photos**: reference photos for an exercise, with your own alignment guides drawn over them. Switchable off, and then nothing is downloaded at all.

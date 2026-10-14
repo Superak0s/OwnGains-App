@@ -105,6 +105,7 @@ export const STORAGE_KEYS = {
   REST_REMINDER_ALARM: "restReminderAlarm",
   REST_BY_EXERCISE: "restByExercise",
   WORKOUT_START_TIME: "workoutStartTime",
+  UNTIMED_SESSION: "untimedSession",
   CURRENT_SESSION_ID: "currentSessionId",
   USE_MANUAL_TIME: "useManualTime",
   PENDING_SYNCS: "pendingSyncs",

@@ -6,6 +6,7 @@ import {
   isSessionGone,
 } from "../../../utils/session";
 import { generateId } from "../../../utils/format";
+import { weekStart } from "../../../utils/dayCompletion";
 import { workoutApi as defaultWorkoutApi } from "@features/workout/services/index";
 import type { WorkoutApi } from "@features/workout/services/workoutApiFactory";
 import type { WorkoutData, PendingSync } from "../../types";
@@ -37,6 +38,9 @@ export const isTraineeWriteRefused = (error: unknown): error is Error =>
 interface UseSessionOperationsOptions {
   workoutStartTime: string | null;
   setWorkoutStartTime: (time: string | null) => void;
+  /** A workout logged after the fact: every set and the end are stamped at the start, so no durations or rest are recorded. */
+  untimedSession?: boolean;
+  setUntimedSession?: (untimed: boolean) => void;
   currentSessionId: string | null;
   setCurrentSessionId: (id: string | null) => void;
   lastSetEndTime: string | null;
@@ -65,6 +69,7 @@ interface UseSessionOperationsOptions {
     LOCKED_DAYS: string;
     UNLOCKED_OVERRIDES: string;
     WORKOUT_START_TIME: string;
+    UNTIMED_SESSION?: string;
     CURRENT_SESSION_ID: string;
     COMPLETED_DAYS: string;
     PENDING_SYNCS: string;
@@ -90,7 +95,7 @@ export interface SetDetailsOptions {
 interface UseSessionOperationsReturn {
   updateLastActivityTime: () => Promise<void>;
   clearActiveWorkout: () => Promise<void>;
-  startWorkout: () => Promise<string | null>;
+  startWorkout: (untimed?: boolean, startAt?: Date) => Promise<string | null>;
   endWorkout: (autoCompleted?: boolean) => Promise<boolean>;
   saveSetDetails: (
     dayNumber: number,
@@ -110,6 +115,8 @@ interface UseSessionOperationsReturn {
 export const useSessionOperations = ({
   workoutStartTime,
   setWorkoutStartTime,
+  untimedSession = false,
+  setUntimedSession,
   currentSessionId,
   setCurrentSessionId,
   lastSetEndTime,
@@ -183,8 +190,12 @@ export const useSessionOperations = ({
       await removeFromStorage(STORAGE_KEYS.CURRENT_SESSION_ID, userId);
       await removeFromStorage(STORAGE_KEYS.LAST_ACTIVITY_TIME, userId);
       await removeFromStorage(STORAGE_KEYS.LAST_SET_END_TIME, userId);
+      if (STORAGE_KEYS.UNTIMED_SESSION) {
+        await removeFromStorage(STORAGE_KEYS.UNTIMED_SESSION, userId);
+      }
 
       setWorkoutStartTime(null);
+      setUntimedSession?.(false);
       setCurrentSessionId(null);
       setLastSetEndTime(null);
       setLastActivityTime(null);
@@ -198,6 +209,7 @@ export const useSessionOperations = ({
     STORAGE_KEYS,
     userId,
     setWorkoutStartTime,
+    setUntimedSession,
     setCurrentSessionId,
     setLastSetEndTime,
     setLastActivityTime,
@@ -212,22 +224,28 @@ export const useSessionOperations = ({
   // session's value right after startWorkout clears it, so the first set of a
   // fresh session would be timed from the last set of the old one.
   const sessionStartTimeRef = useRef<string | null>(null);
-  const startWorkoutImplRef = useRef<(() => Promise<string | null>) | null>(
-    null,
-  );
+  const startWorkoutImplRef = useRef<
+    ((untimed: boolean, startAt?: Date) => Promise<string | null>) | null
+  >(null);
 
-  const startWorkout = useCallback((): Promise<string | null> => {
+  const startWorkout = useCallback(
+    (untimed = false, startAt?: Date): Promise<string | null> => {
     if (startWorkoutInFlightRef.current) {
       return startWorkoutInFlightRef.current;
     }
-    const promise = startWorkoutImplRef.current!().finally(() => {
+    const promise = startWorkoutImplRef.current!(untimed, startAt).finally(() => {
       startWorkoutInFlightRef.current = null;
     });
     startWorkoutInFlightRef.current = promise;
     return promise;
-  }, []);
+    },
+    [],
+  );
 
-  const startWorkoutImpl = useCallback(async (): Promise<string | null> => {
+  const startWorkoutImpl = useCallback(async (
+    untimed: boolean,
+    startAt?: Date,
+  ): Promise<string | null> => {
     try {
       if (workoutStartTime && currentSessionId) {
         console.debug(
@@ -255,10 +273,14 @@ export const useSessionOperations = ({
         return null;
       }
 
-      const startTime = getLocalISOString();
+      const startTime = getLocalISOString(startAt);
       sessionStartTimeRef.current = startTime;
       await saveToStorage(STORAGE_KEYS.WORKOUT_START_TIME, startTime, userId);
       setWorkoutStartTime(startTime);
+      if (untimed && STORAGE_KEYS.UNTIMED_SESSION) {
+        await saveToStorage(STORAGE_KEYS.UNTIMED_SESSION, true, userId);
+        setUntimedSession?.(true);
+      }
 
       await updateLastActivityTime();
 
@@ -340,8 +362,15 @@ export const useSessionOperations = ({
         );
       }
 
-      await removeFromStorage(STORAGE_KEYS.LAST_SET_END_TIME, userId);
-      setLastSetEndTime(null);
+      if (untimed) {
+        // A backdated start would read as idle, so the inactivity sweep runs from now.
+        const now = getLocalISOString();
+        await saveToStorage(STORAGE_KEYS.LAST_SET_END_TIME, now, userId);
+        setLastSetEndTime(now);
+      } else {
+        await removeFromStorage(STORAGE_KEYS.LAST_SET_END_TIME, userId);
+        setLastSetEndTime(null);
+      }
       return newSessionId;
     } catch (error) {
       metric.count("workout.session_start_failed");
@@ -362,6 +391,7 @@ export const useSessionOperations = ({
     saveToStorage,
     removeFromStorage,
     setWorkoutStartTime,
+    setUntimedSession,
     setCurrentSessionId,
     setLastSetEndTime,
     updateLastActivityTime,
@@ -375,9 +405,9 @@ export const useSessionOperations = ({
   startWorkoutImplRef.current = startWorkoutImpl;
 
   const endServerSession = useCallback(
-    async (sessionId: string, auto: boolean): Promise<void> => {
+    async (sessionId: string, auto: boolean, endTime: string): Promise<void> => {
       try {
-        await workoutApi.endSession(sessionId, getLocalISOString());
+        await workoutApi.endSession(sessionId, endTime);
         console.info("✓ Session ended");
         metric.count("workout.session_ended", 1, {
           attributes: { outcome: "server", auto },
@@ -393,7 +423,7 @@ export const useSessionOperations = ({
         await addPendingSync({
           type: "endSession",
           data: { sessionId },
-          timestamp: getLocalISOString(),
+          timestamp: endTime,
         });
         console.warn("⚠ endSession queued for sync");
         metric.count("workout.session_ended", 1, {
@@ -410,6 +440,10 @@ export const useSessionOperations = ({
       try {
         const sessionIdToEnd = currentSessionId;
         const isLocal = isLocalSessionId(sessionIdToEnd);
+        const endTime =
+          untimedSession && workoutStartTime
+            ? workoutStartTime
+            : getLocalISOString();
 
         if (isLocal && sessionIdToEnd) {
           // Queued against the local id on purpose: the replay remaps it to the
@@ -418,7 +452,7 @@ export const useSessionOperations = ({
           await addPendingSync({
             type: "endSession",
             data: { sessionId: sessionIdToEnd },
-            timestamp: getLocalISOString(),
+            timestamp: endTime,
           });
           console.warn(
             "⚠ Local session, will be ended when startSession syncs",
@@ -427,13 +461,24 @@ export const useSessionOperations = ({
             attributes: { outcome: "local", auto: autoCompleted },
           });
         } else if (sessionIdToEnd) {
-          await endServerSession(sessionIdToEnd, autoCompleted);
+          await endServerSession(sessionIdToEnd, autoCompleted, endTime);
         }
 
         // After the session end, not before: a trainee write refused offline
         // throws out of the branches above, and a day locked first would stay
         // locked over a workout that never ended.
-        await lockDay(currentDay);
+        // A workout logged into an earlier week must not count toward this one.
+        if (
+          untimedSession &&
+          workoutStartTime &&
+          new Date(workoutStartTime) < weekStart()
+        ) {
+          const { [currentDay]: _logged, ...rest } = completedDays;
+          await saveToStorage(STORAGE_KEYS.COMPLETED_DAYS, rest, userId);
+          setCompletedDays(rest);
+        } else {
+          await lockDay(currentDay);
+        }
         await clearActiveWorkout();
         if (workoutStartTime) {
           const exercises = Object.values(completedDays[currentDay] ?? {});
@@ -476,7 +521,12 @@ export const useSessionOperations = ({
       currentDay,
       currentSessionId,
       workoutStartTime,
+      untimedSession,
       completedDays,
+      setCompletedDays,
+      saveToStorage,
+      userId,
+      STORAGE_KEYS,
       pendingSyncs,
       addPendingSync,
       lockDay,
@@ -512,10 +562,15 @@ export const useSessionOperations = ({
         // session, so avoid writing it twice in the same action.
         if (!startingNewSession) await updateLastActivityTime();
 
-        const setStartTime = startingNewSession
-          ? (sessionStartTimeRef.current ?? getLocalISOString())
-          : lastSetEndTime || workoutStartTime || getLocalISOString();
-        const setEndTime = getLocalISOString();
+        const now = getLocalISOString();
+        const untimedAt =
+          untimedSession && !startingNewSession ? workoutStartTime : null;
+        const setStartTime =
+          untimedAt ??
+          (startingNewSession
+            ? (sessionStartTimeRef.current ?? now)
+            : lastSetEndTime || workoutStartTime || now);
+        const setEndTime = untimedAt ?? now;
 
         const day = workoutData?.days?.find((d) => d.dayNumber === dayNumber);
         const exercise =
@@ -626,8 +681,9 @@ export const useSessionOperations = ({
           });
         }
 
-        await saveToStorage(STORAGE_KEYS.LAST_SET_END_TIME, setEndTime, userId);
-        setLastSetEndTime(setEndTime);
+        // Real time even when untimed: the stale-session sweep reads it.
+        await saveToStorage(STORAGE_KEYS.LAST_SET_END_TIME, now, userId);
+        setLastSetEndTime(now);
       } catch (error) {
         if (isTraineeWriteRefused(error)) {
           if (optimisticallyCompleted) {
@@ -654,6 +710,7 @@ export const useSessionOperations = ({
     [
       currentSessionId,
       workoutStartTime,
+      untimedSession,
       lastSetEndTime,
       completedDays,
       setCompletedDays,

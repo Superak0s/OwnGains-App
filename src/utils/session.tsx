@@ -5,11 +5,10 @@ import type { CompletedDays } from "./dayCompletion"
 export const INACTIVITY_THRESHOLD_MS = 30 * 60 * 1000
 
 /**
- * Current time as an ISO-8601 string that preserves the device's local
- * timezone offset (instead of the UTC "Z" that Date.toISOString() emits).
+ * `now` (the current time by default) as an ISO-8601 string that preserves the
+ * device's local timezone offset (instead of the UTC "Z" that Date.toISOString() emits).
  */
-export const getLocalISOString = (): string => {
-  const now = new Date()
+export const getLocalISOString = (now: Date = new Date()): string => {
   const offsetMs = now.getTimezoneOffset() * 60 * 1000
   const localTime = new Date(now.getTime() - offsetMs)
   const offsetMinutes = Math.abs(now.getTimezoneOffset())
