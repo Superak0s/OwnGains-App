@@ -158,7 +158,7 @@ describe("Clear All Data", () => {
 
 describe("Delete Account", () => {
   const openAndSubmit = async (password: string) => {
-    await press("Account")
+    await fireEvent.press(screen.getByLabelText(/Open account settings/))
     await press("Delete my account permanently")
     await fireEvent.changeText(screen.getByLabelText("Current password to confirm account deletion"), password)
     await pressText("Delete Forever")
@@ -166,7 +166,7 @@ describe("Delete Account", () => {
 
   it("deletes nothing when the sheet is cancelled", async () => {
     await mount()
-    await press("Account")
+    await fireEvent.press(screen.getByLabelText(/Open account settings/))
     await press("Delete my account permanently")
     const cancels = screen.getAllByLabelText("Cancel")
     await fireEvent.press(cancels[cancels.length - 1])
@@ -197,8 +197,8 @@ describe("Delete Account", () => {
   it("does not delete an offline profile until DELETE is typed", async () => {
     ;(isServerless as jest.Mock).mockResolvedValue(true)
     await mount()
-    await screen.findByLabelText("Profile")
-    await press("Profile")
+    await screen.findByLabelText(/Open account settings/)
+    await fireEvent.press(screen.getByLabelText(/Open account settings/))
     await press("Delete my account permanently")
     await pressText("Delete Forever")
     expect(deleteAccount).not.toHaveBeenCalled()

@@ -31,7 +31,7 @@ import {
   restoreProfileAvatar,
   saveProfileAvatar,
 } from "./utils/profileAvatar";
-import { profilePhotoApi } from "@features/auth/services";
+import { profilePhotoApi , authService } from "@features/auth/services";
 import {
   saveToStorage,
   loadFromStorage,
@@ -93,7 +93,6 @@ import {
 } from "./utils/demoData";
 import { clearDemoTracking, fillDemoTracking } from "./utils/demoTracking";
 import { doMigrateOffline as runOfflineMigration } from "./utils/offlineMigration";
-import { authService } from "@features/auth/services/index";
 import { passwordPolicyError } from "@features/auth/utils/passwordPolicy";
 import { GoogleSignInCancelledError } from "@features/auth/googleSignIn";
 import { KOFI_URL } from "@shared/distribution";
@@ -3030,7 +3029,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
   };
   const showDeveloper = __DEV__ || isAdmin;
   const indexGroups: SettingsPage[][] = [
-    ["account", "workout", "appearance"],
+    ["workout", "appearance"],
     ["storage", "privacy"],
     showDeveloper ? ["about", "developer"] : ["about"],
   ];
