@@ -1,8 +1,8 @@
 • Supplement and rest alarms ring full screen, even on silent, until dismissed
 • Log a past workout for any day from Home
+• Charts project your path to a goal
 • Faster logging: weight and reps first, Undo for added sets
 • Each exercise remembers its own kg or lbs unit
 • Tracking history grouped by day or month, with totals and changes
 • Profile photos sync across devices and show for friends
-• Restore default widgets, new reminder time picker
-• Simpler Settings, updated tutorial, accessibility and widget fixes
+• Simpler Settings, new reminder time picker, accessibility and widget fixes

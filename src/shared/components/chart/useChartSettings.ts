@@ -24,7 +24,7 @@ export function useChartSettings(
     if (!key) return;
     let cancelled = false;
     loadFromStorage<Partial<ChartSettings>>(key, userId).then((stored) => {
-      if (!cancelled && stored) setSaved(stored);
+      if (!cancelled && stored) setSaved({ ...stored, projection: false });
     });
     return () => {
       cancelled = true;
@@ -40,7 +40,8 @@ export function useChartSettings(
     (patch: Partial<ChartSettings>) => {
       const next = { ...saved, ...patch };
       setSaved(next);
-      if (key) saveToStorage(key, next, userId);
+      // Projection is a quick look, so every visit starts on the history.
+      if (key) saveToStorage(key, { ...next, projection: undefined }, userId);
     },
     [key, saved, userId],
   );

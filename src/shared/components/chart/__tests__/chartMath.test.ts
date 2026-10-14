@@ -8,6 +8,8 @@ import {
   downsample,
   filterRange,
   goalEta,
+  goalMessage,
+  projectionPoints,
   rangeWindow,
   recordIndices,
   toCsv,
@@ -115,6 +117,44 @@ describe("goalEta", () => {
   });
 });
 
+describe("projectionPoints", () => {
+  const points = [day(1, 90), day(11, 89), day(21, 88)];
+
+  it("steps weekly along the fitted line from today to the goal", () => {
+    const projected = projectionPoints(points, 85, new Date(2026, 0, 22, 15));
+    expect(projected[0].date).toEqual(new Date(2026, 0, 22));
+    expect(projected[0].value).toBeCloseTo(87.94);
+    expect(projected[1].date).toEqual(new Date(2026, 0, 29));
+    expect(projected[1].value).toBeCloseTo(87.24);
+    expect(projected.at(-1)).toEqual({ date: goalEta(points, 85), value: 85 });
+  });
+
+  it("steps daily when the goal is close", () => {
+    const projected = projectionPoints(points, 87.5, new Date(2026, 0, 21));
+    expect(projected.map((p) => p.date.getDate())).toEqual([21, 22, 23, 24, 25, 26]);
+  });
+
+  it("is empty when the goal is out of reach or already passed", () => {
+    expect(projectionPoints(points, 95)).toEqual([]);
+    expect(projectionPoints(points, 85, new Date(2027, 0, 1))).toEqual([]);
+  });
+});
+
+describe("goalMessage", () => {
+  const fmt = (v: number) => `${v}kg`;
+
+  it("names the projected date when trending toward the goal", () => {
+    const eta = goalEta([day(1, 90), day(11, 89), day(21, 88)], 85);
+    expect(goalMessage(eta, 85, fmt)).toMatch(/^At this rate you reach 85kg around /);
+  });
+
+  it("says so when not trending toward the goal", () => {
+    expect(goalMessage(null, 70, fmt)).toBe(
+      "Not moving toward 70kg in this range.",
+    );
+  });
+});
+
 describe("yBounds", () => {
   it("rounds an auto axis out to nice steps around the data", () => {
     expect(yBounds([80.4, 83.2], { yAxis: "auto" })).toEqual({ min: 80, max: 84, step: 1, sections: 4 });
@@ -192,5 +232,29 @@ describe("chartModel", () => {
     expect(model.main).toEqual([3, 4]);
     expect(model.trend).toEqual([3, 3.5]);
     expect(model.compare).toEqual([2, 3]);
+  });
+
+  it("shows expected values instead of the history in projection mode", () => {
+    const points = [day(1, 90), day(11, 89), day(21, 88)];
+    const now = new Date(2026, 0, 22);
+    const model = chartModel(points, { ...settings, goal: 85, trend: "ma7", projection: true }, { now });
+    expect(model.projected).toBe(true);
+    expect(model.dates[0]).toEqual(now);
+    expect(model.dates.at(-1)).toEqual(model.eta);
+    expect(model.main.at(-1)).toBe(85);
+    expect(model.trend).toBeNull();
+  });
+
+  it("keeps the history when projection is off or the goal is out of reach", () => {
+    const points = [day(1, 90), day(11, 89), day(21, 88)];
+    expect(chartModel(points, { ...settings, goal: 85 }).projected).toBe(false);
+    expect(chartModel(points, { ...settings, goal: 95, projection: true }).projected).toBe(false);
+  });
+
+  it("projects from the full range even when downsampled", () => {
+    const points = Array.from({ length: 30 }, (_, i) => day(i + 1, 90 - i * 0.1));
+    const full = chartModel(points, { ...settings, goal: 85 });
+    const small = chartModel(points, { ...settings, goal: 85 }, { maxPoints: 5 });
+    expect(small.eta).toEqual(full.eta);
   });
 });

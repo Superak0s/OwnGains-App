@@ -162,7 +162,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     checklist("Tap any chart to open it full screen.", [
       ["📆", "Range", "Pick 1W to All, or your own dates."],
       ["🔍", "Zoom", "Pinch to zoom, double tap to reset, and tap a point to see its value or open that day's workout."],
-      ["📉", "Trend and goal", "Add a 7 day average or trend line, a goal line with an estimated date, and record markers."],
+      ["📉", "Trend and goal", "Add a 7 day average or trend line and record markers. The goal button under a line chart shows when you reach your goal at your current rate, and the Projection button in the chart's corner charts the expected values until then."],
       ["🔁", "Compare", "Show the previous period or last year beside this one."],
       ["⚙️", "Chart options", "Switch between line, area and bar, and set the Y axis and labels. Settings are kept per chart."],
       ["💾", "Export", "Save the chart as an image or its points as CSV."],

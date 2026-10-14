@@ -8,6 +8,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ### Added
 
+- Line charts have a goal button below them. Set a target weight, measurement or lift and the button shows the date you reach it at your current rate, or that you aren't moving toward it. A small Projection button in the chart's top right corner swaps the history for the expected values from today to that date, with a dot per day, week or month. Charts always open on the history.
 - "Log a past workout" on the Home screen starts a workout you log after the fact, such as one you forgot to log at the gym. Pick the day you trained on its calendar (a day in an earlier week does not count toward this week's progress), then log sets as usual, but no set durations, rest or session length are recorded, and the rest reminder and time estimates stay off.
 - Each exercise remembers its own weight unit. Switching between kg and lbs while logging a set changes it for that exercise only, and your logged weights are unaffected.
 - After adding a set with +, an Undo button lets you take it back for a few seconds.

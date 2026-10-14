@@ -29,6 +29,8 @@ export interface ChartSettings {
   showRaw: boolean;
   trend: TrendMode;
   goal?: number;
+  /** Shows the expected values from today to the goal date instead of the logged history. */
+  projection: boolean;
   showPRs: boolean;
   compare: CompareMode;
   metric?: string;
@@ -43,6 +45,7 @@ export const DEFAULT_CHART_SETTINGS: ChartSettings = {
   showDots: true,
   showRaw: true,
   trend: "off",
+  projection: false,
   showPRs: false,
   compare: "off",
 };
@@ -188,8 +191,9 @@ export function chartStats(points: ChartPoint[]): ChartStats | null {
 
 const MAX_GOAL_DAYS = 5 * 365;
 
-/** When a least-squares line through the points reaches the goal, or null if it never does. */
-export function goalEta(points: ChartPoint[], goal: number): Date | null {
+function linearFit(
+  points: ChartPoint[],
+): { slope: number; at: (time: number) => number } | null {
   if (points.length < 2) return null;
   const t0 = points[0].date.getTime();
   const xs = points.map((p) => (p.date.getTime() - t0) / DAY_MS);
@@ -205,11 +209,55 @@ export function goalEta(points: ChartPoint[], goal: number): Date | null {
   });
   if (den === 0 || num === 0) return null;
   const slope = num / den;
-  const lastX = xs.at(-1)!;
-  const fittedNow = my + slope * (lastX - mx);
-  const daysLeft = (goal - fittedNow) / slope;
+  return { slope, at: (time) => my + slope * ((time - t0) / DAY_MS - mx) };
+}
+
+/** When a least-squares line through the points reaches the goal, or null if it never does. */
+export function goalEta(points: ChartPoint[], goal: number): Date | null {
+  const fit = linearFit(points);
+  if (!fit) return null;
+  const last = points.at(-1)!.date.getTime();
+  const daysLeft = (goal - fit.at(last)) / fit.slope;
   if (daysLeft <= 0 || daysLeft > MAX_GOAL_DAYS) return null;
-  return new Date(points.at(-1)!.date.getTime() + daysLeft * DAY_MS);
+  return new Date(last + daysLeft * DAY_MS);
+}
+
+const projectionStepDays = (days: number) => {
+  if (days <= 14) return 1;
+  if (days <= 91) return 7;
+  if (days <= 365) return 14;
+  return 30;
+};
+
+/** Expected values on the fitted line from today (or the last entry, if later) to the goal date. */
+export function projectionPoints(
+  points: ChartPoint[],
+  goal: number,
+  now: Date = new Date(),
+): ChartPoint[] {
+  const fit = linearFit(points);
+  const eta = goalEta(points, goal);
+  if (!fit || !eta) return [];
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const from = Math.max(today.getTime(), points.at(-1)!.date.getTime());
+  if (from >= eta.getTime()) return [];
+  const step = projectionStepDays((eta.getTime() - from) / DAY_MS) * DAY_MS;
+  const result: ChartPoint[] = [];
+  for (let t = from; eta.getTime() - t > step / 2; t += step) {
+    result.push({ date: new Date(t), value: fit.at(t) });
+  }
+  result.push({ date: eta, value: goal });
+  return result;
+}
+
+export function goalMessage(
+  eta: Date | null,
+  goal: number,
+  fmt: (v: number) => string,
+): string {
+  return eta
+    ? `At this rate you reach ${fmt(goal)} around ${formatDate(eta)}.`
+    : `Not moving toward ${fmt(goal)} in this range.`;
 }
 
 const niceStep = (rough: number): number => {
@@ -298,6 +346,9 @@ export interface ChartModel {
   main: (number | null)[];
   trend: (number | null)[] | null;
   compare: (number | null)[] | null;
+  /** True when `main` holds expected values from projectionPoints rather than logged ones. */
+  projected: boolean;
+  eta: Date | null;
   /** Slot index to the visible point drawn there. */
   pointAt: (ChartPoint | undefined)[];
   records: Set<number>;
@@ -309,22 +360,29 @@ export function chartModel(
   settings: ChartSettings,
   { maxPoints, now = new Date() }: { maxPoints?: number; now?: Date } = {},
 ): ChartModel {
-  let visible = filterRange(points, settings, now);
+  const inRange = filterRange(points, settings, now);
+  const eta = settings.goal == null ? null : goalEta(inRange, settings.goal);
+  const projection =
+    settings.projection && settings.kind !== "bar" && settings.goal != null
+      ? projectionPoints(inRange, settings.goal, now)
+      : [];
+  const projected = projection.length > 0;
+  let visible = projected ? projection : inRange;
   if (maxPoints) visible = downsample(visible, maxPoints);
   const trendPoints =
-    settings.trend !== "off" && visible.length > 1
+    !projected && settings.trend !== "off" && visible.length > 1
       ? trendValues(visible, settings.trend).map((value, i) => ({
           date: visible[i].date,
           value,
         }))
       : [];
   const comparePoints =
-    settings.kind === "bar"
+    projected || settings.kind === "bar"
       ? []
       : comparisonPoints(points, visible, settings.compare);
   const { dates, values } = alignSeries([visible, trendPoints, comparePoints]);
   const byTime = new Map(visible.map((p) => [p.date.getTime(), p]));
-  const recordTimes = settings.showPRs
+  const recordTimes = settings.showPRs && !projected
     ? new Set([...recordIndices(visible)].map((i) => visible[i].date.getTime()))
     : new Set<number>();
   const plotted = values.flat().filter((v): v is number => v != null);
@@ -335,6 +393,8 @@ export function chartModel(
     main: values[0],
     trend: trendPoints.length ? values[1] : null,
     compare: comparePoints.length ? values[2] : null,
+    projected,
+    eta,
     pointAt: dates.map((d) => byTime.get(d.getTime())),
     records: new Set(
       dates.flatMap((d, i) => (recordTimes.has(d.getTime()) ? [i] : [])),

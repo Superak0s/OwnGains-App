@@ -32,7 +32,7 @@ import {
   chartModel,
   chartStats,
   decimalsFor,
-  goalEta,
+  goalMessage,
   toCsv,
   type ChartPoint,
   type ChartSettings,
@@ -49,6 +49,7 @@ interface ExpandedChartProps {
   readonly reset: () => void;
   readonly metrics?: { key: string; label: string }[];
   readonly onPointPress?: (point: ChartPoint) => void;
+  readonly focusGoal?: boolean;
 }
 
 const RANGE_LABELS: Record<(typeof CHART_RANGES)[number], string> = {
@@ -78,6 +79,7 @@ export default function ExpandedChart({
   reset,
   metrics,
   onPointPress,
+  focusGoal = false,
 }: ExpandedChartProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -91,8 +93,6 @@ export default function ExpandedChart({
 
   const model = useMemo(() => chartModel(points, settings), [points, settings]);
   const stats = chartStats(model.visible);
-  const eta =
-    settings.goal == null ? null : goalEta(model.visible, settings.goal);
   const selectedPoint = selected == null ? undefined : model.pointAt[selected];
   const decimals = decimalsFor(model.visible.map((p) => p.value));
   const fmt = (v: number) => `${v.toFixed(decimals)}${suffix}`;
@@ -100,7 +100,7 @@ export default function ExpandedChart({
   useEffect(() => {
     setSelected(null);
     setZoom(1);
-  }, [settings.range, settings.customFrom, settings.customTo, settings.metric, settings.kind]);
+  }, [settings.range, settings.customFrom, settings.customTo, settings.metric, settings.kind, settings.projection]);
 
   useEffect(
     () => () => {
@@ -225,6 +225,7 @@ export default function ExpandedChart({
     onCommit: (text: string) => void,
     placeholder: string,
     numeric = true,
+    autoFocus = false,
   ) => (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -236,6 +237,7 @@ export default function ExpandedChart({
         placeholderTextColor={colors.textMuted}
         keyboardType={numeric ? "decimal-pad" : "numbers-and-punctuation"}
         onEndEditing={(e) => onCommit(e.nativeEvent.text)}
+        autoFocus={autoFocus}
         accessibilityLabel={label}
       />
     </View>
@@ -322,7 +324,7 @@ export default function ExpandedChart({
               <Text style={styles.selectionText}>
                 {formatDate(selectedPoint.date)}: {fmt(selectedPoint.value)}
               </Text>
-              {onPointPress && (
+              {onPointPress && !model.projected && (
                 <TouchableOpacity
                   style={styles.chip}
                   onPress={() => {
@@ -352,12 +354,17 @@ export default function ExpandedChart({
               ))}
             </View>
           )}
-          {settings.goal != null && (
-            <Text style={styles.hint}>
-              {eta
-                ? `At this rate you reach ${fmt(settings.goal)} around ${formatDate(eta)}.`
-                : `Not moving toward ${fmt(settings.goal)} in this range.`}
-            </Text>
+          <Text style={styles.section}>Goal</Text>
+          <View style={styles.row}>
+            {field(`Goal${suffix ? ` (${suffix.trim()})` : ""}`, settings.goal, (t) => update({ goal: parseNumber(t) }), "None", true, focusGoal)}
+          </View>
+          <Text style={styles.hint}>
+            {settings.goal == null
+              ? "Set a goal to see when you'll reach it at your current rate."
+              : goalMessage(model.eta, settings.goal, fmt)}
+          </Text>
+          {model.eta && settings.kind !== "bar" && (
+            <View style={styles.wrapRow}>{toggle("Show projection", model.projected, "projection")}</View>
           )}
 
           {metrics && metrics.length > 1 && (
@@ -417,11 +424,6 @@ export default function ExpandedChart({
               )}
             </>
           )}
-
-          <Text style={styles.section}>Goal</Text>
-          <View style={styles.row}>
-            {field(`Goal${suffix ? ` (${suffix.trim()})` : ""}`, settings.goal, (t) => update({ goal: parseNumber(t) }), "None")}
-          </View>
 
           <View style={styles.wrapRow}>
             <TouchableOpacity style={styles.chip} onPress={() => exportFile("png")} accessibilityRole='button'>

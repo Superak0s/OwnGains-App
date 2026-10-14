@@ -14,6 +14,7 @@ import { useChartSettings } from "./chart/useChartSettings";
 import {
   chartModel,
   decimalsFor,
+  goalMessage,
   type ChartPoint,
   type ChartRange,
   type ChartSettings,
@@ -68,6 +69,7 @@ export default function ProgressChart({
   const widgetSize = useWidgetSize();
   const height = widgetSize === "large" ? LARGE_CHART_HEIGHT : CHART_HEIGHT;
   const [expanded, setExpanded] = useState(false);
+  const [focusGoal, setFocusGoal] = useState(false);
 
   const defaults = useMemo<Partial<ChartSettings>>(
     () => ({
@@ -107,6 +109,17 @@ export default function ProgressChart({
     ].join(", ");
   }, [model.visible, label, suffix]);
 
+  const open = (goal: boolean) => {
+    setFocusGoal(goal);
+    setExpanded(true);
+  };
+
+  const goalText = useMemo(() => {
+    if (settings.goal == null) return "Set a goal to see when you'll reach it";
+    const decimals = decimalsFor(finite.map((p) => p.value));
+    return goalMessage(model.eta, settings.goal, (v) => `${v.toFixed(decimals)}${suffix}`);
+  }, [finite, model.eta, settings.goal, suffix]);
+
   return (
     <View style={styles.chartSection}>
       {title && (
@@ -115,8 +128,9 @@ export default function ProgressChart({
           {label}
         </Text>
       )}
+      <View>
       <Pressable
-        onPress={() => setExpanded(true)}
+        onPress={() => open(false)}
         accessibilityRole='button'
         accessibilityLabel={summary}
         accessibilityHint='Opens the chart full screen with more options'
@@ -139,6 +153,31 @@ export default function ProgressChart({
           </View>
         )}
       </Pressable>
+      {chartType === "line" && model.eta && (
+        <Pressable
+          style={[styles.projectionChip, model.projected && styles.projectionChipActive]}
+          onPress={() => update({ projection: !model.projected })}
+          hitSlop={12}
+          accessibilityRole='switch'
+          accessibilityState={{ checked: model.projected }}
+          accessibilityLabel='Show projection'
+        >
+          <Text style={[styles.projectionText, model.projected && styles.goalTextActive]}>
+            {model.projected ? "History" : "Projection"}
+          </Text>
+        </Pressable>
+      )}
+      </View>
+      {chartType === "line" && finite.length > 1 && (
+        <Pressable
+          style={styles.goalButton}
+          onPress={() => open(true)}
+          accessibilityRole='button'
+          accessibilityHint='Opens the chart with the goal field ready to edit'
+        >
+          <Text style={styles.goalText}>{goalText}</Text>
+        </Pressable>
+      )}
       {expanded && (
         <ExpandedChart
           visible
@@ -151,6 +190,7 @@ export default function ProgressChart({
           reset={reset}
           metrics={metrics?.map(({ key, label: name }) => ({ key, label: name }))}
           onPointPress={onPointPress}
+          focusGoal={focusGoal}
         />
       )}
     </View>
@@ -176,4 +216,30 @@ const makeStyles = (colors: ThemeColors) =>
       borderColor: colors.surfaceBorder,
     },
     emptyText: { fontSize: 14, color: colors.textSecondary },
+    goalButton: {
+      alignSelf: "flex-start",
+      marginTop: 8,
+      minHeight: 44,
+      justifyContent: "center",
+      paddingHorizontal: 14,
+      borderRadius: 16,
+      backgroundColor: colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    projectionChip: {
+      position: "absolute",
+      top: 8,
+      right: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    projectionChipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+    projectionText: { fontSize: 12, fontWeight: "600", color: colors.textPrimary },
+    goalText: { fontSize: 14, color: colors.textPrimary },
+    goalTextActive: { color: colors.textOnAccent },
   });

@@ -128,38 +128,43 @@ export default function ChartView({
       );
     }
 
+    const { projected } = model;
+    const endEdge = projected ? xLabelWidth / 2 : EDGE;
     const spacing =
-      count > 1 ? ((plotWidth - EDGE * 2) / (count - 1)) * zoom : plotWidth / 2;
+      count > 1 ? ((plotWidth - EDGE - endEdge) / (count - 1)) * zoom : plotWidth / 2;
     const labelStyle = {
       color: ink(0.85),
       fontSize,
       width: xLabelWidth,
       marginLeft: (spacing - xLabelWidth) / 2,
     };
-    const rawColor = settings.showRaw ? ink(0.95) : "transparent";
+    const showRaw = settings.showRaw || projected;
+    const rawColor = showRaw ? ink(0.95) : "transparent";
     return (
       <LineChart
         {...axis}
         data={model.main.map((value, i) => {
           const record = model.records.has(i);
-          const shown = value != null && (settings.showDots || record);
+          const goal = projected && i === count - 1;
+          const shown = value != null && (settings.showDots || record || projected);
           return {
             value: value ?? undefined,
             label: labels[i],
             labelTextStyle: labelStyle,
-            hideDataPoint: !shown || (!settings.showRaw && !record),
-            dataPointColor: record ? colors.warning : ink(0.95),
-            dataPointRadius: record ? 6 : 4,
+            hideDataPoint: !shown || (!showRaw && !record),
+            dataPointColor: record ? colors.warning : goal ? colors.success : ink(0.95),
+            dataPointRadius: record || goal ? 6 : 4,
           };
         })}
         data2={model.trend?.map((value) => ({ value: value ?? undefined }))}
         data3={model.compare?.map((value) => ({ value: value ?? undefined }))}
         spacing={spacing}
         initialSpacing={count > 1 ? EDGE : plotWidth / 2}
-        endSpacing={EDGE}
+        endSpacing={endEdge}
         curved
         color1={rawColor}
         thickness1={2}
+        strokeDashArray1={projected ? [6, 4] : undefined}
         color2={colors.accent}
         thickness2={3}
         hideDataPoints2
@@ -167,7 +172,7 @@ export default function ChartView({
         thickness3={2}
         strokeDashArray3={[6, 4]}
         hideDataPoints3
-        areaChart1={kind === "area" && settings.showRaw}
+        areaChart1={kind === "area" && showRaw}
         startFillColor1={ink(0.9)}
         endFillColor1={ink(0.1)}
         startOpacity={0.35}

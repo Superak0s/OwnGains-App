@@ -55,7 +55,7 @@ Split creation is a core feature. You can start from a template, from a spreadsh
 ### 📊 See your progress
 
 - **Per-exercise analytics** with charts for weight and rep trends over time.
-- **Full screen charts**: tap any chart for time ranges, Y axis and label settings, landscape, pinch zoom, point details, trend and goal lines, record markers, period comparison, and image or CSV export. Settings are saved per chart.
+- **Full screen charts**: tap any chart for time ranges, Y axis and label settings, landscape, pinch zoom, point details, trend and goal lines, record markers, a goal button under each line chart that projects when you reach the goal, with a projection view from today to that date, period comparison, and image or CSV export. Settings are saved per chart.
 - **Estimated 1RM**: current estimate, all-time best, and trend across sessions.
 - **Personal records**: heaviest set, most reps, best estimated 1RM, each with the date you hit it, plus your best weight at every rep count from 1 to 12.
 - **Progress rate**: how fast your estimated 1RM is moving in kg/week, with a stall warning.
