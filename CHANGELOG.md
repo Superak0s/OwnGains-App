@@ -40,7 +40,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Closing session details returns to that day's list, and sets are shown as compact rows.
 - Tapping a calendar day with no workouts no longer opens an empty sheet.
 - Home shows placeholder cards while widgets load, and the Next Workout widget is one tinted card.
-- Settings is reorganized: Workout History (edit past sessions, unlock days, reset progress) has its own section, Support Development and Give Feedback are rows under About, and developer tools are in one collapsible section.
+- Settings is now a short menu that opens separate pages for Account, Workout, Appearance, Storage and Sync, Privacy and Data, and About, with a cleaner layout. Editing past sessions and unlocking days are under Workout, Health Connect is under Storage and Sync, and actions that can't be undone are grouped in a Danger zone at the bottom of their page. Android Back returns from a page to the menu.
 - Manual sync starts right away and reports how many changes synced.
 - Unblocking someone asks you to confirm first.
 - Sign out uses the same wording everywhere.
@@ -80,9 +80,10 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 ### Internal
 
 - Usability audit of Home, Workout and Settings (frontend-design-audit), with regression tests for each behavior fix.
+- Settings rows and groups share one `SettingsRow`/`SettingsGroup` component, and the tutorial and privacy policy point to the new Settings pages.
 - `syncFromServer` resolves to whether the sync succeeded instead of the merged completed days.
 - Per-exercise weight units are stored under `STORAGE_KEYS.WEIGHT_UNIT_BY_EXERCISE`, so Clear All Data and the offline migration include them.
-- The crash report test button in Developer tools names GlitchTip, and Test Alarm ignores a second tap while scheduling.
+- The crash report test button in Settings → Developer names GlitchTip, and Test Alarm ignores a second tap while scheduling.
 - The privacy policy points to Settings → About → Support Development.
 - `profilePhotoApi` (auth on/off pair, dispatched by app mode only) calls the new `/api/profile/photo` server routes, and `friendPhoto.ts` caches friends' photos by hash.
 - CLAUDE.md feature workflow chooses between a rebase and a squash merge per branch, with squash as the default.

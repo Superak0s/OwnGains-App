@@ -140,7 +140,7 @@ export function TutorialProvider({
   const confirmExit = useCallback(() => {
     alert(
       "Leave the tutorial?",
-      "You can replay any chapter from Settings → Tutorial.",
+      "You can replay any chapter from Settings → About → Tutorial.",
       [
         { text: "Stay", style: "cancel" },
         { text: "Leave", style: "destructive", onPress: () => finish(true) },

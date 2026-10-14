@@ -36,7 +36,7 @@ export default function RolePicker({
     <View style={[StyleSheet.absoluteFill, styles.root]}>
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }]}>
         <Text style={styles.title} accessibilityRole="header">{TITLES[mode]}</Text>
-        <Text style={styles.subtitle}>Pick one. You can replay or switch any time in Settings → Tutorial.</Text>
+        <Text style={styles.subtitle}>Pick one. You can replay or switch any time in Settings → About → Tutorial.</Text>
         {ROLES.map(({ role, icon, body }) => {
           const chapters = (mode === "onlineTour" ? onlineChaptersFor(role) : chaptersFor(role)).length;
           const needsOnline = role !== "user" && appMode === "offline";

@@ -118,6 +118,8 @@ Every screen has a customizable widget board. Add, remove, resize, and reorder w
 
 ### 🔧 Settings
 
+A short menu with your profile at the top and one page each for Account, Workout, Appearance, Storage and Sync, Privacy and Data, and About. Actions that can't be undone sit in a Danger zone at the bottom of their page.
+
 - Account editing (name, email and a profile photo, which online mode keeps in sync across your devices and shows to your friends) and password change
 - **Tab order** (move any bottom tab earlier or later)
 - Sync queue status with a manual "Sync Now"

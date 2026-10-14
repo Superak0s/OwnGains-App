@@ -165,7 +165,7 @@ export default function HealthConnectSection({
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle} accessibilityRole="header" accessibilityLabel="Health Connect">
-        ❤️ Health Connect
+        Health Connect
       </Text>
       <View style={styles.card}>
         {availability === "available" && connected ? (

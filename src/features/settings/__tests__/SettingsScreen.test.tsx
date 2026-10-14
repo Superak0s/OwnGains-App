@@ -75,6 +75,7 @@ const pickDocument = DocumentPicker.getDocumentAsync as jest.Mock
 
 const press = (label: string) => fireEvent.press(screen.getByLabelText(label))
 const pressText = (text: string) => fireEvent.press(screen.getByText(text))
+const openPrivacy = () => press("Privacy and Data")
 
 const mount = (options: Parameters<typeof renderWithProviders>[1] = {}) =>
   renderWithProviders(<SettingsScreen />, {
@@ -100,6 +101,7 @@ describe("SettingsScreen mounts with unusual data", () => {
     ["no signed-in user", { auth: { user: null } }],
   ])("does not crash on open with %s", async (_name, options) => {
     await mount(options as Parameters<typeof renderWithProviders>[1])
+    await openPrivacy()
     expect(await screen.findByLabelText("Clear all data")).toBeTruthy()
   })
 })
@@ -107,6 +109,7 @@ describe("SettingsScreen mounts with unusual data", () => {
 describe("Clear All Data", () => {
   it("deletes nothing when the confirmation is cancelled", async () => {
     await mount()
+    await openPrivacy()
     await press("Clear all data")
     await press("Cancel")
     expect(deleteAllUserData).not.toHaveBeenCalled()
@@ -116,6 +119,7 @@ describe("Clear All Data", () => {
   it("keeps local data and shows the server's reason when the password is wrong", async () => {
     deleteAllUserData.mockRejectedValueOnce(new ApiError("Incorrect password", 401))
     await mount()
+    await openPrivacy()
     await press("Clear all data")
     await press("Clear")
     await fireEvent.changeText(screen.getByLabelText("Current password to confirm clearing all data"), "nope")
@@ -129,6 +133,7 @@ describe("Clear All Data", () => {
   it("keeps local data when the server answers success: false", async () => {
     deleteAllUserData.mockResolvedValueOnce({ success: false, error: "Server refused" })
     await mount()
+    await openPrivacy()
     await press("Clear all data")
     await press("Clear")
     await fireEvent.changeText(screen.getByLabelText("Current password to confirm clearing all data"), "pw")
@@ -141,6 +146,7 @@ describe("Clear All Data", () => {
   it("clears offline data without asking for a password", async () => {
     ;(isServerless as jest.Mock).mockResolvedValue(true)
     await mount()
+    await openPrivacy()
     await waitFor(() => expect(screen.queryByLabelText("Withdraw health data consent")).toBeNull())
     await press("Clear all data")
     await press("Clear")
@@ -152,6 +158,7 @@ describe("Clear All Data", () => {
 
 describe("Delete Account", () => {
   const openAndSubmit = async (password: string) => {
+    await press("Account")
     await press("Delete my account permanently")
     await fireEvent.changeText(screen.getByLabelText("Current password to confirm account deletion"), password)
     await pressText("Delete Forever")
@@ -159,6 +166,7 @@ describe("Delete Account", () => {
 
   it("deletes nothing when the sheet is cancelled", async () => {
     await mount()
+    await press("Account")
     await press("Delete my account permanently")
     const cancels = screen.getAllByLabelText("Cancel")
     await fireEvent.press(cancels[cancels.length - 1])
@@ -189,7 +197,8 @@ describe("Delete Account", () => {
   it("does not delete an offline profile until DELETE is typed", async () => {
     ;(isServerless as jest.Mock).mockResolvedValue(true)
     await mount()
-    await waitFor(() => expect(screen.queryByLabelText("Withdraw health data consent")).toBeNull())
+    await screen.findByLabelText("Profile")
+    await press("Profile")
     await press("Delete my account permanently")
     await pressText("Delete Forever")
     expect(deleteAccount).not.toHaveBeenCalled()
@@ -206,6 +215,7 @@ describe("Restore Data", () => {
   it("restores nothing when the file picker is cancelled", async () => {
     pickDocument.mockResolvedValueOnce({ canceled: true, assets: null })
     await mount()
+    await openPrivacy()
     await press("Restore a backup or import a Strength Level CSV")
     expect(restore).not.toHaveBeenCalled()
   })
@@ -213,6 +223,7 @@ describe("Restore Data", () => {
   it("restores nothing when the merge/replace prompt is cancelled", async () => {
     pickFile("backup.json", JSON.stringify(backup))
     await mount()
+    await openPrivacy()
     await press("Restore a backup or import a Strength Level CSV")
     await screen.findByText("Restore Backup")
     await press("Cancel")
@@ -222,6 +233,7 @@ describe("Restore Data", () => {
   it("refuses a truncated backup instead of importing it as CSV", async () => {
     pickFile("backup.json", '{"format":"owngains-backup","kv":{')
     await mount()
+    await openPrivacy()
     await press("Restore a backup or import a Strength Level CSV")
     expect(await screen.findByText("Damaged Backup")).toBeTruthy()
     expect(restore).not.toHaveBeenCalled()
@@ -231,6 +243,7 @@ describe("Restore Data", () => {
     restore.mockRejectedValueOnce(new Error("disk full"))
     pickFile("backup.json", JSON.stringify(backup))
     await mount()
+    await openPrivacy()
     await press("Restore a backup or import a Strength Level CSV")
     await screen.findByText("Restore Backup")
     await press("Replace")
@@ -244,6 +257,7 @@ describe("Restore Data", () => {
 describe("Withdraw Health Consent", () => {
   it("does nothing when the confirmation is cancelled", async () => {
     await mount()
+    await openPrivacy()
     await press("Withdraw health data consent")
     await press("Cancel")
     expect(recordConsent).not.toHaveBeenCalled()
@@ -253,6 +267,7 @@ describe("Withdraw Health Consent", () => {
   it("stays online and tells the user nothing was deleted when the server refuses", async () => {
     recordConsent.mockRejectedValueOnce(new ApiError("Not found", 404))
     await mount()
+    await openPrivacy()
     await press("Withdraw health data consent")
     await press("Withdraw")
 
@@ -269,7 +284,7 @@ describe("Test Alarm", () => {
       () => new Promise<boolean>((resolve) => (finish = resolve)),
     )
     await mount()
-    await press("Developer tools")
+    await press("Developer")
     await press("Schedule a test supplement alarm")
     await press("Schedule a test supplement alarm")
     finish(true)
@@ -282,6 +297,7 @@ describe("Blocked Users", () => {
   it("unblocks only after the confirmation", async () => {
     ;(friendsApi.getBlockedUsers as jest.Mock).mockResolvedValueOnce([{ id: 7, username: "bob" }])
     await mount()
+    await openPrivacy()
     await press("Manage blocked users")
     await screen.findByLabelText("Unblock bob")
     await press("Unblock bob")
@@ -297,12 +313,25 @@ describe("Consent switches", () => {
   it("puts the switch back and says so when saving fails", async () => {
     const spy = jest.spyOn(crashReporting, "setCrashReportingEnabled").mockRejectedValueOnce(new Error("disk full"))
     await mount()
+    await openPrivacy()
     const toggle = screen.getByLabelText("Send crash reports")
     const before = toggle.props.value as boolean
     await fireEvent(toggle, "valueChange", !before)
     expect(await screen.findByText("Couldn't Save Setting")).toBeTruthy()
     expect(screen.getByLabelText("Send crash reports").props.value).toBe(before)
     spy.mockRestore()
+  })
+})
+
+describe("Navigation", () => {
+  it("opens a sub-page from the index and returns to it", async () => {
+    await mount()
+    expect(screen.queryByLabelText("Use manual time between sets")).toBeNull()
+    await press("Workout")
+    expect(screen.getByLabelText("Use manual time between sets")).toBeTruthy()
+    await press("Back to settings")
+    expect(screen.queryByLabelText("Use manual time between sets")).toBeNull()
+    expect(screen.getByLabelText("Privacy and Data")).toBeTruthy()
   })
 })
 

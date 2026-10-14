@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   Share,
   Linking,
+  BackHandler,
 } from "react-native";
 import { Image } from "expo-image";
 import Constants from "expo-constants";
@@ -71,6 +72,7 @@ import {
 import EditWorkoutHistoryModal from "./components/EditWorkoutHistoryModal";
 import ChangelogSheet from "./components/ChangelogSheet";
 import TipJarSheet from "./components/TipJarSheet";
+import { SettingsGroup, SettingsRow } from "./components/SettingsRow";
 import { showToast } from "@shared/components/toast";
 import ModalSheet from "@shared/components/ModalSheet";
 import {
@@ -227,7 +229,7 @@ import {
   TAB_META,
   type TabName,
 } from "@shared/services/tabOrder";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { userFacingError } from "@shared/services/apiError";
 import { ApiError } from "@shared/services/apiErrorClasses";
@@ -315,6 +317,15 @@ export function syncResultMessage(before: number, left: number): string {
   const synced = Math.max(0, before - left);
   return `Synced ${synced} of ${before}. ${countChanges(left)} still waiting.`;
 }
+
+type SettingsPage =
+  | "account"
+  | "workout"
+  | "appearance"
+  | "storage"
+  | "privacy"
+  | "about"
+  | "developer";
 
 const ACCOUNT_COPY = {
   section: "Account",
@@ -1579,7 +1590,6 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
     );
   };
 
-
   const handleSaveTimeBetweenSets = (value: number) => {
     saveTimeBetweenSets(value);
     setShowTimeBetweenSetsModal(false);
@@ -1620,7 +1630,6 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
   const progressActionsDisabled = noLocalProgress || busyAction !== null;
   const restoreBusy = restoringData || isImporting;
 
-
   const getTotalCompletedSets = () => {
     let total = 0;
     Object.values(completedDays).forEach((day: CompletedExercises) => {
@@ -1642,7 +1651,6 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
     );
   };
 
-  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [showAccountModal, setShowAccountModal] = useState<boolean>(false);
 
   const [profileName, setProfileName] = useState<string>(user?.name ?? "");
@@ -1899,531 +1907,664 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
     );
   };
 
-  const renderWorkoutHistorySection = (): React.JSX.Element => (
+  const [page, setPage] = useState<SettingsPage | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      if (!page) return undefined;
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+        setPage(null);
+        return true;
+      });
+      return () => sub.remove();
+    }, [page]),
+  );
+
+  const renderAccountPage = (): React.JSX.Element => (
     <>
-        <View style={styles.section}>
-          <Text
-            style={styles.sectionTitle}
-            accessibilityRole="header"
-            accessibilityLabel="Workout History"
-          >
-            📝 Workout History
-          </Text>
-          <View style={styles.card}>
-            <TouchableOpacity
-              style={styles.settingRow}
-              onPress={() => {
-                if (!selectedSplit) {
-                  alert(
-                    "No Split Selected",
-                    "Select a split before editing workout history.",
-                    [{ text: "OK" }],
-                    "error",
-                  );
-                  return;
-                }
-                setShowEditHistoryModal(true);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Edit workout history"
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={styles.settingLabel}>
-                  Edit Workout History
-                </Text>
-                <Text style={styles.settingDescription}>
-                  Update the name, muscle group, or time of already
-                  logged/imported sets
-                </Text>
-              </View>
-              <Text style={styles.settingValue}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={[
-              styles.actionButton,
-              progressActionsDisabled &&
-                styles.disabledButton,
-            ]}
-            onPress={handleUnlockAllDays}
-            disabled={progressActionsDisabled}
-            accessibilityRole="button"
-            accessibilityLabel="Unlock all days"
-            accessibilityState={{
-              disabled: progressActionsDisabled,
-              busy: busyAction === "unlockAll",
-            }}
-          >
-            <Text
-              style={styles.actionButtonIcon}
-              importantForAccessibility="no"
-            >
-              🔓
-            </Text>
-            <View style={styles.actionButtonContent}>
-              <Text style={styles.actionButtonText}>
-                Unlock All Days
-              </Text>
-              <Text style={styles.actionButtonSubtext}>
-                {noLocalProgress
-                  ? NO_LOCAL_PROGRESS_HINT
-                  : "Clear local sets & unlock days"}
-              </Text>
-            </View>
-            {busyAction === "unlockAll" && (
-              <ActivityIndicator color={colors.accent} />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={[
-              styles.actionButton,
-              progressActionsDisabled &&
-                styles.disabledButton,
-            ]}
-            onPress={() => setShowResetDayModal(true)}
-            disabled={progressActionsDisabled}
-            accessibilityRole="button"
-            accessibilityLabel="Unlock one day"
-            accessibilityState={{
-              disabled: progressActionsDisabled,
-            }}
-          >
-            <Text
-              style={styles.actionButtonIcon}
-              importantForAccessibility="no"
-            >
-              🔄
-            </Text>
-            <View style={styles.actionButtonContent}>
-              <Text style={styles.actionButtonText}>
-                Unlock Single Day
-              </Text>
-              <Text style={styles.actionButtonSubtext}>
-                {noLocalProgress
-                  ? NO_LOCAL_PROGRESS_HINT
-                  : "Clear local sets for one day"}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {selectedSplit && workoutData && (
-          <View style={styles.section}>
-            <Text
-              style={styles.sectionTitle}
-              accessibilityRole="header"
-              accessibilityLabel="Progress"
-            >
-              📊 Progress
-            </Text>
-            <View style={styles.card}>
-              {renderProgressCard()}
-            </View>
-          </View>
+      <SettingsGroup>
+        <SettingsRow
+          label={accountCopy.row}
+          description={user?.name ?? user?.username ?? "View or edit your account"}
+          onPress={() => setShowAccountModal(true)}
+          accessibilityLabel={accountCopy.editLabel}
+        />
+        {!isOffline && !googleOnly && (
+          <SettingsRow
+            label="Change Password"
+            description="Signs out every other device"
+            onPress={() => setShowChangePasswordModal(true)}
+            accessibilityLabel="Change your password"
+          />
         )}
+        {!isOffline && !googleOnly && user?.googleLinked && (
+          <SettingsRow
+            label="Google Account"
+            description="Linked. You can also sign in with Google"
+            value="Unlink"
+            onPress={() => setShowUnlinkGoogleModal(true)}
+            accessibilityLabel="Unlink your Google account"
+          />
+        )}
+        {!isOffline && (
+          <SettingsRow
+            label="Sign Out"
+            description="Your data stays on the server"
+            destructive
+            onPress={handleLogout}
+            accessibilityLabel="Sign out of this device"
+          />
+        )}
+      </SettingsGroup>
+
+      <SettingsGroup
+        title="Danger zone"
+        danger
+        footer="Deleting your account cannot be undone. Export your data under Privacy and Data first if you might want it back."
+      >
+        <SettingsRow
+          label="Delete Account"
+          description="Permanently remove your account and all of its data"
+          destructive
+          disabled={busyAction !== null}
+          onPress={() => setShowDeleteAccountModal(true)}
+          accessibilityLabel="Delete my account permanently"
+        />
+      </SettingsGroup>
     </>
   );
 
-  const renderDeveloperSection = (): React.JSX.Element | null => {
-    if (!__DEV__ && !isAdmin) return null;
-    return (
-      <View style={styles.section}>
-        <TouchableOpacity
-          style={styles.settingsSectionHeaderSimple}
-          onPress={() => setShowAdvanced((s) => !s)}
-          accessibilityRole="button"
-          accessibilityLabel="Developer tools"
-          accessibilityState={{ expanded: showAdvanced }}
-        >
-          <Text style={styles.sectionTitle} importantForAccessibility="no">
-            🧪 Developer
-          </Text>
-          <Text style={styles.settingValue}>
-            {showAdvanced ? "Hide" : "Show"}
-          </Text>
-        </TouchableOpacity>
-        {showAdvanced && (
-          <>
-            {isAdmin && !isOffline && (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={styles.actionButton}
-                onPress={() => void Linking.openURL(`${serverUrl}/admin/metrics`)}
-                accessibilityRole="link"
-                accessibilityLabel="Open the server metrics dashboard in the browser"
-              >
-                <Text
-                  style={styles.actionButtonIcon}
-                  importantForAccessibility="no"
+  const renderWorkoutPage = (): React.JSX.Element => (
+    <>
+      <SettingsGroup
+        title="During a workout"
+        footer={
+          useManualTime
+            ? "Using your manual time setting for workout estimates"
+            : "Using server analytics when available, manual time as fallback"
+        }
+      >
+        <SettingsRow
+          label="Use Manual Time"
+          description="Use your manually set time instead of server analytics"
+          toggle={{
+            value: useManualTime,
+            label: "Use manual time between sets",
+            onChange: (on) => {
+              trackFeature("settings", "toggle", { setting: "manual_time", on });
+              if (on) confirmEnableManualTime();
+              else void toggleUseManualTime(false);
+            },
+          }}
+        />
+        <SettingsRow
+          label="PR Celebration"
+          description="Play an animation in-session when a set exceeds your best estimated 1RM"
+          toggle={{
+            value: prCelebration,
+            label: "Celebrate personal records",
+            onChange: (on) =>
+              saveWorkoutPref(STORAGE_KEYS.PR_CELEBRATION, setPrCelebration, on),
+          }}
+        />
+        <SettingsRow
+          label="Auto-Progression Prompt"
+          description="Suggest the next set's weight from your last set's reps and reps in reserve"
+          toggle={{
+            value: autoProgression,
+            label: "Suggest auto-progression between sets",
+            onChange: (on) =>
+              saveWorkoutPref(STORAGE_KEYS.AUTO_PROGRESSION, setAutoProgression, on),
+          }}
+        />
+        <SettingsRow
+          label="Time Between Sets"
+          description={
+            useManualTime
+              ? "Manual time (used for estimates)"
+              : "Manual fallback (auto mode active)"
+          }
+          value={formatDuration(timeBetweenSets)}
+          onPress={() => setShowTimeBetweenSetsModal(true)}
+          accessibilityLabel="Change the time between sets"
+        />
+      </SettingsGroup>
+
+      <SettingsGroup title="Undertrained suggestions">
+        <SettingsRow
+          label="Show"
+          description="How to show exercise suggestions for muscle groups behind this week"
+          right={
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.dropdownButton}
+              accessibilityRole="button"
+              accessibilityLabel="Change how undertrained muscles are surfaced"
+              onPress={() => setShowDisplayModeMenu(true)}
+            >
+              <Text style={styles.dropdownButtonText}>
+                {DISPLAY_MODE_OPTIONS.find((o) => o.key === undertrainedDisplayMode)
+                  ?.label ?? undertrainedDisplayMode}
+              </Text>
+              <Text style={styles.dropdownArrow} importantForAccessibility="no">
+                ▼
+              </Text>
+            </TouchableOpacity>
+          }
+        />
+        <View style={styles.compareSection}>
+          <Text style={styles.settingLabel}>Compare against</Text>
+          <View style={styles.compareRow} accessibilityRole="radiogroup">
+            {CALCULATION_MODE_OPTIONS.map((option) => {
+              const isSelected = undertrainedCalculationMode === option.key;
+              return (
+                <TouchableOpacity
+                  key={option.key}
+                  activeOpacity={0.7}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: isSelected }}
+                  accessibilityLabel={option.label}
+                  style={[styles.compareChip, isSelected && styles.compareChipActive]}
+                  onPress={() => handleSetUndertrainedCalculationMode(option.key)}
                 >
-                  📈
-                </Text>
-                <View style={styles.actionButtonContent}>
-                  <Text style={styles.actionButtonText}>Server Metrics</Text>
-                  <Text style={styles.actionButtonSubtext}>
-                    Requests, errors and database health on the server&apos;s
-                    admin dashboard. Sign in there with this account.
+                  <Text
+                    style={[
+                      styles.compareChipText,
+                      isSelected && styles.compareChipTextActive,
+                    ]}
+                  >
+                    {option.label}
                   </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={[
-                styles.actionButton,
-                fillingDemoData && styles.disabledButton,
-              ]}
-              onPress={handleFillDemoData}
-              disabled={fillingDemoData}
-              accessibilityRole="button"
-              accessibilityLabel="Fill the app with demo workout data"
-            >
-              <Text
-                style={styles.actionButtonIcon}
-                importantForAccessibility="no"
-              >
-                ✨
-              </Text>
-              <View style={styles.actionButtonContent}>
-                <Text style={styles.actionButtonText}>
-                  Fill Demo Data
-                </Text>
-                <Text style={styles.actionButtonSubtext}>
-                  Generate ~5 weeks of workout sessions (and a sample
-                  program if you have none) to check every screen
-                </Text>
-              </View>
-              {fillingDemoData && (
-                <ActivityIndicator color={colors.accent} />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={[
-                styles.actionButton,
-                styles.dangerButton,
-                (fillingDemoData || busyAction !== null) &&
-                  styles.disabledButton,
-              ]}
-              onPress={handleRemoveDemoData}
-              disabled={fillingDemoData || busyAction !== null}
-              accessibilityRole="button"
-              accessibilityLabel="Remove demo workout data"
-              accessibilityState={{
-                disabled: fillingDemoData || busyAction !== null,
-                busy: busyAction === "removeDemo",
-              }}
-            >
-              <Text
-                style={styles.actionButtonIcon}
-                importantForAccessibility="no"
-              >
-                🧹
-              </Text>
-              <View style={styles.actionButtonContent}>
-                <Text
-                  style={[styles.actionButtonText, styles.dangerText]}
-                >
-                  Remove Demo Data
-                </Text>
-                <Text style={styles.actionButtonSubtext}>
-                  Delete the generated sessions, keeping real ones
-                </Text>
-              </View>
-              {busyAction === "removeDemo" && (
-                <ActivityIndicator color={colors.accent} />
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.actionButton}
-              onPress={() => {
-                const preview =
-                  ALERT_PREVIEWS[
-                    alertPreviewIndexRef.current % ALERT_PREVIEWS.length
-                  ];
-                alertPreviewIndexRef.current += 1;
-                alert(
-                  preview.title,
-                  preview.message,
-                  preview.buttons,
-                  preview.type,
-                );
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Preview the next alert style"
-            >
-              <Text
-                style={styles.actionButtonIcon}
-                importantForAccessibility="no"
-              >
-                🔔
-              </Text>
-              <View style={styles.actionButtonContent}>
-                <Text style={styles.actionButtonText}>
-                  Preview Alert Style
-                </Text>
-                <Text style={styles.actionButtonSubtext}>
-                  Tap repeatedly to cycle through every alert variant
-                </Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={[
-                styles.actionButton,
-                busyAction === "sentryTest" && styles.disabledButton,
-              ]}
-              onPress={handleSentryTest}
-              disabled={busyAction === "sentryTest"}
-              accessibilityRole="button"
-              accessibilityLabel="Send a test event to GlitchTip"
-              accessibilityState={{ busy: busyAction === "sentryTest" }}
-            >
-              <Text style={styles.actionButtonIcon} importantForAccessibility="no">
-                📡
-              </Text>
-              <View style={styles.actionButtonContent}>
-                <Text style={styles.actionButtonText}>Test Crash Reporting</Text>
-                <Text style={styles.actionButtonSubtext}>
-                  Send an error, a log and a metric, then report whether they
-                  reached GlitchTip and which consent gate stopped them
-                </Text>
-              </View>
-              {busyAction === "sentryTest" && (
-                <ActivityIndicator color={colors.accent} />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={[
-                styles.actionButton,
-                busyAction === "testAlarm" && styles.disabledButton,
-              ]}
-              onPress={() => void handleTestAlarm()}
-              disabled={busyAction === "testAlarm"}
-              accessibilityRole="button"
-              accessibilityLabel="Schedule a test supplement alarm"
-              accessibilityState={{ busy: busyAction === "testAlarm" }}
-            >
-              <Text style={styles.actionButtonIcon} importantForAccessibility="no">
-                ⏰
-              </Text>
-              <View style={styles.actionButtonContent}>
-                <Text style={styles.actionButtonText}>Test Alarm</Text>
-                <Text style={styles.actionButtonSubtext}>
-                  Ring a supplement alarm in {TEST_ALARM_DELAY_SECONDS} seconds
-                  and show which alarm permissions are missing
-                </Text>
-              </View>
-              {busyAction === "testAlarm" && (
-                <ActivityIndicator color={colors.accent} />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.actionButton}
-              onPress={handleShareDiagnostics}
-              accessibilityRole="button"
-              accessibilityLabel="Share diagnostics"
-            >
-              <Text style={styles.actionButtonIcon} importantForAccessibility="no">
-                📋
-              </Text>
-              <View style={styles.actionButtonContent}>
-                <Text style={styles.actionButtonText}>Share Diagnostics</Text>
-                <Text style={styles.actionButtonSubtext}>
-                  App version, mode, server, consent flags and pending sync
-                  count, the details to attach to a bug report
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            <Text style={styles.helperText}>
-              {__DEV__
-                ? "Debug build: this section is also shown to admin accounts in release APKs"
-                : "Shown because this account is an admin"}
-            </Text>
-          </>
-        )}
-      </View>
-    );
-  };
-
-  const renderServerCard = (): React.JSX.Element | null => {
-    if (isOffline) return null;
-    return (
-      <View style={styles.card}>
-        <TouchableOpacity
-          style={styles.settingRow}
-          onPress={migrateToOnline}
-          accessibilityRole="button"
-          accessibilityLabel="Sign out and choose a different server or on-device storage"
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.settingLabel}>Connected To</Text>
-            <Text style={styles.settingDescription}>
-              {serverUrl}
-            </Text>
-            <Text style={styles.settingDescription}>
-              Pointing OwnGains at a different server signs you out and takes you
-              back to the setup screen, where the server address is set.
-            </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-          <Text style={styles.settingValue}>Change server</Text>
-        </TouchableOpacity>
-        {localOnlyFeatures.length > 0 && (
-          <>
-            <View style={styles.divider} />
-            <View style={styles.settingRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.settingLabel}>Kept On This Device</Text>
-                <View style={styles.warningBox}>
-                  <Text style={styles.warningBoxTitle}>
-                    {describeLocalOnlyFeatures(localOnlyFeatures)} are not
-                    stored on this server.
-                  </Text>
-                  <Text style={styles.settingDescription}>
-                    They are kept on this phone only. They will not sync to
-                    your other devices, and they are gone if you uninstall
-                    OwnGains or lose the phone. Use Export My Data under
-                    Privacy and Data to keep a copy.
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </>
-        )}
-        <View style={styles.divider} />
-        <View style={styles.settingRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.settingLabel}>Server Version</Text>
-            <Text style={styles.settingDescription}>
-              {serverInfo?.outdated
-                ? `This server runs ${serverInfo.version}. Version ${MIN_SERVER_VERSION} or newer is needed for blocking, reporting, data export and changing day mid-workout. Ask its operator to update.`
-                : "The version of OwnGains-Server you are signed in to"}
-            </Text>
-          </View>
-          {serverInfo === undefined ? (
-            <ActivityIndicator
-              color={colors.textMuted}
-              accessibilityLabel="Checking the server version"
-            />
-          ) : (
-            <Text
-              style={[
-                styles.infoValue,
-                serverInfo?.outdated && styles.dangerText,
-              ]}
-            >
-              {serverInfo ? serverInfo.version : "Unknown"}
-            </Text>
-          )}
+          <Text style={styles.settingDescription}>
+            {
+              CALCULATION_MODE_OPTIONS.find(
+                (o) => o.key === undertrainedCalculationMode,
+              )?.description
+            }
+          </Text>
         </View>
-      </View>
-    );
-  };
+      </SettingsGroup>
 
-  const renderSyncSection = (): React.JSX.Element | null => {
+      <SettingsGroup title="History">
+        <SettingsRow
+          label="Edit Workout History"
+          description="Update the name, muscle group, or time of already logged/imported sets"
+          onPress={() => {
+            if (!selectedSplit) {
+              alert(
+                "No Split Selected",
+                "Select a split before editing workout history.",
+                [{ text: "OK" }],
+                "error",
+              );
+              return;
+            }
+            setShowEditHistoryModal(true);
+          }}
+          accessibilityLabel="Edit workout history"
+        />
+        <SettingsRow
+          label="Unlock All Days"
+          description={
+            noLocalProgress ? NO_LOCAL_PROGRESS_HINT : "Clear local sets & unlock days"
+          }
+          busy={busyAction === "unlockAll"}
+          disabled={progressActionsDisabled}
+          onPress={handleUnlockAllDays}
+          accessibilityLabel="Unlock all days"
+        />
+        <SettingsRow
+          label="Unlock Single Day"
+          description={
+            noLocalProgress ? NO_LOCAL_PROGRESS_HINT : "Clear local sets for one day"
+          }
+          disabled={progressActionsDisabled}
+          onPress={() => setShowResetDayModal(true)}
+          accessibilityLabel="Unlock one day"
+        />
+      </SettingsGroup>
+
+      {selectedSplit && workoutData && (
+        <SettingsGroup title="Progress">{renderProgressCard()}</SettingsGroup>
+      )}
+    </>
+  );
+
+  const renderAppearancePage = (): React.JSX.Element => (
+    <SettingsGroup>
+      <SettingsRow
+        label="Theme"
+        description="Customize app colors and appearance"
+        onPress={() => setShowThemeEditor(true)}
+        accessibilityLabel="Edit the app theme"
+      />
+      <SettingsRow
+        label="Tab Order"
+        description="Rearrange the screens in the bottom bar"
+        onPress={() => void openTabOrder()}
+        accessibilityLabel="Reorder the bottom tabs"
+      />
+    </SettingsGroup>
+  );
+
+  const renderSyncGroup = (): React.JSX.Element | null => {
     if (pendingSyncs.length === 0 && droppedSyncCount === 0) return null;
     return (
-      <View style={styles.section}>
-        <Text
-          style={styles.sectionTitle}
-          accessibilityRole="header"
-          accessibilityLabel="Data Sync"
-        >
-          ☁️ Data Sync
-        </Text>
-        <View style={styles.card}>
-          {pendingSyncs.length > 0 && (
-            <>
-              <View style={styles.infoRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.infoLabel}>Pending Syncs</Text>
-                  <Text style={styles.settingDescription}>
-                    {countChanges(pendingSyncs.length)} waiting to sync
-                  </Text>
-                </View>
-                <Text style={styles.warningValue}>
-                  {pendingSyncs.length}
-                </Text>
-              </View>
-              {droppedSyncCount > 0 && <View style={styles.divider} />}
-            </>
-          )}
-          {droppedSyncCount > 0 && (
-            <View style={styles.infoRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.infoLabel}>Discarded Syncs</Text>
-                <Text style={styles.settingDescription}>
-                  {countChanges(droppedSyncCount)} could not be synced and
-                  were discarded. They are listed below so you can log them
-                  again from the Workout screen. Edit Workout History can only
-                  correct sets that were saved.
-                </Text>
-                {droppedSyncs.slice(-5).map((drop, index) => (
-                  <Text
-                    key={`${drop.at}-${drop.type}-${drop.reason}-${index}`}
-                    style={styles.droppedItem}
-                  >
-                    {describeDroppedSync(drop)}
-                  </Text>
-                ))}
-                <TouchableOpacity
-                  style={styles.retryButton}
-                  onPress={acknowledgeDroppedSyncs}
-                  accessibilityRole="button"
-                  accessibilityLabel="Dismiss the discarded sync list"
-                >
-                  <Text style={styles.retryButtonText}>Dismiss</Text>
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.warningValue}>{droppedSyncCount}</Text>
-            </View>
-          )}
-          {pendingSyncs.length > 0 && (
-            <>
-              <View style={styles.divider} />
-              <TouchableOpacity
-                style={[
-                  styles.syncButton,
-                  isSyncing && styles.disabledButton,
-                ]}
-                onPress={handleManualSync}
-                disabled={isSyncing}
-                accessibilityRole="button"
-                accessibilityLabel="Sync pending workout data now"
-                ref={tutorialAnchor("settings.sync")}
-                accessibilityState={{ busy: isSyncing }}
-              >
-                {isSyncing ? (
-                  <ActivityIndicator color={colors.accent} />
-                ) : (
-                  <Text style={styles.syncButtonText}>Sync Now</Text>
-                )}
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
+      <SettingsGroup
+        title="Sync"
+        footer={
+          pendingSyncs.length > 0
+            ? "Your workout data is stored on this device until it syncs with the server."
+            : undefined
+        }
+      >
         {pendingSyncs.length > 0 && (
-          <Text style={styles.warningText}>
-            ⚠️ Your workout data is stored locally. Connect to sync with
-            the server.
-          </Text>
+          <SettingsRow
+            label="Pending Syncs"
+            description={`${countChanges(pendingSyncs.length)} waiting to sync`}
+            right={<Text style={styles.warningValue}>{pendingSyncs.length}</Text>}
+          />
         )}
-      </View>
+        {droppedSyncCount > 0 && (
+          <View style={styles.infoRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.settingLabel}>Discarded Syncs</Text>
+              <Text style={styles.settingDescription}>
+                {countChanges(droppedSyncCount)} could not be synced and were
+                discarded. They are listed below so you can log them again from
+                the Workout screen. Edit Workout History can only correct sets
+                that were saved.
+              </Text>
+              {droppedSyncs.slice(-5).map((drop, index) => (
+                <Text
+                  key={`${drop.at}-${drop.type}-${drop.reason}-${index}`}
+                  style={styles.droppedItem}
+                >
+                  {describeDroppedSync(drop)}
+                </Text>
+              ))}
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={acknowledgeDroppedSyncs}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss the discarded sync list"
+              >
+                <Text style={styles.retryButtonText}>Dismiss</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.warningValue}>{droppedSyncCount}</Text>
+          </View>
+        )}
+        {pendingSyncs.length > 0 && (
+          <SettingsRow
+            label="Sync Now"
+            busy={isSyncing}
+            disabled={isSyncing}
+            onPress={handleManualSync}
+            accessibilityLabel="Sync pending workout data now"
+            anchorRef={tutorialAnchor("settings.sync")}
+          />
+        )}
+      </SettingsGroup>
     );
   };
 
+  const renderServerGroup = (): React.JSX.Element | null => {
+    if (isOffline) return null;
+    let versionAccessory: React.ReactNode = (
+      <ActivityIndicator
+        color={colors.textMuted}
+        accessibilityLabel="Checking the server version"
+      />
+    );
+    if (serverInfo !== undefined)
+      versionAccessory = (
+        <Text style={[styles.infoValue, serverInfo?.outdated && styles.dangerText]}>
+          {serverInfo ? serverInfo.version : "Unknown"}
+        </Text>
+      );
+    return (
+      <SettingsGroup
+        title="Server"
+        footer="Changing the server signs you out and takes you back to the setup screen, where the server address is set."
+      >
+        <SettingsRow
+          label="Connected To"
+          description={serverUrl}
+          value="Change"
+          onPress={migrateToOnline}
+          accessibilityLabel="Sign out and choose a different server or on-device storage"
+        />
+        {localOnlyFeatures.length > 0 && (
+          <View style={styles.infoRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.settingLabel}>Kept On This Device</Text>
+              <View style={styles.warningBox}>
+                <Text style={styles.warningBoxTitle}>
+                  {describeLocalOnlyFeatures(localOnlyFeatures)} are not stored
+                  on this server.
+                </Text>
+                <Text style={styles.settingDescription}>
+                  They are kept on this phone only. They will not sync to your
+                  other devices, and they are gone if you uninstall OwnGains or
+                  lose the phone. Use Export My Data under Privacy and Data to
+                  keep a copy.
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+        <SettingsRow
+          label="Server Version"
+          description={
+            serverInfo?.outdated
+              ? `This server runs ${serverInfo.version}. Version ${MIN_SERVER_VERSION} or newer is needed for blocking, reporting, data export and changing day mid-workout. Ask its operator to update.`
+              : "The version of OwnGains-Server you are signed in to"
+          }
+          right={versionAccessory}
+        />
+      </SettingsGroup>
+    );
+  };
+
+  const renderStoragePage = (): React.JSX.Element => (
+    <>
+      {renderSyncGroup()}
+      {renderServerGroup()}
+      <HealthConnectSection styles={styles} userId={user?.id ?? null} alert={alert} />
+      <SettingsGroup title="Storage mode">
+        {isOffline ? (
+          <SettingsRow
+            label="Change Storage Mode"
+            description="Go back to setup to switch between this device and a server"
+            onPress={migrateToOnline}
+            accessibilityLabel="Change storage mode"
+          />
+        ) : (
+          <SettingsRow
+            label="Migrate to Offline Account"
+            description="Create a local profile and switch the app to offline mode"
+            busy={busyAction === "migrateOffline"}
+            disabled={busyAction !== null}
+            onPress={migrateToOffline}
+            accessibilityLabel="Migrate to an offline account"
+          />
+        )}
+      </SettingsGroup>
+    </>
+  );
+
+  const renderPrivacyPage = (): React.JSX.Element => (
+    <>
+      <SettingsGroup title="Your data">
+        <SettingsRow
+          label="Export My Data"
+          description="Save everything this app holds about you as a JSON file, encrypted with a passphrase if you set one"
+          busy={exportingData}
+          disabled={exportingData}
+          onPress={() => setShowExportPassphraseModal(true)}
+          accessibilityLabel="Export all of my data to a file"
+          anchorRef={tutorialAnchor("settings.exportData")}
+        />
+        <SettingsRow
+          label="Restore Data"
+          description="Pick an OwnGains backup to replace everything on this device, or a Strength Level CSV to import its history"
+          busy={restoreBusy}
+          disabled={restoreBusy}
+          onPress={handleRestoreData}
+          accessibilityLabel="Restore a backup or import a Strength Level CSV"
+        />
+        {!isOffline && (
+          <SettingsRow
+            label="Withdraw Health Consent"
+            description="Delete your workouts and body data from the server and switch to offline mode"
+            busy={busyAction === "migrateOffline"}
+            disabled={busyAction !== null}
+            onPress={withdrawHealthConsent}
+            accessibilityLabel="Withdraw health data consent"
+          />
+        )}
+      </SettingsGroup>
+
+      <SettingsGroup title="Diagnostics">
+        <SettingsRow
+          label="Send Crash Reports"
+          description="Share anonymous crash diagnostics to help fix bugs"
+          toggle={{
+            value: crashReporting,
+            onChange: handleToggleCrashReporting,
+            label: "Send crash reports",
+          }}
+        />
+        <SettingsRow
+          label="Usage Metrics"
+          description="Share which screens and features you use, workout length and set counts, plus performance traces and diagnostic logs. Never exercise names, weights or notes"
+          toggle={{
+            value: telemetry,
+            onChange: handleToggleTelemetry,
+            label: "Send usage metrics and diagnostics",
+          }}
+        />
+      </SettingsGroup>
+
+      {!isOffline && (
+        <SettingsGroup title="Friends">
+          <SettingsRow
+            label="Blocked Users"
+            description="Review and unblock people you have blocked"
+            onPress={openBlockedUsers}
+            accessibilityLabel="Manage blocked users"
+          />
+        </SettingsGroup>
+      )}
+
+      <SettingsGroup title="Legal">
+        <SettingsRow
+          label="Privacy Policy"
+          description="What this app stores, and where"
+          onPress={() => navigation.navigate("PrivacyPolicy")}
+          accessibilityLabel="Open the privacy policy"
+        />
+        <SettingsRow
+          label="Terms of Service"
+          description="The rules for using the app and the official server"
+          onPress={() => navigation.navigate("TermsOfService")}
+          accessibilityLabel="Open the terms of service"
+        />
+      </SettingsGroup>
+
+      <SettingsGroup
+        title="Danger zone"
+        danger
+        footer="None of these can be undone, and there is no automatic backup. Export your data first if you might want it back."
+      >
+        <SettingsRow
+          label="Reset Progress"
+          description={
+            noLocalProgress
+              ? NO_LOCAL_PROGRESS_HINT
+              : "Delete all set history. To unlock days without deleting anything, use Workout, then History"
+          }
+          destructive
+          busy={busyAction === "resetProgress"}
+          disabled={progressActionsDisabled}
+          onPress={handleResetProgress}
+          accessibilityLabel="Reset all progress"
+        />
+        <SettingsRow
+          label="Clear All Data"
+          description="Delete everything"
+          destructive
+          busy={busyAction === "clearData"}
+          disabled={busyAction !== null}
+          onPress={handleClearData}
+          accessibilityLabel="Clear all data"
+        />
+      </SettingsGroup>
+    </>
+  );
+
+  const renderAboutPage = (): React.JSX.Element => (
+    <>
+      <SettingsGroup>
+        <SettingsRow
+          label="What's New"
+          description="Changes in this version, and every version before it"
+          onPress={() => {
+            trackFeature("settings", "changelog_open");
+            setShowChangelog(true);
+          }}
+          accessibilityLabel="What's new in this version"
+        />
+        <SettingsRow label="Version" value={Constants.expoConfig?.version ?? "-"} />
+        <SettingsRow
+          label="Tutorial"
+          description="Replay the tour, or just the chapters you need"
+          onPress={() => setShowTutorialMenu(true)}
+          accessibilityLabel="Tutorial: replay the whole tour or single chapters"
+          anchorRef={tutorialAnchor("settings.tutorial")}
+        />
+        <SettingsRow
+          label="Give Feedback"
+          description="Report a bug or suggest an idea"
+          value="Email ↗"
+          accessibilityRole="link"
+          accessibilityLabel="Give feedback by email"
+          onPress={() =>
+            void Linking.openURL(
+              `mailto:kostissuperak0s@gmail.com?subject=${encodeURIComponent(
+                `OwnGains feedback (v${Constants.expoConfig?.version ?? "?"})`,
+              )}`,
+            ).catch(() =>
+              alert("No email app", "Send your feedback to kostissuperak0s@gmail.com."),
+            )
+          }
+        />
+        <SettingsRow
+          label="Support Development"
+          description="Help keep OwnGains and its official server running"
+          value={SUPPORT_COPY.cta}
+          accessibilityRole={SUPPORT_COPY.role}
+          accessibilityLabel={SUPPORT_COPY.label}
+          onPress={() => {
+            trackFeature("tip", KOFI_URL ? "kofi_open" : "jar_open");
+            if (KOFI_URL) void Linking.openURL(KOFI_URL);
+            else setShowTipJar(true);
+          }}
+        />
+      </SettingsGroup>
+
+      <SettingsGroup title="Open source">
+        {[
+          {
+            label: "App on GitHub",
+            description: "Source code, releases and issues",
+            url: "https://github.com/Superak0s/OwnGains-App",
+          },
+          {
+            label: "Server on GitHub",
+            description: "Self-host your own OwnGains Server",
+            url: "https://github.com/Superak0s/OwnGains-Server",
+          },
+          {
+            label: "Open-Source Licences",
+            description: "The libraries and data OwnGains is built on",
+            url: "https://raw.githubusercontent.com/Superak0s/OwnGains-App/main/docs/third-party-notices.md",
+          },
+        ].map(({ label, description, url }) => (
+          <SettingsRow
+            key={url}
+            label={label}
+            description={description}
+            value="↗"
+            accessibilityRole="link"
+            onPress={() => void Linking.openURL(url)}
+          />
+        ))}
+      </SettingsGroup>
+    </>
+  );
+
+  const renderDeveloperPage = (): React.JSX.Element => (
+    <SettingsGroup
+      footer={
+        __DEV__
+          ? "Debug build: this page is also shown to admin accounts in release APKs"
+          : "Shown because this account is an admin"
+      }
+    >
+      {isAdmin && !isOffline && (
+        <SettingsRow
+          icon="📈"
+          label="Server Metrics"
+          description="Requests, errors and database health on the server's admin dashboard. Sign in there with this account."
+          value="↗"
+          accessibilityRole="link"
+          onPress={() => void Linking.openURL(`${serverUrl}/admin/metrics`)}
+          accessibilityLabel="Open the server metrics dashboard in the browser"
+        />
+      )}
+      <SettingsRow
+        icon="✨"
+        label="Fill Demo Data"
+        description="Generate ~5 weeks of workout sessions (and a sample program if you have none) to check every screen"
+        busy={fillingDemoData}
+        disabled={fillingDemoData}
+        onPress={handleFillDemoData}
+        accessibilityLabel="Fill the app with demo workout data"
+      />
+      <SettingsRow
+        icon="🧹"
+        label="Remove Demo Data"
+        description="Delete the generated sessions, keeping real ones"
+        destructive
+        busy={busyAction === "removeDemo"}
+        disabled={fillingDemoData || busyAction !== null}
+        onPress={handleRemoveDemoData}
+        accessibilityLabel="Remove demo workout data"
+      />
+      <SettingsRow
+        icon="🔔"
+        label="Preview Alert Style"
+        description="Tap repeatedly to cycle through every alert variant"
+        onPress={() => {
+          const preview =
+            ALERT_PREVIEWS[alertPreviewIndexRef.current % ALERT_PREVIEWS.length];
+          alertPreviewIndexRef.current += 1;
+          alert(preview.title, preview.message, preview.buttons, preview.type);
+        }}
+        accessibilityLabel="Preview the next alert style"
+      />
+      <SettingsRow
+        icon="📡"
+        label="Test Crash Reporting"
+        description="Send an error, a log and a metric, then report whether they reached GlitchTip and which consent gate stopped them"
+        busy={busyAction === "sentryTest"}
+        disabled={busyAction === "sentryTest"}
+        onPress={handleSentryTest}
+        accessibilityLabel="Send a test event to GlitchTip"
+      />
+      <SettingsRow
+        icon="⏰"
+        label="Test Alarm"
+        description={`Ring a supplement alarm in ${TEST_ALARM_DELAY_SECONDS} seconds and show which alarm permissions are missing`}
+        busy={busyAction === "testAlarm"}
+        disabled={busyAction === "testAlarm"}
+        onPress={() => void handleTestAlarm()}
+        accessibilityLabel="Schedule a test supplement alarm"
+      />
+      <SettingsRow
+        icon="📋"
+        label="Share Diagnostics"
+        description="App version, mode, server, consent flags and pending sync count, the details to attach to a bug report"
+        onPress={handleShareDiagnostics}
+        accessibilityLabel="Share diagnostics"
+      />
+    </SettingsGroup>
+  );
   const renderProgressCard = (): React.JSX.Element => {
     if (loadingProgress)
       return (
@@ -2866,859 +3007,160 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
     </>
   );
 
+  const serverHost = serverUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  let storageSummary = isOffline ? "Stored on this device" : serverHost;
+  if (pendingSyncs.length > 0)
+    storageSummary = `${countChanges(pendingSyncs.length)} waiting to sync`;
+  const pages: Record<
+    SettingsPage,
+    { title: string; icon: string; summary: string; render: () => React.JSX.Element }
+  > = {
+    account: {
+      title: accountCopy.section,
+      icon: "👤",
+      summary: isOffline ? "This device profile" : (user?.email ?? user?.username ?? "Sign-in and security"),
+      render: renderAccountPage,
+    },
+    workout: {
+      title: "Workout",
+      icon: "🏋️",
+      summary: `${useManualTime ? "Manual" : "Auto"} rest time, ${formatDuration(timeBetweenSets)}`,
+      render: renderWorkoutPage,
+    },
+    appearance: {
+      title: "Appearance",
+      icon: "🎨",
+      summary: "Theme and tab order",
+      render: renderAppearancePage,
+    },
+    storage: {
+      title: "Storage and Sync",
+      icon: "☁️",
+      summary: storageSummary,
+      render: renderStoragePage,
+    },
+    privacy: {
+      title: "Privacy and Data",
+      icon: "🔒",
+      summary: "Export, restore and diagnostics",
+      render: renderPrivacyPage,
+    },
+    about: {
+      title: "About",
+      icon: "ℹ️",
+      summary: `Version ${Constants.expoConfig?.version ?? "-"}`,
+      render: renderAboutPage,
+    },
+    developer: {
+      title: "Developer",
+      icon: "🧪",
+      summary: "Demo data and diagnostics",
+      render: renderDeveloperPage,
+    },
+  };
+  const showDeveloper = __DEV__ || isAdmin;
+  const indexGroups: SettingsPage[][] = [
+    ["account", "workout", "appearance"],
+    ["storage", "privacy"],
+    showDeveloper ? ["about", "developer"] : ["about"],
+  ];
+
+  const displayName =
+    user?.name ?? user?.username ?? (isOffline ? "This device" : "Not signed in");
+  let modeLine = isOffline ? "Offline, stored on this device" : `Online, ${serverHost}`;
+  if (pendingSyncs.length > 0)
+    modeLine += `. ${countChanges(pendingSyncs.length)} waiting to sync`;
+
+  const renderIndex = (): React.JSX.Element => (
+    <>
+      <ScreenTitle title="Settings" />
+      <TouchableOpacity
+        activeOpacity={0.7}
+        style={styles.profileCard}
+        onPress={() => setPage("account")}
+        accessibilityRole="button"
+        accessibilityLabel={`${displayName}. ${modeLine}. Open account settings`}
+      >
+        <View style={styles.profileAvatar}>
+          {savedAvatarUri ? (
+            <Image
+              source={{ uri: savedAvatarUri }}
+              style={styles.profileAvatarImage}
+              contentFit="cover"
+            />
+          ) : (
+            <Text style={styles.profileInitial}>
+              {displayName.charAt(0).toUpperCase()}
+            </Text>
+          )}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.profileName} numberOfLines={1}>
+            {displayName}
+          </Text>
+          <Text
+            style={[
+              styles.profileMode,
+              pendingSyncs.length > 0 && { color: colors.warning },
+            ]}
+            numberOfLines={2}
+          >
+            {modeLine}
+          </Text>
+        </View>
+        <Text style={styles.profileChevron} importantForAccessibility="no">
+          ›
+        </Text>
+      </TouchableOpacity>
+      {indexGroups.map((group) => (
+        <SettingsGroup key={group.join()}>
+          {group.map((key) => (
+            <SettingsRow
+              key={key}
+              icon={pages[key].icon}
+              label={pages[key].title}
+              description={pages[key].summary}
+              onPress={() => setPage(key)}
+            />
+          ))}
+        </SettingsGroup>
+      ))}
+    </>
+  );
+
+  const activePage = page && (page !== "developer" || showDeveloper) ? page : null;
+
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
       <ScrollView
+        key={activePage ?? "index"}
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
       >
-        <View>
-          <View style={styles.section}>
-            <ScreenTitle title='Settings' style={{ marginBottom: 0 }} />
-          </View>
-
-          <View style={styles.section}>
-            <Text
-              style={styles.sectionTitle}
-              accessibilityRole="header"
-              accessibilityLabel={accountCopy.section}
-            >
-              👤 {accountCopy.section}
-            </Text>
-            <View style={styles.card}>
-              <TouchableOpacity
-                style={styles.settingRow}
-                onPress={() => setShowAccountModal(true)}
-                accessibilityRole="button"
-                accessibilityLabel={accountCopy.editLabel}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>{accountCopy.row}</Text>
-                  <Text style={styles.settingDescription}>
-                    {user?.name ??
-                      user?.username ??
-                      "View or edit your account"}
-                  </Text>
-                </View>
-                <Text style={styles.settingValue}>Edit</Text>
-              </TouchableOpacity>
-              {!isOffline && (
-                <>
-                  {!googleOnly && (
-                  <TouchableOpacity
-                    style={styles.settingRow}
-                    onPress={() => setShowChangePasswordModal(true)}
-                    accessibilityRole="button"
-                    accessibilityLabel="Change your password"
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.settingLabel}>Change Password</Text>
-                      <Text style={styles.settingDescription}>
-                        Signs out every other device
-                      </Text>
-                    </View>
-                    <Text style={styles.settingValue}>Change</Text>
-                  </TouchableOpacity>
-                  )}
-                  {!googleOnly && <View style={styles.divider} />}
-                  {!googleOnly && user?.googleLinked && (
-                    <>
-                      <TouchableOpacity
-                        style={styles.settingRow}
-                        onPress={() => setShowUnlinkGoogleModal(true)}
-                        accessibilityRole="button"
-                        accessibilityLabel="Unlink your Google account"
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.settingLabel}>Google Account</Text>
-                          <Text style={styles.settingDescription}>
-                            Linked. You can also sign in with Google
-                          </Text>
-                        </View>
-                        <Text style={styles.settingValue}>Unlink</Text>
-                      </TouchableOpacity>
-                      <View style={styles.divider} />
-                    </>
-                  )}
-                  <TouchableOpacity
-                    style={styles.settingRow}
-                    onPress={handleLogout}
-                    accessibilityRole="button"
-                    accessibilityLabel="Sign out of this device"
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.settingLabel, styles.dangerText]}>
-                        Sign Out
-                      </Text>
-                      <Text style={styles.settingDescription}>
-                        Your data stays on the server
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </View>
-
-          {renderSyncSection()}
-          <HealthConnectSection styles={styles} userId={user?.id ?? null} alert={alert} />
-
-          <View style={styles.section}>
-            <Text
-              style={styles.sectionTitle}
-              accessibilityRole="header"
-              accessibilityLabel="Workout"
-            >
-              ⚙️ Workout
-            </Text>
-            <View style={styles.card}>
-              <View style={styles.settingRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Use Manual Time</Text>
-                  <Text style={styles.settingDescription}>
-                    Use your manually set time instead of server analytics
-                  </Text>
-                </View>
-                <Switch
-                  value={useManualTime}
-                  onValueChange={(on) => {
-                    trackFeature("settings", "toggle", { setting: "manual_time", on });
-                    if (on) confirmEnableManualTime();
-                    else void toggleUseManualTime(false);
-                  }}
-                  trackColor={{
-                    false: colors.surfaceBorder,
-                    true: colors.accent,
-                  }}
-                  thumbColor={switchThumbColor(useManualTime)}
-                  accessibilityLabel="Use manual time between sets"
-                />
-              </View>
-              <View style={styles.divider} />
-              <View style={styles.settingRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>PR Celebration</Text>
-                  <Text style={styles.settingDescription}>
-                    Play an animation in-session when a set exceeds your best
-                    estimated 1RM
-                  </Text>
-                </View>
-                <Switch
-                  value={prCelebration}
-                  onValueChange={(on) =>
-                    saveWorkoutPref(
-                      STORAGE_KEYS.PR_CELEBRATION,
-                      setPrCelebration,
-                      on,
-                    )
-                  }
-                  trackColor={{
-                    false: colors.surfaceBorder,
-                    true: colors.accent,
-                  }}
-                  thumbColor={switchThumbColor(prCelebration)}
-                  accessibilityLabel="Celebrate personal records"
-                />
-              </View>
-              <View style={styles.divider} />
-              <View style={styles.settingRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Auto-Progression Prompt</Text>
-                  <Text style={styles.settingDescription}>
-                    Suggest the next set's weight from your last set's reps and
-                    reps in reserve
-                  </Text>
-                </View>
-                <Switch
-                  value={autoProgression}
-                  onValueChange={(on) =>
-                    saveWorkoutPref(
-                      STORAGE_KEYS.AUTO_PROGRESSION,
-                      setAutoProgression,
-                      on,
-                    )
-                  }
-                  trackColor={{
-                    false: colors.surfaceBorder,
-                    true: colors.accent,
-                  }}
-                  thumbColor={switchThumbColor(autoProgression)}
-                  accessibilityLabel="Suggest auto-progression between sets"
-                />
-              </View>
-              <View style={styles.divider} />
-              <TouchableOpacity
-                style={styles.settingRow}
-                onPress={() => setShowTimeBetweenSetsModal(true)}
-                accessibilityRole="button"
-                accessibilityLabel="Change the time between sets"
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Time Between Sets</Text>
-                  <Text style={styles.settingDescription}>
-                    {useManualTime
-                      ? "Manual time (used for estimates)"
-                      : "Manual fallback (auto mode active)"}
-                  </Text>
-                </View>
-                <Text style={styles.settingValue}>
-                  {formatDuration(timeBetweenSets)}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.helperText}>
-              {useManualTime
-                ? "Using your manual time setting for workout estimates"
-                : "Using server analytics when available, manual time as fallback"}
-            </Text>
-            <View style={[styles.card, { marginTop: 12 }]}>
-              <View style={styles.settingRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>
-                    Show undertrained suggestions
-                  </Text>
-                  <Text style={styles.settingDescription}>
-                    How to show exercise suggestions for muscle groups behind
-                    this week
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  style={styles.dropdownButton}
-                  accessibilityRole="button"
-                  accessibilityLabel="Change how undertrained muscles are surfaced"
-                  onPress={() => setShowDisplayModeMenu(true)}
-                >
-                  <Text style={styles.dropdownButtonText}>
-                    {DISPLAY_MODE_OPTIONS.find(
-                      (o) => o.key === undertrainedDisplayMode,
-                    )?.label ?? undertrainedDisplayMode}
-                  </Text>
-                  <Text
-                    style={styles.dropdownArrow}
-                    importantForAccessibility="no"
-                  >
-                    ▼
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.divider} />
-              <View style={styles.compareSection}>
-                <Text style={styles.settingLabel}>Compare against</Text>
-                <View style={styles.compareRow} accessibilityRole="radiogroup">
-                  {CALCULATION_MODE_OPTIONS.map((option) => {
-                    const isSelected =
-                      undertrainedCalculationMode === option.key;
-                    return (
-                      <TouchableOpacity
-                        key={option.key}
-                        activeOpacity={0.7}
-                        accessibilityRole="radio"
-                        accessibilityState={{ checked: isSelected }}
-                        accessibilityLabel={option.label}
-                        style={[
-                          styles.compareChip,
-                          isSelected && styles.compareChipActive,
-                        ]}
-                        onPress={() =>
-                          handleSetUndertrainedCalculationMode(option.key)
-                        }
-                      >
-                        <Text
-                          style={[
-                            styles.compareChipText,
-                            isSelected && styles.compareChipTextActive,
-                          ]}
-                        >
-                          {option.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                <Text style={styles.settingDescription}>
-                  {
-                    CALCULATION_MODE_OPTIONS.find(
-                      (o) => o.key === undertrainedCalculationMode,
-                    )?.description
-                  }
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {renderWorkoutHistorySection()}
-
-          <View style={styles.section}>
-            <Text
-              style={styles.sectionTitle}
-              accessibilityRole="header"
-              accessibilityLabel="Appearance"
-            >
-              🎨 Appearance
-            </Text>
-            <View style={styles.card}>
-              <TouchableOpacity
-                style={styles.settingRow}
-                onPress={() => setShowThemeEditor(true)}
-                accessibilityRole="button"
-                accessibilityLabel="Edit the app theme"
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Theme</Text>
-                  <Text style={styles.settingDescription}>
-                    Customize app colors and appearance
-                  </Text>
-                </View>
-                <Text style={styles.settingValue}>Edit</Text>
-              </TouchableOpacity>
-              <View style={styles.divider} />
-              <TouchableOpacity
-                style={styles.settingRow}
-                onPress={() => void openTabOrder()}
-                accessibilityRole="button"
-                accessibilityLabel="Reorder the bottom tabs"
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Tab Order</Text>
-                  <Text style={styles.settingDescription}>
-                    Rearrange the screens in the bottom bar
-                  </Text>
-                </View>
-                <Text style={styles.settingValue}>Edit</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text
-              style={styles.sectionTitle}
-              accessibilityRole="header"
-              accessibilityLabel="Storage and Server"
-            >
-              🖥️ Storage & Server
-            </Text>
-            {renderServerCard()}
-            {!isOffline && (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={[
-                  styles.actionButton,
-                  busyAction !== null && styles.disabledButton,
-                ]}
-                onPress={migrateToOffline}
-                disabled={busyAction !== null}
-                accessibilityRole="button"
-                accessibilityLabel="Migrate to an offline account"
-                accessibilityState={{
-                  disabled: busyAction !== null,
-                  busy: busyAction === "migrateOffline",
-                }}
-              >
-                <Text
-                  style={styles.actionButtonIcon}
-                  importantForAccessibility="no"
-                >
-                  ⬇️
-                </Text>
-                <View style={styles.actionButtonContent}>
-                  <Text style={styles.actionButtonText}>
-                    Migrate to Offline Account
-                  </Text>
-                  <Text style={styles.actionButtonSubtext}>
-                    Create a local profile and switch the app to offline mode
-                  </Text>
-                </View>
-                {busyAction === "migrateOffline" && (
-                  <ActivityIndicator color={colors.accent} />
-                )}
-              </TouchableOpacity>
-            )}
-            {isOffline && (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={styles.actionButton}
-                onPress={migrateToOnline}
-                accessibilityRole="button"
-                accessibilityLabel="Change storage mode"
-              >
-                <Text
-                  style={styles.actionButtonIcon}
-                  importantForAccessibility="no"
-                >
-                  ⬆️
-                </Text>
-                <View style={styles.actionButtonContent}>
-                  <Text style={styles.actionButtonText}>
-                    Change Storage Mode
-                  </Text>
-                  <Text style={styles.actionButtonSubtext}>
-                    Go back to setup to switch between this device and a server
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View style={styles.section}>
-            <Text
-              style={styles.sectionTitle}
-              accessibilityRole="header"
-              accessibilityLabel="Privacy and Data"
-            >
-              🔒 Privacy and Data
-            </Text>
-            <View style={styles.card}>
-              <TouchableOpacity
-                style={styles.settingRow}
-                onPress={() => navigation.navigate("PrivacyPolicy")}
-                accessibilityRole="button"
-                accessibilityLabel="Open the privacy policy"
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Privacy Policy</Text>
-                  <Text style={styles.settingDescription}>
-                    What this app stores, and where
-                  </Text>
-                </View>
-                <Text style={styles.settingValue}>View</Text>
-              </TouchableOpacity>
-              <View style={styles.divider} />
-              <TouchableOpacity
-                style={styles.settingRow}
-                onPress={() => navigation.navigate("TermsOfService")}
-                accessibilityRole="button"
-                accessibilityLabel="Open the terms of service"
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Terms of Service</Text>
-                  <Text style={styles.settingDescription}>
-                    The rules for using the app and the official server
-                  </Text>
-                </View>
-                <Text style={styles.settingValue}>View</Text>
-              </TouchableOpacity>
-
-              <View style={styles.divider} />
-
-              <TouchableOpacity
-                style={[
-                  styles.settingRow,
-                  exportingData && styles.disabledButton,
-                ]}
-                onPress={() => setShowExportPassphraseModal(true)}
-                disabled={exportingData}
-                accessibilityRole="button"
-                accessibilityLabel="Export all of my data to a file"
-                ref={tutorialAnchor("settings.exportData")}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Export My Data</Text>
-                  <Text style={styles.settingDescription}>
-                    Save everything this app holds about you as a JSON file,
-                    encrypted with a passphrase if you set one
-                  </Text>
-                </View>
-                {exportingData ? (
-                  <ActivityIndicator color={colors.accent} />
-                ) : (
-                  <Text style={styles.settingValue}>Export</Text>
-                )}
-              </TouchableOpacity>
-
-              {!isOffline && (
-                <>
-                  <View style={styles.divider} />
-                  <TouchableOpacity
-                    style={[
-                      styles.settingRow,
-                      busyAction !== null && styles.disabledButton,
-                    ]}
-                    onPress={withdrawHealthConsent}
-                    disabled={busyAction !== null}
-                    accessibilityRole="button"
-                    accessibilityLabel="Withdraw health data consent"
-                    accessibilityState={{
-                      disabled: busyAction !== null,
-                      busy: busyAction === "migrateOffline",
-                    }}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.settingLabel}>Withdraw Health Consent</Text>
-                      <Text style={styles.settingDescription}>
-                        Delete your workouts and body data from the server and
-                        switch to offline mode
-                      </Text>
-                    </View>
-                    {busyAction === "migrateOffline" ? (
-                      <ActivityIndicator color={colors.accent} />
-                    ) : (
-                      <Text style={styles.settingValue}>Withdraw</Text>
-                    )}
-                  </TouchableOpacity>
-                </>
-              )}
-              <View style={styles.divider} />
-
-              <TouchableOpacity
-                style={[
-                  styles.settingRow,
-                  restoreBusy && styles.disabledButton,
-                ]}
-                onPress={handleRestoreData}
-                disabled={restoreBusy}
-                accessibilityRole="button"
-                accessibilityLabel="Restore a backup or import a Strength Level CSV"
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Restore Data</Text>
-                  <Text style={styles.settingDescription}>
-                    Pick an OwnGains backup to replace everything on this device,
-                    or a Strength Level CSV to import its history
-                  </Text>
-                </View>
-                {restoreBusy ? (
-                  <ActivityIndicator color={colors.accent} />
-                ) : (
-                  <Text style={styles.settingValue}>Restore</Text>
-                )}
-              </TouchableOpacity>
-
-              <View style={styles.divider} />
-
-              <View style={styles.settingRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Send Crash Reports</Text>
-                  <Text style={styles.settingDescription}>
-                    Share anonymous crash diagnostics to help fix bugs
-                  </Text>
-                </View>
-                <Switch
-                  value={crashReporting}
-                  onValueChange={handleToggleCrashReporting}
-                  trackColor={{
-                    false: colors.surfaceBorder,
-                    true: colors.accent,
-                  }}
-                  thumbColor={switchThumbColor(crashReporting)}
-                  accessibilityLabel="Send crash reports"
-                />
-              </View>
-
-              <View style={styles.divider} />
-
-              <View style={styles.settingRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Usage Metrics</Text>
-                  <Text style={styles.settingDescription}>
-                    Share which screens and features you use, workout length and
-                    set counts, plus performance traces and diagnostic logs. Never
-                    exercise names, weights or notes
-                  </Text>
-                </View>
-                <Switch
-                  value={telemetry}
-                  onValueChange={handleToggleTelemetry}
-                  trackColor={{
-                    false: colors.surfaceBorder,
-                    true: colors.accent,
-                  }}
-                  thumbColor={switchThumbColor(telemetry)}
-                  accessibilityLabel="Send usage metrics and diagnostics"
-                />
-              </View>
-
-              {!isOffline && <View style={styles.divider} />}
-
-              {!isOffline && (
-                <TouchableOpacity
-                  style={styles.settingRow}
-                  onPress={openBlockedUsers}
-                  accessibilityRole="button"
-                  accessibilityLabel="Manage blocked users"
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.settingLabel}>Blocked Users</Text>
-                    <Text style={styles.settingDescription}>
-                      Review and unblock people you have blocked
-                    </Text>
-                  </View>
-                  <Text style={styles.settingValue}>Manage</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <View style={styles.dangerZone}>
-              <Text style={styles.dangerZoneTitle}>
-                ⚠️ None of these can be undone
-              </Text>
-              <Text style={styles.dangerZoneBody}>
-                There is no undo and no automatic backup. Export your data from
-                the row above first if you might want it back.
-              </Text>
-            </View>
-
+        {activePage ? (
+          <>
             <TouchableOpacity
-              activeOpacity={0.7}
-              style={[
-                styles.actionButton,
-                styles.dangerButton,
-                progressActionsDisabled &&
-                  styles.disabledButton,
-              ]}
-              onPress={handleResetProgress}
-              disabled={progressActionsDisabled}
+              style={styles.backButton}
+              onPress={() => setPage(null)}
               accessibilityRole="button"
-              accessibilityLabel="Reset all progress"
-              accessibilityState={{
-                disabled: progressActionsDisabled,
-                busy: busyAction === "resetProgress",
-              }}
+              accessibilityLabel="Back to settings"
             >
-              <Text
-                style={styles.actionButtonIcon}
-                importantForAccessibility="no"
-              >
-                ↩️
-              </Text>
-              <View style={styles.actionButtonContent}>
-                <Text style={[styles.actionButtonText, styles.dangerText]}>
-                  Reset Progress
-                </Text>
-                <Text style={styles.actionButtonSubtext}>
-                  {noLocalProgress
-                    ? NO_LOCAL_PROGRESS_HINT
-                    : "Delete all set history. To unlock days without deleting anything, use Workout History above"}
-                </Text>
-              </View>
-              {busyAction === "resetProgress" && (
-                <ActivityIndicator color={colors.accent} />
-              )}
+              <Text style={styles.backText}>‹ Settings</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={[
-                styles.actionButton,
-                styles.dangerButton,
-                busyAction !== null && styles.disabledButton,
-              ]}
-              onPress={handleClearData}
-              disabled={busyAction !== null}
-              accessibilityRole="button"
-              accessibilityLabel="Clear all data"
-              accessibilityState={{
-                disabled: busyAction !== null,
-                busy: busyAction === "clearData",
-              }}
-            >
-              <Text
-                style={styles.actionButtonIcon}
-                importantForAccessibility="no"
-              >
-                🗑️
-              </Text>
-              <View style={styles.actionButtonContent}>
-                <Text style={[styles.actionButtonText, styles.dangerText]}>
-                  Clear All Data
-                </Text>
-                <Text style={styles.actionButtonSubtext}>
-                  Delete everything
-                </Text>
-              </View>
-              {busyAction === "clearData" && (
-                <ActivityIndicator color={colors.accent} />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={[
-                styles.actionButton,
-                styles.dangerButton,
-                busyAction !== null && styles.disabledButton,
-              ]}
-              onPress={() => setShowDeleteAccountModal(true)}
-              disabled={busyAction !== null}
-              accessibilityRole="button"
-              accessibilityLabel="Delete my account permanently"
-              accessibilityState={{ disabled: busyAction !== null }}
-            >
-              <Text
-                style={styles.actionButtonIcon}
-                importantForAccessibility="no"
-              >
-                ⚠️
-              </Text>
-              <View style={styles.actionButtonContent}>
-                <Text style={[styles.actionButtonText, styles.dangerText]}>
-                  Delete Account
-                </Text>
-                <Text style={styles.actionButtonSubtext}>
-                  Permanently remove your account and all of its data
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.section}>
-            <Text
-              style={styles.sectionTitle}
-              accessibilityRole="header"
-              accessibilityLabel="About"
-            >
-              ℹ️ About
-            </Text>
-            <View style={styles.card}>
-              <TouchableOpacity
-                style={styles.settingRow}
-                onPress={() => {
-                  trackFeature("tip", KOFI_URL ? "kofi_open" : "jar_open");
-                  if (KOFI_URL) void Linking.openURL(KOFI_URL);
-                  else setShowTipJar(true);
-                }}
-                accessibilityRole={SUPPORT_COPY.role}
-                accessibilityLabel={SUPPORT_COPY.label}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Support Development</Text>
-                  <Text style={styles.settingDescription}>
-                    Help keep OwnGains and its official server running
-                  </Text>
-                </View>
-                <Text style={styles.settingValue}>{SUPPORT_COPY.cta}</Text>
-              </TouchableOpacity>
-              <View style={styles.divider} />
-              <TouchableOpacity
-                style={styles.settingRow}
-                onPress={() =>
-                  void Linking.openURL(
-                    `mailto:kostissuperak0s@gmail.com?subject=${encodeURIComponent(
-                      `OwnGains feedback (v${Constants.expoConfig?.version ?? "?"})`,
-                    )}`,
-                  ).catch(() =>
-                    alert(
-                      "No email app",
-                      "Send your feedback to kostissuperak0s@gmail.com.",
-                    ),
-                  )
-                }
-                accessibilityRole="link"
-                accessibilityLabel="Give feedback by email"
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Give Feedback</Text>
-                  <Text style={styles.settingDescription}>
-                    Report a bug or suggest an idea
-                  </Text>
-                </View>
-                <Text style={styles.settingValue}>Email ↗</Text>
-              </TouchableOpacity>
-              <View style={styles.divider} />
-              <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Version</Text>
-                <Text style={styles.infoValue}>
-                  {Constants.expoConfig?.version ?? "-"}
-                </Text>
-              </View>
-              <View style={styles.divider} />
-              <TouchableOpacity
-                style={styles.settingRow}
-                onPress={() => {
-                  trackFeature("settings", "changelog_open");
-                  setShowChangelog(true);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="What's new in this version"
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>What's New</Text>
-                  <Text style={styles.settingDescription}>
-                    Changes in this version, and every version before it
-                  </Text>
-                </View>
-                <Text style={styles.settingValue}>View</Text>
-              </TouchableOpacity>
-              <View style={styles.divider} />
-              <TouchableOpacity
-                ref={tutorialAnchor("settings.tutorial")}
-                style={styles.settingRow}
-                onPress={() => setShowTutorialMenu(true)}
-                accessibilityRole="button"
-                accessibilityLabel="Tutorial: replay the whole tour or single chapters"
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Tutorial</Text>
-                  <Text style={styles.settingDescription}>
-                    Replay the tour, or just the chapters you need
-                  </Text>
-                </View>
-                <Text style={styles.settingValue}>Open</Text>
-              </TouchableOpacity>
-              {[
-                {
-                  label: "App on GitHub",
-                  description: "Source code, releases and issues",
-                  url: "https://github.com/Superak0s/OwnGains-App",
-                },
-                {
-                  label: "Server on GitHub",
-                  description: "Self-host your own OwnGains Server",
-                  url: "https://github.com/Superak0s/OwnGains-Server",
-                },
-              ].map(({ label, description, url }) => (
-                <React.Fragment key={url}>
-                  <View style={styles.divider} />
-                  <TouchableOpacity
-                    style={styles.settingRow}
-                    onPress={() => void Linking.openURL(url)}
-                    accessibilityRole="link"
-                    accessibilityLabel={label}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.settingLabel}>{label}</Text>
-                      <Text style={styles.settingDescription}>
-                        {description}
-                      </Text>
-                    </View>
-                    <Text style={styles.settingValue}>View ↗</Text>
-                  </TouchableOpacity>
-                </React.Fragment>
-              ))}
-              <View style={styles.divider} />
-              <TouchableOpacity
-                style={styles.settingRow}
-                onPress={() =>
-                  void Linking.openURL(
-                    "https://raw.githubusercontent.com/Superak0s/OwnGains-App/main/docs/third-party-notices.md",
-                  )
-                }
-                accessibilityRole="link"
-                accessibilityLabel="Open-source licences"
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Open-Source Licences</Text>
-                  <Text style={styles.settingDescription}>
-                    The libraries and data OwnGains is built on
-                  </Text>
-                </View>
-                <Text style={styles.settingValue}>View ↗</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {renderDeveloperSection()}
-
-        </View>
-
-        {renderModals()}
-        <ChangelogSheet
-          visible={showChangelog}
-          onClose={() => setShowChangelog(false)}
-          currentVersion={Constants.expoConfig?.version}
-        />
-        <TipJarSheet visible={showTipJar} onClose={() => setShowTipJar(false)} />
+            <ScreenTitle title={pages[activePage].title} />
+            {pages[activePage].render()}
+          </>
+        ) : (
+          renderIndex()
+        )}
       </ScrollView>
+      {renderModals()}
+      <ChangelogSheet
+        visible={showChangelog}
+        onClose={() => setShowChangelog(false)}
+        currentVersion={Constants.expoConfig?.version}
+      />
+      <TipJarSheet visible={showTipJar} onClose={() => setShowTipJar(false)} />
       {AlertComponent}
       <TutorialMenuSheet
         visible={showTutorialMenu}
@@ -3734,21 +3176,53 @@ const makeStyles = (colors: ThemeColors) =>
     contentContainer: SCREEN_PADDING,
     section: { marginBottom: 24 },
     sectionTitle: {
-      fontSize: 20,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      marginBottom: 12,
+      fontSize: 13,
+      fontWeight: "700",
+      letterSpacing: 0.6,
+      textTransform: "uppercase",
+      color: colors.textSecondary,
+      marginBottom: 8,
+      marginLeft: 4,
     },
     card: {
       backgroundColor: colors.surface,
-      borderRadius: 12,
-      padding: 16,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
+      borderRadius: 14,
+      paddingHorizontal: 16,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
     },
+    profileCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      padding: 16,
+      marginBottom: 24,
+    },
+    profileAvatar: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      overflow: "hidden",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.accentLight,
+    },
+    profileAvatarImage: { width: 56, height: 56 },
+    profileInitial: { fontSize: 22, fontWeight: "700", color: colors.accent },
+    profileName: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
+    profileMode: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+    profileChevron: { fontSize: 24, color: colors.textMuted },
+    backButton: {
+      alignSelf: "flex-start",
+      minHeight: 44,
+      justifyContent: "center",
+      paddingRight: 12,
+    },
+    backText: { fontSize: 16, fontWeight: "600", color: colors.accent },
     infoRow: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -3914,17 +3388,7 @@ const makeStyles = (colors: ThemeColors) =>
       fontWeight: "700",
       color: colors.warning,
     },
-    helperText: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      marginTop: 12,
-    },
-    warningText: {
-      fontSize: 14,
-      color: colors.warning,
-      marginTop: 12,
-      fontStyle: "italic",
-    },
+    
     errorText: { fontSize: 14, color: colors.error, marginTop: 4 },
     retryButton: {
       paddingVertical: 12,
@@ -3944,62 +3408,12 @@ const makeStyles = (colors: ThemeColors) =>
       minHeight: 44,
     },
     syncButtonText: { fontSize: 16, fontWeight: "600", color: colors.accent },
-    actionButton: {
-      backgroundColor: colors.surface,
-      borderRadius: 14,
-      padding: 14,
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 12,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
-    },
+    
     disabledButton: { opacity: 0.5 },
-    dangerZone: {
-      marginTop: 18,
-      marginBottom: 6,
-      paddingHorizontal: 4,
-    },
-    dangerZoneTitle: {
-      fontSize: 13,
-      fontWeight: "700",
-      color: colors.error,
-      marginBottom: 4,
-    },
-    dangerZoneBody: {
-      fontSize: 12,
-      lineHeight: 17,
-      color: colors.textSecondary,
-    },
-    dangerButton: {
-      borderColor: colors.surfaceBorder,
-      borderLeftWidth: 3,
-      borderLeftColor: colors.error,
-    },
-    actionButtonIcon: {
-      fontSize: 20,
-      marginRight: 14,
-      width: 36,
-      height: 36,
-      textAlign: "center",
-      textAlignVertical: "center",
-      lineHeight: 36,
-      borderRadius: 10,
-      backgroundColor: colors.background,
-      overflow: "hidden",
-    },
-    actionButtonContent: { flex: 1 },
-    actionButtonText: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: colors.textPrimary,
-      marginBottom: 4,
-    },
+    
+    
+    
     dangerText: { color: colors.error },
-    actionButtonSubtext: { fontSize: 14, color: colors.textSecondary },
     modalDescription: {
       fontSize: 15,
       color: colors.textSecondary,
@@ -4064,12 +3478,6 @@ const makeStyles = (colors: ThemeColors) =>
     },
     fullModalContent: { padding: 20, paddingBottom: 20 },
 
-    settingsSectionHeaderSimple: {
-      flexDirection: "row",
-      alignItems: "baseline",
-      justifyContent: "space-between",
-      minHeight: 44,
-    },
     avatarButton: {
       width: 72,
       height: 72,

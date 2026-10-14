@@ -4,4 +4,4 @@
 • Restore default widgets, and a clearer widget edit mode
 • Profile photos sync across devices and show for your friends
 • New supplement reminder time picker
-• A reorganized Settings, plus many accessibility and error message fixes
+• A simpler Settings menu, plus many accessibility and error fixes

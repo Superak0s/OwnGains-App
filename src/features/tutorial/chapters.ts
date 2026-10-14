@@ -86,7 +86,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     card("💪", "Welcome to OwnGains", "Log workouts, follow a plan, and track your progress and body data. Everything is saved on this device first. Online mode adds sync, friends and training together."),
     spot("Home", "tab.Home", "This is the tab bar. Every screen is one tap away. Swipe it sideways to see more tabs.", "The tab bar at the bottom has every screen. Swipe it sideways to see more."),
     spot("Home", "tabbar.toggle", "The arrow beside the tab bar slides it away when you need room, and brings it back.", "The arrow beside the tab bar hides it and brings it back."),
-    card("↕️", "Your tabs, your order", "Reorder or hide tabs any time in Settings → Tab Order."),
+    card("↕️", "Your tabs, your order", "Reorder or hide tabs any time in Settings → Appearance → Tab Order."),
   ]),
   home: chapter("home", "🏠", "Home", [
     tapTab("Home", "Tap Home."),
@@ -95,7 +95,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     checklist("Finished days lock. Try the locked-day actions.", [
       ["✓", "Day 1 — Push · Locked", "A finished day locks, so the workout you logged can't be changed by accident."],
       ["👀", "Tap to view", "Opens the finished session with every set, weight and rep."],
-      ["🔓", "Unlock", "Settings → Locked Days unlocks one day if you need to fix something."],
+      ["🔓", "Unlock", "Settings → Workout → Unlock Single Day unlocks one day if you need to fix something."],
     ]),
     card("🧩", "Widgets from other screens", "Home can also show widgets from any other screen. The Widgets chapter shows you how."),
   ]),
@@ -212,7 +212,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
       ["➖", "Remove", "Ends the friendship."],
       ["⛔", "Block", "They can't find or contact you."],
       ["🚩", "Report", "Tells the server operator about abuse."],
-      ["🗒️", "Blocked Users", "Settings → Blocked Users lets you unblock someone."],
+      ["🗒️", "Blocked Users", "Settings → Privacy and Data → Blocked Users lets you unblock someone."],
     ]),
   ], true),
   sharing: chapter("sharing", "🔐", "Sharing & permissions", [
@@ -245,7 +245,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
       ["🎨", "Theme", "Pick a theme or design your own."],
       ["↕️", "Tab Order", "Reorder or hide tabs."],
     ]),
-    spot("Settings", "settings.sync", "Sync Now sends anything waiting to your server.", "Under Connected To you'll see your server, and Sync Now whenever something is waiting."),
+    spot("Settings", "settings.sync", "Sync Now sends anything waiting to your server.", "Settings → Storage and Sync shows your server, and Sync Now whenever something is waiting."),
     checklist("Your data, your call.", [
       ["🔓", "Locked Days", "Unlock one day to fix it."],
       ["✏️", "Edit workout history", "Correct past sessions."],
@@ -256,7 +256,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
       ["🆕", "What's New", "Changes in each version."],
       ["☕", "Support Development", "An optional tip to keep OwnGains running."],
     ]),
-    spot("Settings", "settings.exportData", "Export My Data keeps a copy of everything you've logged.", "Under Privacy and Data, Export My Data saves everything to a file."),
+    spot("Settings", "settings.exportData", "Export My Data keeps a copy of everything you've logged.", "Settings → Privacy and Data → Export My Data saves everything to a file."),
     spot("Settings", "settings.tutorial", "Replay any chapter of this tutorial from here.", "Settings → About → Tutorial replays any chapter."),
   ]),
   trainerClient: chapter("trainerClient", "🤝", "Trainer: getting a client", [
@@ -308,6 +308,6 @@ export const onlineChaptersFor = (role: Role): ChapterId[] => ONLINE_TOUR[role];
 export function stepsFor(chapter: Chapter, mode: AppMode): Step[] {
   if (!chapter.onlineOnly || mode === "online") return chapter.steps;
   return [
-    card("🌐", `${chapter.title} needs online mode`, "This part needs online mode. Switch to online mode in Settings, then replay this chapter from Settings → Tutorial."),
+    card("🌐", `${chapter.title} needs online mode`, "This part needs online mode. Switch to online mode in Settings, then replay this chapter from Settings → About → Tutorial."),
   ];
 }
