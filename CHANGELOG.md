@@ -6,6 +6,89 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Added
+
+- Each exercise remembers its own weight unit. Switching between kg and lbs while logging a set changes it for that exercise only, and your logged weights are unaffected.
+- After adding a set with +, an Undo button lets you take it back for a few seconds.
+- You can restore a board's default widgets from the widget gallery, or from the empty Home screen.
+- You can remove your profile photo from the Account sheet.
+- In online mode your profile photo is kept on the server, so it appears on your other devices, and your friends see it instead of your initial in their friends list and in a joint workout.
+- The rest reminder accepts minutes and seconds, such as 1:30, as well as plain seconds.
+- Machines in Exercise Settings have a visible remove button, not only a long press.
+- The Home streak and calendar widgets offer Retry when workout history fails to load, and pulling to refresh tells you when the server sync failed.
+- Weekly progress dots show each day's number.
+- The outdated server notice can be expanded for details or dismissed.
+- If moving your data to this device fails, you can retry it straight from the error message.
+- Password and export passphrase fields show what is still missing as you type.
+
+### Changed
+
+- When the server refuses a name or other input, the message now says why (such as a word that isn't allowed) instead of "Validation failed". Servers from this release on also refuse names with symbols or emoji and names that contain a banned word.
+- The supplement Alarm reminder now works like a clock app alarm: it shows the alarm icon in the status bar, wakes the screen and keeps ringing on the alarm volume (even with the ringer silent, and through Do Not Disturb when you allow it) until you tap Snooze (10 minutes) or Dismiss. It opens full screen with the time and both buttons instead of showing a notification, whether the phone is locked or you are using another app. Choosing Alarm asks for each permission it needs, one after another: notifications, then "Alarms & reminders" for exact timing, then "Display over other apps" to open full screen. Each one opens its settings page if you want it. Without it the alarm rings as a notification and fills the screen only when the phone is locked. It stops ringing after 10 minutes if you don't answer it, and an alarm that goes off while another is ringing snoozes the first one. Next-dose reminders set to Alarm ring the same way.
+- The workout rest reminder can now ring as an alarm. In the Rest Reminder sheet, choose Alarm instead of Notification and it opens full screen and rings like the supplement alarm when your rest time is up. Snooze on a rest alarm waits 30 seconds instead of 10 minutes. Choosing Alarm asks for the same permissions, with a shortcut to each settings page.
+- Choosing a supplement reminder time uses a larger hour and minute picker with Morning, Noon, Evening and Night shortcuts instead of the system clock.
+- Weight and reps come first when you log a set, so you can start typing right away and move from weight to reps with the keyboard. The set form title says which set is open, such as "Set 2 of 4".
+- The Add Exercise sheet works like Edit Exercise: you can browse exercises by muscle, the muscles of a known exercise are filled in for you, and the muscle fields are under Advanced.
+- Exercise cards in a workout, in your plan and in a friend's live session show muscles on two lines, main muscles in bold after "M:" and secondary muscles after "S:", wrapping to the next line when a list is long. In lists such as suggestions they read "Chest, Triceps (secondary: Shoulders)" instead of using a +.
+- Tapping a logged set opens it for editing straight away, and deleting a set is done from inside the set form.
+- The finish workout prompt says how many sets are not logged yet, with clearer buttons.
+- The locked day banner, warm-up sets and locked sets use your theme colors and are easier to read.
+- Effort (reps in reserve) choices wrap onto a second line instead of scrolling off screen.
+- Finished days are marked "Done" instead of locked, and you can open them without a confirmation prompt.
+- Widget edit mode has a Done editing button and ends when you leave the screen or press Back. Edit controls are larger and name the widget they act on.
+- Adding a widget confirms it and scrolls to it.
+- Closing session details returns to that day's list, and sets are shown as compact rows.
+- Tapping a calendar day with no workouts no longer opens an empty sheet.
+- Home shows placeholder cards while widgets load, and the Next Workout widget is one tinted card.
+- Settings is reorganized: Workout History (edit past sessions, unlock days, reset progress) has its own section, Support Development and Give Feedback are rows under About, and developer tools are in one collapsible section.
+- Manual sync starts right away and reports how many changes synced.
+- Unblocking someone asks you to confirm first.
+- Sign out uses the same wording everywhere.
+- Error messages on Home, Workout and Settings say what failed and what to do next.
+- Small text, buttons and chips on Home, Workout and Settings are larger and easier to tap, and several emoji icons were replaced with plain text.
+- Animations on the personal record card and the partner banner respect the system Reduce Motion setting.
+
+### Fixed
+
+- A long exercise name in the workout rest timer is cut off with "..." instead of pushing the timer off the screen.
+- Browsing by muscle while editing an exercise shows only that muscle's exercises, not a second box of swap suggestions below them.
+- Leaving a joint session asks you to confirm first and says your logged sets are kept, so a stray tap no longer ends it.
+- The workout streak counts the current week as soon as you train.
+- Delete Forever stays disabled until you enter your password.
+- Closing Edit Exercise with unsaved changes asks before discarding them.
+- Entering an invalid custom rest time no longer turns the rest reminder off without warning.
+- A privacy switch that fails to save returns to its previous position and tells you.
+- Migrating to an offline account or withdrawing health consent shows a spinner while it runs and can't be tapped twice.
+- The Home workout button says "Resume Workout" when a workout is already in progress.
+- A newly added DOMS follow-up widget no longer disappears right away.
+- The current day stays highlighted in the day picker after you finish it, and the View Workout button no longer looks disabled.
+- Picking an exercise name that already exists no longer shows a confirmation dialog.
+- The rest reminder description matches the alarm mode when alarms are on.
+- Removed or replaced profile photos no longer take up storage, and a photo deleted from the device no longer shows as broken.
+- The server version shows a loading indicator and then "Unknown" instead of a blank value.
+- Counts read correctly for one item, such as "1 change" instead of "1 change(s)".
+- Screen readers now name every text field, switch and chip on Home, Workout and Settings, reach the edit button on each machine row, read the Streak widget as one sentence, and skip decorative emoji.
+- A Home widget that is no longer available says how to remove it, instead of showing an internal name.
+- The progress error in Settings says clearly that your progress on this device is unaffected.
+- Fixed stray spaces and doubled divider lines on the Workout and Settings screens.
+
+### Security
+
+- The app now declares the "Display over other apps" and full screen notification permissions, used only by the supplement alarm screen, which shows over the lock screen without unlocking the rest of the app. You turn on "Display over other apps" in settings when asked.
+- The privacy policy explains that the server keeps your profile photo and that your friends can see it.
+
+### Internal
+
+- Usability audit of Home, Workout and Settings (frontend-design-audit), with regression tests for each behavior fix.
+- `syncFromServer` resolves to whether the sync succeeded instead of the merged completed days.
+- Per-exercise weight units are stored under `STORAGE_KEYS.WEIGHT_UNIT_BY_EXERCISE`, so Clear All Data and the offline migration include them.
+- The crash report test button in Developer tools names GlitchTip, and Test Alarm ignores a second tap while scheduling.
+- The privacy policy points to Settings → About → Support Development.
+- `profilePhotoApi` (auth on/off pair, dispatched by app mode only) calls the new `/api/profile/photo` server routes, and `friendPhoto.ts` caches friends' photos by hash.
+- CLAUDE.md feature workflow chooses between a rebase and a squash merge per branch, with squash as the default.
+- Alarm-type supplement reminders are scheduled, re-armed after reboot and rung natively by the `exact-alarms` module (`setAlarmClock`, `AlarmReceiver`, `BootReceiver`), which starts an `AlarmActivity` rendering the `AlarmScreen` root.
+- Settings → Developer (debug builds and admins) has a Test Alarm button that rings a supplement alarm in 10 seconds and reports missing alarm permissions.
+
 ## [0.6.0] - 2026-10-10
 
 ### Added
@@ -28,6 +111,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The Google Play API auth used by `scripts/play-upload.js` moved to `scripts/play-auth.js`.
 - `sp-react-native-in-app-updates` drives the Play immediate update from `playUpdate.ts`, gated by `minAppVersion` on `/healthz` (server env `MIN_APP_VERSION`). Only builds that include it can be forced, so users on older versions still update by hand once.
 - `findExerciseByName` in `exerciseDb` resolves a database name ignoring case, punctuation and plurals, without following aliases.
+- Navigation and network traces are sampled at 10% instead of 100%, so crash reporting sends less to the server. Counts and the first screen load are still always kept.
 
 - `scripts/release.sh --play` and `PLAY_TRACK` take a comma-separated list of tracks (e.g. `internal,alpha`), and `play-upload.js` puts the bundle on each in one edit.
 

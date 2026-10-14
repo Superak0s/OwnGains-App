@@ -11,6 +11,8 @@ import { fireEvent, screen, waitFor } from "@testing-library/react-native"
 import { renderWithProviders, current } from "test-utils/renderWithProviders"
 import { program, noPlanSelected, programWithEmptyDay, traineeWithNoProgram } from "test-utils/fixtures"
 import type { SetDetail } from "@shared/types"
+import { SafeAreaProvider } from "react-native-safe-area-context"
+import { TabBarProvider } from "@shared/context/TabBarContext"
 import WorkoutScreen from "../WorkoutScreen"
 
 const press = async (label: string | RegExp) => fireEvent.press(await screen.findByRole("button", { name: label }))
@@ -61,7 +63,7 @@ describe("mounting with edge-case data", () => {
     })
 
     expect(await screen.findByLabelText("0 of 0 sets completed")).toBeTruthy()
-    expect(screen.getByText("Add New Exercise")).toBeTruthy()
+    expect(screen.getByText("+ Add exercise")).toBeTruthy()
   })
 
   it("opens a trainee's workout when the trainee has no program", async () => {
@@ -121,7 +123,6 @@ describe("recording a set", () => {
     await renderWithProviders(<WorkoutScreen />, resumedSession())
 
     await press(benchSet1Logged)
-    await press("Edit")
     expect((await screen.findByLabelText("Reps")).props.value).toBe("8")
     await fireEvent.changeText(screen.getByLabelText("Reps"), "10")
     await press("Save set")
@@ -133,7 +134,7 @@ describe("recording a set", () => {
     await renderWithProviders(<WorkoutScreen />, resumedSession())
 
     await press(benchSet1Logged)
-    await press("Delete")
+    await press("Delete set")
     expect(current.workout.deleteSetDetails).not.toHaveBeenCalled()
     await press("Delete")
 
@@ -144,7 +145,7 @@ describe("recording a set", () => {
     await renderWithProviders(<WorkoutScreen />, resumedSession({ deleteSetDetails: jest.fn(async () => false) }))
 
     await press(benchSet1Logged)
-    await press("Delete")
+    await press("Delete set")
     await press("Delete")
 
     expect(await screen.findByText("Not Deleted")).toBeTruthy()
@@ -155,8 +156,8 @@ describe("recording a set", () => {
 
     await press(benchSet1Logged)
 
-    expect(await screen.findByRole("button", { name: "Edit" })).toBeTruthy()
-    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull()
+    expect((await screen.findByLabelText("Reps")).props.value).toBe("8")
+    expect(screen.queryByRole("button", { name: "Delete set" })).toBeNull()
   })
 })
 
@@ -165,8 +166,8 @@ describe("ending the workout", () => {
     await renderWithProviders(<WorkoutScreen />, resumedSession())
 
     await press("Complete workout")
-    expect(await screen.findByText("You've completed 0/6 sets. End this session? The day will be locked.")).toBeTruthy()
-    await press("Complete & Lock")
+    expect(await screen.findByText("6 of 6 sets aren't logged. The day will be locked and view-only.")).toBeTruthy()
+    await press("Finish & lock")
 
     await waitFor(() => expect(current.workout.endWorkout).toHaveBeenCalledTimes(1))
     expect(await screen.findByText("Workout Completed!")).toBeTruthy()
@@ -176,7 +177,7 @@ describe("ending the workout", () => {
     await renderWithProviders(<WorkoutScreen />, resumedSession())
 
     await press("Complete workout")
-    await press("Cancel")
+    await press("Keep logging")
 
     expect(current.workout.endWorkout).not.toHaveBeenCalled()
   })
@@ -185,9 +186,126 @@ describe("ending the workout", () => {
     await renderWithProviders(<WorkoutScreen />, resumedSession({ endWorkout: jest.fn(async () => false) }))
 
     await press("Complete workout")
-    await press("Complete & Lock")
+    await press("Finish & lock")
 
     await waitFor(() => expect(current.workout.endWorkout).toHaveBeenCalled())
     expect(screen.queryByText("Workout Completed!")).toBeNull()
+  })
+})
+
+describe("weight unit per exercise", () => {
+  it("switches only the exercise being logged and still saves kg", async () => {
+    await renderWithProviders(<WorkoutScreen />, withProgram())
+
+    await fireEvent.press((await screen.findAllByRole("button", { name: "Set 1, not logged" }))[0])
+    await fireEvent.press(await screen.findByRole("radio", { name: "Pounds" }))
+    await fireEvent.changeText(await screen.findByLabelText("Weight in lbs, leave zero for bodyweight"), "100")
+    await fireEvent.changeText(screen.getByLabelText("Reps"), "8")
+    await press("Save set")
+
+    await waitFor(() =>
+      expect(current.workout.saveSetDetails).toHaveBeenCalledWith(1, 0, 0, expect.closeTo(45.36, 1), 8, expect.anything()),
+    )
+    expect(current.workout.saveWeightUnit).not.toHaveBeenCalled()
+
+    await fireEvent.press((await screen.findAllByRole("button", { name: "Set 1, not logged" }))[1])
+    expect(await screen.findByLabelText("Weight in kg, leave zero for bodyweight")).toBeTruthy()
+  })
+})
+
+describe("adding a set", () => {
+  it("removes the added set again when Undo is pressed", async () => {
+    const view = await renderWithProviders(<WorkoutScreen />, withProgram())
+
+    await fireEvent.press((await screen.findAllByRole("button", { name: "Add a set" }))[0])
+    expect(current.workout.addExtraSetsToExercise).toHaveBeenCalledWith(1, "A", 0, 1)
+
+    const benchFour = structuredClone(program)
+    benchFour.days[0].split.A.exercises[0].sets = 4
+    current.workout = { ...current.workout, workoutData: benchFour, sessionWorkoutData: benchFour }
+    view.rerender(
+      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+        <TabBarProvider>
+          <WorkoutScreen />
+        </TabBarProvider>
+      </SafeAreaProvider>,
+    )
+
+    await press("Undo")
+    await waitFor(() => expect(current.workout.addExtraSetsToExercise).toHaveBeenCalledWith(1, "A", 0, -1))
+  })
+})
+
+describe("adding an exercise", () => {
+  it("uses an exact name match without a confirmation dialog", async () => {
+    await renderWithProviders(<WorkoutScreen />, withProgram())
+
+    await press("Add exercise")
+    await fireEvent.changeText(await screen.findByLabelText("Exercise name, required"), "bench press")
+    await fireEvent.changeText(screen.getByLabelText("Number of sets, required"), "3")
+    const buttons = await screen.findAllByRole("button", { name: "Add exercise" })
+    await fireEvent.press(buttons[buttons.length - 1])
+
+    await waitFor(() =>
+      expect(current.workout.addNewExercise).toHaveBeenCalledWith(1, "A", expect.objectContaining({ name: "Bench Press" })),
+    )
+    expect(screen.queryByText("Exercise Matched!")).toBeNull()
+  })
+
+  it("fills in the muscles of a known exercise and keeps them under Advanced", async () => {
+    await renderWithProviders(<WorkoutScreen />, withProgram())
+
+    await press("Add exercise")
+    await fireEvent.changeText(await screen.findByLabelText("Exercise name, required"), "bench press")
+    await waitFor(() => expect(screen.queryByText("No muscles set")).toBeNull())
+    expect(screen.getByRole("button", { name: "Advanced: muscles worked" })).toBeTruthy()
+    await fireEvent.changeText(screen.getByLabelText("Number of sets, required"), "3")
+    const buttons = await screen.findAllByRole("button", { name: "Add exercise" })
+    await fireEvent.press(buttons[buttons.length - 1])
+
+    await waitFor(() =>
+      expect(current.workout.addNewExercise).toHaveBeenCalledWith(
+        1,
+        "A",
+        expect.objectContaining({ name: "Bench Press", primaryMuscles: ["chest"] }),
+      ),
+    )
+  })
+})
+
+describe("editing an exercise", () => {
+  it("shows only the browsed muscle's exercises, not the swap suggestions too", async () => {
+    await renderWithProviders(<WorkoutScreen />, withProgram())
+
+    fireEvent.press((await screen.findAllByRole("button", { name: "Rename exercise" }))[0])
+    expect(await screen.findByText(/Swap for similar exercise/)).toBeTruthy()
+
+    fireEvent.press(screen.getByRole("radio", { name: "Chest exercises" }))
+
+    expect(await screen.findByText("Chest exercises:")).toBeTruthy()
+    expect(screen.queryByText(/Swap for similar exercise/)).toBeNull()
+  })
+})
+
+describe("joint session", () => {
+  it("leaves only after the user confirms", async () => {
+    await renderWithProviders(<WorkoutScreen />, { ...withProgram(), jointSession: { isInJointSession: true } })
+
+    await press("Leave joint session")
+    expect(await screen.findByText("Leave joint session?")).toBeTruthy()
+    expect(current.jointSession.leaveJointSession).not.toHaveBeenCalled()
+    await press("Leave")
+
+    await waitFor(() => expect(current.jointSession.leaveJointSession).toHaveBeenCalledTimes(1))
+  })
+})
+
+describe("session stats layout", () => {
+  it("lets long exercise names shrink so they truncate instead of overflowing the screen", () => {
+    const { makeStyles } = require("../WorkoutScreen")
+    const { LIGHT_COLORS } = jest.requireActual("@shared/context/ThemeContext")
+    const styles = makeStyles(LIGHT_COLORS)
+    expect(styles.currentRestLabel.flexShrink).toBe(1)
+    expect(styles.sessionStat.flexShrink).toBe(1)
   })
 })

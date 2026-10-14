@@ -79,7 +79,7 @@ export default function ChangelogSheet({ visible, onClose, currentVersion }: Pro
     if (available.length < 2) return null;
     const options: (ChangeCategory | null)[] = [null, ...available];
     return (
-      <View style={styles.chipRow}>
+      <View style={styles.chipRow} accessibilityRole="radiogroup">
         {options.map((c) => {
           const selected = category === c;
           const label = c ?? "All";
@@ -88,9 +88,9 @@ export default function ChangelogSheet({ visible, onClose, currentVersion }: Pro
               key={label}
               style={[styles.chip, selected && styles.chipSelected]}
               onPress={() => setCategory(c)}
-              accessibilityRole="button"
+              accessibilityRole="radio"
               accessibilityLabel={`Show ${label === "All" ? "all changes" : label.toLowerCase() + " changes"}`}
-              accessibilityState={{ selected }}
+              accessibilityState={{ checked: selected }}
             >
               <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
                 {label}
@@ -251,7 +251,12 @@ export default function ChangelogSheet({ visible, onClose, currentVersion }: Pro
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    backLink: { paddingVertical: 8, marginBottom: 4, alignSelf: "flex-start" },
+    backLink: {
+      minHeight: 44,
+      justifyContent: "center",
+      marginBottom: 4,
+      alignSelf: "flex-start",
+    },
     linkText: { fontSize: 15, fontWeight: "600", color: colors.accent },
     versionHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
     versionTitle: { fontSize: 22, fontWeight: "800", color: colors.textPrimary },
@@ -266,10 +271,10 @@ const makeStyles = (colors: ThemeColors) =>
     badgeText: { fontSize: 12, fontWeight: "700", color: colors.accent },
     chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 14 },
     chip: {
-      minHeight: 36,
+      minHeight: 44,
       justifyContent: "center",
       paddingHorizontal: 14,
-      borderRadius: 18,
+      borderRadius: 22,
       borderWidth: 1,
       borderColor: colors.surfaceBorder,
       backgroundColor: colors.background,

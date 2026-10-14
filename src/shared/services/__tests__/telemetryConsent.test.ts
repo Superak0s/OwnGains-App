@@ -290,7 +290,7 @@ describe("counts as transactions", () => {
 
     expect(tracesSampler({ name: "auth.logout", attributes, inheritOrSampleWith })).toBe(1);
     expect(tracesSampler({ name: "Home", attributes: {}, inheritOrSampleWith })).toBe(1);
-    expect(tracesSampler({ name: "Plan", attributes: {}, inheritOrSampleWith })).toBe(1);
+    expect(tracesSampler({ name: "Plan", attributes: {}, inheritOrSampleWith })).toBe(0.1);
   });
 });
 

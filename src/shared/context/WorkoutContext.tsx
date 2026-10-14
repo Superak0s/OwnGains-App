@@ -229,7 +229,8 @@ interface WorkoutContextValue {
   ) => Promise<WorkoutSession[]>;
   /** Sessions with only their all-time-record sets, null when the server can't say. */
   fetchRecordSessions: () => Promise<WorkoutSession[] | null>;
-  syncFromServer: () => Promise<void>;
+  /** Resolves false when the sync failed. */
+  syncFromServer: () => Promise<boolean>;
   syncPendingData: () => Promise<void>;
   clearAllData: () => Promise<void>;
 }
@@ -1502,9 +1503,10 @@ export const WorkoutProvider = ({
     [sessionOps, sendSocket, learnRestFromSession],
   );
 
-  const syncFromServer = useCallback(async (): Promise<void> => {
-    await serverSync.syncFromServer();
-  }, [serverSync]);
+  const syncFromServer = useCallback(
+    (): Promise<boolean> => serverSync.syncFromServer(),
+    [serverSync],
+  );
 
   const value = useMemo<WorkoutContextValue>(
     () => ({

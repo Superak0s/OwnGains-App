@@ -69,7 +69,7 @@ export default function ForeignWidget({
   if (!Host) return (
     <Text
       style={{ color: colors.textSecondary, padding: 16 }}
-    >{`Widget "${type}" is unavailable.`}</Text>
+    >This widget is no longer available. Remove it in Edit Widgets.</Text>
   );
   return <Host embedWidget={type as never} />;
 }

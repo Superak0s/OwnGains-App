@@ -12,6 +12,7 @@ import {
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTheme } from "@shared/context/ThemeContext"
+import { useAlert } from "@shared/components/CustomAlert"
 import type { ThemeColors } from "@shared/context/ThemeContext"
 import type { WidgetDefinition } from "@shared/types"
 
@@ -24,7 +25,7 @@ interface WidgetGalleryProps<T extends string> {
    *  when there's nothing to edit yet. */
   readonly hasPlacedWidgets: boolean
   /** Closes this panel and switches the home screen into edit mode, where
-   *  placed widgets can be resized, removed, or dragged to reorder. */
+   *  placed widgets can be resized, removed, or moved. */
   readonly onEditWidgets: () => void
   /** Widget type -> owning screen. Boards that host foreign widgets pass this
    *  to get a source filter above the grid. Without it there's no filter. */
@@ -32,6 +33,8 @@ interface WidgetGalleryProps<T extends string> {
   /** Widget type -> tab within the screen that defines it, for a secondary filter row
    *  shown once the primary filter narrows to a screen with several tabs. */
   readonly subSources?: Record<string, string>
+  /** Shows a confirmed "Restore default widgets" action when given. */
+  readonly onRestoreDefaults?: () => void
 }
 
 export default function WidgetGallery<T extends string>({
@@ -43,8 +46,10 @@ export default function WidgetGallery<T extends string>({
   onEditWidgets,
   sources,
   subSources,
+  onRestoreDefaults,
 }: WidgetGalleryProps<T>): React.JSX.Element {
   const { colors } = useTheme()
+  const { alert, AlertComponent } = useAlert()
   const insets = useSafeAreaInsets()
   const styles = useMemo(() => makeStyles(colors), [colors])
   const [source, setSource] = useState<string | null>(null)
@@ -93,6 +98,18 @@ export default function WidgetGallery<T extends string>({
           def.description?.toLowerCase().includes(needle),
       )
     : inSub
+
+  const confirmRestore = () => {
+    alert(
+      "Restore default widgets?",
+      "Your current layout on this board is replaced by the default one.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Restore", style: "destructive", onPress: onRestoreDefaults },
+      ],
+      "warning",
+    )
+  }
 
   const selectSource = (label: string | null) => {
     setSource(label)
@@ -158,7 +175,9 @@ export default function WidgetGallery<T extends string>({
           <View style={styles.grabber} />
           <View style={styles.header}>
             <View>
-              <Text style={styles.title}>Add a Widget</Text>
+              <Text style={styles.title} accessibilityRole='header'>
+                Add a Widget
+              </Text>
               <Text style={styles.subtitle}>
                 Pull down with two fingers to open this anytime
               </Text>
@@ -167,7 +186,6 @@ export default function WidgetGallery<T extends string>({
               {hasPlacedWidgets && (
                 <TouchableOpacity
                   onPress={onEditWidgets}
-                  hitSlop={8}
                   style={styles.editButton}
                   accessibilityRole='button'
                   accessibilityLabel='Edit placed widgets'
@@ -179,7 +197,7 @@ export default function WidgetGallery<T extends string>({
                 accessibilityRole="button"
                 accessibilityLabel="Close widget gallery"
                 onPress={onClose}
-                hitSlop={12}
+                style={styles.closeButton}
               >
                 <Text style={styles.close}>✕</Text>
               </TouchableOpacity>
@@ -247,9 +265,21 @@ export default function WidgetGallery<T extends string>({
                 </TouchableOpacity>
               ))
             )}
+            {onRestoreDefaults && (
+              <TouchableOpacity
+                onPress={confirmRestore}
+                style={styles.restoreButton}
+                accessibilityRole='button'
+              >
+                <Text style={styles.restoreButtonText}>
+                  Restore default widgets
+                </Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
         </View>
       </View>
+      {AlertComponent}
     </Modal>
   )
 }
@@ -294,9 +324,10 @@ const makeStyles = (colors: ThemeColors) =>
       borderWidth: 1,
       borderColor: colors.inputBorder,
       borderRadius: 12,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      marginRight: 14,
+      paddingHorizontal: 12,
+      minHeight: 44,
+      justifyContent: "center",
+      marginRight: 4,
     },
     editButtonText: {
       fontSize: 12,
@@ -314,9 +345,27 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: 4,
       maxWidth: 260,
     },
+    closeButton: {
+      width: 44,
+      height: 44,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     close: {
       fontSize: 22,
       color: colors.textSecondary,
+    },
+    restoreButton: {
+      width: "100%",
+      minHeight: 44,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 4,
+    },
+    restoreButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.accent,
     },
     search: {
       marginHorizontal: 16,
@@ -326,7 +375,7 @@ const makeStyles = (colors: ThemeColors) =>
       borderColor: colors.inputBorder,
       borderRadius: 10,
       paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingVertical: 12,
       fontSize: 14,
       color: colors.textPrimary,
     },
@@ -342,8 +391,8 @@ const makeStyles = (colors: ThemeColors) =>
     },
     chip: {
       paddingHorizontal: 14,
-      paddingVertical: 7,
-      borderRadius: 16,
+      paddingVertical: 12,
+      borderRadius: 20,
       borderWidth: 1,
       borderColor: colors.inputBorder,
       backgroundColor: colors.inputBackground,
@@ -362,8 +411,8 @@ const makeStyles = (colors: ThemeColors) =>
     },
     subChip: {
       paddingHorizontal: 12,
-      paddingVertical: 5,
-      borderRadius: 14,
+      paddingVertical: 12,
+      borderRadius: 20,
       borderWidth: 1,
       borderColor: colors.inputBorder,
       backgroundColor: colors.surface,

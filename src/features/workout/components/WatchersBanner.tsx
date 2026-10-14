@@ -32,7 +32,7 @@ export function WatchersBanner({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Stop ${w.username} watching`}
-            hitSlop={8}
+            style={styles.stopButton}
             onPress={() =>
               onBlock(w.id).catch((error) => {
                 captureException(error, { stage: "blockWatcher" });

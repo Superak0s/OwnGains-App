@@ -25,9 +25,9 @@ export function sessionDateKey(
 }
 
 /**
- * Consecutive Monday-start weeks with at least one logged session, counting
- * back from the current week. Only fully elapsed weeks count. The current
- * week hasn't "gone" yet, so it's reported separately via currentWeekLogged.
+ * Consecutive Monday-start weeks with at least one logged session. The
+ * current week counts once it is logged, but an unlogged current week doesn't
+ * break the streak, since there is still time to train.
  */
 export function computeWeeklyStreak(
   dateKeys: Iterable<string>,
@@ -38,10 +38,11 @@ export function computeWeeklyStreak(
 
   const todayMonday = mondayOfWeek(toDateString(today));
   let cursor = dateStrPlusDays(todayMonday, -7);
-  let count = 0;
+  const currentWeekLogged = weeks.has(todayMonday);
+  let count = currentWeekLogged ? 1 : 0;
   while (weeks.has(cursor)) {
     count++;
     cursor = dateStrPlusDays(cursor, -7);
   }
-  return { count, currentWeekLogged: weeks.has(todayMonday) };
+  return { count, currentWeekLogged };
 }

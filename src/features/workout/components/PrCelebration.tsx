@@ -36,24 +36,37 @@ export function PrCelebration({
     // The card unmounts after ~2s, too soon for the role="alert" label to be
     // read reliably, so announce it directly so the timing doesn't matter.
     AccessibilityInfo.announceForAccessibility(announcementRef.current);
-    const animation = Animated.sequence([
-      Animated.spring(anim, {
-        toValue: 1,
-        friction: 5,
-        tension: 90,
-        useNativeDriver: true,
-      }),
-      Animated.delay(1700),
-      Animated.timing(anim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]);
-    animation.start(({ finished }) => {
-      if (finished) onDoneRef.current();
-    });
-    return () => animation.stop();
+    let animation: Animated.CompositeAnimation | null = null;
+    let cancelled = false;
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .catch(() => false)
+      .then((reduceMotion) => {
+        if (cancelled) return;
+        if (reduceMotion) anim.setValue(1);
+        animation = Animated.sequence([
+          reduceMotion
+            ? Animated.delay(0)
+            : Animated.spring(anim, {
+                toValue: 1,
+                friction: 5,
+                tension: 90,
+                useNativeDriver: true,
+              }),
+          Animated.delay(1700),
+          Animated.timing(anim, {
+            toValue: 0,
+            duration: reduceMotion ? 0 : 250,
+            useNativeDriver: true,
+          }),
+        ]);
+        animation.start(({ finished }) => {
+          if (finished) onDoneRef.current();
+        });
+      });
+    return () => {
+      cancelled = true;
+      animation?.stop();
+    };
   }, [anim]);
 
   return (

@@ -602,3 +602,23 @@ export function exercisesForMuscle(
     .map((e) => ({ name: e.name, meta: e.equipment ?? undefined }));
   return [...fromPlan, ...fromDb].filter(unique);
 }
+
+export type WeightUnit = "kg" | "lbs";
+export type ExerciseUnitMap = Record<string, WeightUnit>;
+
+export function resolveExerciseUnit(
+  units: ExerciseUnitMap,
+  exerciseName: string | undefined,
+  fallback: WeightUnit,
+): WeightUnit {
+  const key = exerciseName ? normalizeExerciseName(exerciseName) : "";
+  return (key && units[key]) || fallback;
+}
+
+/** Seconds from "90" or "1:30", or null when the text is neither. */
+export function parseRestDuration(value: string): number | null {
+  const trimmed = value.trim();
+  const clock = /^(\d{1,3}):([0-5]\d)$/.exec(trimmed);
+  if (clock) return Number(clock[1]) * 60 + Number(clock[2]);
+  return /^\d+$/.test(trimmed) ? Number(trimmed) : null;
+}

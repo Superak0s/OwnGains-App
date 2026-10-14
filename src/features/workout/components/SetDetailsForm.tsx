@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -65,6 +65,7 @@ interface SetDetailsFormProps {
   isSaving: boolean;
   onSave: (draft: SetDraft) => void;
   onSwitchUnit: (unit: WeightUnit) => void;
+  onDelete?: () => void;
   /** Kept current so the parent can tell whether the user has started typing. */
   draftStartedRef: React.RefObject<boolean>;
 }
@@ -83,6 +84,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
   isSaving: isSavingSet,
   onSave,
   onSwitchUnit,
+  onDelete,
   draftStartedRef,
 }: SetDetailsFormProps): React.JSX.Element {
   const [weight, setWeight] = useState(initial.weight);
@@ -90,6 +92,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
   const [setNote, setSetNote] = useState(initial.note);
   const [isWarmupSet, setIsWarmupSet] = useState(initial.isWarmup);
   const [rir, setRir] = useState(initial.rir);
+  const repsRef = useRef<TextInput>(null);
 
   useEffect(() => {
     draftStartedRef.current = weight.trim() !== "" || reps.trim() !== "";
@@ -114,6 +117,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
 
   const save = () =>
     onSave({ weight, reps, note: setNote, isWarmup: isWarmupSet, rir });
+  const canSave = !isSavingSet && hasValidReps && !weightError;
 
   return (
     <View style={styles.setFormBody}>
@@ -122,6 +126,92 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
         keyboardShouldPersistTaps='handled'
         bounces={false}
       >
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>
+            Weight ({weightUnit}), leave 0 for bodyweight
+          </Text>
+          <TextInput
+            style={styles.input}
+            value={weight}
+            onChangeText={setWeight}
+            keyboardType='decimal-pad'
+            autoFocus
+            returnKeyType='next'
+            submitBehavior='submit'
+            onSubmitEditing={() => repsRef.current?.focus()}
+            placeholder='0'
+            placeholderTextColor={colors.textMuted}
+            accessibilityLabel={`Weight in ${weightUnit}, leave zero for bodyweight`}
+          />
+          {weightError && (
+            <Text style={styles.inputError}>{weightError}</Text>
+          )}
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Reps</Text>
+          <TextInput
+            ref={repsRef}
+            style={styles.input}
+            value={reps}
+            onChangeText={setReps}
+            keyboardType='number-pad'
+            returnKeyType='done'
+            onSubmitEditing={() => {
+              if (canSave) save();
+            }}
+            placeholder='0'
+            placeholderTextColor={colors.textMuted}
+            accessibilityLabel='Reps'
+          />
+          {!hasValidReps && (
+            <Text style={styles.inputHint}>
+              Enter at least 1 rep to save.
+            </Text>
+          )}
+          {liveOneRepMax > 0 && (
+            <Text style={styles.oneRepMaxHint}>
+              Est. 1RM {kgToDisplay(liveOneRepMax, weightUnit)}
+              {weightUnit}
+            </Text>
+          )}
+        </View>
+
+        {progression && !isWarmupSet && (
+          <View style={styles.progressionPrompt}>
+            <Text style={styles.progressionPromptText}>
+              {PROGRESSION_ICON[progression.direction]} {progression.reason}.
+              Try {kgToDisplay(progression.weightKg, weightUnit)}
+              {weightUnit} × {progression.reps}?
+            </Text>
+            <View style={styles.progressionPromptActions}>
+              <TouchableOpacity
+                style={styles.progressionApplyButton}
+                accessibilityRole='button'
+                accessibilityLabel={`Use ${kgToDisplay(progression.weightKg, weightUnit)} ${weightUnit} for ${progression.reps} reps`}
+                onPress={() => {
+                  setWeight(kgToDisplay(progression.weightKg, weightUnit));
+                  setReps(String(progression.reps));
+                  trackFeature("progression", "apply", { direction: progression.direction });
+                  onDismissProgression();
+                }}
+              >
+                <Text style={styles.progressionApplyText}>Use it</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.progressionDismissButton}
+                accessibilityRole='button'
+                accessibilityLabel='Dismiss progression suggestion'
+                onPress={() => {
+                  trackFeature("progression", "dismiss", { direction: progression.direction });
+                  onDismissProgression();
+                }}
+              >
+                <Text style={styles.progressionDismissText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {loadingHistory && (
           <View style={styles.historyLoading}>
             <Text style={styles.historyLoadingText}>Loading history...</Text>
@@ -130,11 +220,11 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
         {!loadingHistory && performanceHistory && (
           <View style={styles.performanceSection}>
             <Text style={styles.performanceSectionTitle}>
-              📊 Performance History
+              Performance History
             </Text>
             <View style={styles.performanceCard}>
               <View style={styles.performanceCardHeader}>
-                <Text style={styles.performanceCardTitle}>🕐 Last Time</Text>
+                <Text style={styles.performanceCardTitle}>Last Time</Text>
                 <Text style={styles.performanceCardDate}>
                   {formatDate(performanceHistory.last.date)}
                 </Text>
@@ -171,7 +261,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
             >
               <View style={styles.performanceCardHeader}>
                 <Text style={styles.performanceCardTitle}>
-                  🏆 Best Performance
+                  Best Performance
                 </Text>
                 <Text style={styles.performanceCardDate}>
                   {formatDate(performanceHistory.best.date)}
@@ -231,86 +321,9 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
           </View>
         )}
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>
-            Weight ({weightUnit}), leave 0 for bodyweight
-          </Text>
-          <TextInput
-            style={styles.input}
-            value={weight}
-            onChangeText={setWeight}
-            keyboardType='decimal-pad'
-            placeholder='0'
-            placeholderTextColor={colors.textMuted}
-            accessibilityLabel={`Weight in ${weightUnit}, leave zero for bodyweight`}
-          />
-          {weightError && (
-            <Text style={styles.inputError}>{weightError}</Text>
-          )}
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Reps</Text>
-          <TextInput
-            style={styles.input}
-            value={reps}
-            onChangeText={setReps}
-            keyboardType='number-pad'
-            placeholder='0'
-            placeholderTextColor={colors.textMuted}
-            accessibilityLabel='Reps'
-          />
-          {!hasValidReps && (
-            <Text style={styles.inputHint}>
-              Enter at least 1 rep to save.
-            </Text>
-          )}
-          {liveOneRepMax > 0 && (
-            <Text style={styles.oneRepMaxHint}>
-              Est. 1RM {kgToDisplay(liveOneRepMax, weightUnit)}
-              {weightUnit}
-            </Text>
-          )}
-        </View>
-
-        {progression && !isWarmupSet && (
-          <View style={styles.progressionPrompt}>
-            <Text style={styles.progressionPromptText}>
-              {PROGRESSION_ICON[progression.direction]} {progression.reason}.
-              Try {kgToDisplay(progression.weightKg, weightUnit)}
-              {weightUnit} × {progression.reps}?
-            </Text>
-            <View style={styles.progressionPromptActions}>
-              <TouchableOpacity
-                style={styles.progressionApplyButton}
-                accessibilityRole='button'
-                accessibilityLabel={`Use ${kgToDisplay(progression.weightKg, weightUnit)} ${weightUnit} for ${progression.reps} reps`}
-                onPress={() => {
-                  setWeight(kgToDisplay(progression.weightKg, weightUnit));
-                  setReps(String(progression.reps));
-                  trackFeature("progression", "apply", { direction: progression.direction });
-                  onDismissProgression();
-                }}
-              >
-                <Text style={styles.progressionApplyText}>Use it</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.progressionDismissButton}
-                accessibilityRole='button'
-                accessibilityLabel='Dismiss progression suggestion'
-                onPress={() => {
-                  trackFeature("progression", "dismiss", { direction: progression.direction });
-                  onDismissProgression();
-                }}
-              >
-                <Text style={styles.progressionDismissText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
         <View style={styles.warmupToggle}>
           <Text style={styles.warmupToggleText}>
-            {isWarmupSet ? "🔥 " : ""}Warm-up set
+            Warm-up set
           </Text>
           <Switch
             value={isWarmupSet}
@@ -326,12 +339,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Effort (optional)</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyboardShouldPersistTaps='handled'
-            contentContainerStyle={styles.chipRow}
-          >
+          <View style={styles.chipRow} accessibilityRole='radiogroup'>
             {RIR_SCALE.map((value) => {
               const selected = rir === value;
               return (
@@ -340,7 +348,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
                   style={[styles.chip, selected && styles.chipActive]}
                   accessibilityRole='radio'
                   accessibilityLabel={`${value} ${value === 1 ? "rep" : "reps"} in reserve`}
-                  accessibilityState={{ selected }}
+                  accessibilityState={{ checked: selected }}
                   onPress={() => setRir(selected ? null : value)}
                 >
                   <Text
@@ -354,7 +362,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
+          </View>
           <Text style={styles.inputHint}>
             {rir === null
               ? "Reps in reserve: how many more could you have done?"
@@ -364,7 +372,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
         {isAssisted && (
           <View style={styles.assistedInfoBox}>
             <Text style={styles.assistedInfoText}>
-              🤝 Assisted Exercise: Weight represents assistance from the
+              Assisted exercise: Weight represents assistance from the
               machine. Lower = harder.
             </Text>
           </View>
@@ -385,9 +393,9 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
 
         <View style={styles.unitSelectorContainer}>
           <Text style={styles.unitSelectorLabel}>
-            Weight unit (applies everywhere)
+            Weight unit for this exercise
           </Text>
-          <View style={styles.unitSelectorRow}>
+          <View style={styles.unitSelectorRow} accessibilityRole='radiogroup'>
             <TouchableOpacity
               style={[
                 styles.unitButton,
@@ -395,7 +403,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
               ]}
               accessibilityRole='radio'
               accessibilityLabel='Kilograms'
-              accessibilityState={{ selected: weightUnit === "kg" }}
+              accessibilityState={{ checked: weightUnit === "kg" }}
               onPress={() => switchWeightUnit("kg")}
             >
               <Text
@@ -414,7 +422,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
               ]}
               accessibilityRole='radio'
               accessibilityLabel='Pounds'
-              accessibilityState={{ selected: weightUnit === "lbs" }}
+              accessibilityState={{ checked: weightUnit === "lbs" }}
               onPress={() => switchWeightUnit("lbs")}
             >
               <Text
@@ -430,17 +438,11 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
         </View>
       </ScrollView>
       <TouchableOpacity
-        style={[
-          styles.saveButton,
-          (isSavingSet || !hasValidReps || !!weightError) &&
-            styles.saveButtonDisabled,
-        ]}
+        style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
         accessibilityRole='button'
         accessibilityLabel='Save set'
-        accessibilityState={{
-          disabled: isSavingSet || !hasValidReps || !!weightError,
-        }}
-        disabled={isSavingSet || !hasValidReps || !!weightError}
+        accessibilityState={{ disabled: !canSave }}
+        disabled={!canSave}
         onPress={save}
       >
         {isSavingSet ? (
@@ -449,6 +451,15 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
           <Text style={styles.saveButtonText}>Save Set</Text>
         )}
       </TouchableOpacity>
+      {onDelete && (
+        <TouchableOpacity
+          style={styles.destructiveTextButton}
+          accessibilityRole='button'
+          onPress={onDelete}
+        >
+          <Text style={styles.destructiveTextButtonText}>Delete set</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 });

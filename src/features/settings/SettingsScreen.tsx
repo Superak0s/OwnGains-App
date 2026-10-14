@@ -19,14 +19,18 @@ import {
   Linking,
 } from "react-native";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import Constants from "expo-constants";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { File as ExpoFile } from "expo-file-system";
 import * as FileSystem from "expo-file-system/legacy";
-import { getStorageItem, setStorageItem } from "@shared/services/sqliteStorage";
+import {
+  loadProfileAvatar,
+  restoreProfileAvatar,
+  saveProfileAvatar,
+} from "./utils/profileAvatar";
+import { profilePhotoApi } from "@features/auth/services";
 import {
   saveToStorage,
   loadFromStorage,
@@ -184,6 +188,14 @@ import {
   sendTestEvent,
   captureException,
 } from "@shared/services/crashReporting";
+import {
+  canDrawOverlays,
+  canScheduleExactAlarms,
+} from "@shared/services/notifications";
+import {
+  scheduleTestAlarm,
+  TEST_ALARM_DELAY_SECONDS,
+} from "@shared/services/supplementReminders";
 import { writeJsonExport, DESTINATION_TEXT } from "@utils/writeJsonExport";
 import {
   decryptExport,
@@ -218,6 +230,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { userFacingError } from "@shared/services/apiError";
+import { ApiError } from "@shared/services/apiErrorClasses";
 import { SCREEN_PADDING } from "@shared/layout";
 
 export type SettingsStyles = ReturnType<typeof makeStyles>;
@@ -293,6 +306,16 @@ const PROFILE_COPY = {
   editLabel: "Edit this device profile",
   row: "This Device Profile",
 };
+const plural = (n: number, word: string): string =>
+  `${n} ${word}${n === 1 ? "" : "s"}`;
+const countChanges = (n: number): string => plural(n, "change");
+
+export function syncResultMessage(before: number, left: number): string {
+  if (left === 0) return "All changes synced";
+  const synced = Math.max(0, before - left);
+  return `Synced ${synced} of ${before}. ${countChanges(left)} still waiting.`;
+}
+
 const ACCOUNT_COPY = {
   section: "Account",
   editLabel: "Edit your account details",
@@ -300,7 +323,7 @@ const ACCOUNT_COPY = {
 };
 
 export default function SettingsScreen(): React.JSX.Element {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const switchThumbColor = (on: boolean) =>
     on ? colors.textOnAccent : colors.textMuted;
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -330,7 +353,9 @@ export default function SettingsScreen(): React.JSX.Element {
     isCrashReportingEnabled(),
   );
   const [telemetry, setTelemetry] = useState(isTelemetryEnabled());
-  const [serverInfo, setServerInfo] = useState<ServerVersionCheck | null>(null);
+  const [serverInfo, setServerInfo] = useState<
+    ServerVersionCheck | null | undefined
+  >(undefined);
   const [localOnlyFeatures, setLocalOnlyFeatures] = useState<string[]>([]);
   const { alert, AlertComponent } = useAlert();
   const alertPreviewIndexRef = useRef(0);
@@ -570,7 +595,9 @@ export default function SettingsScreen(): React.JSX.Element {
       const summary =
         `Imported ${result.setsImported} set${result.setsImported === 1 ? "" : "s"} ` +
         `across ${result.sessionsCreated} session${result.sessionsCreated === 1 ? "" : "s"}.` +
-        (result.skipped > 0 ? `\n${result.skipped} row(s) were skipped.` : "");
+        (result.skipped > 0
+          ? `\n${plural(result.skipped, "row")} ${result.skipped === 1 ? "was" : "were"} skipped.`
+          : "");
       const hasErrors = result.errors.length > 0;
       alert(
         hasErrors ? "Import Completed with Issues" : "Import Successful",
@@ -693,8 +720,8 @@ export default function SettingsScreen(): React.JSX.Element {
     } catch (error) {
       console.error("Demo fill failed:", error);
       alert(
-        "Error",
-        userFacingError(error, "Failed to fill demo data"),
+        "Couldn't Add Demo Data",
+        userFacingError(error, "The demo data could not be added. Try again."),
         [{ text: "OK" }],
         "error",
       );
@@ -735,12 +762,12 @@ export default function SettingsScreen(): React.JSX.Element {
       } else if (!result.crashReporting && !result.telemetry) {
         lines.push("", "Both consent switches are off, so nothing was sent. Turn one on under Privacy and Data.");
       } else if (result.flushed) {
-        lines.push("", "Look for 'OwnGains Sentry test event' in Sentry.");
+        lines.push("", "Look for 'OwnGains Sentry test event' in GlitchTip.");
       } else {
-        lines.push("", "The event was queued but did not reach Sentry. Check connectivity.");
+        lines.push("", "The event was queued but did not reach GlitchTip. Check connectivity.");
       }
       alert(
-        "Sentry Test",
+        "Crash Reporting Test",
         lines.join("\n"),
         [{ text: "OK" }],
         result.flushed ? "success" : "warning",
@@ -748,6 +775,26 @@ export default function SettingsScreen(): React.JSX.Element {
     } finally {
       setBusyAction(null);
     }
+  };
+
+  const handleTestAlarm = async () => {
+    if (busyAction === "testAlarm") return;
+    setBusyAction("testAlarm");
+    let scheduled: boolean;
+    try {
+      scheduled = await scheduleTestAlarm();
+    } finally {
+      setBusyAction(null);
+    }
+    const lines = [
+      `Exact alarms: ${canScheduleExactAlarms() ? "allowed" : "NOT allowed (may ring late)"}`,
+      `Display over other apps: ${canDrawOverlays() ? "allowed" : "NOT allowed (notification only)"}`,
+      "",
+      scheduled
+        ? `The alarm rings in ${TEST_ALARM_DELAY_SECONDS} seconds. Lock the phone to check the lock screen too.`
+        : "Could not schedule it: notifications are off or this build has no native alarm module.",
+    ];
+    alert("Test Alarm", lines.join("\n"), [{ text: "OK" }], scheduled ? "success" : "warning");
   };
 
   const handleShareDiagnostics = async () => {
@@ -791,13 +838,13 @@ export default function SettingsScreen(): React.JSX.Element {
               const friends = result?.deletedFriends ?? 0;
               showToast(
                 sessions || friends || tracked
-                  ? `Deleted ${sessions} session(s), ${friends} friend(s) and ${tracked} tracking entries.`
+                  ? `Deleted ${plural(sessions, "session")}, ${plural(friends, "friend")} and ${tracked} tracking ${tracked === 1 ? "entry" : "entries"}.`
                   : "There was no demo data to remove.",
               );
             } catch (error) {
               alert(
-                "Error",
-                userFacingError(error, "Failed to remove demo data"),
+                "Couldn't Remove Demo Data",
+                userFacingError(error, "The demo data could not be removed. Try again."),
                 [{ text: "OK" }],
                 "error",
               );
@@ -851,8 +898,8 @@ export default function SettingsScreen(): React.JSX.Element {
     } catch (error) {
       console.error("Error clearing data:", error);
       alert(
-        "Error",
-        userFacingError(error, "Failed to clear all data"),
+        "Couldn't Clear Data",
+        userFacingError(error, "Your data could not be cleared. Try again."),
         [{ text: "OK" }],
         "error",
       );
@@ -934,8 +981,8 @@ export default function SettingsScreen(): React.JSX.Element {
             } catch (error) {
               console.error("Error resetting progress:", error);
               alert(
-                "Error",
-                "Failed to reset progress",
+                "Couldn't Reset Progress",
+                userFacingError(error, "Your progress was not reset. Try again."),
                 [{ text: "OK" }],
                 "error",
               );
@@ -955,6 +1002,7 @@ export default function SettingsScreen(): React.JSX.Element {
   useEffect(() => {
     if (isOffline) return;
     let active = true;
+    setServerInfo(undefined);
     void checkServerVersion().then((info) => {
       if (active) setServerInfo(info);
     });
@@ -1020,8 +1068,8 @@ export default function SettingsScreen(): React.JSX.Element {
       );
     } catch (error) {
       alert(
-        "Error",
-        userFacingError(error, "Failed to change password"),
+        "Couldn't Change Password",
+        userFacingError(error, "Your password was not changed. Try again."),
         [{ text: "OK" }],
         "error",
       );
@@ -1038,7 +1086,12 @@ export default function SettingsScreen(): React.JSX.Element {
       setShowUnlinkGoogleModal(false);
       alert("Google Unlinked", "Sign in with your password from now on.", [{ text: "OK" }], "success");
     } else {
-      alert("Error", result.error ?? "Couldn't unlink Google", [{ text: "OK" }], "error");
+      alert(
+        "Couldn't Unlink Google",
+        result.error ?? "Google is still linked. Try again.",
+        [{ text: "OK" }],
+        "error",
+      );
     }
   };
 
@@ -1287,30 +1340,58 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
     }
   };
 
-  const handleUnblock = async (blocked: BlockedUser) => {
+  const unblock = async (blocked: BlockedUser) => {
     try {
       await friendsApi.unblockUser(blocked.id);
       setBlockedUsers((prev) => prev.filter((b) => b.id !== blocked.id));
       showToast(`${blocked.username} unblocked`);
     } catch (error) {
       alert(
-        "Error",
-        userFacingError(error, "Could not unblock user"),
+        "Couldn't Unblock",
+        userFacingError(error, `${blocked.username} is still blocked. Try again.`),
         [{ text: "OK" }],
         "error",
       );
     }
   };
 
-  const handleToggleCrashReporting = async (enabled: boolean) => {
-    setCrashReporting(enabled);
-    await setCrashReportingEnabled(enabled);
+  const handleUnblock = (blocked: BlockedUser) => {
+    alert(
+      `Unblock ${blocked.username}?`,
+      "They will be able to find you and send requests again.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Unblock", onPress: () => void unblock(blocked) },
+      ],
+      "warning",
+    );
   };
 
-  const handleToggleTelemetry = async (enabled: boolean) => {
-    setTelemetry(enabled);
-    await setTelemetryEnabled(enabled);
+  const saveConsent = async (
+    enabled: boolean,
+    setLocal: (on: boolean) => void,
+    persist: (on: boolean) => Promise<void>,
+  ) => {
+    setLocal(enabled);
+    try {
+      await persist(enabled);
+    } catch (error) {
+      console.warn("Saving a consent setting failed:", error);
+      setLocal(!enabled);
+      alert(
+        "Couldn't Save Setting",
+        "The switch was put back. Try again.",
+        [{ text: "OK" }],
+        "error",
+      );
+    }
   };
+
+  const handleToggleCrashReporting = (enabled: boolean) =>
+    saveConsent(enabled, setCrashReporting, setCrashReportingEnabled);
+
+  const handleToggleTelemetry = (enabled: boolean) =>
+    saveConsent(enabled, setTelemetry, setTelemetryEnabled);
 
   const handleDeleteAccount = async ({
     password: deleteAccountPassword,
@@ -1344,8 +1425,8 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
       }
       console.error("Error deleting account:", error);
       alert(
-        "Error",
-        userFacingError(error, "Failed to delete account"),
+        "Couldn't Delete Account",
+        userFacingError(error, "Your account was not deleted. Try again."),
         [{ text: "OK" }],
         "error",
       );
@@ -1370,12 +1451,12 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
 
   const handleLogout = async () => {
     alert(
-      "Logout",
-      "Are you sure you want to logout?",
+      "Sign out?",
+      "You can sign back in any time.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Logout",
+          text: "Sign out",
           style: "destructive",
           onPress: async () => {
             await logout();
@@ -1416,19 +1497,16 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
 
               await saveUnlockedOverrides(allDayNumbers);
 
-              alert(
-                "Success",
+              showToast(
                 hasActiveSession
-                  ? "Active session ended and all days unlocked. Your workout history is preserved in Analytics."
-                  : "All days have been unlocked. Your workout history is preserved in Analytics.",
-                [{ text: "OK" }],
-                "success",
+                  ? "Session ended and all days unlocked"
+                  : "All days unlocked",
               );
             } catch (error) {
               console.error("Error unlocking days:", error);
               alert(
-                "Error",
-                "Failed to unlock days",
+                "Couldn't Unlock Days",
+                userFacingError(error, "Your days are still locked. Try again."),
                 [{ text: "OK" }],
                 "error",
               );
@@ -1485,7 +1563,12 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
               showToast(`${dayTitle} has been unlocked.`);
             } catch (error) {
               console.error("Error resetting day:", error);
-              alert("Error", "Failed to reset day", [{ text: "OK" }], "error");
+              alert(
+                "Couldn't Unlock Day",
+                userFacingError(error, `${dayTitle} is still locked. Try again.`),
+                [{ text: "OK" }],
+                "error",
+              );
             } finally {
               setBusyAction(null);
             }
@@ -1518,28 +1601,18 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
     );
   };
 
+  const [syncStartCount, setSyncStartCount] = useState<number | null>(null);
   const handleManualSync = async () => {
-    alert(
-      "Sync Pending Data?",
-      `You have ${pendingSyncs.length} pending sync operation(s). Sync now?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Sync",
-          onPress: async () => {
-            await syncPendingData();
-            alert(
-              "Sync Finished",
-              "Anything that could not be synced is still listed under Data Sync.",
-              [{ text: "OK" }],
-              "info",
-            );
-          },
-        },
-      ],
-      "info",
-    );
+    const before = pendingSyncs.length;
+    await syncPendingData();
+    setSyncStartCount(before);
   };
+  // Runs on the render after the sync, once pendingSyncs reflects what is left.
+  useEffect(() => {
+    if (syncStartCount === null) return;
+    showToast(syncResultMessage(syncStartCount, pendingSyncs.length));
+    setSyncStartCount(null);
+  }, [syncStartCount, pendingSyncs.length]);
 
   const getCompletedDaysCount = () => Object.keys(completedDays).length;
 
@@ -1576,6 +1649,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
   const [profileEmail, setProfileEmail] = useState<string>(user?.email ?? "");
   const [profileEmailPassword, setProfileEmailPassword] = useState<string>("");
   const [profileAvatarUri, setProfileAvatarUri] = useState<string | null>(null);
+  const [savedAvatarUri, setSavedAvatarUri] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState<boolean>(false);
 
   // Not while the modal is open: a silent token refresh or any refreshUser()
@@ -1599,9 +1673,13 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
     let cancelled = false;
     (async () => {
       try {
-        const avatar = await getStorageItem(profileExtraKey("@profile_avatar"));
+        const key = profileExtraKey("@profile_avatar");
+        const avatar =
+          (await loadProfileAvatar(key)) ??
+          (await restoreProfileAvatar(key, profilePhotoApi.download));
         if (cancelled) return;
         setProfileAvatarUri(avatar);
+        setSavedAvatarUri(avatar);
       } catch (err) {
         console.warn("Failed loading profile extras:", err);
       }
@@ -1690,17 +1768,33 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
       setProfileName(name);
       setProfileEmail(email);
       setProfileEmailPassword("");
-      if (profileAvatarUri)
-        await setStorageItem(
+      if (profileAvatarUri !== savedAvatarUri) {
+        await saveProfileAvatar(
           profileExtraKey("@profile_avatar"),
           profileAvatarUri,
         );
+        setSavedAvatarUri(profileAvatarUri);
+        (profileAvatarUri
+          ? profilePhotoApi.upload(profileAvatarUri)
+          : profilePhotoApi.remove()
+        ).catch((err: unknown) => {
+          console.warn("Profile photo sync failed:", err);
+          // A server older than profile photos answers 404, and there is nothing the user can do about it.
+          if (err instanceof ApiError && err.status === 404) return;
+          showToast("Photo saved on this device only. Couldn't sync it to the server.");
+        });
+      }
       showToast("Profile updated");
       await refreshUser();
       return true;
     } catch (error) {
       console.error("Save profile error:", error);
-      alert("Error", "Failed to save profile", [{ text: "OK" }], "error");
+      alert(
+        "Couldn't Save Profile",
+        userFacingError(error, "Your profile was not saved. Try again."),
+        [{ text: "OK" }],
+        "error",
+      );
       return false;
     } finally {
       setSavingProfile(false);
@@ -1725,9 +1819,13 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
           text: "Withdraw",
           style: "destructive",
           onPress: async () => {
-            if (!(await doMigrateOffline(true)))
+            setBusyAction("migrateOffline");
+            const ok = await doMigrateOffline(true).finally(() =>
+              setBusyAction(null),
+            );
+            if (!ok)
               alert(
-                "Error",
+                "Couldn't Withdraw Consent",
                 "Consent could not be withdrawn. Nothing was deleted. Check your connection and try again. If it keeps failing, this server may be too old to record a withdrawal: use Clear All Data instead.",
                 [{ text: "OK" }],
                 "error",
@@ -1740,6 +1838,28 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
   };
 
   const migrateToOffline = async () => {
+    const runMigrate = async () => {
+      setBusyAction("migrateOffline");
+      const ok = await doMigrateOffline().finally(() => setBusyAction(null));
+      if (ok) {
+        alert(
+          "Moved to This Device",
+          "Your data has been copied to an offline profile and you can continue where you left off.",
+          [{ text: "OK" }],
+          "success",
+        );
+      } else {
+        alert(
+          "Couldn't Move to This Device",
+          "Nothing was changed and you are still signed in. Check your connection and try again.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Retry", onPress: () => void runMigrate() },
+          ],
+          "error",
+        );
+      }
+    };
     alert(
       "Migrate to Offline",
       "This will create a local offline account using your current profile data and switch the app to offline mode. All local app state (workout plan, progress, and session history) will be copied to the offline profile so you can continue where you left off. Continue?",
@@ -1747,24 +1867,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
         { text: "Cancel", style: "cancel" },
         {
           text: "Migrate",
-          onPress: async () => {
-            const ok = await doMigrateOffline();
-            if (ok) {
-              alert(
-                "Success",
-                "Migrated to offline account. Your data has been copied and you can continue where you left off.",
-                [{ text: "OK" }],
-                "success",
-              );
-            } else {
-              alert(
-                "Error",
-                "Failed to migrate to offline account",
-                [{ text: "OK" }],
-                "error",
-              );
-            }
-          },
+          onPress: runMigrate,
         },
       ],
       "warning",
@@ -1783,8 +1886,8 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
             restartOnboarding().catch((error: unknown) => {
               console.error("Restarting onboarding failed:", error);
               alert(
-                "Error",
-                "Failed to open the setup screen",
+                "Couldn't Open Setup",
+                userFacingError(error, "The setup screen could not be opened. Try again."),
                 [{ text: "OK" }],
                 "error",
               );
@@ -1796,10 +1899,8 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
     );
   };
 
-  const renderAdvancedSection = (): React.JSX.Element | null => {
-    if (!showAdvanced) return null;
-    return (
-      <View>
+  const renderWorkoutHistorySection = (): React.JSX.Element => (
+    <>
         <View style={styles.section}>
           <Text
             style={styles.sectionTitle}
@@ -1910,16 +2011,43 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
           </TouchableOpacity>
         </View>
 
-        {(__DEV__ || isAdmin) && (
+        {selectedSplit && workoutData && (
           <View style={styles.section}>
             <Text
               style={styles.sectionTitle}
               accessibilityRole="header"
-              accessibilityLabel="Developer"
+              accessibilityLabel="Progress"
             >
-              🧪 Developer
+              📊 Progress
             </Text>
+            <View style={styles.card}>
+              {renderProgressCard()}
+            </View>
+          </View>
+        )}
+    </>
+  );
 
+  const renderDeveloperSection = (): React.JSX.Element | null => {
+    if (!__DEV__ && !isAdmin) return null;
+    return (
+      <View style={styles.section}>
+        <TouchableOpacity
+          style={styles.settingsSectionHeaderSimple}
+          onPress={() => setShowAdvanced((s) => !s)}
+          accessibilityRole="button"
+          accessibilityLabel="Developer tools"
+          accessibilityState={{ expanded: showAdvanced }}
+        >
+          <Text style={styles.sectionTitle} importantForAccessibility="no">
+            🧪 Developer
+          </Text>
+          <Text style={styles.settingValue}>
+            {showAdvanced ? "Hide" : "Show"}
+          </Text>
+        </TouchableOpacity>
+        {showAdvanced && (
+          <>
             {isAdmin && !isOffline && (
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -2028,8 +2156,15 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                   preview.type,
                 );
               }}
+              accessibilityRole="button"
+              accessibilityLabel="Preview the next alert style"
             >
-              <Text style={styles.actionButtonIcon}>🔔</Text>
+              <Text
+                style={styles.actionButtonIcon}
+                importantForAccessibility="no"
+              >
+                🔔
+              </Text>
               <View style={styles.actionButtonContent}>
                 <Text style={styles.actionButtonText}>
                   Preview Alert Style
@@ -2048,20 +2183,47 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
               onPress={handleSentryTest}
               disabled={busyAction === "sentryTest"}
               accessibilityRole="button"
-              accessibilityLabel="Send a test event to Sentry"
+              accessibilityLabel="Send a test event to GlitchTip"
               accessibilityState={{ busy: busyAction === "sentryTest" }}
             >
               <Text style={styles.actionButtonIcon} importantForAccessibility="no">
                 📡
               </Text>
               <View style={styles.actionButtonContent}>
-                <Text style={styles.actionButtonText}>Test Sentry</Text>
+                <Text style={styles.actionButtonText}>Test Crash Reporting</Text>
                 <Text style={styles.actionButtonSubtext}>
                   Send an error, a log and a metric, then report whether they
-                  reached Sentry and which consent gate stopped them
+                  reached GlitchTip and which consent gate stopped them
                 </Text>
               </View>
               {busyAction === "sentryTest" && (
+                <ActivityIndicator color={colors.accent} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={[
+                styles.actionButton,
+                busyAction === "testAlarm" && styles.disabledButton,
+              ]}
+              onPress={() => void handleTestAlarm()}
+              disabled={busyAction === "testAlarm"}
+              accessibilityRole="button"
+              accessibilityLabel="Schedule a test supplement alarm"
+              accessibilityState={{ busy: busyAction === "testAlarm" }}
+            >
+              <Text style={styles.actionButtonIcon} importantForAccessibility="no">
+                ⏰
+              </Text>
+              <View style={styles.actionButtonContent}>
+                <Text style={styles.actionButtonText}>Test Alarm</Text>
+                <Text style={styles.actionButtonSubtext}>
+                  Ring a supplement alarm in {TEST_ALARM_DELAY_SECONDS} seconds
+                  and show which alarm permissions are missing
+                </Text>
+              </View>
+              {busyAction === "testAlarm" && (
                 <ActivityIndicator color={colors.accent} />
               )}
             </TouchableOpacity>
@@ -2087,27 +2249,11 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
 
             <Text style={styles.helperText}>
               {__DEV__
-                ? "💡 Debug build: this section is also shown to admin accounts in release APKs"
-                : "💡 Shown because this account is an admin"}
+                ? "Debug build: this section is also shown to admin accounts in release APKs"
+                : "Shown because this account is an admin"}
             </Text>
-          </View>
+          </>
         )}
-
-        {selectedSplit && workoutData && (
-          <View style={styles.section}>
-            <Text
-              style={styles.sectionTitle}
-              accessibilityRole="header"
-              accessibilityLabel="Progress"
-            >
-              📊 Progress
-            </Text>
-            <View style={styles.card}>
-              {renderProgressCard()}
-            </View>
-          </View>
-        )}
-
       </View>
     );
   };
@@ -2132,7 +2278,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
               back to the setup screen, where the server address is set.
             </Text>
           </View>
-          <Text style={styles.settingValue}>Sign out</Text>
+          <Text style={styles.settingValue}>Change server</Text>
         </TouchableOpacity>
         {localOnlyFeatures.length > 0 && (
           <>
@@ -2140,13 +2286,18 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
             <View style={styles.settingRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.settingLabel}>Kept On This Device</Text>
-                <Text style={[styles.settingDescription, styles.dangerText]}>
-                  {describeLocalOnlyFeatures(localOnlyFeatures)} are not stored
-                  on this server. They are kept on this phone only. They will not
-                  sync to your other devices, and they are gone if you
-                  uninstall OwnGains or lose the phone. Use Export My Data
-                  under Privacy and Data to keep a copy.
-                </Text>
+                <View style={styles.warningBox}>
+                  <Text style={styles.warningBoxTitle}>
+                    {describeLocalOnlyFeatures(localOnlyFeatures)} are not
+                    stored on this server.
+                  </Text>
+                  <Text style={styles.settingDescription}>
+                    They are kept on this phone only. They will not sync to
+                    your other devices, and they are gone if you uninstall
+                    OwnGains or lose the phone. Use Export My Data under
+                    Privacy and Data to keep a copy.
+                  </Text>
+                </View>
               </View>
             </View>
           </>
@@ -2161,14 +2312,21 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                 : "The version of OwnGains-Server you are signed in to"}
             </Text>
           </View>
-          <Text
-            style={[
-              styles.infoValue,
-              serverInfo?.outdated && styles.dangerText,
-            ]}
-          >
-            {serverInfo ? serverInfo.version : "-"}
-          </Text>
+          {serverInfo === undefined ? (
+            <ActivityIndicator
+              color={colors.textMuted}
+              accessibilityLabel="Checking the server version"
+            />
+          ) : (
+            <Text
+              style={[
+                styles.infoValue,
+                serverInfo?.outdated && styles.dangerText,
+              ]}
+            >
+              {serverInfo ? serverInfo.version : "Unknown"}
+            </Text>
+          )}
         </View>
       </View>
     );
@@ -2192,14 +2350,14 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                 <View style={{ flex: 1 }}>
                   <Text style={styles.infoLabel}>Pending Syncs</Text>
                   <Text style={styles.settingDescription}>
-                    {pendingSyncs.length} operation(s) waiting to sync
+                    {countChanges(pendingSyncs.length)} waiting to sync
                   </Text>
                 </View>
                 <Text style={styles.warningValue}>
                   {pendingSyncs.length}
                 </Text>
               </View>
-              <View style={styles.divider} />
+              {droppedSyncCount > 0 && <View style={styles.divider} />}
             </>
           )}
           {droppedSyncCount > 0 && (
@@ -2207,7 +2365,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
               <View style={{ flex: 1 }}>
                 <Text style={styles.infoLabel}>Discarded Syncs</Text>
                 <Text style={styles.settingDescription}>
-                  {droppedSyncCount} operation(s) could not be synced and
+                  {countChanges(droppedSyncCount)} could not be synced and
                   were discarded. They are listed below so you can log them
                   again from the Workout screen. Edit Workout History can only
                   correct sets that were saved.
@@ -2278,8 +2436,8 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
       return (
         <>
           <Text style={styles.errorText}>
-            Progress could not be loaded from the server. The
-            numbers below your device holds are still intact.
+            Progress could not be loaded from the server. Your progress on
+            this device is unaffected.
           </Text>
           <TouchableOpacity
             style={styles.retryButton}
@@ -2338,11 +2496,16 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
         onClose={() => setShowAccountModal(false)}
         dirty={
           profileName !== (user?.name ?? "") ||
-          profileEmail !== (user?.email ?? "")
+          profileEmail !== (user?.email ?? "") ||
+          profileAvatarUri !== savedAvatarUri
         }
         title={isOffline ? "This Device Profile" : "Account"}
         showCancelButton={false}
-        showConfirmButton={false}
+        onConfirm={async () => {
+          if (await handleSaveProfile()) setShowAccountModal(false);
+        }}
+        confirmText={savingProfile ? "Saving..." : "Save Profile"}
+        confirmDisabled={savingProfile}
         scrollable={true}
       >
         <View style={styles.fullModalContent}>
@@ -2364,7 +2527,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                   contentFit="cover"
                 />
               ) : (
-                <Text style={styles.avatarPlaceholder}>Add</Text>
+                <Text style={styles.avatarPlaceholder}>Add photo</Text>
               )}
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
@@ -2409,22 +2572,16 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                 )}
             </View>
           </View>
-
-          <View style={{ height: 20 }} />
-          <TouchableOpacity
-            style={[
-              styles.saveButtonBig,
-              savingProfile && styles.disabledButton,
-            ]}
-            onPress={async () => {
-              if (await handleSaveProfile()) setShowAccountModal(false);
-            }}
-            disabled={savingProfile}
-          >
-            <Text style={styles.saveButtonTextBig}>
-              {savingProfile ? "Saving..." : "Save Profile"}
-            </Text>
-          </TouchableOpacity>
+          {profileAvatarUri && (
+            <TouchableOpacity
+              onPress={() => setProfileAvatarUri(null)}
+              style={styles.removePhotoButton}
+              accessibilityRole="button"
+              accessibilityLabel="Remove profile picture"
+            >
+              <Text style={styles.removePhotoText}>Remove photo</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ModalSheet>
 
@@ -2599,6 +2756,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
               </View>
               <TouchableOpacity
                 onPress={() => handleUnblock(blocked)}
+                style={styles.unblockButton}
                 accessibilityRole="button"
                 accessibilityLabel={`Unblock ${blocked.username}`}
               >
@@ -2720,88 +2878,6 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
           </View>
 
           <View style={styles.section}>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => {
-                trackFeature("tip", KOFI_URL ? "kofi_open" : "jar_open");
-                if (KOFI_URL) void Linking.openURL(KOFI_URL);
-                else setShowTipJar(true);
-              }}
-              accessibilityRole={SUPPORT_COPY.role}
-              accessibilityLabel={SUPPORT_COPY.label}
-            >
-              <LinearGradient
-                colors={
-                  isDark
-                    ? ["#9d174d", "#9f1239", "#9a3412"]
-                    : ["#db2777", "#e11d48", "#ea580c"]
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.supportButton}
-              >
-                <Text style={styles.supportEmoji}>❤️</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.supportTitle}>Support Development</Text>
-                  <Text style={styles.supportSubtitle}>
-                    Help keep OwnGains and its official server running
-                  </Text>
-                </View>
-                <Text
-                  style={[styles.supportCta, isDark && { color: "#9f1239" }]}
-                >
-                  {SUPPORT_COPY.cta}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              style={{ marginTop: 12 }}
-              onPress={() =>
-                void Linking.openURL(
-                  `mailto:kostissuperak0s@gmail.com?subject=${encodeURIComponent(
-                    `OwnGains feedback (v${Constants.expoConfig?.version ?? "?"})`,
-                  )}`,
-                ).catch(() =>
-                  alert(
-                    "No email app",
-                    "Send your feedback to kostissuperak0s@gmail.com.",
-                  ),
-                )
-              }
-              accessibilityRole="link"
-              accessibilityLabel="Give feedback by email"
-            >
-              <LinearGradient
-                colors={
-                  isDark
-                    ? ["#1e40af", "#5b21b6", "#6b21a8"]
-                    : ["#2563eb", "#7c3aed", "#9333ea"]
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.supportButton}
-              >
-                <Text style={styles.supportEmoji}>💬</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.supportTitle}>Give Feedback</Text>
-                  <Text style={styles.supportSubtitle}>
-                    Report a bug or suggest an idea
-                  </Text>
-                </View>
-                <Text
-                  style={[
-                    styles.supportCta,
-                    { color: isDark ? "#5b21b6" : "#7c3aed" },
-                  ]}
-                >
-                  Email ↗
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.section}>
             <Text
               style={styles.sectionTitle}
               accessibilityRole="header"
@@ -2868,14 +2944,14 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                     style={styles.settingRow}
                     onPress={handleLogout}
                     accessibilityRole="button"
-                    accessibilityLabel="Log out of this device"
+                    accessibilityLabel="Sign out of this device"
                   >
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.settingLabel, styles.dangerText]}>
-                        Log Out
+                        Sign Out
                       </Text>
                       <Text style={styles.settingDescription}>
-                        Sign out on this device
+                        Your data stays on the server
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -2915,6 +2991,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                     true: colors.accent,
                   }}
                   thumbColor={switchThumbColor(useManualTime)}
+                  accessibilityLabel="Use manual time between sets"
                 />
               </View>
               <View style={styles.divider} />
@@ -2990,7 +3067,6 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
               </TouchableOpacity>
             </View>
             <Text style={styles.helperText}>
-              💡{" "}
               {useManualTime
                 ? "Using your manual time setting for workout estimates"
                 : "Using server analytics when available, manual time as fallback"}
@@ -3071,6 +3147,8 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
             </View>
           </View>
 
+          {renderWorkoutHistorySection()}
+
           <View style={styles.section}>
             <Text
               style={styles.sectionTitle}
@@ -3124,12 +3202,25 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
             {!isOffline && (
               <TouchableOpacity
                 activeOpacity={0.7}
-                style={styles.actionButton}
+                style={[
+                  styles.actionButton,
+                  busyAction !== null && styles.disabledButton,
+                ]}
                 onPress={migrateToOffline}
+                disabled={busyAction !== null}
                 accessibilityRole="button"
                 accessibilityLabel="Migrate to an offline account"
+                accessibilityState={{
+                  disabled: busyAction !== null,
+                  busy: busyAction === "migrateOffline",
+                }}
               >
-                <Text style={styles.actionButtonIcon}>⬇️</Text>
+                <Text
+                  style={styles.actionButtonIcon}
+                  importantForAccessibility="no"
+                >
+                  ⬇️
+                </Text>
                 <View style={styles.actionButtonContent}>
                   <Text style={styles.actionButtonText}>
                     Migrate to Offline Account
@@ -3138,6 +3229,9 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                     Create a local profile and switch the app to offline mode
                   </Text>
                 </View>
+                {busyAction === "migrateOffline" && (
+                  <ActivityIndicator color={colors.accent} />
+                )}
               </TouchableOpacity>
             )}
             {isOffline && (
@@ -3148,7 +3242,12 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                 accessibilityRole="button"
                 accessibilityLabel="Change storage mode"
               >
-                <Text style={styles.actionButtonIcon}>⬆️</Text>
+                <Text
+                  style={styles.actionButtonIcon}
+                  importantForAccessibility="no"
+                >
+                  ⬆️
+                </Text>
                 <View style={styles.actionButtonContent}>
                   <Text style={styles.actionButtonText}>
                     Change Storage Mode
@@ -3217,7 +3316,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                   <Text style={styles.settingLabel}>Export My Data</Text>
                   <Text style={styles.settingDescription}>
                     Save everything this app holds about you as a JSON file,
-                    encrypted with a passphrase you choose
+                    encrypted with a passphrase if you set one
                   </Text>
                 </View>
                 {exportingData ? (
@@ -3231,10 +3330,18 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                 <>
                   <View style={styles.divider} />
                   <TouchableOpacity
-                    style={styles.settingRow}
+                    style={[
+                      styles.settingRow,
+                      busyAction !== null && styles.disabledButton,
+                    ]}
                     onPress={withdrawHealthConsent}
+                    disabled={busyAction !== null}
                     accessibilityRole="button"
                     accessibilityLabel="Withdraw health data consent"
+                    accessibilityState={{
+                      disabled: busyAction !== null,
+                      busy: busyAction === "migrateOffline",
+                    }}
                   >
                     <View style={{ flex: 1 }}>
                       <Text style={styles.settingLabel}>Withdraw Health Consent</Text>
@@ -3243,7 +3350,11 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                         switch to offline mode
                       </Text>
                     </View>
-                    <Text style={styles.settingValue}>Withdraw</Text>
+                    {busyAction === "migrateOffline" ? (
+                      <ActivityIndicator color={colors.accent} />
+                    ) : (
+                      <Text style={styles.settingValue}>Withdraw</Text>
+                    )}
                   </TouchableOpacity>
                 </>
               )}
@@ -3317,7 +3428,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                 />
               </View>
 
-              <View style={styles.divider} />
+              {!isOffline && <View style={styles.divider} />}
 
               {!isOffline && (
                 <TouchableOpacity
@@ -3377,7 +3488,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                 <Text style={styles.actionButtonSubtext}>
                   {noLocalProgress
                     ? NO_LOCAL_PROGRESS_HINT
-                    : "Delete all set history"}
+                    : "Delete all set history. To unlock days without deleting anything, use Workout History above"}
                 </Text>
               </View>
               {busyAction === "resetProgress" && (
@@ -3433,7 +3544,12 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
               accessibilityLabel="Delete my account permanently"
               accessibilityState={{ disabled: busyAction !== null }}
             >
-              <Text style={styles.actionButtonIcon}>⚠️</Text>
+              <Text
+                style={styles.actionButtonIcon}
+                importantForAccessibility="no"
+              >
+                ⚠️
+              </Text>
               <View style={styles.actionButtonContent}>
                 <Text style={[styles.actionButtonText, styles.dangerText]}>
                   Delete Account
@@ -3454,6 +3570,51 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
               ℹ️ About
             </Text>
             <View style={styles.card}>
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={() => {
+                  trackFeature("tip", KOFI_URL ? "kofi_open" : "jar_open");
+                  if (KOFI_URL) void Linking.openURL(KOFI_URL);
+                  else setShowTipJar(true);
+                }}
+                accessibilityRole={SUPPORT_COPY.role}
+                accessibilityLabel={SUPPORT_COPY.label}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.settingLabel}>Support Development</Text>
+                  <Text style={styles.settingDescription}>
+                    Help keep OwnGains and its official server running
+                  </Text>
+                </View>
+                <Text style={styles.settingValue}>{SUPPORT_COPY.cta}</Text>
+              </TouchableOpacity>
+              <View style={styles.divider} />
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={() =>
+                  void Linking.openURL(
+                    `mailto:kostissuperak0s@gmail.com?subject=${encodeURIComponent(
+                      `OwnGains feedback (v${Constants.expoConfig?.version ?? "?"})`,
+                    )}`,
+                  ).catch(() =>
+                    alert(
+                      "No email app",
+                      "Send your feedback to kostissuperak0s@gmail.com.",
+                    ),
+                  )
+                }
+                accessibilityRole="link"
+                accessibilityLabel="Give feedback by email"
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.settingLabel}>Give Feedback</Text>
+                  <Text style={styles.settingDescription}>
+                    Report a bug or suggest an idea
+                  </Text>
+                </View>
+                <Text style={styles.settingValue}>Email ↗</Text>
+              </TouchableOpacity>
+              <View style={styles.divider} />
               <View style={styles.settingRow}>
                 <Text style={styles.settingLabel}>Version</Text>
                 <Text style={styles.infoValue}>
@@ -3546,30 +3707,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
             </View>
           </View>
 
-          <View style={styles.section}>
-            <TouchableOpacity
-              style={styles.settingsSectionHeaderSimple}
-              onPress={() => setShowAdvanced((s) => !s)}
-              accessibilityRole="button"
-              accessibilityLabel="Advanced settings"
-              accessibilityState={{ expanded: showAdvanced }}
-            >
-              <View style={styles.settingsTitleContainer}>
-                <Text
-                  style={styles.settingsSectionIcon}
-                  importantForAccessibility="no"
-                >
-                  🧰
-                </Text>
-                <Text style={styles.settingsSectionTitle}>Advanced</Text>
-              </View>
-              <Text style={styles.settingValue}>
-                {showAdvanced ? "Hide ▲" : "Show ▼"}
-              </Text>
-            </TouchableOpacity>
-
-            {renderAdvancedSection()}
-          </View>
+          {renderDeveloperSection()}
 
         </View>
 
@@ -3595,28 +3733,6 @@ const makeStyles = (colors: ThemeColors) =>
     container: { flex: 1, backgroundColor: colors.background },
     contentContainer: SCREEN_PADDING,
     section: { marginBottom: 24 },
-    supportButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 14,
-      paddingVertical: 20,
-      paddingHorizontal: 18,
-      borderRadius: 18,
-    },
-    supportEmoji: { fontSize: 32 },
-    supportTitle: { fontSize: 19, fontWeight: "800", color: "#fff" },
-    supportSubtitle: { fontSize: 13, color: "#fff", opacity: 0.92, marginTop: 2 },
-    supportCta: {
-      fontSize: 15,
-      fontWeight: "700",
-      color: "#e11d48",
-      backgroundColor: "#fff",
-      paddingVertical: 8,
-      paddingHorizontal: 14,
-      borderRadius: 999,
-      overflow: "hidden",
-    },
-
     sectionTitle: {
       fontSize: 20,
       fontWeight: "bold",
@@ -3665,6 +3781,8 @@ const makeStyles = (colors: ThemeColors) =>
     compareRow: { flexDirection: "row", gap: 6 },
     compareChip: {
       flex: 1,
+      minHeight: 44,
+      justifyContent: "center",
       paddingVertical: 8,
       borderRadius: 8,
       alignItems: "center",
@@ -3677,7 +3795,7 @@ const makeStyles = (colors: ThemeColors) =>
       borderColor: colors.accent,
     },
     compareChipText: {
-      fontSize: 12,
+      fontSize: 14,
       fontWeight: "600",
       color: colors.textSecondary,
     },
@@ -3798,9 +3916,8 @@ const makeStyles = (colors: ThemeColors) =>
     },
     helperText: {
       fontSize: 14,
-      color: colors.accent,
+      color: colors.textSecondary,
       marginTop: 12,
-      fontStyle: "italic",
     },
     warningText: {
       fontSize: 14,
@@ -3931,7 +4048,14 @@ const makeStyles = (colors: ThemeColors) =>
       paddingVertical: 4,
       borderRadius: 12,
     },
-    badgeText: { fontSize: 12, fontWeight: "600", color: colors.textPrimary },
+    badgeText: { fontSize: 13, fontWeight: "600", color: colors.textPrimary },
+    unblockButton: {
+      minHeight: 48,
+      minWidth: 48,
+      paddingHorizontal: 12,
+      justifyContent: "center",
+      alignItems: "center",
+    },
     emptyDayList: { padding: 40, alignItems: "center" },
     emptyDayListText: {
       fontSize: 15,
@@ -3940,21 +4064,11 @@ const makeStyles = (colors: ThemeColors) =>
     },
     fullModalContent: { padding: 20, paddingBottom: 20 },
 
-    settingsTitleContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      flex: 1,
-    },
-    settingsSectionIcon: { fontSize: 24, marginRight: 12 },
-    settingsSectionTitle: {
-      fontSize: 16,
-      fontWeight: "700",
-      color: colors.textPrimary,
-    },
     settingsSectionHeaderSimple: {
       flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 12,
+      alignItems: "baseline",
+      justifyContent: "space-between",
+      minHeight: 44,
     },
     avatarButton: {
       width: 72,
@@ -3976,20 +4090,19 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.textSecondary,
       marginBottom: 6,
     },
-    saveButtonBig: {
-      backgroundColor: colors.accent,
-      paddingVertical: 16,
-      borderRadius: 12,
-      alignItems: "center",
-      shadowColor: colors.accent,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 6,
+    warningBox: {
+      backgroundColor: colors.warningLight,
+      borderRadius: 10,
+      padding: 12,
+      marginTop: 6,
+      gap: 4,
     },
-    saveButtonTextBig: {
-      fontSize: 18,
-      fontWeight: "700",
-      color: colors.textOnAccent,
+    warningBoxTitle: { color: colors.warning, fontSize: 14, fontWeight: "700" },
+    removePhotoButton: {
+      alignSelf: "flex-start",
+      minHeight: 44,
+      justifyContent: "center",
+      paddingHorizontal: 4,
     },
+    removePhotoText: { color: colors.error, fontSize: 15, fontWeight: "600" },
   });

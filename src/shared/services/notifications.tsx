@@ -1,12 +1,12 @@
 import Constants, { ExecutionEnvironment } from "expo-constants";
-import { Linking, Platform } from "react-native";
+import { AppState, Linking, Platform } from "react-native";
 import ExactAlarms from "../../../modules/exact-alarms";
 import type { UseAlertReturn } from "../components/CustomAlert";
 import { captureException, metric } from "./crashReporting";
 import { withLock } from "./offlineHelpers";
 import { getStorageItem, setStorageItem } from "./sqliteStorage";
 
-const isExpoGo =
+export const isExpoGo =
   Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 // Requiring expo-notifications inside Expo Go triggers a load-time warning and,
@@ -89,6 +89,64 @@ export function canScheduleExactAlarms(): boolean {
 export function openExactAlarmSettings(): void {
   if (ExactAlarms) ExactAlarms.openExactAlarmSettings();
   else void Linking.openSettings();
+}
+
+export function canDrawOverlays(): boolean {
+  if (Platform.OS !== "android" || !ExactAlarms) return true;
+  return ExactAlarms.canDrawOverlays();
+}
+
+const askToOpenSettings = (
+  alert: UseAlertReturn["alert"],
+  title: string,
+  message: string,
+  open: () => void,
+): Promise<boolean> =>
+  new Promise((resolve) =>
+    alert(
+      title,
+      message,
+      [
+        { text: "Not now", style: "cancel", onPress: () => resolve(false) },
+        { text: "Open settings", onPress: () => { open(); resolve(true); } },
+      ],
+      "warning",
+    ),
+  );
+
+const returnFromSettings = (): Promise<void> =>
+  new Promise((resolve) => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state !== "active") return;
+      sub.remove();
+      resolve();
+    });
+  });
+
+/** Neither grant can be requested in-app, so each missing one sends the user to
+ * its settings page, one at a time. */
+export async function promptForAlarmPermissions(
+  alert: UseAlertReturn["alert"],
+): Promise<void> {
+  if (!canScheduleExactAlarms()) {
+    const opened = await askToOpenSettings(
+      alert,
+      "Allow on-time alarms",
+      'Turn on "Alarms & reminders" for OwnGains so supplement alarms ring at the exact time, even when the phone is idle.',
+      openExactAlarmSettings,
+    );
+    if (opened) await returnFromSettings();
+  }
+  if (!canDrawOverlays()) {
+    await askToOpenSettings(
+      alert,
+      "Ring full screen",
+      'Turn on "Display over other apps" for OwnGains so a supplement alarm opens full screen, like a clock app, instead of showing a notification.',
+      () => ExactAlarms?.openOverlaySettings(),
+    );
+    return;
+  }
+  if (canScheduleExactAlarms()) await promptForExactAlarms(alert, "supplement alarms");
 }
 
 // These makers' battery savers delay even exact alarms, and Android reports

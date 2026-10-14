@@ -3,8 +3,11 @@ import { TextInput } from "react-native";
 import { create, act, type ReactTestRenderer } from "react-test-renderer";
 import {
   ChangePasswordModal,
+  DeleteAccountModal,
+  exportPassphraseHints,
   isDeleteConfirmed,
   parseTimeBetweenSets,
+  passwordChangeHints,
 } from "../SettingsFormModals";
 
 jest.mock("@shared/context/ThemeContext", () => ({
@@ -14,15 +17,23 @@ jest.mock("@shared/components/ModalSheet", () => {
   const { View } = jest.requireActual("react-native");
   return {
     __esModule: true,
-    default: ({ children, onConfirm }: { children: unknown; onConfirm: () => void }) => (
-      <View testID="sheet" onConfirm={onConfirm}>
+    default: ({
+      children,
+      onConfirm,
+      confirmDisabled,
+    }: {
+      children: unknown;
+      onConfirm: () => void;
+      confirmDisabled?: boolean;
+    }) => (
+      <View testID="sheet" onConfirm={onConfirm} confirmDisabled={confirmDisabled}>
         {children}
       </View>
     ),
   };
 });
 
-const styles = { input: {}, modalDescription: {} };
+const styles = { input: {}, modalDescription: {}, fieldLabel: {} };
 
 describe("validators", () => {
   it("accepts 1 to 600 seconds between sets", () => {
@@ -60,5 +71,51 @@ describe("ChangePasswordModal", () => {
     act(() => tree.update(render(false)));
     act(() => tree.update(render(true)));
     expect(inputs(tree).map((i) => i.props.value)).toEqual(["", "", ""]);
+  });
+});
+
+describe("inline hints", () => {
+  it("flags a weak or mismatched new password and stays quiet on empty fields", () => {
+    expect(passwordChangeHints({ current: "", next: "", confirm: "" })).toEqual({ next: null, confirm: null });
+    expect(passwordChangeHints({ current: "x", next: "short", confirm: "" }).next).not.toBeNull();
+    expect(passwordChangeHints({ current: "x", next: "new-password1", confirm: "new-password2" }).confirm).toBe(
+      "The passwords do not match",
+    );
+    expect(passwordChangeHints({ current: "x", next: "new-password1", confirm: "new-password1" })).toEqual({
+      next: null,
+      confirm: null,
+    });
+  });
+
+  it("allows an empty export passphrase but not a short or mismatched one", () => {
+    expect(exportPassphraseHints("", "")).toEqual({ passphrase: null, confirm: null });
+    expect(exportPassphraseHints("short", "short").passphrase).toMatch(/at least/);
+    expect(exportPassphraseHints("long enough phrase", "long enough phrasf").confirm).toBe(
+      "The passphrases do not match",
+    );
+  });
+});
+
+describe("DeleteAccountModal", () => {
+  const sheetDisabled = (tree: ReactTestRenderer) =>
+    tree.root.findByProps({ testID: "sheet" }).props.confirmDisabled as boolean;
+
+  it("keeps Delete Forever disabled online until a password is typed", () => {
+    let tree!: ReactTestRenderer;
+    act(() => {
+      tree = create(
+        <DeleteAccountModal
+          visible
+          onClose={jest.fn()}
+          onSubmit={jest.fn()}
+          isOffline={false}
+          googleOnly={false}
+          styles={styles}
+        />,
+      );
+    });
+    expect(sheetDisabled(tree)).toBe(true);
+    act(() => tree.root.findByType(TextInput).props.onChangeText("pw"));
+    expect(sheetDisabled(tree)).toBe(false);
   });
 });

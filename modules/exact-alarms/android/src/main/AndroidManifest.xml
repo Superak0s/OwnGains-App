@@ -1,0 +1,28 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+  <uses-permission android:name="android.permission.VIBRATE" />
+
+  <application>
+    <!-- Its own empty task affinity, so finishing it over the lock screen never
+         brings the rest of the app up without unlocking. -->
+    <activity
+        android:name=".AlarmActivity"
+        android:exported="false"
+        android:excludeFromRecents="true"
+        android:taskAffinity=""
+        android:launchMode="singleInstance"
+        android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
+        android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode" />
+
+    <receiver android:name=".AlarmReceiver" android:exported="false" />
+
+    <receiver android:name=".BootReceiver" android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+      </intent-filter>
+    </receiver>
+  </application>
+</manifest>

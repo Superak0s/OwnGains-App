@@ -304,10 +304,23 @@ const EXERCISE_FILTERS = [
 
 type ExerciseFilterKey = (typeof EXERCISE_FILTERS)[number]["key"];
 
+export function isExerciseEditDirty(
+  group: Pick<GroupedExercise, "exerciseName" | "primaryMuscles"> | null,
+  nameInput: string,
+  muscleInput: string,
+): boolean {
+  if (!group) return false;
+  return (
+    nameInput.trim() !== group.exerciseName ||
+    muscleInput.trim() !== (group.primaryMuscles ?? []).join(", ")
+  );
+}
+
 function ExerciseListView({
   exercises,
   loading,
   failed,
+  onRetry,
   openEditExercise,
   styles,
   colors,
@@ -315,6 +328,7 @@ function ExerciseListView({
   readonly exercises: GroupedExercise[];
   readonly loading: boolean;
   readonly failed: boolean;
+  readonly onRetry: () => void;
   readonly openEditExercise: (group: GroupedExercise) => void;
   readonly styles: ReturnType<typeof makeStyles>;
   readonly colors: ThemeColors;
@@ -349,9 +363,19 @@ function ExerciseListView({
     empty = <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />;
   } else if (failed) {
     empty = (
-      <Text style={styles.errorText}>
-        Your exercises could not be loaded. Nothing has been changed.
-      </Text>
+      <View>
+        <Text style={styles.errorText}>
+          Your exercises could not be loaded. Nothing has been changed.
+        </Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={onRetry}
+          accessibilityRole="button"
+          accessibilityLabel="Try loading your exercises again"
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
     );
   } else if (filters.size > 0) {
     empty = <Text style={styles.emptyText}>No exercises match these filters.</Text>;
@@ -471,10 +495,17 @@ function SessionDetailView({
         {group.sets.map((set, idx) => (
           <TouchableOpacity
             key={set.id ?? `${group.exerciseName}-${idx}`}
-            style={styles.setRow}
+            style={[styles.setRow, set.id == null && { opacity: 0.5 }]}
             onPress={() => openEditSet(set)}
+            disabled={set.id == null}
             accessibilityRole="button"
             accessibilityLabel={`Edit set ${set.setIndex} of ${group.exerciseName}`}
+            accessibilityState={{ disabled: set.id == null }}
+            accessibilityHint={
+              set.id == null
+                ? "This set has not reached the server yet, so it can be edited after the next sync"
+                : undefined
+            }
           >
             <Text style={styles.setLabel}>Set {set.setIndex}</Text>
             <Text style={styles.setDetail}>
@@ -952,8 +983,8 @@ export default function EditWorkoutHistoryModal({
     const newEndIso = combineToIso(setDateInput, setTimeInput);
     if (!newEndIso) {
       alert(
-        "Invalid Date/Time",
-        "Use format YYYY-MM-DD for date and HH:MM (24h) for time.",
+        "Invalid Time",
+        "Enter the time as HH:MM in 24-hour format, for example 18:30.",
         [{ text: "OK" }],
         "error",
       );
@@ -1088,13 +1119,13 @@ export default function EditWorkoutHistoryModal({
               accessibilityRole="button"
               accessibilityLabel="Back to the session list"
             >
-              <Text style={styles.headerButton}>← Sessions</Text>
+              <Text style={styles.headerButton}>‹ Sessions</Text>
             </TouchableOpacity>
           ) : (
             <View style={{ width: 80 }} />
           )}
           <Text style={styles.headerTitle} accessibilityRole="header">
-            {selectedSession ? "Edit Sets" : "Edit Imported History"}
+            {selectedSession ? "Edit Sets" : "Edit Workout History"}
           </Text>
           <TouchableOpacity
             onPress={onClose}
@@ -1107,7 +1138,7 @@ export default function EditWorkoutHistoryModal({
         </View>
 
         {!selectedSession && !loadingDetail && (
-          <View style={styles.modeRow}>
+          <View style={styles.modeRow} accessibilityRole="tablist">
             {(["sessions", "exercises"] as const).map((mode) => (
               <TouchableOpacity
                 key={mode}
@@ -1142,6 +1173,7 @@ export default function EditWorkoutHistoryModal({
             exercises={knownExercises}
             loading={loadingNameIndex}
             failed={nameIndexFailed}
+            onRetry={() => void buildNameIndex()}
             openEditExercise={openEditExercise}
             styles={styles}
             colors={colors}
@@ -1173,10 +1205,11 @@ export default function EditWorkoutHistoryModal({
       <ModalSheet
         visible={!!editingExercise}
         onClose={closeEditExercise}
-        dirty={
-          !!editingExercise &&
-          exerciseNameInput.trim() !== editingExercise.exerciseName
-        }
+        dirty={isExerciseEditDirty(
+          editingExercise,
+          exerciseNameInput,
+          muscleGroupInput,
+        )}
         title="Edit Exercise"
         onConfirm={saveExerciseEdit}
         confirmText={savingExercise ? "Saving…" : "Save Everywhere"}
@@ -1188,8 +1221,8 @@ export default function EditWorkoutHistoryModal({
         {nameIndexFailed && (
           <Text style={[styles.modalDescription, { color: colors.error }]}>
             ⚠️ Your existing exercise names could not be loaded, so OwnGains
-            cannot warn you about near-duplicates or offer merges here. Close
-            and reopen this editor to try again.
+            cannot warn you about near-duplicates or offer merges here. Use
+            Retry in the Exercises tab to try again.
           </Text>
         )}
         <Text style={styles.fieldLabel}>Exercise Name</Text>
@@ -1199,6 +1232,7 @@ export default function EditWorkoutHistoryModal({
           onChangeText={handleNameChange}
           placeholder="e.g. Bench Press"
           placeholderTextColor={colors.textMuted}
+          accessibilityLabel="Exercise name"
         />
         {nameSuggestions.length > 0 && (
           <SuggestionsBox
@@ -1217,6 +1251,8 @@ export default function EditWorkoutHistoryModal({
           showsHorizontalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.chipRow}
+          accessibilityRole="radiogroup"
+          accessibilityLabel="Browse by muscle"
         >
           {BROWSE_MUSCLES.map((muscle) => {
             const selected = browseMuscle === muscle;
@@ -1227,7 +1263,7 @@ export default function EditWorkoutHistoryModal({
                 style={[styles.chip, selected && styles.chipActive]}
                 accessibilityRole="radio"
                 accessibilityLabel={`${label} exercises`}
-                accessibilityState={{ selected }}
+                accessibilityState={{ checked: selected }}
                 onPress={() => toggleBrowseMuscle(muscle)}
               >
                 <Text
@@ -1272,6 +1308,7 @@ export default function EditWorkoutHistoryModal({
           onChangeText={setMuscleGroupInput}
           placeholder="e.g. Chest"
           placeholderTextColor={colors.textMuted}
+          accessibilityLabel="Muscle group"
         />
         {muscleGroupSuggestions.length > 0 && (
           <SuggestionsBox
@@ -1363,6 +1400,7 @@ export default function EditWorkoutHistoryModal({
           keyboardType="decimal-pad"
           placeholder="60"
           placeholderTextColor={colors.textMuted}
+          accessibilityLabel="Weight in kilograms"
         />
         <Text style={styles.fieldLabel}>Reps</Text>
         <TextInput
@@ -1372,6 +1410,7 @@ export default function EditWorkoutHistoryModal({
           keyboardType="number-pad"
           placeholder="8"
           placeholderTextColor={colors.textMuted}
+          accessibilityLabel="Reps"
         />
       </ModalSheet>
 
@@ -1392,7 +1431,12 @@ const makeStyles = (colors: ThemeColors) =>
       borderBottomColor: colors.surfaceBorder,
       backgroundColor: colors.surface,
     },
-    headerTouch: { paddingVertical: 8, paddingHorizontal: 4, minWidth: 80 },
+    headerTouch: {
+      minHeight: 44,
+      justifyContent: "center",
+      paddingHorizontal: 4,
+      minWidth: 80,
+    },
     headerButton: { fontSize: 15, fontWeight: "600", color: colors.accent },
     inputValueText: { fontSize: 16, color: colors.textPrimary },
     inputPlaceholderText: { color: colors.textMuted },
@@ -1441,8 +1485,9 @@ const makeStyles = (colors: ThemeColors) =>
     filterPill: {
       alignSelf: "flex-start",
       paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 20,
+      minHeight: 44,
+      justifyContent: "center",
+      borderRadius: 22,
       backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.surfaceBorder,
@@ -1501,7 +1546,10 @@ const makeStyles = (colors: ThemeColors) =>
     },
     smallEditButton: {
       paddingHorizontal: 12,
-      paddingVertical: 6,
+      minHeight: 44,
+      minWidth: 44,
+      alignItems: "center",
+      justifyContent: "center",
       borderRadius: 8,
       backgroundColor: colors.background,
     },

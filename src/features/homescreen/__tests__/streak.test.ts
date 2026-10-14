@@ -50,12 +50,12 @@ describe("sessionDateKey", () => {
 describe("computeWeeklyStreak", () => {
   const today = new Date(2026, 7, 12); // Wednesday, week of Mon 2026-08-10
 
-  it("counts back over fully elapsed weeks only", () => {
+  it("counts the logged current week plus the unbroken weeks before it", () => {
     const streak = computeWeeklyStreak(
       ["2026-08-11", "2026-08-05", "2026-07-30", "2026-07-21"],
       today,
     );
-    expect(streak).toEqual({ count: 3, currentWeekLogged: true });
+    expect(streak).toEqual({ count: 4, currentWeekLogged: true });
   });
 
   it("stops at the first missed week", () => {
@@ -73,9 +73,9 @@ describe("computeWeeklyStreak", () => {
     });
   });
 
-  it("does not count the current week toward the streak", () => {
+  it("counts a first workout this week as a one-week streak", () => {
     expect(computeWeeklyStreak(["2026-08-12"], today)).toEqual({
-      count: 0,
+      count: 1,
       currentWeekLogged: true,
     });
   });

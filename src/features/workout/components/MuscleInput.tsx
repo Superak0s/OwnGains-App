@@ -43,6 +43,7 @@ export function MuscleInput({
           onChangeText={onChange}
           placeholder={placeholder}
           placeholderTextColor={colors.textMuted}
+          accessibilityLabel={label}
         />
       </View>
       {suggestions.length > 0 && (
@@ -52,6 +53,8 @@ export function MuscleInput({
             <TouchableOpacity
               key={s.name ?? i}
               style={styles.suggestionButton}
+              accessibilityRole="button"
+              accessibilityLabel={`Use ${s.name}`}
               onPress={() => {
                 onChange(s.name);
                 setAccepted(s.name);

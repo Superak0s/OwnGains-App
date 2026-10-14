@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { useState, useEffect, useCallback, useContext, useMemo, useRef } from "react"
+import { BackHandler } from "react-native"
+import { NavigationContext } from "@react-navigation/native"
 import { useTwoFingerPull } from "@shared/context/hooks/useTwoFingerPull"
 import { saveToStorage, loadFromStorage } from "@shared/services/storage"
 import { generateId } from "@utils/format"
@@ -132,7 +134,7 @@ export function useWidgets<T extends string>(
   )
 
   const addWidget = useCallback(
-    async (type: T): Promise<{ success: boolean; error?: string }> => {
+    async (type: T): Promise<{ success: boolean; error?: string; title?: string }> => {
       const def = registry[type]
       if (!def) return { success: false, error: "Unknown widget type" }
 
@@ -153,7 +155,7 @@ export function useWidgets<T extends string>(
 
       await persist([...current, instance])
       trackFeature("widgets", "add", { board: storageKey, widget: type })
-      return { success: true }
+      return { success: true, title: def.title }
     },
     [persist, registry, storageKey],
   )
@@ -202,6 +204,11 @@ export function useWidgets<T extends string>(
     [persist, storageKey],
   )
 
+  const resetToDefaults = useCallback(async () => {
+    await persist(defaultsRef.current)
+    trackFeature("widgets", "reset", { board: storageKey })
+  }, [persist, storageKey])
+
   const availableToAdd: WidgetDefinition<T>[] = useMemo(
     () =>
       (Object.values(registry) as WidgetDefinition<T>[]).filter(
@@ -219,6 +226,7 @@ export function useWidgets<T extends string>(
     removeWidget,
     cycleWidgetSize,
     reorderWidgets,
+    resetToDefaults,
   }
 }
 
@@ -236,11 +244,27 @@ interface UseWidgetBoardOptions {
  * board is currently active.
  */
 export function useWidgetBoard<T extends string>(
-  addWidget: (type: T) => Promise<{ success: boolean; error?: string }>,
+  addWidget: (type: T) => Promise<{ success: boolean; error?: string; title?: string }>,
   { onError, pullEnabled = true }: UseWidgetBoardOptions = {},
 ) {
   const [galleryVisible, setGalleryVisible] = useState<boolean>(false)
   const [editMode, setEditMode] = useState<boolean>(false)
+
+  // Optional so a board rendered outside a navigator (tests, previews) still works.
+  const navigation = useContext(NavigationContext)
+  useEffect(
+    () => navigation?.addListener("blur", () => setEditMode(false)),
+    [navigation],
+  )
+
+  useEffect(() => {
+    if (!editMode) return
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      setEditMode(false)
+      return true
+    })
+    return () => sub.remove()
+  }, [editMode])
 
   const { panHandlers, isPulling, pullArmed } = useTwoFingerPull(() => {
     if (pullEnabled) setGalleryVisible(true)
@@ -256,7 +280,7 @@ export function useWidgetBoard<T extends string>(
 
   const add = useCallback(
     async (type: T) => {
-      const { success, error } = await addWidget(type)
+      const { success, error, title } = await addWidget(type)
       if (!success && error) {
         metric.count("widgets.add_rejected")
         if (onError) onError(error)
@@ -264,6 +288,7 @@ export function useWidgetBoard<T extends string>(
         return
       }
       setGalleryVisible(false)
+      if (success && title) showToast(`${title} added to the end of this board`)
     },
     [addWidget, onError],
   )

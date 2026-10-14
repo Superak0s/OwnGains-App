@@ -6,6 +6,7 @@ import {
   muscleGroups,
   getExercises,
   findExerciseByName,
+  muscleLabel,
 } from "../exerciseDb";
 import { EXERCISE_ALIASES } from "../exerciseAliases";
 
@@ -217,3 +218,12 @@ describe("filterExercises", () => {
     ).toBe(true);
   });
 });
+
+describe("muscleLabel", () => {
+  it("names the secondary muscles instead of marking them with a bare +", () => {
+    expect(muscleLabel(["Chest", "Triceps"], ["Shoulders"])).toBe("Chest, Triceps (secondary: Shoulders)")
+    expect(muscleLabel(["Chest"], [])).toBe("Chest")
+    expect(muscleLabel([], ["Shoulders"])).toBe("Secondary: Shoulders")
+    expect(muscleLabel()).toBe("")
+  })
+})

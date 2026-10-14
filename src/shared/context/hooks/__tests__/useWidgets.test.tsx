@@ -1,6 +1,8 @@
 import React from "react";
 import { create, act } from "react-test-renderer";
-import { useWidgets } from "../useWidgets";
+import { BackHandler } from "react-native";
+import { NavigationContext } from "@react-navigation/native";
+import { useWidgets, useWidgetBoard } from "../useWidgets";
 import { loadFromStorage, saveToStorage } from "@shared/services/storage";
 import { showToast } from "@shared/components/toast";
 import type { WidgetDefinition, WidgetInstance, WidgetSize } from "@shared/types";
@@ -74,7 +76,7 @@ describe("useWidgets", () => {
     await act(async () => {
       result = await board.current!.addWidget("b");
     });
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({ success: true, title: "B" });
     expect(board.current!.widgets.map((w) => [w.type, w.size, w.order])).toEqual([
       ["a", "small", 0],
       ["b", "large", 1],
@@ -112,5 +114,69 @@ describe("useWidgets", () => {
     });
     expect(board.current!.widgets.map((w) => w.id)).toEqual(["1"]);
     expect(showToast).toHaveBeenCalled();
+  });
+
+  it("restores the board's defaults after the layout was changed", async () => {
+    const board = await mount([inst("1", "b", 0, "large"), inst("2", "c", 1)]);
+    await act(async () => {
+      await board.current!.resetToDefaults();
+    });
+    expect(board.current!.widgets).toEqual(defaults);
+    expect(save).toHaveBeenLastCalledWith("board", defaults, "u1");
+  });
+});
+
+describe("useWidgetBoard edit mode", () => {
+  type Board = ReturnType<typeof useWidgetBoard<T>>;
+  const noopAdd = async () => ({ success: true });
+
+  function BoardHarness({ boardRef }: { boardRef: React.MutableRefObject<Board | null> }) {
+    boardRef.current = useWidgetBoard<T>(noopAdd);
+    return null;
+  }
+
+  it("leaves edit mode when the screen loses focus", async () => {
+    const listeners: Record<string, () => void> = {};
+    const navigation = {
+      addListener: jest.fn((event: string, cb: () => void) => {
+        listeners[event] = cb;
+        return () => delete listeners[event];
+      }),
+    };
+    const boardRef: React.MutableRefObject<Board | null> = { current: null };
+    await act(async () => {
+      create(
+        <NavigationContext.Provider value={navigation as never}>
+          <BoardHarness boardRef={boardRef} />
+        </NavigationContext.Provider>,
+      );
+    });
+    act(() => boardRef.current!.setEditMode(true));
+    expect(boardRef.current!.editMode).toBe(true);
+    act(() => listeners.blur());
+    expect(boardRef.current!.editMode).toBe(false);
+  });
+
+  it("consumes Android Back to leave edit mode", async () => {
+    let handler: (() => boolean) | null = null;
+    const spy = jest
+      .spyOn(BackHandler, "addEventListener")
+      .mockImplementation((_event, cb) => {
+        handler = cb as () => boolean;
+        return { remove: () => (handler = null) };
+      });
+    const boardRef: React.MutableRefObject<Board | null> = { current: null };
+    await act(async () => {
+      create(<BoardHarness boardRef={boardRef} />);
+    });
+    act(() => boardRef.current!.setEditMode(true));
+    let consumed = false;
+    act(() => {
+      consumed = handler!();
+    });
+    expect(consumed).toBe(true);
+    expect(boardRef.current!.editMode).toBe(false);
+    expect(handler).toBeNull();
+    spy.mockRestore();
   });
 });

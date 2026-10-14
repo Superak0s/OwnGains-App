@@ -60,6 +60,10 @@ export function TrainerSessionBar({
           disabled={dayLocked}
           accessibilityRole='button'
           accessibilityLabel={`Day ${displayDay}, change trainee workout day`}
+          accessibilityHint={
+            dayLocked ? "Unavailable while a session is running" : undefined
+          }
+          accessibilityState={{ disabled: dayLocked }}
         >
           <Text style={styles.dayBtnText}>Day {displayDay} ▾</Text>
         </TouchableOpacity>

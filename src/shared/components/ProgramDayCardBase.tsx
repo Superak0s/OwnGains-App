@@ -6,7 +6,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from "react-native";
-import { muscleLabel } from "@utils/exerciseDb";
+import { MuscleTags } from "./MuscleTags";
 
 interface ProgramExerciseLike {
   readonly name?: string;
@@ -96,14 +96,18 @@ export function ProgramExerciseRow({
   splitEntries,
   styles,
 }: ProgramExerciseRowProps): React.JSX.Element {
-  const muscles = muscleLabel(primaryMuscles, secondaryMuscles);
   const repsText = repsLabel(reps);
-  const label = [muscles, repsText].filter(Boolean).join(" • ");
   return (
     <View style={styles.programExerciseRow}>
       <View style={styles.programExerciseLeft}>
         <Text style={styles.programExerciseName}>{name}</Text>
-        {label ? <Text style={styles.programExerciseSets}>{label}</Text> : null}
+        <MuscleTags
+          primaryMuscles={primaryMuscles}
+          secondaryMuscles={secondaryMuscles}
+        />
+        {repsText ? (
+          <Text style={styles.programExerciseSets}>{repsText}</Text>
+        ) : null}
       </View>
       <View style={styles.programSetsRow}>
         {splitEntries.map(([split, count]) => (

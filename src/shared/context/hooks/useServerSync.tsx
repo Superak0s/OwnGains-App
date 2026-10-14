@@ -54,7 +54,8 @@ interface UseServerSyncReturn {
     includeTimings?: boolean,
   ) => Promise<WorkoutSession[]>;
   fetchRecordSessions: () => Promise<WorkoutSession[] | null>;
-  syncFromServer: () => Promise<CompletedDays | undefined>;
+  /** Resolves false when the sync failed, true otherwise (including a skipped sync). */
+  syncFromServer: () => Promise<boolean>;
 }
 
 function getCurrentWeekMonday(): Date {
@@ -349,12 +350,10 @@ export const useServerSync = ({
   // Three independent triggers (mount, app foregrounded, trainer events) can
   // fire this at once. Overlapping runs each merge against state the other is
   // still writing, and one run's sets end up dropped.
-  const syncInFlightRef = useRef<Promise<CompletedDays | undefined> | null>(
-    null,
-  );
+  const syncInFlightRef = useRef<Promise<boolean> | null>(null);
 
-  const runSync = useCallback(async (): Promise<CompletedDays | undefined> => {
-    if (!userId || !selectedSplit || !workoutDataRef.current?.days) return;
+  const runSync = useCallback(async (): Promise<boolean> => {
+    if (!userId || !selectedSplit || !workoutDataRef.current?.days) return true;
 
     console.debug("🔄 Syncing completedDays...");
 
@@ -377,7 +376,7 @@ export const useServerSync = ({
         console.debug(
           "No sessions found for the current week, skipping lock/completion sync",
         );
-        return;
+        return true;
       }
 
       const { newCompletedDays, newLockedDays, activeSessionWasEndedRemotely } =
@@ -427,11 +426,12 @@ export const useServerSync = ({
       }
 
       metric.count("sync.from_server", 1, { attributes: { outcome: "ok" } });
-      return newCompletedDays;
+      return true;
     } catch (error) {
       console.error("❌ Sync failed:", error);
       metric.count("sync.from_server", 1, { attributes: { outcome: "failed" } });
       captureException(error, { stage: "syncFromServer" });
+      return false;
     }
   }, [
     userId,
@@ -449,7 +449,7 @@ export const useServerSync = ({
     mergeProgramFromServer,
   ]);
 
-  const syncFromServer = useCallback((): Promise<CompletedDays | undefined> => {
+  const syncFromServer = useCallback((): Promise<boolean> => {
     syncInFlightRef.current ??= runSync().finally(() => {
       syncInFlightRef.current = null;
     });

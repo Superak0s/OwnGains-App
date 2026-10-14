@@ -443,8 +443,7 @@ interface MetricOptions {
 }
 
 const ALWAYS_SAMPLE = "owngains.always_sample";
-// Every trace is kept while the app is in closed testing and volume is small.
-const TRACE_SAMPLE_RATE = 1;
+const TRACE_SAMPLE_RATE = 0.1;
 
 /**
  * GlitchTip ignores Sentry.metrics (`trace_metric` envelope items), but it

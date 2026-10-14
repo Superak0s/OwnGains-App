@@ -42,13 +42,13 @@ Split creation is a core feature. You can start from a template, from a spreadsh
 
 ### 🏋️ Track your workouts
 
-- **Log sets as you lift**: weight, reps, notes, and warm-up flags, set by set.
+- **Log sets as you lift**: weight, reps, notes, and warm-up flags, set by set. Quick-added sets can be undone, and each exercise remembers its own kg or lb unit.
 - **Reps in reserve**: rate each set's effort as reps left in the tank (sets logged with the old RPE scale are converted automatically).
 - **Auto-progression prompt**: the next set's weight is suggested from your last set's reps and reps in reserve (toggleable).
 - **Demonstration photos**: reference photos for an exercise, with your own alignment guides drawn over them. Switchable off, and then nothing is downloaded at all.
-- **Rest timer & smart time estimates**: see how long you've rested and get an estimated time remaining and finish time for the session based on your pace.
+- **Rest timer & smart time estimates**: see how long you've rested and get an estimated time remaining and finish time for the session based on your pace. A rest reminder tells you when your rest reaches the time you set, as a notification or as a full-screen alarm like the supplement alarm.
 - **PR celebration & live session stats**: personal records are called out as you hit them, and a running ticker tracks the session.
-- **Add exercises or extra sets on the fly** mid-workout, with the same fuzzy matching so nothing gets duplicated.
+- **Add exercises or extra sets on the fly** mid-workout, with the same fuzzy matching so nothing gets duplicated, a muscle browser, and muscles filled in for known exercises.
 - **Day locking & weekly reset**: completed days lock until your week resets, keeping you on schedule (with manual unlock overrides when you need them).
 
 ### 📊 See your progress
@@ -86,7 +86,7 @@ Every tracking sub-tab is its own widget board: the calendar, the "today" card, 
 
 - Track your supplements and doses with fast quick-logging, per-supplement color/icon, and a daily streak.
 - **Multiple doses a day**: set how many doses a supplement takes and the gap between them. The day's count fills in as you log each one.
-- **Daily reminders**: local notifications at the times you set. They repeat on their own and keep working after a reboot, and they work offline like everything else.
+- **Daily reminders**: local notifications at the times you set. They repeat on their own and keep working after a reboot, and they work offline like everything else. Pick the time with an hour and minute picker (Morning, Noon, Evening and Night shortcuts), and choose Notification or Alarm: an alarm works like a clock app alarm: it shows the alarm icon in the status bar, wakes the screen and keeps ringing on the alarm volume (even with the ringer silent, and through Do Not Disturb) until you tap Snooze or Dismiss, or for 10 minutes. It opens full screen instead of showing a notification, on a locked phone or over another app (choosing Alarm asks for notifications, "Alarms & reminders" and "Display over other apps" in turn, each with a shortcut to its settings page).
 - **Next-dose reminders**: logging a dose of a multi-dose supplement schedules a reminder for the next one, on time (Android asks you once to allow exact alarms, and on Xiaomi, Samsung, Huawei, Honor, OnePlus, OPPO, realme and vivo phones the app also points you once at the battery settings that would delay it).
 
 ### 👥 Train with friends _(server mode)_
@@ -101,7 +101,7 @@ Every tracking sub-tab is its own widget board: the calendar, the "today" card, 
 
 ### 🧩 Widget boards everywhere
 
-Every screen has a customizable widget board. Add, remove, resize, and reorder widgets with a two-finger downward pull or the "Edit Widgets" panel. Each screen has an independent, per-user layout, fifteen boards in total:
+Every screen has a customizable widget board. Add, remove, resize, and reorder widgets with a two-finger downward pull or the "Edit Widgets" panel, tap Done to leave edit mode, and restore the default layout from the widget gallery. Each screen has an independent, per-user layout, fifteen boards in total:
 
 - **Home:** next workout, weekly progress, workout history calendar, streak, morning recovery check, **plus any widget from any other board**, so the home screen can borrow your weight trend, weekly volume, or friends list.
 - **Progress:** exercise/muscle selector, workout history, weekly sets, exercises in a muscle group, estimated 1RM, personal records, progress rate, rep range split, training frequency, rest & fatigue, plus weight progress, reps progress, all set data and last workout from the gallery
@@ -118,7 +118,7 @@ Every screen has a customizable widget board. Add, remove, resize, and reorder w
 
 ### 🔧 Settings
 
-- Account editing and password change
+- Account editing (name, email and a profile photo, which online mode keeps in sync across your devices and shows to your friends) and password change
 - **Tab order** (move any bottom tab earlier or later)
 - Sync queue status with a manual "Sync Now"
 - Rest-time, manual-time, auto-progression, exercise-photo and PR-celebration preferences
@@ -140,7 +140,7 @@ Under **Privacy and Data**: the privacy policy, **Export My Data**, **full devic
 - Crash reporting and usage metrics are both opt-in, chosen on first sign-in, changeable in Settings at any time. Reports go to the developer's self-hosted [GlitchTip](https://glitchtip.com) instance (`glitchtip.superak0s.com`), not to Sentry's cloud.
 - Backups are encrypted with a passphrase you choose, so an exported file is useless to anyone else.
 - Delete Account wipes everything: the local profile and database offline, and your account with every row attached to it on the server you are signed in to. Only moderation reports are kept after the account is deleted, unlinked from it.
-- Android permissions are limited to notifications, vibrate, boot-completed (to restore reminders), exact alarms (so a next-dose reminder isn't delayed), internet, Wi-Fi state/multicast (for LAN server discovery), wake lock (for the Quick Settings water tiles), and read-only Health Connect access to weight, body fat, hydration, nutrition, steps, heart rate and sleep. Unused permissions are actively pruned out of the manifest at build time.
+- Android permissions are limited to notifications, vibrate, boot-completed (to restore reminders), exact alarms (so a next-dose reminder isn't delayed), display over other apps and full screen notifications (so a supplement or rest alarm opens full screen), internet, Wi-Fi state/multicast (for LAN server discovery), wake lock (for the Quick Settings water tiles), and read-only Health Connect access to weight, body fat, hydration, nutrition, steps, heart rate and sleep. Unused permissions are actively pruned out of the manifest at build time.
 
 The web copies of the legal text are generated from the in-app screens: [privacy policy](docs/privacy-policy.html), [terms of service](docs/terms-of-service.html), [account deletion](docs/delete-account.html). Run `npm run build:privacy-policy` after editing either screen.
 
@@ -175,12 +175,12 @@ The web copies of the legal text are generated from the in-app screens: [privacy
 - **Auth** (server mode): JWT refreshed a minute before it expires, plus one deduplicated refresh-and-retry on any 401. Only an explicit credential rejection logs you out. A server error or dropped connection keeps the session. Tokens in `expo-secure-store`. Default server `https://owngains.superak0s.com`, overridable in Settings (`@server_url`). A minimum-server-version check (`serverVersion.ts`) warns when a self-hosted server is too old for the app build.
 - **Real-time:** one persistent WebSocket (JWT-authenticated, exponential backoff) powers joint, watch, and trainer sessions in server mode.
 - **Trainer mode:** every trainee-targeted request goes through `traineeFetch(traineeId)`, which refuses `/api/auth/*` routes and any `DELETE` client-side, so the grant covers workout read/write and nothing else.
-- **Reminders:** local scheduled notifications using `expo-notifications`' repeating `DAILY` trigger (`src/shared/services/supplementReminders.tsx`).
+- **Reminders:** local scheduled notifications using `expo-notifications`' repeating `DAILY` trigger (`src/shared/services/supplementReminders.tsx`). Alarm-type reminders on Android, and rest reminders set to Alarm (`useRestReminder`), go through the `exact-alarms` module instead (`src/shared/services/supplementAlarms.tsx`): an `AlarmManager.setAlarmClock` alarm that opens the full-screen `AlarmActivity`, which plays the alarm sound until Snooze or Dismiss.
 - **Widget system** (`src/shared/context/hooks/useWidgets.tsx`): a shared placement/drag engine. Each screen defines its own registry, defaults, and storage key. A two-finger pull opens the gallery (a dev-only button does the same on emulators, which can't produce the gesture).
 - **Storage migrations** (`src/shared/services/storageMigrations.ts`): versioned, append-only rewrites of persisted data, run once each against SQLite's `user_version`, each in its own transaction.
 - **Backup** (`src/utils/deviceBackup.ts` + `src/utils/exportEncryption.ts`): exports the whole SQLite store plus base64 progress photos to one passphrase-encrypted file, and re-points photo URIs on restore so images still load after a reinstall.
 - **Expo config plugins** (applied during prebuild): `withGradleTuning` (JVM tuning), `withDebugAppIdSuffix` (debug build installs side by side with the release build), `withAndroidNetworkSecurity` (cleartext to a self-hosted LAN server), `withAbiSplits` (one release APK per CPU architecture instead of one universal APK. The AAB is unaffected), `withHealthConnectRationale` (Health Connect's permission screen opens the privacy policy, as Play review requires).
-- **Local native modules** (`modules/`): `exact-alarms` checks Android's exact-alarm permission and opens its settings page, so next-dose reminders fire on time. `autofill` asks Android to offer saving the login after sign-in. `hydration-tiles` provides the Quick Settings water tiles.
+- **Local native modules** (`modules/`): `exact-alarms` checks Android's exact-alarm and display-over-other-apps permissions and opens their settings pages, and schedules, re-arms and rings supplement alarms, showing them in `AlarmActivity` over the lock screen. `autofill` asks Android to offer saving the login after sign-in. `hydration-tiles` provides the Quick Settings water tiles.
 - **Update check** (`src/shared/services/githubUpdate.ts`): GitHub release builds check the latest GitHub release once a day and offer the download.
 - **Forced update** (`src/shared/services/playUpdate.ts`): Play builds run Play's in-app immediate update flow only when the app version is below `minAppVersion` from `/healthz` (server env `MIN_APP_VERSION`), checked at launch and each time the app returns to the foreground. Offline mode is never forced.
 
@@ -258,12 +258,12 @@ The file is bundled into the app and shown under Settings → About → What's N
 
 ## Support
 
-OwnGains and the official server are built and run by one developer. If the app is useful to you, you can support development on [Ko-fi](https://ko-fi.com/superak0s), or with a one-time tip from Settings → Support Development in the Google Play version. The GitHub release APKs link to Ko-fi from the same spot, at the top of Settings.
+OwnGains and the official server are built and run by one developer. If the app is useful to you, you can support development on [Ko-fi](https://ko-fi.com/superak0s), or with a one-time tip from Settings → About → Support Development in the Google Play version. The GitHub release APKs link to Ko-fi from the same row.
 
 ## App identity
 
 - Name: **OwnGains** · slug `owngains` · package `com.owngains.app` (debug installs alongside as `com.owngains.app.debug`)
-- Android permissions: `POST_NOTIFICATIONS`, `VIBRATE`, `RECEIVE_BOOT_COMPLETED`, `SCHEDULE_EXACT_ALARM`, `INTERNET`, `ACCESS_WIFI_STATE`, `CHANGE_WIFI_MULTICAST_STATE`, `WAKE_LOCK` (from the `hydration-tiles` module), and Health Connect `READ_WEIGHT`, `READ_BODY_FAT`, `READ_HYDRATION`, `READ_NUTRITION`, `READ_STEPS`, `READ_HEART_RATE`, `READ_SLEEP`.
+- Android permissions: `POST_NOTIFICATIONS`, `VIBRATE`, `RECEIVE_BOOT_COMPLETED`, `SCHEDULE_EXACT_ALARM`, `SYSTEM_ALERT_WINDOW` and `USE_FULL_SCREEN_INTENT` (supplement alarm screen), `INTERNET`, `ACCESS_WIFI_STATE`, `CHANGE_WIFI_MULTICAST_STATE`, `WAKE_LOCK` (from the `hydration-tiles` module), and Health Connect `READ_WEIGHT`, `READ_BODY_FAT`, `READ_HYDRATION`, `READ_NUTRITION`, `READ_STEPS`, `READ_HEART_RATE`, `READ_SLEEP`.
 
 ## License
 

@@ -14,6 +14,8 @@ import {
   editMachineMeta,
   resolveExerciseMuscles,
   exercisesForMuscle,
+  resolveExerciseUnit,
+  parseRestDuration,
 } from "../utils";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { PartnerProgress } from "@shared/context/hooks/useJointSession";
@@ -511,5 +513,30 @@ describe("exercisesForMuscle", () => {
   it("leaves out stretches", () => {
     const names = exercisesForMuscle("hamstrings", []).map((r) => r.name);
     expect(names).not.toContain("90/90 Hamstring");
+  });
+});
+
+describe("resolveExerciseUnit", () => {
+  it("uses the unit saved for that exercise", () => {
+    expect(resolveExerciseUnit({ "bench press": "lbs" }, "Bench Press", "kg")).toBe("lbs");
+  });
+
+  it("falls back to the app-wide unit for an exercise with none", () => {
+    expect(resolveExerciseUnit({ "bench press": "lbs" }, "Squat", "kg")).toBe("kg");
+    expect(resolveExerciseUnit({}, undefined, "lbs")).toBe("lbs");
+  });
+});
+
+describe("parseRestDuration", () => {
+  it("reads plain seconds and m:ss", () => {
+    expect(parseRestDuration("90")).toBe(90);
+    expect(parseRestDuration("1:30")).toBe(90);
+    expect(parseRestDuration(" 2:05 ")).toBe(125);
+  });
+
+  it("rejects anything else", () => {
+    expect(parseRestDuration("1:75")).toBeNull();
+    expect(parseRestDuration("abc")).toBeNull();
+    expect(parseRestDuration("")).toBeNull();
   });
 });

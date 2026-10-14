@@ -1,6 +1,6 @@
 import React from "react"
 import { fireEvent, screen, waitFor } from "@testing-library/react-native"
-import SettingsScreen from "@features/settings/SettingsScreen"
+import SettingsScreen, { syncResultMessage } from "@features/settings/SettingsScreen"
 import { renderWithProviders, current } from "test-utils/renderWithProviders"
 import { user, emptyAccount, program, noPlanSelected } from "test-utils/fixtures"
 import { workoutApi } from "@features/workout/services/index"
@@ -9,6 +9,9 @@ import { isServerless, setAppMode } from "@shared/services/appMode"
 import { restoreDeviceBackup } from "@utils/deviceBackup"
 import * as DocumentPicker from "expo-document-picker"
 import { ApiError, ServerUnreachableError } from "@shared/services/apiError"
+import { scheduleTestAlarm } from "@shared/services/supplementReminders"
+import * as crashReporting from "@shared/services/crashReporting"
+import { friendsApi } from "@features/friends/services"
 
 jest.mock("@shared/services/sqliteStorage", () => require("test-utils/memorySqlite"))
 jest.mock("@shared/context/AuthContext", () => require("test-utils/renderWithProviders").authModule)
@@ -35,7 +38,7 @@ jest.mock("@features/workout/services/index", () => ({
 }))
 jest.mock("@features/plan/services/index", () => ({ programApi: {} }))
 jest.mock("@features/friends/services", () => ({
-  friendsApi: { getBlockedUsers: jest.fn(async () => []) },
+  friendsApi: { getBlockedUsers: jest.fn(async () => []), unblockUser: jest.fn(async () => {}) },
 }))
 jest.mock("@features/auth/services/index", () => ({
   authService: {
@@ -52,6 +55,10 @@ jest.mock("@shared/services/serverVersion", () => ({
 jest.mock("@utils/deviceBackup", () => ({
   ...jest.requireActual("@utils/deviceBackup"),
   restoreDeviceBackup: jest.fn(async () => ({ photosOmitted: 0 })),
+}))
+jest.mock("@shared/services/supplementReminders", () => ({
+  ...jest.requireActual("@shared/services/supplementReminders"),
+  scheduleTestAlarm: jest.fn(async () => true),
 }))
 jest.mock("expo-document-picker", () => ({ getDocumentAsync: jest.fn() }))
 jest.mock("expo-file-system", () => ({
@@ -127,7 +134,7 @@ describe("Clear All Data", () => {
     await fireEvent.changeText(screen.getByLabelText("Current password to confirm clearing all data"), "pw")
     await pressText("Clear Everything")
 
-    expect(await screen.findByText("Failed to clear all data")).toBeTruthy()
+    expect(await screen.findByText("Your data could not be cleared. Try again.")).toBeTruthy()
     expect(current.workout.clearAllData).not.toHaveBeenCalled()
   })
 
@@ -252,5 +259,57 @@ describe("Withdraw Health Consent", () => {
     expect(await screen.findByText(/Nothing was deleted/)).toBeTruthy()
     expect(recordConsent).toHaveBeenCalledWith(expect.any(String), false, true)
     expect(setAppMode).not.toHaveBeenCalled()
+  })
+})
+
+describe("Test Alarm", () => {
+  it("schedules one alarm when tapped twice while the first is still scheduling", async () => {
+    let finish!: (ok: boolean) => void
+    ;(scheduleTestAlarm as jest.Mock).mockImplementationOnce(
+      () => new Promise<boolean>((resolve) => (finish = resolve)),
+    )
+    await mount()
+    await press("Developer tools")
+    await press("Schedule a test supplement alarm")
+    await press("Schedule a test supplement alarm")
+    finish(true)
+    expect(await screen.findByText(/The alarm rings in/)).toBeTruthy()
+    expect(scheduleTestAlarm).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("Blocked Users", () => {
+  it("unblocks only after the confirmation", async () => {
+    ;(friendsApi.getBlockedUsers as jest.Mock).mockResolvedValueOnce([{ id: 7, username: "bob" }])
+    await mount()
+    await press("Manage blocked users")
+    await screen.findByLabelText("Unblock bob")
+    await press("Unblock bob")
+    expect(friendsApi.unblockUser).not.toHaveBeenCalled()
+    expect(await screen.findByText("Unblock bob?")).toBeTruthy()
+    const buttons = screen.getAllByText("Unblock")
+    await fireEvent.press(buttons[buttons.length - 1])
+    await waitFor(() => expect(friendsApi.unblockUser).toHaveBeenCalledWith(7))
+  })
+})
+
+describe("Consent switches", () => {
+  it("puts the switch back and says so when saving fails", async () => {
+    const spy = jest.spyOn(crashReporting, "setCrashReportingEnabled").mockRejectedValueOnce(new Error("disk full"))
+    await mount()
+    const toggle = screen.getByLabelText("Send crash reports")
+    const before = toggle.props.value as boolean
+    await fireEvent(toggle, "valueChange", !before)
+    expect(await screen.findByText("Couldn't Save Setting")).toBeTruthy()
+    expect(screen.getByLabelText("Send crash reports").props.value).toBe(before)
+    spy.mockRestore()
+  })
+})
+
+describe("syncResultMessage", () => {
+  it("reports what synced and what is still waiting", () => {
+    expect(syncResultMessage(3, 0)).toBe("All changes synced")
+    expect(syncResultMessage(3, 1)).toBe("Synced 2 of 3. 1 change still waiting.")
+    expect(syncResultMessage(2, 2)).toBe("Synced 0 of 2. 2 changes still waiting.")
   })
 })

@@ -237,13 +237,14 @@ export const parseMuscleList = (text: string): string[] =>
 export const muscleLabel = (
   primaryMuscles?: readonly string[],
   secondaryMuscles?: readonly string[],
-): string =>
-  [
-    (primaryMuscles ?? []).join(", "),
-    secondaryMuscles?.length ? `+ ${secondaryMuscles.join(", ")}` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+): string => {
+  const primary = (primaryMuscles ?? []).join(", ");
+  const secondary = (secondaryMuscles ?? []).join(", ");
+  if (!secondary) return primary;
+  return primary
+    ? `${primary} (secondary: ${secondary})`
+    : `Secondary: ${secondary}`;
+};
 
 export interface ExerciseSuggestion {
   id: string;

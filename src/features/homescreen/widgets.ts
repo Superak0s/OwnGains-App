@@ -73,7 +73,7 @@ const HOME_OWN_REGISTRY: Record<
   weekly_progress: {
     type: "weekly_progress",
     title: "Weekly Progress",
-    description: "Days completed and locked this week",
+    description: "Days done this week",
     availableSizes: ["small", "medium"],
     defaultSize: "small",
   },

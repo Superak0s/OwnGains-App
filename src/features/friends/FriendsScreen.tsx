@@ -329,6 +329,8 @@ const FriendsListWidget = React.memo(function FriendsListWidget({
                 <View style={styles.friendInfo}>
                   <Avatar
                     username={friend.username}
+                    userId={friend.id}
+                    photoHash={friend.photoHash}
                     active={friendIsWorkingOut}
                   >
                     {friendIsWorkingOut && (

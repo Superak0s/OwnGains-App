@@ -8,6 +8,7 @@ import {
   scheduleNotification,
   cancelNotification,
 } from "./notifications";
+import * as alarms from "./supplementAlarms";
 import { withLock } from "./offlineHelpers";
 import {
   captureException,
@@ -26,11 +27,14 @@ export interface SupplementReminderConfig {
   notificationType?: string;
 }
 
-/** "alarm" gets its own MAX-importance channel. Android importance is fixed at
- * channel creation, so the two levels can't share one. */
+/** "alarm" gets its own channel. Android fixes a channel's importance, sound
+ * stream and DND bypass at creation, so the two types can't share one, and
+ * changing the alarm's settings needs a new id (the old one is deleted on init). */
+export const ALARM_CHANNEL = "supplement-alarms-v2";
+const LEGACY_ALARM_CHANNEL = "supplement-alarms";
 const CHANNELS: Record<string, string> = {
   notification: "supplement-reminders",
-  alarm: "supplement-alarms",
+  alarm: ALARM_CHANNEL,
 };
 
 // Rest and inactivity reminders get their own channel so muting supplement
@@ -39,6 +43,16 @@ export const WORKOUT_TIMER_CHANNEL = "workout-timers";
 
 const channelFor = (notificationType: string | undefined) =>
   CHANNELS[notificationType ?? "notification"] ?? CHANNELS.notification;
+
+const getAlarms = (notificationType?: string) =>
+  notificationType === "alarm" && alarms.alarmsAvailable ? alarms : null;
+
+const nextOccurrence = (hours: number, minutes: number): Date => {
+  const at = new Date();
+  at.setHours(hours, minutes, 0, 0);
+  if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 1);
+  return at;
+};
 
 const STORAGE_KEY_SUPPLEMENT_CONFIGS = (userId: string) =>
   `supplementReminderConfigs_user_${userId}`;
@@ -131,12 +145,23 @@ export const initializeSupplementNotifications = async (
           showBadge: true,
         });
         await Notifications.setNotificationChannelAsync(CHANNELS.alarm, {
-          name: "Supplement Alarms",
+          name: "Alarms",
           importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 500, 250, 500],
+          // No `sound`: expo-notifications reads a string as a bundled file name,
+          // and leaving it out gives the system default.
+          // The alarm stream follows the alarm volume and sounds even when the
+          // ringer is silent, like the clock app.
+          audioAttributes: {
+            usage: Notifications.AndroidAudioUsage.ALARM,
+            contentType: Notifications.AndroidAudioContentType.SONIFICATION,
+          },
+          bypassDnd: true,
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+          vibrationPattern: [0, 800, 400, 800, 400, 800],
           lightColor: "#667eea",
           showBadge: true,
         });
+        await Notifications.deleteNotificationChannelAsync(LEGACY_ALARM_CHANNEL);
         await Notifications.setNotificationChannelAsync(WORKOUT_TIMER_CHANNEL, {
           name: "Workout Timers",
           importance: Notifications.AndroidImportance.HIGH,
@@ -154,6 +179,26 @@ export const initializeSupplementNotifications = async (
     captureException(error, { stage: "initializeSupplementNotifications" });
     return false;
   }
+};
+
+export const TEST_ALARM_DELAY_SECONDS = 10;
+
+/** Same native path and channel as a real supplement alarm, so it also checks the permissions. */
+export const scheduleTestAlarm = async (): Promise<boolean> => {
+  if (!alarms.alarmsAvailable || !(await initializeSupplementNotifications())) {
+    return false;
+  }
+  alarms.scheduleAlarm(
+    {
+      id: "supplement-test-alarm",
+      channelId: ALARM_CHANNEL,
+      title: "💊 Test alarm",
+      body: "Supplement alarms are working.",
+    },
+    new Date(Date.now() + TEST_ALARM_DELAY_SECONDS * 1000),
+    false,
+  );
+  return true;
 };
 
 /**
@@ -195,6 +240,25 @@ export const scheduleTimeReminder = async (
 
   try {
     const notifId = notificationIdFor(userId, supplementId);
+    const alarm = getAlarms(notificationType);
+    if (alarm) {
+      await cancelExpoTimeReminder(userId, supplementId);
+      const identifier = alarm.scheduleAlarm(
+        {
+          id: notifId,
+          channelId: ALARM_CHANNEL,
+          title: `💊 Time for ${supplementName}!`,
+          body: `It's ${reminderTime}. Don't forget your ${defaultAmount}${unit} dose!`,
+        },
+        nextOccurrence(hours, minutes),
+        true,
+      );
+      await setStorageItem(
+        `supplementTimeNotifId_${supplementId}_user_${userId}`,
+        identifier,
+      );
+      return identifier;
+    }
     await cancelTimeReminder(userId, supplementId);
 
     // Via the shared wrapper, which strips `sound` from the content: on Android
@@ -231,6 +295,19 @@ export const scheduleTimeReminder = async (
 };
 
 export const cancelTimeReminder = async (
+  userId: string,
+  supplementId: number,
+): Promise<void> => {
+  await cancelExpoTimeReminder(userId, supplementId);
+  try {
+    const alarm = getAlarms("alarm");
+    alarm?.cancelAlarm(notificationIdFor(userId, supplementId));
+  } catch {
+    // best-effort
+  }
+};
+
+const cancelExpoTimeReminder = async (
   userId: string,
   supplementId: number,
 ): Promise<void> => {
@@ -276,6 +353,19 @@ export const scheduleNextDoseReminder = async (
 
   try {
     await cancelNextDoseReminder(userId, supplementId);
+    const alarm = getAlarms(notificationType);
+    if (alarm) {
+      return alarm.scheduleAlarm(
+        {
+          id: nextDoseIdFor(userId, supplementId),
+          channelId: ALARM_CHANNEL,
+          title: `💊 Next ${supplementName} dose`,
+          body: `Time for your next ${amount}${unit} dose.`,
+        },
+        at,
+        false,
+      );
+    }
     return await scheduleNotification({
       identifier: nextDoseIdFor(userId, supplementId),
       content: {
@@ -305,6 +395,8 @@ export const cancelNextDoseReminder = async (
 ): Promise<void> => {
   try {
     await cancelNotification(nextDoseIdFor(userId, supplementId));
+    const alarm = getAlarms("alarm");
+    alarm?.cancelAlarm(nextDoseIdFor(userId, supplementId));
   } catch {
     // best-effort
   }
@@ -346,6 +438,8 @@ export const cancelAllSupplementReminders = async (
 
   try {
     const prefixes = [`supplement-time-${userId}-`, `supplement-dose-${userId}-`];
+    const alarm = getAlarms("alarm");
+    alarm?.cancelAlarmsWithPrefix(prefixes);
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     for (const n of scheduled) {
       if (prefixes.some((p) => n.identifier.startsWith(p))) {

@@ -16,7 +16,15 @@ jest.mock("../notifications", () => {
   };
 });
 
+jest.mock("../supplementAlarms", () => ({
+  alarmsAvailable: true,
+  scheduleAlarm: jest.fn((content: { id: string }) => content.id),
+  cancelAlarm: jest.fn(),
+  cancelAlarmsWithPrefix: jest.fn(),
+}));
+
 import { Platform } from "react-native";
+import { scheduleAlarm } from "../supplementAlarms";
 import { kv, resetMemorySqlite } from "test-utils/memorySqlite";
 import { getNotifications } from "../notifications";
 import {
@@ -33,11 +41,15 @@ import {
 const makeNotifications = () => ({
   getPermissionsAsync: jest.fn(async () => ({ status: "granted" })),
   requestPermissionsAsync: jest.fn(async () => ({ status: "granted" })),
-  setNotificationChannelAsync: jest.fn(async () => {}),
+  setNotificationChannelAsync: jest.fn(async (_id: string, _channel: object) => {}),
+  deleteNotificationChannelAsync: jest.fn(async () => {}),
   scheduleNotificationAsync: jest.fn(async (_request: unknown) => "notif-1"),
   getAllScheduledNotificationsAsync: jest.fn(async () => []),
   cancelScheduledNotificationAsync: jest.fn(async () => {}),
   AndroidImportance: { HIGH: 4, MAX: 5 },
+  AndroidAudioUsage: { ALARM: 4 },
+  AndroidAudioContentType: { SONIFICATION: 4 },
+  AndroidNotificationVisibility: { PUBLIC: 1 },
   AndroidNotificationPriority: { HIGH: "high" },
   SchedulableTriggerInputTypes: { DAILY: "daily" },
 });
@@ -154,8 +166,18 @@ describe("initializeSupplementNotifications", () => {
     expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
     expect(notifications.setNotificationChannelAsync).toHaveBeenCalledTimes(3);
     expect(notifications.setNotificationChannelAsync).toHaveBeenCalledWith(
+      "supplement-alarms-v2",
+      expect.objectContaining({
+        importance: 5,
+        bypassDnd: true,
+        audioAttributes: expect.objectContaining({ usage: 4 }),
+      }),
+    );
+    for (const [, channel] of notifications.setNotificationChannelAsync.mock.calls) {
+      expect(channel).not.toHaveProperty("sound");
+    }
+    expect(notifications.deleteNotificationChannelAsync).toHaveBeenCalledWith(
       "supplement-alarms",
-      expect.objectContaining({ importance: 5 }),
     );
   });
 
@@ -215,12 +237,21 @@ describe("scheduleTimeReminder", () => {
     expect(arg.content.title).toBe("💊 Time for Creatine!");
   });
 
-  it("routes an alarm to its own MAX-importance channel", async () => {
+  it("arms an alarm as a daily alarm clock at the next 08:30 on the alarm channel", async () => {
     setPlatform("android");
-    await scheduleTimeReminder("42", 1, "Creatine", 5, "g", "08:30", "alarm");
+    jest.useFakeTimers({ now: new Date(2026, 9, 13, 9, 0), doNotFake: ["setTimeout", "setImmediate", "nextTick", "queueMicrotask"] });
+    try {
+      const id = await scheduleTimeReminder("42", 1, "Creatine", 5, "g", "08:30", "alarm");
 
-    const arg = scheduledRequest();
-    expect(arg.content.channelId).toBe("supplement-alarms");
+      expect(id).toBe("supplement-time-42-1");
+      expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+      const [content, at, daily] = (scheduleAlarm as jest.Mock).mock.calls[0];
+      expect(content.channelId).toBe("supplement-alarms-v2");
+      expect(at).toEqual(new Date(2026, 9, 14, 8, 30));
+      expect(daily).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("falls back to the default channel for an unknown type", async () => {

@@ -57,9 +57,9 @@ const MIN_HEIGHT_BY_SIZE: Record<WidgetSize, number> = {
 }
 
 const SIZE_LABEL: Record<WidgetSize, string> = {
-  small: "S",
-  medium: "M",
-  large: "L",
+  small: "Small",
+  medium: "Medium",
+  large: "Large",
 }
 
 const ARROW: Record<MoveDirection, string> = {
@@ -69,12 +69,11 @@ const ARROW: Record<MoveDirection, string> = {
   right: "▶",
 }
 
-const ARROW_LABEL: Record<MoveDirection, string> = {
-  left: "Move widget left",
-  up: "Move widget up",
-  down: "Move widget down",
-  right: "Move widget right",
-}
+const SMALL_MOVE_ROWS: MoveDirection[][] = [
+  ["left", "right"],
+  ["up", "down"],
+]
+const FULL_MOVE_ROWS: MoveDirection[][] = [["up", "down"]]
 
 export default function WidgetsPanel<T extends string>({
   widgets,
@@ -133,12 +132,17 @@ export default function WidgetsPanel<T extends string>({
         const headerTextStyle = headerTextColor
           ? { color: headerTextColor }
           : null
+        const controlBorderStyle = headerTextColor
+          ? { borderColor: headerTextColor }
+          : null
         const styleOverride = getCardStyleOverride?.(instance)
 
-        const directions: MoveDirection[] =
-          instance.size === "small"
-            ? ["left", "up", "down", "right"]
-            : ["up", "down"]
+        const title = def.title || "widget"
+        const moveRows =
+          instance.size === "small" ? SMALL_MOVE_ROWS : FULL_MOVE_ROWS
+        const sizes = def.availableSizes
+        const nextSize =
+          sizes[(sizes.indexOf(instance.size) + 1) % sizes.length]
 
         const inner = (
           <>
@@ -154,64 +158,66 @@ export default function WidgetsPanel<T extends string>({
                 <Text
                   style={[styles.widgetTitle, headerTextStyle]}
                   numberOfLines={1}
+                  accessibilityRole='header'
                 >
                   {def.title}
                 </Text>
               )}
-              <View style={styles.headerSpacer} />
-              {editMode && (
-                <>
-                  {def.availableSizes.length > 1 && (
+            </View>
+            {editMode && (
+              <View style={styles.editControls}>
+                <View style={styles.editRow}>
+                  {sizes.length > 1 && (
                     <TouchableOpacity
                       onPress={() => onCycleSize(instance.id)}
-                      hitSlop={12}
-                      style={styles.sizeButton}
+                      style={[styles.sizeButton, controlBorderStyle]}
                       accessibilityRole='button'
-                      accessibilityLabel={`Widget size: ${instance.size}. Tap to change.`}
+                      accessibilityLabel={`${title} size, ${SIZE_LABEL[instance.size]}`}
+                      accessibilityHint={`Changes it to ${SIZE_LABEL[nextSize]}`}
                     >
                       <Text style={[styles.sizeButtonText, headerTextStyle]}>
                         {SIZE_LABEL[instance.size]}
                       </Text>
                     </TouchableOpacity>
                   )}
+                  <View style={styles.headerSpacer} />
                   <TouchableOpacity
                     onPress={() => confirmRemove(instance)}
-                    hitSlop={12}
-                    style={styles.removeButton}
+                    style={[styles.removeButton, controlBorderStyle]}
                     accessibilityRole='button'
-                    accessibilityLabel='Remove widget'
+                    accessibilityLabel={`Remove ${title}`}
                   >
                     <Text style={[styles.removeButtonText, headerTextStyle]}>
                       ✕
                     </Text>
                   </TouchableOpacity>
-                </>
-              )}
-            </View>
-            {editMode && (
-              <View style={styles.moveRow}>
-                {directions.map((dir) => {
-                  const next = moveWidget(widgets, instance.id, dir)
-                  return (
-                    <TouchableOpacity
-                      key={dir}
-                      onPress={() => next && onReorder(next)}
-                      disabled={!next}
-                      hitSlop={12}
-                      style={[
-                        styles.moveButton,
-                        !next && styles.moveButtonDisabled,
-                      ]}
-                      accessibilityRole='button'
-                      accessibilityState={{ disabled: !next }}
-                      accessibilityLabel={ARROW_LABEL[dir]}
-                    >
-                      <Text style={[styles.moveButtonText, headerTextStyle]}>
-                        {ARROW[dir]}
-                      </Text>
-                    </TouchableOpacity>
-                  )
-                })}
+                </View>
+                {moveRows.map((row) => (
+                  <View key={row.join()} style={styles.editRow}>
+                    {row.map((dir) => {
+                      const next = moveWidget(widgets, instance.id, dir)
+                      return (
+                        <TouchableOpacity
+                          key={dir}
+                          onPress={() => next && onReorder(next)}
+                          disabled={!next}
+                          style={[
+                            styles.moveButton,
+                            controlBorderStyle,
+                            !next && styles.moveButtonDisabled,
+                          ]}
+                          accessibilityRole='button'
+                          accessibilityState={{ disabled: !next }}
+                          accessibilityLabel={`Move ${title} ${dir}`}
+                        >
+                          <Text style={[styles.moveButtonText, headerTextStyle]}>
+                            {ARROW[dir]}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+                ))}
               </View>
             )}
             <View style={styles.widgetBody}>
@@ -287,16 +293,20 @@ const makeStyles = (colors: ThemeColors) =>
     headerSpacer: {
       flex: 1,
     },
-    moveRow: {
+    editControls: {
+      gap: 8,
+      marginBottom: 10,
+    },
+    editRow: {
       flexDirection: "row",
       justifyContent: "center",
-      marginBottom: 8,
+      alignItems: "center",
+      gap: 8,
     },
     moveButton: {
-      width: 30,
-      height: 28,
-      marginHorizontal: 2,
-      borderRadius: 8,
+      width: 44,
+      height: 44,
+      borderRadius: 10,
       borderWidth: 1,
       borderColor: colors.accent,
       alignItems: "center",
@@ -306,31 +316,35 @@ const makeStyles = (colors: ThemeColors) =>
       opacity: 0.25,
     },
     moveButtonText: {
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: "700",
       color: colors.accent,
     },
     sizeButton: {
-      marginRight: 4,
-      paddingHorizontal: 7,
-      paddingVertical: 1,
-      borderRadius: 8,
+      minHeight: 44,
+      paddingHorizontal: 12,
+      borderRadius: 10,
       borderWidth: 1,
       borderColor: colors.accent,
+      justifyContent: "center",
     },
     sizeButtonText: {
-      fontSize: 11,
+      fontSize: 13,
       fontWeight: "700",
       color: colors.accent,
     },
     removeButton: {
-      marginLeft: 14,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
+      width: 44,
+      height: 44,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.error,
+      alignItems: "center",
+      justifyContent: "center",
     },
     removeButtonText: {
-      fontSize: 13,
-      color: colors.textSecondary,
+      fontSize: 16,
+      color: colors.error,
       fontWeight: "700",
     },
     widgetBody: {

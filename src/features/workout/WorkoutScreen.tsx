@@ -32,7 +32,11 @@ import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import ModalSheet from "@shared/components/ModalSheet";
 import { useAlert } from "@shared/components/CustomAlert";
-import { promptForExactAlarms } from "@shared/services/notifications";
+import {
+  promptForAlarmPermissions,
+  promptForExactAlarms,
+} from "@shared/services/notifications";
+import { alarmsAvailable } from "@shared/services/supplementAlarms";
 import {
   getAllExerciseNames,
   getAllMuscleGroups,
@@ -72,7 +76,6 @@ import type {
 import {
   toSuggestions,
   parseMuscleList,
-  muscleLabel,
   type ExerciseSuggestion,
 } from "@utils/exerciseDb";
 import {
@@ -98,9 +101,14 @@ import {
   resolveExerciseMuscles,
   exercisesForMuscle,
   muscleDisplayName,
-  BROWSE_MUSCLES,
+  resolveExerciseUnit,
+  parseRestDuration,
   type ProgressionSuggestion,
+  type WeightUnit,
 } from "./utils";
+import { useExerciseUnits } from "./hooks/useExerciseUnits";
+import { UndoBar } from "./components/UndoBar";
+import { isDarkColor, toRgbHex } from "@utils/color";
 import { estimateOneRepMax } from "@utils/oneRepMax";
 import { INACTIVITY_THRESHOLD_MS } from "@utils/session";
 import { showToast } from "@shared/components/toast";
@@ -122,7 +130,10 @@ const MAX_ADDITIONAL_SETS = 20;
 // a typo scheduling a notification days away.
 const MAX_REST_REMINDER_SECONDS = 3600;
 import { ExerciseCard, SET_GAP } from "./components/ExerciseCard";
-import { MuscleInput } from "./components/MuscleInput";
+import {
+  MuscleBrowseChips,
+  AdvancedMuscles,
+} from "./components/ExerciseMuscleFields";
 import {
   SuggestionList,
   type SuggestionItem,
@@ -234,7 +245,6 @@ function WorkoutScreenBody({
     addNewExercise,
     lastActivityTime,
     weightUnit,
-    saveWeightUnit,
     fetchSessionHistory,
     fetchRecordSessions,
     hasActiveSession,
@@ -266,7 +276,6 @@ function WorkoutScreenBody({
     "addNewExercise",
     "lastActivityTime",
     "weightUnit",
-    "saveWeightUnit",
     "fetchSessionHistory",
     "fetchRecordSessions",
     "hasActiveSession",
@@ -381,6 +390,8 @@ function WorkoutScreenBody({
     useState<boolean>(false);
   const [tempRestReminderSeconds, setTempRestReminderSeconds] =
     useState<string>("");
+  const [restReminderAlarm, setRestReminderAlarm] = useState(false);
+  const [tempRestReminderAlarm, setTempRestReminderAlarm] = useState(false);
   const [undertrainedDisplayMode, setUndertrainedDisplayMode] = useState<
     "banner" | "per_exercise" | "both" | "off"
   >("off");
@@ -518,6 +529,7 @@ function WorkoutScreenBody({
     isCurrentDayLocked,
     restReminderEnabled,
     restReminderSeconds,
+    asAlarm: restReminderAlarm,
   });
   const areAllSetsComplete = isDayComplete(currentDay);
 
@@ -537,6 +549,28 @@ function WorkoutScreenBody({
     };
   }, [workoutData, selectedSplit, currentDay]);
 
+  const { units: exerciseUnits, setExerciseUnit } = useExerciseUnits(
+    user?.id ?? null,
+  );
+  const unitFor = useCallback(
+    (exerciseIndex: number | undefined): WeightUnit =>
+      resolveExerciseUnit(
+        exerciseUnits,
+        dayWorkout?.exercises?.[exerciseIndex ?? -1]?.name,
+        weightUnit,
+      ),
+    [exerciseUnits, dayWorkout, weightUnit],
+  );
+  const selectedUnit = unitFor(selectedSet?.exerciseIndex);
+  const selectedExerciseName =
+    dayWorkout?.exercises?.[selectedSet?.exerciseIndex ?? -1]?.name;
+  const switchSelectedUnit = useCallback(
+    (unit: WeightUnit) => {
+      if (selectedExerciseName) setExerciseUnit(selectedExerciseName, unit);
+    },
+    [selectedExerciseName, setExerciseUnit],
+  );
+
   const todayExerciseNames = new Set(
     (dayWorkout?.exercises ?? []).map((exercise) =>
       normalizeExerciseName(exercise.name),
@@ -554,10 +588,16 @@ function WorkoutScreenBody({
           STORAGE_KEYS.REST_REMINDER_SECONDS,
           user?.id ?? null,
         );
+        const asAlarm =
+          (await loadFromStorage<boolean | null>(
+            STORAGE_KEYS.REST_REMINDER_ALARM,
+            user?.id ?? null,
+          )) === true;
         const secs = Number(stored ?? 0) || 0;
         setRestReminderSeconds(secs);
         setRestReminderEnabled(secs > 0);
-        if (secs > 0) void promptForExactAlarms(alert, "rest reminders");
+        setRestReminderAlarm(asAlarm);
+        if (secs > 0 && !asAlarm) void promptForExactAlarms(alert, "rest reminders");
       } catch (err) {
         console.warn("Failed to load rest reminder setting:", err);
         metric.count("workout.rest_reminder_load_failed");
@@ -634,6 +674,21 @@ function WorkoutScreenBody({
     setNewSecondaryMuscles(muscles.secondary.join(", "));
   });
   useEffect(() => fillMusclesForName(newExerciseName), [newExerciseName]);
+
+  const fillNewExerciseMuscles = useEffectEvent((name: string) => {
+    if (!showAddExerciseModal) return;
+    const muscles = resolveExerciseMuscles(
+      name,
+      splitExercises(workoutData, selectedSplit),
+    );
+    if (!muscles) return;
+    setNewExercise((prev) => ({
+      ...prev,
+      primaryMuscles: muscles.primary.join(", "),
+      secondaryMuscles: muscles.secondary.join(", "),
+    }));
+  });
+  useEffect(() => fillNewExerciseMuscles(newExercise.name), [newExercise.name]);
 
   useEffect(() => {
     if (showAddExerciseModal && newExercise.name.trim().length > 1) {
@@ -790,103 +845,120 @@ function WorkoutScreenBody({
 
   const openSetModalForNewEntry = useCallback(
     (exerciseIndex: number, setIndex: number) => {
+      let previous: SetDetail | null = null;
+      for (let i = setIndex - 1; i >= 0; i--) {
+        const detail = getSetDetails(
+          currentDay,
+          exerciseIndex,
+          i,
+        ) as SetDetail | null;
+        if (detail && !detail.isWarmup) {
+          previous = detail;
+          break;
+        }
+      }
       setSelectedSet({ exerciseIndex, setIndex });
-      openSetForm(EMPTY_SET_DRAFT);
+      openSetForm(
+        previous
+          ? {
+              ...EMPTY_SET_DRAFT,
+              weight: kgToDisplay(previous.weight || 0, unitFor(exerciseIndex)),
+            }
+          : EMPTY_SET_DRAFT,
+      );
       setShowSetModal(true);
 
       void (async () => {
         const exercise = dayWorkout?.exercises?.[exerciseIndex];
-        if (!exercise) return;
-        let previous: SetDetail | null = null;
-        for (let i = setIndex - 1; i >= 0; i--) {
-          const detail = getSetDetails(
-            currentDay,
-            exerciseIndex,
-            i,
-          ) as SetDetail | null;
-          if (detail && !detail.isWarmup) {
-            previous = detail;
-            break;
-          }
-        }
-        if (!previous) return;
+        if (!exercise || !previous) return;
         const suggestion = suggestNextSetLoad(previous, exercise.reps);
         if (!suggestion) return;
         if (!(await isPrefEnabled(STORAGE_KEYS.AUTO_PROGRESSION))) return;
         if (isMountedRef.current) setProgression(suggestion);
       })();
     },
-    [dayWorkout, currentDay, getSetDetails, isPrefEnabled, openSetForm],
+    [dayWorkout, currentDay, getSetDetails, isPrefEnabled, openSetForm, unitFor],
   );
 
-  const showCompletedSetAlert = useCallback(
+  const openCompletedSet = useCallback(
     (exerciseIndex: number, setIndex: number, existing: SetDetail) => {
+      const unit = unitFor(exerciseIndex);
       const displayWeight = existing.weight
-        ? kgToDisplay(existing.weight, weightUnit)
+        ? kgToDisplay(existing.weight, unit)
         : "0";
-      let msg = `Weight: ${displayWeight} ${weightUnit}\nReps: ${existing.reps || 0}`;
-      if (existing.rir != null) msg += `\nRIR: ${existing.rir}`;
-      if (existing.isWarmup) msg = `🔥 WARM-UP SET\n${msg}`;
-      if (existing.note) msg += `\n\nNote: ${existing.note}`;
-      alert(
-        "Set Completed",
-        msg,
-        [
-          { text: "Cancel", style: "cancel" },
-          // A trainer may only edit sets while the trainee's workout is open.
-          ...(actAs && !hasActiveSession() ? [] : [{
-            text: "Edit",
-            onPress: () => {
-              setSelectedSet({ exerciseIndex, setIndex });
-              openSetForm({
-                weight: existing.weight
-                  ? kgToDisplay(existing.weight, weightUnit)
-                  : "",
-                reps: existing.reps?.toString() || "",
-                note: existing.note || "",
-                isWarmup: existing.isWarmup || false,
-                rir: existing.rir ?? null,
-              });
-              setShowSetModal(true);
-            },
-          }]),
-          ...(actAs ? [] : [{
-            text: "Delete",
-            style: "destructive" as const,
-            onPress: () =>
-              alert(
-                "Delete this set?",
-                `${displayWeight} ${weightUnit} × ${existing.reps || 0} will be removed. This can't be undone.`,
-                [
-                  { text: "Keep it", style: "cancel" },
-                  {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                      const deleted = await deleteSetDetails(
-                        currentDay,
-                        exerciseIndex,
-                        setIndex,
-                      );
-                      if (!deleted)
-                        alert(
-                          "Not Deleted",
-                          "The set could not be removed. Please try again.",
-                          [{ text: "OK" }],
-                          "error",
-                        );
-                    },
-                  },
-                ],
-                "warning",
-              ),
-          }]),
-        ],
-        "info",
-      );
+      // A trainer may only edit sets while the trainee's workout is open.
+      if (actAs && !hasActiveSession()) {
+        let msg = `Weight: ${displayWeight} ${unit}
+Reps: ${existing.reps || 0}`;
+        if (existing.rir != null) msg += `
+RIR: ${existing.rir}`;
+        if (existing.isWarmup) msg = `Warm-up set
+${msg}`;
+        if (existing.note) msg += `
+
+Note: ${existing.note}`;
+        alert("Set Completed", msg, [{ text: "OK" }], "info");
+        return;
+      }
+      setSelectedSet({ exerciseIndex, setIndex });
+      openSetForm({
+        weight: existing.weight ? displayWeight : "",
+        reps: existing.reps?.toString() || "",
+        note: existing.note || "",
+        isWarmup: existing.isWarmup || false,
+        rir: existing.rir ?? null,
+      });
+      setShowSetModal(true);
     },
-    [weightUnit, alert, currentDay, deleteSetDetails, actAs, openSetForm, hasActiveSession],
+    [unitFor, alert, actAs, openSetForm, hasActiveSession],
   );
+
+  const handleDeleteSelectedSet = useCallback(() => {
+    if (!selectedSet) return;
+    const { exerciseIndex, setIndex } = selectedSet;
+    const existing = getSetDetails(
+      currentDay,
+      exerciseIndex,
+      setIndex,
+    ) as SetDetail | null;
+    if (!existing) return;
+    const unit = unitFor(exerciseIndex);
+    const displayWeight = existing.weight
+      ? kgToDisplay(existing.weight, unit)
+      : "0";
+    alert(
+      "Delete this set?",
+      `${displayWeight} ${unit} × ${existing.reps || 0} will be removed. This can't be undone.`,
+      [
+        { text: "Keep it", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const deleted = await deleteSetDetails(
+              currentDay,
+              exerciseIndex,
+              setIndex,
+            );
+            if (!deleted) {
+              alert(
+                "Not Deleted",
+                "The set could not be removed. Please try again.",
+                [{ text: "OK" }],
+                "error",
+              );
+              return;
+            }
+            if (isMountedRef.current) {
+              setShowSetModal(false);
+              setSelectedSet(null);
+            }
+          },
+        },
+      ],
+      "warning",
+    );
+  }, [selectedSet, getSetDetails, currentDay, unitFor, alert, deleteSetDetails]);
 
   const handleSetPress = useCallback(
     (exerciseIndex: number, setIndex: number) => {
@@ -900,7 +972,7 @@ function WorkoutScreenBody({
         setIndex,
       ) as SetDetail | null;
       if (existing) {
-        showCompletedSetAlert(exerciseIndex, setIndex, existing);
+        openCompletedSet(exerciseIndex, setIndex, existing);
       } else {
         openSetModalForNewEntry(exerciseIndex, setIndex);
       }
@@ -910,7 +982,7 @@ function WorkoutScreenBody({
       warnDayLocked,
       getSetDetails,
       currentDay,
-      showCompletedSetAlert,
+      openCompletedSet,
       openSetModalForNewEntry,
     ],
   );
@@ -948,7 +1020,7 @@ function WorkoutScreenBody({
         exerciseName,
         detail: bodyweight
           ? `${reps} reps`
-          : `Est. 1RM ${kgToDisplay(current, weightUnit)}${weightUnit}`,
+          : `Est. 1RM ${kgToDisplay(current, selectedUnit)}${selectedUnit}`,
       });
     },
     [
@@ -956,7 +1028,7 @@ function WorkoutScreenBody({
       isPrefEnabled,
       dayWorkout,
       selectedSet,
-      weightUnit,
+      selectedUnit,
     ],
   );
 
@@ -981,7 +1053,7 @@ function WorkoutScreenBody({
 
     // Bodyweight movements legitimately have no added load, so only reps
     // are required.
-    const weightInKg = displayToKg(weight, weightUnit);
+    const weightInKg = displayToKg(weight, selectedUnit);
     const r = parseReps(reps);
 
     if (r === null) {
@@ -1006,7 +1078,7 @@ function WorkoutScreenBody({
       return;
     }
 
-    const invalidWeight = validateWeightInput(weight, weightUnit);
+    const invalidWeight = validateWeightInput(weight, selectedUnit);
     if (invalidWeight) {
       alert("Check the weight", invalidWeight, [{ text: "OK" }], "error");
       return;
@@ -1069,7 +1141,7 @@ function WorkoutScreenBody({
     dayWorkout,
     pushJointProgress,
     alert,
-    weightUnit,
+    selectedUnit,
   ]);
 
   const handleOpenRestReminderModal = useCallback(() => {
@@ -1080,23 +1152,35 @@ function WorkoutScreenBody({
       ? getExerciseRestTime(currentDay, lastExercise.index)
       : null;
     setTempRestReminderSeconds(String(restReminderSeconds || suggested || 60));
+    setTempRestReminderAlarm(restReminderAlarm);
     setShowRestReminderModal(true);
-  }, [getLastSetExercise, getExerciseRestTime, currentDay, restReminderSeconds]);
+  }, [getLastSetExercise, getExerciseRestTime, currentDay, restReminderSeconds, restReminderAlarm]);
 
+  const parsedRestInput = parseRestDuration(tempRestReminderSeconds);
   const handleSaveRestReminder = async (overrideSeconds?: number) => {
-    const raw =
-      overrideSeconds ??
-      (Number.parseInt(tempRestReminderSeconds || "0", 10) || 0);
+    if (
+      overrideSeconds === undefined &&
+      tempRestReminderSeconds.trim() !== "" &&
+      parsedRestInput === null
+    )
+      return;
+    const raw = overrideSeconds ?? parsedRestInput ?? 0;
     const secs = Math.min(
       Math.max(0, Number(raw) || 0),
       MAX_REST_REMINDER_SECONDS,
     );
     setRestReminderSeconds(secs);
     setRestReminderEnabled(secs > 0);
+    setRestReminderAlarm(tempRestReminderAlarm);
     try {
       await saveToStorage(
         STORAGE_KEYS.REST_REMINDER_SECONDS,
         secs,
+        user?.id ?? null,
+      );
+      await saveToStorage(
+        STORAGE_KEYS.REST_REMINDER_ALARM,
+        tempRestReminderAlarm,
         user?.id ?? null,
       );
     } catch (err) {
@@ -1105,7 +1189,9 @@ function WorkoutScreenBody({
       log.warn("workout.rest_reminder_save_failed");
     }
     setShowRestReminderModal(false);
-    if (secs > 0) void promptForExactAlarms(alert, "rest reminders");
+    if (secs > 0 && !tempRestReminderAlarm) {
+      void promptForExactAlarms(alert, "rest reminders");
+    }
     showToast(
       secs > 0
         ? `Rest reminder set to ${formatDuration(secs)}`
@@ -1317,12 +1403,7 @@ function WorkoutScreenBody({
 
     if (tc.exactMatch) {
       apply(tc.exactMatch);
-      alert(
-        "Exercise Matched!",
-        `Matched to "${tc.exactMatch}".`,
-        [{ text: "Great!" }],
-        "success",
-      );
+      if (tc.exactMatch !== trimmed) showToast(`Matched to "${tc.exactMatch}"`);
       return;
     }
 
@@ -1353,8 +1434,8 @@ function WorkoutScreenBody({
   const handleSaveExerciseName = () => {
     if (!editingExercise || !newExerciseName.trim()) {
       alert(
-        "Error",
-        "Exercise name cannot be empty",
+        "Name needed",
+        "Enter a name for the exercise.",
         [{ text: "OK" }],
         "error",
       );
@@ -1378,8 +1459,20 @@ function WorkoutScreenBody({
         warnDayLocked("Cannot add sets to a locked day.");
         return;
       }
+      const exercise = dayWorkout?.exercises?.[exerciseIndex];
       void addExtraSetsToExercise(currentDay, selectedSplit!, exerciseIndex, 1);
-      showToast("Set added. Long-press ＋ to add or remove several");
+      // The server refuses destructive program edits from a trainer, so an
+      // undo would fail for them.
+      if (actAs || !exercise) {
+        showToast("Set added. Long-press ＋ to add or remove several");
+        return;
+      }
+      setQuickAdded({
+        day: currentDay,
+        exerciseIndex,
+        setIndex: exercise.sets ?? 0,
+        name: exercise.name,
+      });
     },
     [
       isCurrentDayLocked,
@@ -1387,8 +1480,37 @@ function WorkoutScreenBody({
       addExtraSetsToExercise,
       currentDay,
       selectedSplit,
+      dayWorkout,
+      actAs,
     ],
   );
+
+  const [quickAdded, setQuickAdded] = useState<{
+    day: number;
+    exerciseIndex: number;
+    setIndex: number;
+    name: string;
+  } | null>(null);
+  const clearQuickAdded = useCallback(() => setQuickAdded(null), []);
+  const undoQuickAdd = useCallback(() => {
+    if (!quickAdded) return;
+    setQuickAdded(null);
+    const { day, exerciseIndex, setIndex } = quickAdded;
+    const exercise = dayWorkout?.exercises?.[exerciseIndex];
+    const stillLast = day === currentDay && exercise?.sets === setIndex + 1;
+    if (!stillLast || getSetDetails(day, exerciseIndex, setIndex)) {
+      showToast("That set was already logged, so it was kept");
+      return;
+    }
+    void addExtraSetsToExercise(day, selectedSplit!, exerciseIndex, -1);
+  }, [
+    quickAdded,
+    dayWorkout,
+    currentDay,
+    getSetDetails,
+    addExtraSetsToExercise,
+    selectedSplit,
+  ]);
 
   const handleAddMultipleSets = useCallback(
     (exerciseIndex: number) => {
@@ -1446,8 +1568,8 @@ function WorkoutScreenBody({
     const sets = Number.parseInt(additionalSets, 10);
     if (Number.isNaN(sets) || sets < 1 || sets > MAX_ADDITIONAL_SETS) {
       alert(
-        "Error",
-        `Please enter a number of sets between 1 and ${MAX_ADDITIONAL_SETS}`,
+        "Check the number of sets",
+        `Enter a number of sets from 1 to ${MAX_ADDITIONAL_SETS}.`,
         [{ text: "OK" }],
         "error",
       );
@@ -1505,6 +1627,13 @@ function WorkoutScreenBody({
       reps: "",
     });
     setNewExerciseSuggestions([]);
+    setShowAdvancedEdit(false);
+    setBrowseMuscle(null);
+  };
+
+  const handlePickNewExerciseName = (name: string) => {
+    setNewExercise((prev) => ({ ...prev, name, exerciseId: undefined }));
+    setBrowseMuscle(null);
   };
 
   const applyNewExercise = (
@@ -1532,14 +1661,14 @@ function WorkoutScreenBody({
   const handleSaveNewExercise = () => {
     const { name, primaryMuscles, secondaryMuscles, sets } = newExercise;
     if (!name.trim()) {
-      alert("Error", "Exercise name is required", [{ text: "OK" }], "error");
+      alert("Name needed", "Enter a name for the exercise.", [{ text: "OK" }], "error");
       return;
     }
     const setsNum = Number.parseInt(sets, 10);
     if (Number.isNaN(setsNum) || setsNum < 1) {
       alert(
-        "Error",
-        "Please enter a valid number of sets (minimum 1)",
+        "Check the number of sets",
+        "Enter at least 1 set.",
         [{ text: "OK" }],
         "error",
       );
@@ -1565,10 +1694,12 @@ function WorkoutScreenBody({
     setNewExerciseSuggestions([]);
   };
 
-  const getCompleteWorkoutMessage = (done: number, total: number): string =>
-    done === total
-      ? "Are you sure you want to finish? You've completed all sets!"
-      : `You've completed ${done}/${total} sets. End this session? The day will be locked.`;
+  const getCompleteWorkoutMessage = (done: number, total: number): string => {
+    const lock = "The day will be locked and view-only.";
+    if (done >= total) return `All ${total} sets are logged. ${lock}`;
+    const missing = total - done;
+    return `${missing} of ${total} sets ${missing === 1 ? "isn't" : "aren't"} logged. ${lock}`;
+  };
 
   const confirmCompleteWorkout = async () => {
     if (isInJointSession) await leaveJointSession?.();
@@ -1581,6 +1712,17 @@ function WorkoutScreenBody({
         "success",
       );
   };
+
+  const handleLeaveJointSession = () =>
+    alert(
+      "Leave joint session?",
+      `You'll stop sharing this workout with ${partnerUsername}. Your logged sets are kept.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Leave", onPress: () => void leaveJointSession?.() },
+      ],
+      "session",
+    );
 
   const handleCompleteWorkout = () => {
     if (isCurrentDayLocked) {
@@ -1595,12 +1737,12 @@ function WorkoutScreenBody({
     const done = getCompletedSetsCount();
     const total = dayWorkout?.totalSets || 0;
     alert(
-      "Complete Workout?",
+      `Finish Day ${currentDay}?`,
       getCompleteWorkoutMessage(done, total),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: "Keep logging", style: "cancel" },
         {
-          text: "Complete & Lock",
+          text: "Finish & lock",
           onPress: confirmCompleteWorkout,
         },
       ],
@@ -1751,7 +1893,7 @@ function WorkoutScreenBody({
             <Text style={styles.dayNumberValue}>{dayWorkout?.dayNumber}</Text>
             {isCurrentDayLocked && (
               <View style={styles.dayNumberLockedTag}>
-                <Text style={styles.dayNumberLockedText}>🔒 Locked</Text>
+                <Text style={styles.dayNumberLockedText}>Locked</Text>
               </View>
             )}
           </View>
@@ -1808,7 +1950,7 @@ function WorkoutScreenBody({
               <View style={styles.completeMessage}>
                 <Text style={styles.completeMessageText}>
                   {isCurrentDayLocked
-                    ? `🔒 Locked (${completedSetsCount}/${totalSetsCount} sets) - View Only`
+                    ? `Locked · ${completedSetsCount} of ${totalSetsCount} sets`
                     : "🎉 All sets complete! Great job!"}
                 </Text>
               </View>
@@ -1858,13 +2000,13 @@ function WorkoutScreenBody({
             isPartnerReady={isPartnerReady}
             syncPulse={syncPulse}
             partnerUsername={partnerUsername}
-            onLeave={leaveJointSession ?? (async () => {})}
+            partnerUserId={partner?.userId}
+            onLeave={handleLeaveJointSession}
           />
         )}
 
         {isCurrentDayLocked && (
           <View style={styles.lockedBanner}>
-            <Text style={styles.lockedBannerIcon}>🔒</Text>
             <View style={styles.lockedBannerTextContainer}>
               <Text style={styles.lockedBannerTitle}>
                 Day Completed & Locked
@@ -1936,32 +2078,17 @@ function WorkoutScreenBody({
             topUndertrainedGroup &&
             undertrainedSuggestionCandidates.length > 0 && (
               <View style={styles.suggestionsContainer}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 12,
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.suggestionsTitle,
-                      { marginBottom: 0, flex: 1 },
-                    ]}
-                  >
-                    💪 {topUndertrainedGroup.primaryMuscle} is behind this week
-                    . Try:
+                <View style={styles.suggestionsHeader}>
+                  <Text style={styles.suggestionsHeaderTitle}>
+                    {`${topUndertrainedGroup.primaryMuscle} is behind this week. Try:`}
                   </Text>
                   <TouchableOpacity
+                    style={styles.dismissButton}
                     onPress={() => setDismissedUndertrainedBanner(true)}
-                    hitSlop={8}
                     accessibilityRole='button'
                     accessibilityLabel='Dismiss suggestion'
                   >
-                    <Text style={{ fontSize: 16, color: colors.textSecondary }}>
-                      ✕
-                    </Text>
+                    <Text style={styles.dismissButtonText}>✕</Text>
                   </TouchableOpacity>
                 </View>
                 {undertrainedSuggestionCandidates.map((name) => (
@@ -1990,7 +2117,7 @@ function WorkoutScreenBody({
               isCurrentDayLocked={isCurrentDayLocked}
               colors={colors}
               styles={styles}
-              weightUnit={weightUnit}
+              weightUnit={unitFor(originalIndex)}
               isInJointSession={isInJointSession}
               partnerNameSet={partnerNameSet}
               partnerProgress={partnerProgress}
@@ -2018,8 +2145,7 @@ function WorkoutScreenBody({
               accessibilityLabel='Add exercise'
               onPress={handleAddNewExercise}
             >
-              <Text style={styles.addExerciseButtonIcon}>➕</Text>
-              <Text style={styles.addExerciseButtonText}>Add New Exercise</Text>
+              <Text style={styles.addExerciseButtonText}>+ Add exercise</Text>
             </TouchableOpacity>
           )}
           {widgetsLoaded && widgets.length > 0 && (
@@ -2043,7 +2169,12 @@ function WorkoutScreenBody({
             setProgression(null);
             setPerformanceHistory(null);
           }}
-          title='Set Details'
+          title={
+            selectedSet
+              ? `Set ${selectedSet.setIndex + 1} of ${dayWorkout?.exercises?.[selectedSet.exerciseIndex]?.sets ?? selectedSet.setIndex + 1}`
+              : "Set Details"
+          }
+          subtitle={selectedExerciseName}
           showCancelButton={false}
           showConfirmButton={false}
         >
@@ -2052,7 +2183,7 @@ function WorkoutScreenBody({
             styles={styles}
             colors={colors}
             initial={setDraft}
-            weightUnit={weightUnit}
+            weightUnit={selectedUnit}
             loadingHistory={loadingHistory}
             performanceHistory={performanceHistory}
             progression={progression}
@@ -2060,7 +2191,18 @@ function WorkoutScreenBody({
             isAssisted={checkIsSelectedSetAssisted(selectedSet, dayWorkout)}
             isSaving={isSavingSet}
             onSave={handleSaveSetDetails}
-            onSwitchUnit={saveWeightUnit}
+            onSwitchUnit={switchSelectedUnit}
+            onDelete={
+              !actAs &&
+              selectedSet &&
+              getSetDetails(
+                currentDay,
+                selectedSet.exerciseIndex,
+                selectedSet.setIndex,
+              )
+                ? handleDeleteSelectedSet
+                : undefined
+            }
             draftStartedRef={setDraftStartedRef}
           />
         </ModalSheet>
@@ -2081,43 +2223,16 @@ function WorkoutScreenBody({
               onChangeText={setNewExerciseName}
               placeholder='Enter exercise name'
               placeholderTextColor={colors.textMuted}
+              accessibilityLabel='Exercise name'
               autoFocus={true}
             />
           </View>
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Browse by muscle</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps='handled'
-              contentContainerStyle={styles.chipRow}
-            >
-              {BROWSE_MUSCLES.map((muscle) => {
-                const selected = browseMuscle === muscle;
-                const label = muscleDisplayName(muscle);
-                return (
-                  <TouchableOpacity
-                    key={muscle}
-                    style={[styles.chip, selected && styles.chipActive]}
-                    accessibilityRole='radio'
-                    accessibilityLabel={`${label} exercises`}
-                    accessibilityState={{ selected }}
-                    onPress={() => setBrowseMuscle(selected ? null : muscle)}
-                  >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        selected && styles.chipTextActive,
-                      ]}
-                    >
-                      {label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-          {browseMuscle && (
+          <MuscleBrowseChips
+            value={browseMuscle}
+            onChange={setBrowseMuscle}
+            styles={styles}
+          />
+          {browseMuscle ? (
             <SuggestionList
               key={`muscle:${browseMuscle}`}
               title={`${muscleDisplayName(browseMuscle)} exercises:`}
@@ -2125,61 +2240,34 @@ function WorkoutScreenBody({
               onPick={handlePickEditSuggestion}
               styles={styles}
             />
-          )}
-          <SuggestionList
-            key={`name:${newExerciseName}`}
-            title='💡 Did you mean:'
-            items={nameSuggestions}
-            onPick={handlePickEditSuggestion}
-            styles={styles}
-          />
-          <SuggestionList
-            key={`swap:${newPrimaryMuscles}`}
-            title='🔄 Swap for similar exercise:'
-            items={swapSuggestions.map((name) => ({ name }))}
-            onPick={handlePickEditSuggestion}
-            styles={styles}
-          />
-          <TouchableOpacity
-            style={styles.advancedToggle}
-            accessibilityRole='button'
-            accessibilityLabel='Advanced: muscles worked'
-            accessibilityState={{ expanded: showAdvancedEdit }}
-            onPress={() => setShowAdvancedEdit((v) => !v)}
-          >
-            <View style={styles.advancedToggleBody}>
-              <Text style={styles.advancedToggleTitle}>Advanced</Text>
-              <Text style={styles.advancedToggleSummary} numberOfLines={1}>
-                {muscleLabel(
-                  parseMuscleList(newPrimaryMuscles),
-                  parseMuscleList(newSecondaryMuscles),
-                ) || "No muscles set"}
-              </Text>
-            </View>
-            <Text style={styles.advancedToggleChevron}>
-              {showAdvancedEdit ? "▲" : "▼"}
-            </Text>
-          </TouchableOpacity>
-          {showAdvancedEdit && (
+          ) : (
             <>
-              <MuscleInput
-                label='Primary Muscles'
-                placeholder='e.g., Chest, Triceps'
-                value={newPrimaryMuscles}
-                onChange={setNewPrimaryMuscles}
-                allMuscleGroups={allMuscleGroups}
+              <SuggestionList
+                key={`name:${newExerciseName}`}
+                title='💡 Did you mean:'
+                items={nameSuggestions}
+                onPick={handlePickEditSuggestion}
                 styles={styles}
               />
-              <MuscleInput
-                label='Secondary Muscles (optional)'
-                placeholder='e.g., Shoulders'
-                value={newSecondaryMuscles}
-                onChange={setNewSecondaryMuscles}
-                allMuscleGroups={allMuscleGroups}
+              <SuggestionList
+                key={`swap:${newPrimaryMuscles}`}
+                title='🔄 Swap for similar exercise:'
+                items={swapSuggestions.map((name) => ({ name }))}
+                onPick={handlePickEditSuggestion}
                 styles={styles}
               />
             </>
           )}
+          <AdvancedMuscles
+            expanded={showAdvancedEdit}
+            onToggle={() => setShowAdvancedEdit((v) => !v)}
+            primary={newPrimaryMuscles}
+            secondary={newSecondaryMuscles}
+            onPrimaryChange={setNewPrimaryMuscles}
+            onSecondaryChange={setNewSecondaryMuscles}
+            allMuscleGroups={allMuscleGroups}
+            styles={styles}
+          />
           <TouchableOpacity
             style={styles.saveButton}
             accessibilityRole='button'
@@ -2213,8 +2301,12 @@ function WorkoutScreenBody({
                 style={styles.machineRow}
                 accessibilityRole='button'
                 accessibilityLabel={detail ? `${name}, ${detail}` : name}
-                accessibilityHint='Double tap to use this machine, long press to remove it'
+                accessibilityHint='Double tap to use this machine'
                 accessibilityState={{ selected: isCurrent }}
+                accessibilityActions={[{ name: "delete", label: "Remove machine" }]}
+                onAccessibilityAction={(e) => {
+                  if (e.nativeEvent.actionName === "delete") handleRemoveMachine(name);
+                }}
                 onPress={() => handleSelectMachine(name)}
                 onLongPress={() => handleRemoveMachine(name)}
               >
@@ -2231,13 +2323,21 @@ function WorkoutScreenBody({
                     <Text style={styles.machineRowDetail}>{detail}</Text>
                   ) : null}
                 </View>
+                <TouchableOpacity
+                  style={styles.dismissButton}
+                  accessibilityRole='button'
+                  accessibilityLabel={`Remove ${name}`}
+                  onPress={() => handleRemoveMachine(name)}
+                >
+                  <Text style={styles.dismissButtonText}>✕</Text>
+                </TouchableOpacity>
               </TouchableOpacity>
             );
           })}
 
           <Text style={styles.machineHint}>
-            Tap a machine to switch · Long press to remove one · Add or edit
-            machines with ⚙️
+            Tap a machine to switch to it. Add or edit machines in the
+            exercise settings.
           </Text>
         </ModalSheet>
 
@@ -2272,14 +2372,15 @@ function WorkoutScreenBody({
               .filter(Boolean)
               .join(" · ");
             return (
-              <TouchableOpacity
-                key={name}
-                style={styles.machineRow}
-                accessibilityRole='button'
-                accessibilityState={{ selected: isDefault }}
-                onPress={() => handleSetDefaultMachine(name)}
-              >
-                <View style={styles.machineRowBody}>
+              <View key={name} style={styles.machineRow}>
+                <TouchableOpacity
+                  style={styles.machineRowBody}
+                  accessibilityRole='button'
+                  accessibilityLabel={`${name}${detail ? `, ${detail}` : ""}${isDefault ? ", default machine" : ""}`}
+                  accessibilityHint='Makes this the default machine'
+                  accessibilityState={{ selected: isDefault }}
+                  onPress={() => handleSetDefaultMachine(name)}
+                >
                   <Text
                     style={[
                       styles.machineRowText,
@@ -2291,10 +2392,11 @@ function WorkoutScreenBody({
                   {detail ? (
                     <Text style={styles.machineRowDetail}>{detail}</Text>
                   ) : null}
-                </View>
+                </TouchableOpacity>
                 <TouchableOpacity
                   accessibilityRole='button'
                   accessibilityLabel={`Edit ${name}`}
+                  hitSlop={12}
                   onPress={() =>
                     setEditMachine({
                       key: name,
@@ -2307,7 +2409,7 @@ function WorkoutScreenBody({
                 >
                   <Text style={styles.editButtonText}>✏️</Text>
                 </TouchableOpacity>
-              </TouchableOpacity>
+              </View>
             );
           })}
           <Text style={styles.machineHint}>
@@ -2326,6 +2428,7 @@ function WorkoutScreenBody({
                 }
                 placeholder='Machine name'
                 placeholderTextColor={colors.textMuted}
+                accessibilityLabel='Machine name'
                 returnKeyType='next'
                 autoFocus={true}
               />
@@ -2340,6 +2443,7 @@ function WorkoutScreenBody({
                 }
                 placeholder='Pin number (optional)'
                 placeholderTextColor={colors.textMuted}
+                accessibilityLabel='Pin number, optional'
                 keyboardType='number-pad'
                 returnKeyType='next'
               />
@@ -2351,6 +2455,7 @@ function WorkoutScreenBody({
                 }
                 placeholder='Note, e.g., seat 3, wide handles (optional)'
                 placeholderTextColor={colors.textMuted}
+                accessibilityLabel='Machine note, optional'
                 onSubmitEditing={handleSaveMachineEdit}
                 returnKeyType='done'
               />
@@ -2373,6 +2478,7 @@ function WorkoutScreenBody({
               onChangeText={setNewMachineName}
               placeholder='e.g., Hammer Strength'
               placeholderTextColor={colors.textMuted}
+              accessibilityLabel='New machine name'
               onSubmitEditing={handleAddMachine}
               returnKeyType='done'
             />
@@ -2442,6 +2548,7 @@ function WorkoutScreenBody({
               keyboardType='number-pad'
               placeholder='0'
               placeholderTextColor={colors.textMuted}
+              accessibilityLabel='Number of sets to add'
               autoFocus={true}
             />
           </View>
@@ -2454,14 +2561,19 @@ function WorkoutScreenBody({
             <Text style={styles.saveButtonText}>Add Sets</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.restReminderOffButton, actAs && { opacity: 0.4 }]}
+            style={styles.destructiveTextButton}
             accessibilityRole='button'
             accessibilityLabel='Remove one set'
             accessibilityState={{ disabled: !!actAs }}
             disabled={!!actAs}
             onPress={once("removeOneSet", handleRemoveOneSet)}
           >
-            <Text style={styles.restReminderOffButtonText}>
+            <Text
+              style={[
+                styles.destructiveTextButtonText,
+                actAs && styles.destructiveTextButtonTextDisabled,
+              ]}
+            >
               {actAs
                 ? `Only ${actAs.username} can remove sets`
                 : "Remove one set"}
@@ -2491,42 +2603,52 @@ function WorkoutScreenBody({
               }
               placeholder='e.g., Bench Press'
               placeholderTextColor={colors.textMuted}
+              accessibilityLabel='Exercise name, required'
               autoFocus={true}
             />
           </View>
-          {newExerciseSuggestions.length > 0 && (
-            <View style={styles.suggestionsContainer}>
-              <Text style={styles.suggestionsTitle}>💡 Did you mean:</Text>
-              {newExerciseSuggestions.map((s) => (
-                <TouchableOpacity
-                  key={s.id}
-                  style={styles.suggestionButton}
-                  accessibilityRole='button'
-                  accessibilityLabel={`Use ${s.label}`}
-                  onPress={() => handleDbSuggestionPress(s)}
-                >
-                  <Text style={styles.suggestionText}>{s.label}</Text>
-                  <Text style={styles.suggestionMatch}>{s.meta}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-          <MuscleInput
-            label='Primary Muscles'
-            placeholder='e.g., Chest, Triceps'
-            value={newExercise.primaryMuscles}
-            onChange={(t) =>
-              setNewExercise({ ...newExercise, primaryMuscles: t })
-            }
-            allMuscleGroups={allMuscleGroups}
+          <MuscleBrowseChips
+            value={browseMuscle}
+            onChange={setBrowseMuscle}
             styles={styles}
           />
-          <MuscleInput
-            label='Secondary Muscles (optional)'
-            placeholder='e.g., Shoulders'
-            value={newExercise.secondaryMuscles}
-            onChange={(t) =>
-              setNewExercise({ ...newExercise, secondaryMuscles: t })
+          {browseMuscle ? (
+            <SuggestionList
+              key={`muscle:${browseMuscle}`}
+              title={`${muscleDisplayName(browseMuscle)} exercises:`}
+              items={muscleBrowseResults}
+              onPick={handlePickNewExerciseName}
+              styles={styles}
+            />
+          ) : (
+            newExerciseSuggestions.length > 0 && (
+              <View style={styles.suggestionsContainer}>
+                <Text style={styles.suggestionsTitle}>💡 Did you mean:</Text>
+                {newExerciseSuggestions.map((s) => (
+                  <TouchableOpacity
+                    key={s.id}
+                    style={styles.suggestionButton}
+                    accessibilityRole='button'
+                    accessibilityLabel={`Use ${s.label}`}
+                    onPress={() => handleDbSuggestionPress(s)}
+                  >
+                    <Text style={styles.suggestionText}>{s.label}</Text>
+                    <Text style={styles.suggestionMatch}>{s.meta}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )
+          )}
+          <AdvancedMuscles
+            expanded={showAdvancedEdit}
+            onToggle={() => setShowAdvancedEdit((v) => !v)}
+            primary={newExercise.primaryMuscles}
+            secondary={newExercise.secondaryMuscles}
+            onPrimaryChange={(t) =>
+              setNewExercise((prev) => ({ ...prev, primaryMuscles: t }))
+            }
+            onSecondaryChange={(t) =>
+              setNewExercise((prev) => ({ ...prev, secondaryMuscles: t }))
             }
             allMuscleGroups={allMuscleGroups}
             styles={styles}
@@ -2540,6 +2662,7 @@ function WorkoutScreenBody({
               keyboardType='number-pad'
               placeholder='0'
               placeholderTextColor={colors.textMuted}
+              accessibilityLabel='Number of sets, required'
             />
           </View>
           <View style={styles.inputGroup}>
@@ -2556,6 +2679,7 @@ function WorkoutScreenBody({
               maxLength={7}
               placeholder='e.g. 8-12'
               placeholderTextColor={colors.textMuted}
+              accessibilityLabel='Reps, for example 8 to 12'
             />
           </View>
           <TouchableOpacity
@@ -2577,12 +2701,14 @@ function WorkoutScreenBody({
           showConfirmButton={false}
         >
           <Text style={styles.restReminderHint}>
-            Get notified once your rest time reaches this duration.
+            {tempRestReminderAlarm
+              ? "An alarm rings once your rest reaches this duration."
+              : "You'll get a notification once your rest reaches this duration."}
           </Text>
-          <View style={styles.restReminderPresetRow}>
+          <View style={styles.restReminderPresetRow} accessibilityRole='radiogroup'>
             {[60, 90, 120, 180].map((preset) => {
               const selected =
-                Number.parseInt(tempRestReminderSeconds, 10) === preset;
+                parsedRestInput === preset;
               return (
                 <TouchableOpacity
                   key={preset}
@@ -2590,8 +2716,8 @@ function WorkoutScreenBody({
                     styles.restReminderPresetChip,
                     selected && styles.restReminderPresetChipActive,
                   ]}
-                  accessibilityRole='button'
-                  accessibilityState={{ selected }}
+                  accessibilityRole='radio'
+                  accessibilityState={{ checked: selected }}
                   accessibilityLabel={`Rest reminder ${formatDuration(preset)}`}
                   onPress={() => setTempRestReminderSeconds(String(preset))}
                 >
@@ -2607,16 +2733,63 @@ function WorkoutScreenBody({
               );
             })}
           </View>
+          {alarmsAvailable && (
+            <View style={styles.restReminderPresetRow} accessibilityRole='radiogroup'>
+              {[
+                { asAlarm: false, label: "Notification" },
+                { asAlarm: true, label: "Alarm" },
+              ].map((opt) => {
+                const selected = tempRestReminderAlarm === opt.asAlarm;
+                return (
+                  <TouchableOpacity
+                    key={opt.label}
+                    style={[
+                      styles.restReminderPresetChip,
+                      selected && styles.restReminderPresetChipActive,
+                    ]}
+                    accessibilityRole='radio'
+                    accessibilityLabel={opt.asAlarm ? "Ring as an alarm" : "Send a notification"}
+                    accessibilityState={{ checked: selected }}
+                    onPress={() => {
+                      setTempRestReminderAlarm(opt.asAlarm);
+                      if (opt.asAlarm && !selected) {
+                        void promptForAlarmPermissions(alert);
+                      }
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.restReminderPresetChipText,
+                        selected && styles.restReminderPresetChipTextActive,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Custom (seconds)</Text>
+            <Text style={styles.inputLabel}>Custom (seconds or m:ss)</Text>
             <TextInput
               style={styles.input}
               value={tempRestReminderSeconds}
               onChangeText={setTempRestReminderSeconds}
-              keyboardType='number-pad'
-              placeholder='e.g., 90'
+              placeholder='e.g., 90 or 1:30'
               placeholderTextColor={colors.textMuted}
+              accessibilityLabel='Custom rest reminder, in seconds or minutes and seconds'
             />
+            {tempRestReminderSeconds.trim() !== "" &&
+              (parsedRestInput === null ? (
+                <Text style={styles.inputError}>
+                  Enter seconds, e.g. 90, or m:ss, e.g. 1:30.
+                </Text>
+              ) : (
+                <Text style={styles.inputHint}>
+                  = {formatDuration(Math.min(parsedRestInput, MAX_REST_REMINDER_SECONDS))}
+                </Text>
+              ))}
           </View>
           <TouchableOpacity
             style={styles.saveButton}
@@ -2644,6 +2817,15 @@ function WorkoutScreenBody({
           )}
         </ModalSheet>
 
+        {quickAdded && (
+          <UndoBar
+            key={`${quickAdded.exerciseIndex}-${quickAdded.setIndex}`}
+            message={`Set added to ${quickAdded.name}`}
+            onUndo={undoQuickAdd}
+            onTimeout={clearQuickAdded}
+          />
+        )}
+
         {AlertComponent}
       </View>
 
@@ -2661,6 +2843,10 @@ function WorkoutScreenBody({
 
 export const makeStyles = (colors: ThemeColors) => {
   const onTint = getDayOverviewTextColor(colors);
+  const onTintHex = toRgbHex(onTint) ?? onTint;
+  const overtime = isDarkColor(colors.background)
+    ? colors.warning
+    : colors.warningLight;
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     emptyContainer: {
@@ -2672,7 +2858,7 @@ export const makeStyles = (colors: ThemeColors) => {
     },
     emptyIcon: { fontSize: 64, marginBottom: 20 },
     emptyTitle: {
-      fontSize: 24,
+      fontSize: 20,
       fontWeight: "bold",
       color: colors.textPrimary,
       marginBottom: 10,
@@ -2697,27 +2883,26 @@ export const makeStyles = (colors: ThemeColors) => {
       fontWeight: "bold",
     },
     widgetLineMuted: {
-      fontSize: 13,
+      fontSize: 14,
       color: onTint,
-      opacity: 0.8,
       fontStyle: "italic",
     },
     lockedBanner: {
-      backgroundColor: "#ff9800",
+      backgroundColor: colors.warningLight,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.warning,
       flexDirection: "row",
       alignItems: "center",
-      padding: 15,
-      paddingHorizontal: 20,
+      padding: 16,
     },
-    lockedBannerIcon: { fontSize: 24, marginRight: 12 },
     lockedBannerTextContainer: { flex: 1 },
     lockedBannerTitle: {
       fontSize: 16,
       fontWeight: "bold",
-      color: colors.surface,
+      color: colors.textPrimary,
       marginBottom: 2,
     },
-    lockedBannerText: { fontSize: 13, color: colors.surface, opacity: 0.95 },
+    lockedBannerText: { fontSize: 14, color: colors.textPrimary },
     headerCardInner: {
       backgroundColor: "transparent",
     },
@@ -2740,7 +2925,6 @@ export const makeStyles = (colors: ThemeColors) => {
       fontSize: 12,
       fontWeight: "700",
       color: onTint,
-      opacity: 0.8,
       letterSpacing: 0.5,
       textTransform: "uppercase",
     },
@@ -2759,7 +2943,7 @@ export const makeStyles = (colors: ThemeColors) => {
     progressContainer: { marginTop: 0 },
     progressBar: {
       height: 8,
-      backgroundColor: "rgba(255,255,255,0.3)",
+      backgroundColor: `${onTintHex}4D`,
       borderRadius: 4,
       overflow: "hidden",
       marginBottom: 8,
@@ -2774,28 +2958,32 @@ export const makeStyles = (colors: ThemeColors) => {
       justifyContent: "space-between",
       alignItems: "center",
     },
-    progressText: { fontSize: 14, color: onTint, opacity: 0.9 },
+    progressText: { fontSize: 14, color: onTint },
     endTimeText: {
       fontSize: 12,
       color: onTint,
-      opacity: 0.8,
       marginTop: 4,
     },
     sessionStatsRow: {
       flexDirection: "row",
       justifyContent: "space-around",
     },
-    sessionStat: { alignItems: "center" },
+    sessionStat: { alignItems: "center", flexShrink: 1 },
     sessionStatLabel: {
       fontSize: 12,
       color: onTint,
-      opacity: 0.85,
       marginBottom: 4,
     },
     sessionStatValue: {
-      fontSize: 18,
+      fontSize: 20,
       fontWeight: "bold",
       color: onTint,
+    },
+    reminderPill: {
+      paddingHorizontal: 10,
+      paddingVertical: 2,
+      borderRadius: 999,
+      backgroundColor: `${onTintHex}26`,
     },
     currentRestContainer: {
       flexDirection: "row",
@@ -2804,12 +2992,12 @@ export const makeStyles = (colors: ThemeColors) => {
       marginTop: 10,
       paddingTop: 10,
       borderTopWidth: 1,
-      borderTopColor: "rgba(255,255,255,0.25)",
+      borderTopColor: `${onTintHex}40`,
     },
     currentRestLabel: {
+      flexShrink: 1,
       fontSize: 14,
       color: onTint,
-      opacity: 0.85,
       marginRight: 8,
     },
     currentRestValue: {
@@ -2817,12 +3005,12 @@ export const makeStyles = (colors: ThemeColors) => {
       fontWeight: "bold",
       color: onTint,
     },
-    currentRestOvertime: { color: "#fde68a" },
-    overtimeText: { fontSize: 14, color: "#fde68a" },
+    currentRestOvertime: { color: overtime },
+    overtimeText: { fontSize: 14, color: overtime },
     completeMessage: {
       marginTop: 15,
       padding: 12,
-      backgroundColor: "rgba(255,255,255,0.2)",
+      backgroundColor: `${onTintHex}33`,
       borderRadius: 8,
     },
     completeMessageText: {
@@ -2869,10 +3057,11 @@ export const makeStyles = (colors: ThemeColors) => {
       marginBottom: 12,
     },
     exerciseInfo: { flex: 1 },
+    exerciseMuscles: { marginTop: -12, marginBottom: 12 },
     exerciseNameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
     exerciseName: {
-      fontSize: 18,
-      fontWeight: "600",
+      fontSize: 16,
+      fontWeight: "700",
       color: colors.textPrimary,
       marginBottom: 4,
       flex: 1,
@@ -2886,7 +3075,7 @@ export const makeStyles = (colors: ThemeColors) => {
       gap: 4,
       paddingHorizontal: 10,
       paddingVertical: 8,
-      borderRadius: 10,
+      borderRadius: 8,
       backgroundColor: colors.separator,
     },
     machineChipText: {
@@ -2937,7 +3126,7 @@ export const makeStyles = (colors: ThemeColors) => {
     },
     settingCheckboxOn: { backgroundColor: colors.accent },
     settingCheckboxMark: { color: colors.background, fontWeight: "700" },
-    settingLabel: { fontSize: 15, color: colors.textPrimary, flex: 1 },
+    settingLabel: { fontSize: 16, color: colors.textPrimary, flex: 1 },
     muscleGroup: { fontSize: 14, color: colors.textSecondary },
     exerciseProgress: {
       backgroundColor: colors.separator,
@@ -2967,8 +3156,15 @@ export const makeStyles = (colors: ThemeColors) => {
       backgroundColor: colors.accent,
       borderColor: colors.accent,
     },
-    setButtonLocked: { backgroundColor: "#ff9800", borderColor: "#d97706" },
-    setButtonWarmup: { backgroundColor: "#fb923c", borderColor: "#ea580c" },
+    setButtonLocked: {
+      backgroundColor: colors.surfaceBorder,
+      borderColor: colors.textSecondary,
+    },
+    setButtonWarmup: {
+      backgroundColor: colors.warningLight,
+      borderColor: colors.warning,
+    },
+    setButtonOnLightFill: { color: colors.textPrimary },
     setButtonPartner: {
       borderColor: colors.accentDark,
       borderWidth: 3,
@@ -2992,16 +3188,16 @@ export const makeStyles = (colors: ThemeColors) => {
       fontWeight: "bold",
       color: colors.textSecondary,
     },
-    setButtonNumberComplete: { color: colors.surface },
+    setButtonNumberComplete: { color: colors.textOnAccent },
     warmupText: { fontSize: 14 },
     setDetailsPreview: { alignItems: "center", alignSelf: "stretch" },
     setDetailsText: {
-      fontSize: 13,
-      lineHeight: 15,
+      fontSize: 12,
+      lineHeight: 14,
       color: colors.textOnAccent,
       fontWeight: "600",
     },
-    setNoteIndicator: { position: "absolute", bottom: 1, left: 2, fontSize: 9 },
+    setNoteIndicator: { position: "absolute", bottom: 1, left: 2, fontSize: 12 },
     setCheckmark: {
       position: "absolute",
       top: -4,
@@ -3034,30 +3230,14 @@ export const makeStyles = (colors: ThemeColors) => {
       fontWeight: "bold",
       color: colors.accent,
     },
-    exerciseHint: {
-      marginTop: 12,
-      paddingTop: 12,
-      borderTopWidth: 1,
-      borderTopColor: colors.surfaceBorder,
-      alignItems: "center",
-    },
-    exerciseHintText: {
-      fontSize: 12,
-      color: colors.textMuted,
-      fontStyle: "italic",
-    },
     addExerciseButton: {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.accentLight,
       borderRadius: 12,
-      padding: 20,
+      paddingVertical: 16,
       alignItems: "center",
       justifyContent: "center",
       marginBottom: 12,
-      borderWidth: 2,
-      borderColor: colors.accent,
-      borderStyle: "dashed",
     },
-    addExerciseButtonIcon: { fontSize: 32, marginBottom: 8 },
     addExerciseButtonText: {
       fontSize: 16,
       fontWeight: "600",
@@ -3107,7 +3287,7 @@ export const makeStyles = (colors: ThemeColors) => {
     unitButton: {
       flex: 1,
       paddingVertical: 10,
-      borderRadius: 10,
+      borderRadius: 8,
       borderWidth: 2,
       borderColor: colors.inputBorder,
       backgroundColor: colors.inputBackground,
@@ -3192,22 +3372,22 @@ export const makeStyles = (colors: ThemeColors) => {
       color: colors.textPrimary,
       marginBottom: 8,
     },
-    inputHint: { fontSize: 13, color: colors.textMuted, marginTop: 6 },
-    inputError: { fontSize: 13, color: colors.error, marginTop: 6 },
+    inputHint: { fontSize: 14, color: colors.textMuted, marginTop: 6 },
+    inputError: { fontSize: 14, color: colors.error, marginTop: 6 },
     oneRepMaxHint: {
       fontSize: 14,
       fontWeight: "600",
       color: colors.accent,
       marginTop: 8,
     },
-    chipRow: { flexDirection: "row", gap: 8 },
+    chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     chip: {
       minWidth: 44,
       minHeight: 44,
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: 10,
-      borderRadius: 10,
+      borderRadius: 8,
       borderWidth: 2,
       borderColor: colors.surfaceBorder,
       backgroundColor: colors.background,
@@ -3247,8 +3427,8 @@ export const makeStyles = (colors: ThemeColors) => {
       fontWeight: "700",
     },
     progressionDismissButton: {
-      minWidth: 36,
-      minHeight: 36,
+      minWidth: 48,
+      minHeight: 48,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -3257,7 +3437,7 @@ export const makeStyles = (colors: ThemeColors) => {
       backgroundColor: colors.background,
       borderRadius: 12,
       padding: 16,
-      fontSize: 18,
+      fontSize: 20,
       color: colors.textPrimary,
       borderWidth: 2,
       borderColor: colors.surfaceBorder,
@@ -3283,7 +3463,7 @@ export const makeStyles = (colors: ThemeColors) => {
     setFormBody: { flexShrink: 1 },
     saveButtonText: {
       color: colors.textOnAccent,
-      fontSize: 18,
+      fontSize: 16,
       fontWeight: "bold",
     },
     suggestionsContainer: {
@@ -3297,9 +3477,28 @@ export const makeStyles = (colors: ThemeColors) => {
     suggestionsTitle: {
       fontSize: 14,
       fontWeight: "600",
-      color: colors.warning,
+      color: colors.textPrimary,
       marginBottom: 12,
     },
+    suggestionsHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    suggestionsHeaderTitle: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.textPrimary,
+    },
+    dismissButton: {
+      minWidth: 48,
+      minHeight: 48,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    dismissButtonText: { fontSize: 16, color: colors.textSecondary },
     suggestionButton: {
       backgroundColor: colors.surface,
       borderRadius: 8,
@@ -3344,7 +3543,7 @@ export const makeStyles = (colors: ThemeColors) => {
       color: colors.textPrimary,
     },
     advancedToggleSummary: {
-      fontSize: 13,
+      fontSize: 14,
       color: colors.textSecondary,
       marginTop: 2,
     },
@@ -3367,7 +3566,7 @@ export const makeStyles = (colors: ThemeColors) => {
     restReminderPresetChip: {
       flex: 1,
       paddingVertical: 12,
-      borderRadius: 10,
+      borderRadius: 8,
       alignItems: "center",
       backgroundColor: colors.background,
       borderWidth: 1,
@@ -3393,6 +3592,19 @@ export const makeStyles = (colors: ThemeColors) => {
       fontWeight: "600",
       color: colors.error,
     },
+    destructiveTextButton: {
+      minHeight: 48,
+      paddingVertical: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 4,
+    },
+    destructiveTextButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.error,
+    },
+    destructiveTextButtonTextDisabled: { color: colors.textMuted },
   });
 };
 

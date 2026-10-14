@@ -9,8 +9,8 @@ import {
   Switch,
   Platform,
   ActivityIndicator,
+  Linking,
 } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   getStorageItem,
   setStorageItem,
@@ -28,9 +28,13 @@ import {
 import type { SupplementSummary } from "../types";
 import { MAX_DOSES_PER_DAY, formatInterval, parseTimeOfDay } from "../utils";
 import { parseDecimal } from "@utils/format";
+import TimeOfDayPicker from "./TimeOfDayPicker";
 import ModalSheet from "@shared/components/ModalSheet";
 import { useAlert } from "@shared/components/CustomAlert";
-import { promptForExactAlarms } from "@shared/services/notifications";
+import {
+  promptForAlarmPermissions,
+  promptForExactAlarms,
+} from "@shared/services/notifications";
 import { useTheme } from "@shared/context/ThemeContext";
 import { useAuth } from "@shared/context/AuthContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
@@ -66,7 +70,6 @@ export default function SupplementSettingsModal({
   const [reminderTime, setReminderTime] = useState(() =>
     parseTimeOfDay(supplement.reminderTime),
   );
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [defaultAmount, setDefaultAmount] = useState(
     String(supplement.defaultAmount),
   );
@@ -147,19 +150,34 @@ export default function SupplementSettingsModal({
     return { valid: true, amount: amt, intervalMinutes: Math.round(hours * 60) };
   };
 
-  const ensureNotificationPermission = async (): Promise<boolean> => {
+  const alarmPromptedRef = useRef(false);
+
+  const ensureNotificationPermission = async (
+    type = notificationType,
+  ): Promise<boolean> => {
     const notifReady = await initializeSupplementNotifications();
     if (!notifReady) {
       alert(
         "Notifications Required",
-        "Please enable notifications for reminders to work.",
-        [{ text: "OK" }],
+        "Turn on notifications for OwnGains in its app settings for reminders to work.",
+        [
+          { text: "Not now", style: "cancel" },
+          { text: "Open settings", onPress: () => void Linking.openSettings() },
+        ],
         "warning",
       );
-    } else {
+    } else if (type !== "alarm") {
       void promptForExactAlarms(alert, "supplement reminders");
+    } else if (!alarmPromptedRef.current) {
+      alarmPromptedRef.current = true;
+      void promptForAlarmPermissions(alert);
     }
     return notifReady;
+  };
+
+  const selectNotificationType = (type: string) => {
+    setNotificationType(type);
+    if (type === "alarm") void ensureNotificationPermission(type);
   };
 
   const formatTimeStr = (date: Date) =>
@@ -374,11 +392,6 @@ export default function SupplementSettingsModal({
     );
   };
 
-  const handleTimeChange = (_event: unknown, selectedDate: Date) => {
-    setShowTimePicker(Platform.OS === "ios");
-    setReminderTime(selectedDate);
-  };
-
   if (!visible) return null;
 
   return (
@@ -533,28 +546,10 @@ export default function SupplementSettingsModal({
 
                 {timeBasedEnabled && (
                   <View style={styles.sectionBody}>
-                    <TouchableOpacity
-                      style={styles.timeBtn}
-                      onPress={() => setShowTimePicker(true)}
-                    >
-                      <Text style={styles.timeBtnLabel}>Reminder Time</Text>
-                      <Text style={styles.timeBtnValue}>
-                        {reminderTime.toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </Text>
-                    </TouchableOpacity>
-                    {showTimePicker && (
-                      <DateTimePicker
-                        value={reminderTime}
-                        mode='time'
-                        is24Hour
-                        display='default'
-                        onValueChange={handleTimeChange}
-                        onDismiss={() => setShowTimePicker(false)}
-                      />
-                    )}
+                    <TimeOfDayPicker
+                      value={reminderTime}
+                      onChange={setReminderTime}
+                    />
                   </View>
                 )}
               </View>
@@ -574,7 +569,7 @@ export default function SupplementSettingsModal({
                         key: "alarm",
                         icon: "⏰",
                         label: "Alarm",
-                        desc: "Louder alert",
+                        desc: "Rings until dismissed",
                       },
                     ].map((opt) => (
                       <TouchableOpacity
@@ -584,7 +579,7 @@ export default function SupplementSettingsModal({
                           notificationType === opt.key &&
                             styles.notifOptionActive,
                         ]}
-                        onPress={() => setNotificationType(opt.key)}
+                        onPress={() => selectNotificationType(opt.key)}
                       >
                         <Text style={styles.notifIcon}>{opt.icon}</Text>
                         <Text
@@ -758,27 +753,6 @@ const makeStyles = (colors: ThemeColors) =>
       fontSize: 18,
       fontWeight: "700",
       color: colors.textPrimary,
-    },
-
-    timeBtn: {
-      backgroundColor: colors.inputBackground,
-      borderRadius: 12,
-      padding: 16,
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      borderWidth: 2,
-      borderColor: colors.accent,
-    },
-    timeBtnLabel: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      fontWeight: "600",
-    },
-    timeBtnValue: {
-      fontSize: 24,
-      fontWeight: "700",
-      color: colors.accent,
     },
 
     notifRow: {

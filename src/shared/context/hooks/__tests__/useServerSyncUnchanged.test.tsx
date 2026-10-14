@@ -87,3 +87,44 @@ it("writes and sets completed and locked days only when a sync changes them", as
   expect(setCompleted).toHaveBeenCalledTimes(1);
   expect(setLocked).toHaveBeenCalledTimes(1);
 });
+
+it("resolves false when the sync fails and true when it succeeds", async () => {
+  let sync!: () => Promise<boolean>;
+
+  function Harness() {
+    ({ syncFromServer: sync } = useServerSync({
+      userId: "u1",
+      selectedSplit: "push",
+      workoutData: program,
+      setWorkoutData: jest.fn(),
+      completedDays: {},
+      lockedDays: {},
+      setCompletedDays: jest.fn(),
+      setLockedDays: jest.fn(),
+      currentSessionId: null,
+      unlockedOverrides: {},
+      saveToStorage: jest.fn().mockResolvedValue(true),
+      STORAGE_KEYS,
+      clearActiveWorkout: jest.fn(),
+      workoutApi: workoutApi as never,
+      programApi: programApi as never,
+    }));
+    return null;
+  }
+
+  await act(async () => {
+    create(<Harness />);
+  });
+  workoutApi.getSessionHistory.mockRejectedValueOnce(new Error("offline"));
+  let failed: boolean | undefined;
+  let succeeded: boolean | undefined;
+  await act(async () => {
+    failed = await sync();
+  });
+  await act(async () => {
+    succeeded = await sync();
+  });
+
+  expect(failed).toBe(false);
+  expect(succeeded).toBe(true);
+});

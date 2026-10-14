@@ -1,4 +1,5 @@
 import type * as NotificationsService from "@shared/services/notifications";
+import type { AlertButton } from "@shared/components/CustomAlert";
 
 let service: typeof NotificationsService;
 
@@ -90,5 +91,78 @@ describe("promptForExactAlarms", () => {
     const alert = jest.fn<void, [string, string, ...unknown[]]>();
     await loadOn("Xiaomi", false).promptForExactAlarms(alert, "rest reminders");
     expect(alert.mock.calls[0][0]).toBe("Allow on-time reminders");
+  });
+});
+
+describe("promptForAlarmPermissions", () => {
+  const loadWith = (exact: boolean, overlay: boolean) => {
+    jest.resetModules();
+    const openOverlaySettings = jest.fn();
+    jest.doMock("../../../../modules/exact-alarms", () => ({
+      __esModule: true,
+      default: {
+        canScheduleExactAlarms: () => exact,
+        openExactAlarmSettings: jest.fn(),
+        canDrawOverlays: () => overlay,
+        openOverlaySettings,
+      },
+    }));
+    const { Platform } = require("react-native");
+    Object.defineProperty(Platform, "OS", { get: () => "android", configurable: true });
+    const mod = require("@shared/services/notifications") as typeof NotificationsService;
+    return { mod, openOverlaySettings };
+  };
+
+  it("asks to ring full screen once exact alarms are allowed", async () => {
+    const { mod, openOverlaySettings } = loadWith(true, false);
+    const alert = jest.fn(
+      (_t: string, _m: string, buttons?: AlertButton[]) => buttons?.[0].onPress?.(),
+    );
+    await mod.promptForAlarmPermissions(alert);
+
+    expect(alert).toHaveBeenCalledTimes(1);
+    expect(alert.mock.calls[0][0]).toBe("Ring full screen");
+    const buttons = alert.mock.calls[0][2] as { onPress?: () => void }[];
+    buttons[1].onPress?.();
+    expect(openOverlaySettings).toHaveBeenCalled();
+  });
+
+  it("asks for exact alarms, then full screen, when both are missing", async () => {
+    const { mod, openOverlaySettings } = loadWith(false, false);
+    const pressed: string[] = [];
+    const alert = jest.fn(
+      (title: string, _message: string, buttons?: AlertButton[]) => {
+        const button = buttons![title === "Allow on-time alarms" ? 0 : 1];
+        pressed.push(`${title}: ${button.text}`);
+        button.onPress?.();
+      },
+    );
+    await mod.promptForAlarmPermissions(alert);
+
+    expect(pressed).toEqual([
+      "Allow on-time alarms: Not now",
+      "Ring full screen: Open settings",
+    ]);
+    expect(openOverlaySettings).toHaveBeenCalled();
+  });
+
+  it("waits for the user to come back from settings before the next prompt", async () => {
+    const { mod } = loadWith(false, false);
+    const { AppState } = require("react-native");
+    let onChange: (state: string) => void = () => {};
+    jest.spyOn(AppState, "addEventListener").mockImplementation((_: unknown, fn: unknown) => {
+      onChange = fn as (state: string) => void;
+      return { remove: jest.fn() };
+    });
+    const alert = jest.fn(
+      (_t: string, _m: string, buttons?: AlertButton[]) => buttons?.[1].onPress?.(),
+    );
+    const done = mod.promptForAlarmPermissions(alert);
+    await Promise.resolve();
+    expect(alert).toHaveBeenCalledTimes(1);
+
+    onChange("active");
+    await done;
+    expect(alert).toHaveBeenCalledTimes(2);
   });
 });

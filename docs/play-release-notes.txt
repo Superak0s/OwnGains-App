@@ -1,0 +1,7 @@
+• Supplement and rest alarms ring full screen, even on silent, until you Snooze or Dismiss
+• Faster logging: weight and reps first, Undo for added sets, muscles filled in for new exercises
+• Each exercise remembers its own kg or lbs unit
+• Restore default widgets, and a clearer widget edit mode
+• Profile photos sync across devices and show for your friends
+• New supplement reminder time picker
+• A reorganized Settings, plus many accessibility and error message fixes

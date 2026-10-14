@@ -39,7 +39,7 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
   {
     title: "Account data",
     body:
-      "In online mode the server stores your username, email, password (hashed, never in plain text), and an optional display name to authenticate you, plus sign-in tokens that expire on their own. Failed sign-in attempts are counted against a hashed form of the name you typed, to slow down password guessing, and the count is deleted after a day. Anyone with an account on the same server can find your username by searching for its first few letters. Your display name and workout activity are shared only with people you've added as friends. A friend can see that you are working out, or watch a workout live, only if you have granted them that permission. While anyone is watching, the workout screen shows who, with a button to stop them.",
+      "In online mode the server stores your username, email, password (hashed, never in plain text), an optional display name and an optional profile photo to identify you, plus sign-in tokens that expire on their own. Failed sign-in attempts are counted against a hashed form of the name you typed, to slow down password guessing, and the count is deleted after a day. Anyone with an account on the same server can find your username by searching for its first few letters. The profile photo is kept as one small copy with its metadata (such as location) removed, so it appears on your other devices. Your display name, profile photo and workout activity are shared only with people you've added as friends. A friend can see that you are working out, or watch a workout live, only if you have granted them that permission. While anyone is watching, the workout screen shows who, with a button to stop them.",
   },
   {
     title: "Sign in with Google",
@@ -79,7 +79,7 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
   {
     title: "Tips",
     body:
-      "Settings → Support Development offers optional one-time tips through Google Play. In app builds downloaded from GitHub instead of Google Play, the same button opens Ko-fi, which processes the tip under its own privacy policy. Google processes the payment under its own privacy policy. The developer receives only Google's order record (order number, item, price, and country), never your payment details. Tips are not linked to your OwnGains account and nothing about them is sent to any OwnGains server.",
+      "Settings → About → Support Development offers optional one-time tips through Google Play. In app builds downloaded from GitHub instead of Google Play, the same button opens Ko-fi, which processes the tip under its own privacy policy. Google processes the payment under its own privacy policy. The developer receives only Google's order record (order number, item, price, and country), never your payment details. Tips are not linked to your OwnGains account and nothing about them is sent to any OwnGains server.",
   },
   {
     title: "Update checks",
@@ -114,7 +114,7 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
   {
     title: "Your control",
     body:
-      "Settings → Privacy and Data → Delete Account permanently removes your account and everything attached to it: workouts, plans, progress photos, supplements and reminders, and friend connections. In online mode the deletion is carried out on the server you are signed in to. In offline mode it wipes the local profile and database. Crash reports are not deleted with the account. They contain only its random identifier and expire on their own within 90 days. Settings → Clear All Data deletes your data while keeping the account. Signing out keeps this device's data for when you sign back in. Use Clear All Data or Delete Account to remove it. Uninstalling the app also removes everything stored on the device.",
+      "Settings → Privacy and Data → Delete Account permanently removes your account and everything attached to it: workouts, plans, profile and progress photos, supplements and reminders, and friend connections. In online mode the deletion is carried out on the server you are signed in to. In offline mode it wipes the local profile and database. Crash reports are not deleted with the account. They contain only its random identifier and expire on their own within 90 days. Settings → Clear All Data deletes your data while keeping the account. Signing out keeps this device's data for when you sign back in. Use Clear All Data or Delete Account to remove it. Uninstalling the app also removes everything stored on the device.",
   },
   {
     title: "Getting a copy of your data",

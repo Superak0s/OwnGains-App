@@ -6,6 +6,8 @@ export interface Friend {
   id: number | string;
   username: string;
   createdAt: string;
+  /** Null when the friend has no profile photo, undefined from a server too old to say. */
+  photoHash?: string | null;
 }
 
 export type UserRef = Pick<Friend, "id" | "username">;

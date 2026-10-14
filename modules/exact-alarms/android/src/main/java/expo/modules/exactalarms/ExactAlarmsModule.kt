@@ -31,5 +31,26 @@ class ExactAlarmsModule : Module() {
         context.startActivity(intent)
       }
     }
+
+    Function("canDrawOverlays") { Settings.canDrawOverlays(context) }
+
+    Function("openOverlaySettings") {
+      val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+        .setData(Uri.parse("package:${context.packageName}"))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      context.startActivity(intent)
+    }
+
+    Function("scheduleAlarm") { id: String, at: Double, daily: Boolean, title: String, body: String, channelId: String, snoozeSeconds: Int ->
+      Alarms.schedule(context, Alarms.Alarm(id, at.toLong(), daily, title, body, channelId, snoozeSeconds))
+    }
+
+    Function("cancelAlarm") { id: String -> Alarms.cancel(context, id) }
+
+    Function("cancelAlarmsWithPrefix") { prefixes: List<String> -> Alarms.cancelWithPrefix(context, prefixes) }
+
+    Function("snoozeAlarm") { id: String -> Alarms.snooze(context, id) }
+
+    Function("dismissAlarm") { id: String -> Alarms.dismiss(context, id) }
   }
 }

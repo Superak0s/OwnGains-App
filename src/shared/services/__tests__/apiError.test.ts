@@ -7,6 +7,11 @@ describe("userFacingError", () => {
     );
   });
 
+  it("shows a validation failure's reasons instead of its generic message", () => {
+    const err = new ApiError("Validation failed", 400, ["Name contains a word that isn't allowed"]);
+    expect(userFacingError(err, "fallback")).toBe("Name contains a word that isn't allowed");
+  });
+
   it("hides 5xx detail behind plain wording", () => {
     expect(userFacingError(new ApiError("ER_LOCK_DEADLOCK", 500), "fallback")).toBe(
       "The server had a problem. Try again in a moment.",

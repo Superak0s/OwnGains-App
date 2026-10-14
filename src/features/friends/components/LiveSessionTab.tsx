@@ -14,7 +14,7 @@ import {
 import { sharingApi } from "../services";
 import { mergeLiveSet } from "../utils";
 import { normalizeExerciseName } from "@utils/exerciseMatching";
-import { muscleLabel } from "@utils/exerciseDb";
+import { MuscleTags } from "@shared/components/MuscleTags";
 import { formatClockTime } from "@utils/format";
 import { formatTime } from "@utils/timeEstimation";
 import { useTheme } from "@shared/context/ThemeContext";
@@ -231,7 +231,6 @@ const ExerciseCard = React.memo(function ExerciseCard({
   const exSt = useMemo(() => makeExStStyles(colors), [colors]);
   const completedCount = Object.keys(completedSetMap).length;
   const allDone = totalSets > 0 && completedCount >= totalSets;
-  const label = muscleLabel(primaryMuscles, secondaryMuscles);
 
   return (
     <View style={[exSt.card, allDone && exSt.cardDone]}>
@@ -240,7 +239,10 @@ const ExerciseCard = React.memo(function ExerciseCard({
           <Text style={[exSt.name, allDone && exSt.nameDone]}>
             {exerciseName}
           </Text>
-          {label ? <Text style={exSt.muscle}>{label}</Text> : null}
+          <MuscleTags
+            primaryMuscles={primaryMuscles}
+            secondaryMuscles={secondaryMuscles}
+          />
         </View>
         <View style={exSt.badge}>
           <Text style={exSt.badgeText}>
@@ -294,7 +296,6 @@ const makeExStStyles = (colors: ThemeColors) =>
       marginBottom: 3,
     },
     nameDone: { color: colors.success },
-    muscle: { fontSize: 13, color: colors.textMuted },
     badge: {
       backgroundColor: colors.separator,
       paddingHorizontal: 12,

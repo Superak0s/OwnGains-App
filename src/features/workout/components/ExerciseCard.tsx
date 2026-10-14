@@ -4,7 +4,7 @@ import type { LayoutChangeEvent, StyleProp, ViewStyle } from "react-native";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { PartnerProgress } from "@shared/context/hooks/useJointSession";
 import { normalizeExerciseName } from "@utils/exerciseMatching";
-import { muscleLabel } from "@utils/exerciseDb";
+import { MuscleTags } from "@shared/components/MuscleTags";
 import type { MachineMeta, SetDetail } from "@shared/types";
 import { activeMachine, kgToDisplay } from "../utils";
 import type { makeStyles } from "../WorkoutScreen";
@@ -290,7 +290,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
       : [],
   );
   const lockedTextStyle = isCurrentDayLocked
-    ? { color: colors.textPrimary }
+    ? styles.setButtonOnLightFill
     : null;
   const [setsRowWidth, setSetsRowWidth] = useState(0);
   const setButtonSize =
@@ -333,7 +333,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
             >
               {exercise.name}
               {isAssisted && (
-                <Text accessibilityLabel="assisted exercise"> 🤝</Text>
+                <Text style={styles.muscleGroup}> · assisted</Text>
               )}
             </Text>
             {!isCurrentDayLocked && (
@@ -373,17 +373,18 @@ export const ExerciseCard = React.memo(function ExerciseCard({
               </TouchableOpacity>
             )}
           </View>
-          {muscleLabel(exercise.primaryMuscles, exercise.secondaryMuscles) ? (
-            <Text style={styles.muscleGroup}>
-              {muscleLabel(exercise.primaryMuscles, exercise.secondaryMuscles)}
-            </Text>
-          ) : null}
         </View>
         <View style={styles.exerciseProgress}>
           <Text style={styles.exerciseProgressText}>
             {completedSets}/{exercise.sets}
           </Text>
         </View>
+      </View>
+      <View style={styles.exerciseMuscles}>
+        <MuscleTags
+          primaryMuscles={exercise.primaryMuscles}
+          secondaryMuscles={exercise.secondaryMuscles}
+        />
       </View>
 
       <View style={styles.setsContainer} onLayout={onSetsLayout}>
@@ -398,6 +399,8 @@ export const ExerciseCard = React.memo(function ExerciseCard({
           const partnerDoneThisSet = partnerDoneSetIndices.has(setIndex);
           const partnerOnSet =
             partnerOnThis && partnerProgress?.setIndex === setIndex;
+          const onLightFill =
+            done && setDetails?.isWarmup ? styles.setButtonOnLightFill : null;
           return (
             <TouchableOpacity
               key={`${exercise.name || exerciseIndex}-set-${setIndex}`}
@@ -423,10 +426,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                 weightUnit,
                 partnerDoneThisSet,
               )}
-              accessibilityState={{
-                checked: done,
-                disabled: isCurrentDayLocked && !done,
-              }}
+              accessibilityState={{ disabled: isCurrentDayLocked && !done }}
             >
               {partnerOnSet && <View style={styles.partnerSetDot} />}
               <Text
@@ -434,6 +434,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                   styles.setButtonNumber,
                   done && styles.setButtonNumberComplete,
                   done && lockedTextStyle,
+                  onLightFill,
                   setDetails?.isWarmup && styles.warmupText,
                   partnerDoneThisSet && done && { color: colors.accentDark },
                 ]}
@@ -443,7 +444,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
               {done && setDetails && (
                 <View style={styles.setDetailsPreview}>
                   <Text
-                    style={[styles.setDetailsText, lockedTextStyle]}
+                    style={[styles.setDetailsText, lockedTextStyle, onLightFill]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
                   >
@@ -452,7 +453,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                       : "BW"}
                   </Text>
                   <Text
-                    style={[styles.setDetailsText, lockedTextStyle]}
+                    style={[styles.setDetailsText, lockedTextStyle, onLightFill]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
                   >
@@ -490,14 +491,6 @@ export const ExerciseCard = React.memo(function ExerciseCard({
           </TouchableOpacity>
         )}
       </View>
-
-      {!isCurrentDayLocked && (
-        <View style={styles.exerciseHint}>
-          <Text style={styles.exerciseHintText}>
-            Tap + to add 1 set · Long press for multiple
-          </Text>
-        </View>
-      )}
     </View>
   );
 }, exerciseCardPropsAreEqual);

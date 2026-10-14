@@ -25,6 +25,7 @@ import type { ThemeColors } from "@shared/context/ThemeContext";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import ModalSheet from "@shared/components/ModalSheet";
 import { useAlert } from "@shared/components/CustomAlert";
+import { showToast } from "@shared/components/toast";
 import { workoutApi } from "@features/workout/services/index";
 import { formatTime } from "@utils/timeEstimation";
 import {
@@ -105,7 +106,7 @@ type NextWorkoutWidgetProps = {
 };
 
 function getDayStatusLabel(locked: boolean, sessionActive: boolean): string {
-  if (locked) return "✓ Locked";
+  if (locked) return "✓ Done";
   return sessionActive ? "In Progress" : "Not Started";
 }
 
@@ -123,29 +124,23 @@ function NextWorkoutWidget({
 }: NextWorkoutWidgetProps): React.JSX.Element {
   if (!selectedSplit || !workoutData) {
     return (
-      <View style={styles.widgetEmpty}>
-        <Text style={styles.widgetLineMuted}>
-          No workout plan yet. Set one up to see today's session here.
-        </Text>
-        <TouchableOpacity
-          style={styles.widgetEmptyButton}
-          accessibilityRole='button'
-          accessibilityLabel='Set up a workout plan'
-          onPress={onCreatePlan}
-        >
-          <Text style={styles.widgetEmptyButtonText}>Set Up a Plan →</Text>
-        </TouchableOpacity>
-      </View>
+      <SetUpPlanPrompt
+        message="No workout plan yet. Set one up to see today's session here."
+        onCreatePlan={onCreatePlan}
+        styles={styles}
+      />
     );
   }
 
   const dayTitle = getDayTitle(workoutData, currentDay);
   const locked = isDayLocked(currentDay);
+  const sessionActive = hasActiveSession();
+  let goLabel = "Start Workout";
+  if (locked) goLabel = "View Workout";
+  else if (sessionActive) goLabel = "Resume Workout";
 
   return (
-    <View
-      style={[styles.currentDayCard, locked && styles.currentDayCardLocked]}
-    >
+    <View>
       <View style={styles.currentDayHeader}>
         <Text style={styles.currentDayText} numberOfLines={1}>
           {dayTitle ? `Day ${displayDay} - ${dayTitle}` : `Day ${displayDay}`}
@@ -154,7 +149,7 @@ function NextWorkoutWidget({
           <Text
             style={locked ? styles.lockedBadgeText : styles.completeBadgeText}
           >
-            {getDayStatusLabel(locked, hasActiveSession())}
+            {getDayStatusLabel(locked, sessionActive)}
           </Text>
         </View>
       </View>
@@ -171,22 +166,15 @@ function NextWorkoutWidget({
         <TouchableOpacity
           style={styles.goToWorkoutButton}
           accessibilityRole='button'
-          accessibilityLabel={locked ? "View workout" : "Start workout"}
+          accessibilityLabel={goLabel}
           onPress={onGoToWorkout}
         >
-          <Text
-            style={[
-              styles.goToWorkoutButtonText,
-              locked && styles.goToWorkoutButtonTextLocked,
-            ]}
-          >
-            {locked ? "View Workout 👁️" : "Start Workout →"}
-          </Text>
+          <Text style={styles.goToWorkoutButtonText}>{`${goLabel} →`}</Text>
         </TouchableOpacity>
       </View>
       {locked && (
         <Text style={styles.lockedHintText}>
-          💡 This day is view-only. Select another day to continue training.
+          You finished this day. Pick another to keep training.
         </Text>
       )}
     </View>
@@ -195,31 +183,81 @@ function NextWorkoutWidget({
 
 type WeeklyProgressWidgetProps = {
   readonly selectedSplit: string | null;
-  readonly days: readonly WorkoutDay[];
+  readonly days: readonly { day: WorkoutDay; displayNumber: number }[];
   readonly currentDay: number;
   readonly isDayLocked: (day: number) => boolean;
+  readonly onCreatePlan: () => void;
   readonly colors: ThemeColors;
   readonly styles: ReturnType<typeof makeStyles>;
 };
+
+function SetUpPlanPrompt({
+  message,
+  onCreatePlan,
+  styles,
+}: {
+  readonly message: string;
+  readonly onCreatePlan: () => void;
+  readonly styles: ReturnType<typeof makeStyles>;
+}): React.JSX.Element {
+  return (
+    <View style={styles.widgetEmpty}>
+      <Text style={styles.widgetLineMuted}>{message}</Text>
+      <TouchableOpacity
+        style={styles.widgetEmptyButton}
+        accessibilityRole='button'
+        accessibilityLabel='Set up a workout plan'
+        onPress={onCreatePlan}
+      >
+        <Text style={styles.widgetEmptyButtonText}>Set Up a Plan →</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function HistoryLoadFailed({
+  onRetry,
+  styles,
+}: {
+  readonly onRetry: () => void;
+  readonly styles: ReturnType<typeof makeStyles>;
+}): React.JSX.Element {
+  return (
+    <View style={styles.widgetEmpty}>
+      <Text style={styles.widgetLineMuted}>Couldn't load your history.</Text>
+      <TouchableOpacity
+        style={styles.widgetRetryButton}
+        accessibilityRole='button'
+        accessibilityLabel='Retry loading workout history'
+        onPress={onRetry}
+      >
+        <Text style={styles.widgetRetryButtonText}>Retry</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 function WeeklyProgressWidget({
   selectedSplit,
   days,
   currentDay,
   isDayLocked,
+  onCreatePlan,
   colors,
   styles,
 }: WeeklyProgressWidgetProps): React.JSX.Element {
   if (!selectedSplit || days.length === 0) {
     return (
-      <Text style={styles.widgetLineMuted}>
-        Start a program to see this week's progress here.
-      </Text>
+      <SetUpPlanPrompt
+        message="Set up a plan to see this week's progress here."
+        onCreatePlan={onCreatePlan}
+        styles={styles}
+      />
     );
   }
 
   const total = days.length;
-  const lockedCount = days.filter((d) => isDayLocked(d.dayNumber)).length;
+  const lockedCount = days.filter(({ day }) => isDayLocked(day.dayNumber)).length;
   const percent = total > 0 ? Math.round((lockedCount / total) * 100) : 0;
 
   return (
@@ -250,9 +288,10 @@ function WeeklyProgressWidget({
         style={styles.weeklyProgressDots}
         importantForAccessibility='no-hide-descendants'
       >
-        {days.map((day) => (
+        {days.map(({ day, displayNumber }) => (
           <WeeklyProgressDot
             key={day.dayNumber}
+            label={displayNumber}
             done={isDayLocked(day.dayNumber)}
             isToday={day.dayNumber === currentDay}
             styles={styles}
@@ -264,10 +303,12 @@ function WeeklyProgressWidget({
 }
 
 function WeeklyProgressDot({
+  label,
   done,
   isToday,
   styles,
 }: {
+  readonly label: number;
   readonly done: boolean;
   readonly isToday: boolean;
   readonly styles: ReturnType<typeof makeStyles>;
@@ -280,13 +321,26 @@ function WeeklyProgressDot({
         isToday && !done && styles.weeklyProgressDotToday,
       ]}
     >
-      {done && <Text style={styles.weeklyProgressDotCheck}>✓</Text>}
+      {done ? (
+        <Text style={styles.weeklyProgressDotCheck}>✓</Text>
+      ) : (
+        <Text
+          style={[
+            styles.weeklyProgressDotNumber,
+            isToday && styles.weeklyProgressDotNumberToday,
+          ]}
+        >
+          {label}
+        </Text>
+      )}
     </View>
   );
 }
 
 type WorkoutStreakWidgetProps = {
   readonly loadingHistory: boolean;
+  readonly loadFailed: boolean;
+  readonly onRetry: () => void;
   readonly weeklyStreak: { count: number; currentWeekLogged: boolean };
   readonly historyBounded: boolean;
   readonly colors: ThemeColors;
@@ -304,6 +358,8 @@ function getStreakSubtitle(weeklyStreak: {
 
 function WorkoutStreakWidget({
   loadingHistory,
+  loadFailed,
+  onRetry,
   weeklyStreak,
   historyBounded,
   colors,
@@ -312,16 +368,22 @@ function WorkoutStreakWidget({
   if (loadingHistory) {
     return (
       <View style={styles.streakLoading}>
-        <ActivityIndicator color={colors.accent} />
+        <ActivityIndicator
+          color={colors.accent}
+          accessibilityLabel='Loading workout history'
+        />
       </View>
     );
   }
+  if (loadFailed) return <HistoryLoadFailed onRetry={onRetry} styles={styles} />;
 
   return (
-    <View style={styles.streakWrap} accessible>
-      <Text style={styles.streakEmoji}>
-        {weeklyStreak.count > 0 ? "🔥" : "🕯️"}
-      </Text>
+    <View
+      style={styles.streakWrap}
+      accessible
+      accessibilityLabel={`${weeklyStreak.count}${historyBounded ? " or more" : ""} week streak. ${getStreakSubtitle(weeklyStreak)}`}
+    >
+      {weeklyStreak.count > 0 && <Text style={styles.streakEmoji}>🔥</Text>}
       <Text style={styles.streakNumber}>
         {weeklyStreak.count}
         {historyBounded ? "+" : ""}
@@ -334,6 +396,8 @@ function WorkoutStreakWidget({
 
 type WorkoutCalendarWidgetProps = {
   readonly loadingHistory: boolean;
+  readonly loadFailed: boolean;
+  readonly onRetry: () => void;
   readonly colors: ThemeColors;
   readonly hasSessionOnDate: (date: Date) => boolean;
   readonly onDatePress: (date: Date) => void;
@@ -342,6 +406,8 @@ type WorkoutCalendarWidgetProps = {
 
 function WorkoutCalendarWidget({
   loadingHistory,
+  loadFailed,
+  onRetry,
   colors,
   hasSessionOnDate,
   onDatePress,
@@ -350,10 +416,14 @@ function WorkoutCalendarWidget({
   if (loadingHistory) {
     return (
       <View style={styles.calendarLoading}>
-        <ActivityIndicator color={colors.accent} />
+        <ActivityIndicator
+          color={colors.accent}
+          accessibilityLabel='Loading workout history'
+        />
       </View>
     );
   }
+  if (loadFailed) return <HistoryLoadFailed onRetry={onRetry} styles={styles} />;
 
   return (
     <UniversalCalendar
@@ -460,15 +530,17 @@ export default function HomeScreen(): React.JSX.Element {
         const lines: string[] = [];
         if (nowOnServer.length) {
           lines.push(
-            `${describeLocalOnlyFeatures(nowOnServer)} ${nowOnServer.length > 1 ? "are" : "is"} saved to your server again. Entries logged on this phone in the meantime aren't shown, but they're still on this phone.`,
+            `${describeLocalOnlyFeatures(nowOnServer)} ${nowOnServer.length > 1 ? "are" : "is"} saved to your server again. Entries from the meantime stay on this phone.`,
           );
         }
         if (nowLocal.length) {
           lines.push(
-            `Your server no longer stores ${describeLocalOnlyFeatures(nowLocal)}. New entries stay on this phone, and the ones on the server aren't shown until it stores them again.`,
+            `${describeLocalOnlyFeatures(nowLocal)} now ${nowLocal.length > 1 ? "stay" : "stays"} on this phone. Older entries on your server are hidden for now.`,
           );
         }
-        alert("Server storage changed", lines.join("\n\n"), [{ text: "OK" }]);
+        alert("Where your data is saved changed", lines.join("\n\n"), [
+          { text: "OK" },
+        ]);
         if (nowOnServer.length) recheckConsent();
       }),
     [alert, recheckConsent],
@@ -497,6 +569,7 @@ export default function HomeScreen(): React.JSX.Element {
     removeWidget,
     cycleWidgetSize,
     reorderWidgets,
+    resetToDefaults,
   } = useWidgets<HomeWidgetType>(userId ?? null, {
     registry: HOME_WIDGET_REGISTRY,
     defaults: DEFAULT_HOME_WIDGETS,
@@ -533,9 +606,32 @@ export default function HomeScreen(): React.JSX.Element {
     }, [widgets]),
   );
 
-  const widgetBoard = useWidgetBoard(addWidget, {
+  const scrollRef = useRef<ScrollView>(null);
+  // A widget added at the end of the board is otherwise below the fold, and
+  // DOMS follow-up is hidden until one is due, so the add looked like a no-op.
+  const [justAdded, setJustAdded] = useState<HomeWidgetType | null>(null);
+  useFocusEffect(useCallback(() => () => setJustAdded(null), []));
+  const addAndReveal = useCallback(
+    async (type: HomeWidgetType) => {
+      const result = await addWidget(type);
+      if (result.success) {
+        setJustAdded(type);
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
+      }
+      return result;
+    },
+    [addWidget],
+  );
+
+  const widgetBoard = useWidgetBoard(addAndReveal, {
     onError: (message) => alert("Can't Add Widget", message, [{ text: "OK" }]),
   });
+
+  const { closeGallery } = widgetBoard;
+  const restoreDefaults = useCallback(() => {
+    closeGallery();
+    void resetToDefaults();
+  }, [closeGallery, resetToDefaults]);
 
   const visibleDays = useMemo(
     () => visibleDaysForSplit(workoutData?.days ?? [], selectedSplit),
@@ -572,9 +668,10 @@ export default function HomeScreen(): React.JSX.Element {
         return (
           <WeeklyProgressWidget
             selectedSplit={selectedSplit}
-            days={visibleDays.map(({ day }) => day)}
+            days={visibleDays}
             currentDay={currentDay}
             isDayLocked={isDayLocked}
+            onCreatePlan={() => navigation.navigate("Plan")}
             colors={colors}
             styles={styles}
           />
@@ -583,6 +680,8 @@ export default function HomeScreen(): React.JSX.Element {
         return (
           <WorkoutStreakWidget
             loadingHistory={firstHistoryLoad}
+            loadFailed={historyLoadFailed}
+            onRetry={retryHistory}
             weeklyStreak={weeklyStreak}
             historyBounded={sessionHistory.length >= SESSION_HISTORY_LIMIT}
             colors={colors}
@@ -593,9 +692,13 @@ export default function HomeScreen(): React.JSX.Element {
         return (
           <WorkoutCalendarWidget
             loadingHistory={firstHistoryLoad}
+            loadFailed={historyLoadFailed}
+            onRetry={retryHistory}
             colors={colors}
             hasSessionOnDate={hasSessionOnDate}
-            onDatePress={setSelectedDate}
+            onDatePress={(date) => {
+              if (hasSessionOnDate(date)) setSelectedDate(date);
+            }}
             styles={styles}
           />
         );
@@ -680,7 +783,13 @@ export default function HomeScreen(): React.JSX.Element {
   async function onRefresh(): Promise<void> {
     setRefreshing(true);
     try {
-      await Promise.all([loadSessionHistory(), syncFromServer()]);
+      const [, synced] = await Promise.all([
+        loadSessionHistory(),
+        syncFromServer(),
+      ]);
+      if (!synced) {
+        showToast("Couldn't sync with the server. Showing what's on this device.");
+      }
     } catch (error) {
       handleHistoryError(error);
     } finally {
@@ -704,7 +813,7 @@ export default function HomeScreen(): React.JSX.Element {
       if (isDayLocked(day)) {
         alert(
           "Day Already Completed",
-          `Day ${shownNumber} is locked this week, so your workout in progress can't move there. Pick another day or end the workout first.`,
+          `You already finished Day ${shownNumber} this week, so your workout in progress can't move there. Pick another day or end the workout first.`,
           [{ text: "OK" }],
           "warning",
         );
@@ -712,7 +821,7 @@ export default function HomeScreen(): React.JSX.Element {
       }
       alert(
         "Move Workout",
-        `Continue your workout on Day ${shownNumber}? Exercises you've logged sets for come with you, and ones you haven't started are left behind. Where both days have the same exercise, Day ${shownNumber}'s sets and reps are used.`,
+        `Logged exercises move to Day ${shownNumber}. Ones you haven't started stay behind.\n\nShared exercises use Day ${shownNumber}'s sets and reps.`,
         [
           { text: "Cancel", style: "cancel" },
           {
@@ -724,25 +833,6 @@ export default function HomeScreen(): React.JSX.Element {
           },
         ],
         "warning",
-      );
-      return;
-    }
-
-    if (isDayLocked(day)) {
-      alert(
-        "View Locked Day",
-        `Day ${shownNumber} has been completed and locked this week. You can view the workout details but cannot make changes.\n\nSelect this day to view it in read-only mode.`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "View Day",
-            onPress: () => {
-              saveCurrentDay(day);
-              setShowDayPicker(false);
-            },
-          },
-        ],
-        "lock",
       );
       return;
     }
@@ -761,7 +851,6 @@ export default function HomeScreen(): React.JSX.Element {
 
       setSelectedSession(details);
       setShowSessionDetails(true);
-      setSelectedDate(null);
     } catch (error) {
       console.error("Failed to load session details:", error);
       metric.count("home.session_details_load_failed");
@@ -814,6 +903,22 @@ export default function HomeScreen(): React.JSX.Element {
   );
 
   const firstHistoryLoad = loadingHistory && sessionHistory.length === 0;
+  const historyLoadFailed =
+    historyError && !loadingHistory && sessionHistory.length === 0;
+  const retryHistory = () => {
+    loadSessionHistory().catch(handleHistoryError);
+  };
+  const [serverNoticeOpen, setServerNoticeOpen] = useState(false);
+  const [serverNoticeDismissed, setServerNoticeDismissed] = useState(false);
+
+  const visibleWidgets =
+    sorenessDue || widgetBoard.editMode || justAdded === "doms_followup"
+      ? widgets
+      : widgets.filter((w) => w.type !== "doms_followup");
+  const nextWorkoutTint =
+    selectedSplit && workoutData
+      ? getDayOverviewTint(colors, isDayLocked(currentDay), false)
+      : undefined;
 
   const sessionsForSelectedDate = selectedDate
     ? getSessionsForDate(selectedDate)
@@ -829,6 +934,7 @@ export default function HomeScreen(): React.JSX.Element {
         <WidgetPullHint armed={widgetBoard.pullArmed} />
       )}
       <ScrollView
+        ref={scrollRef}
         style={styles.container}
         scrollEnabled={!widgetBoard.isPulling}
         refreshControl={
@@ -846,17 +952,43 @@ export default function HomeScreen(): React.JSX.Element {
           <ScreenTitle
             title='Home'
             subtitle={
-              selectedSplit ? null : "Upload your workout plan and get started"
+              selectedSplit ? null : "Set up a workout plan to get started"
             }
           />
 
-          {outdatedServer && (
-            <View style={styles.errorBanner} accessibilityLiveRegion='polite'>
-              <Text style={styles.errorBannerText}>
-                This server runs version {outdatedServer.version}. Version{" "}
-                {MIN_SERVER_VERSION} or newer is needed for blocking, reporting,
-                data export and changing day mid-workout. Ask its operator to update.
-              </Text>
+          {outdatedServer && !serverNoticeDismissed && (
+            <View style={styles.noticeBanner} accessibilityLiveRegion='polite'>
+              <View style={styles.noticeBannerRow}>
+                <Text style={styles.noticeBannerText}>
+                  Your server is out of date. Some features are off.
+                </Text>
+                <TouchableOpacity
+                  accessibilityRole='button'
+                  accessibilityState={{ expanded: serverNoticeOpen }}
+                  onPress={() => setServerNoticeOpen((open) => !open)}
+                  style={styles.noticeBannerAction}
+                >
+                  <Text style={styles.noticeBannerLink}>
+                    {serverNoticeOpen ? "Less" : "Details"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  accessibilityRole='button'
+                  accessibilityLabel='Dismiss server notice'
+                  onPress={() => setServerNoticeDismissed(true)}
+                  style={styles.noticeBannerAction}
+                >
+                  <Text style={styles.noticeBannerLink}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              {serverNoticeOpen && (
+                <Text style={styles.noticeBannerDetail}>
+                  It runs version {outdatedServer.version}. Blocking, reporting,
+                  data export and changing day mid-workout need version{" "}
+                  {MIN_SERVER_VERSION} or newer. Ask the person who runs it to
+                  update.
+                </Text>
+              )}
             </View>
           )}
 
@@ -866,16 +998,24 @@ export default function HomeScreen(): React.JSX.Element {
                 Couldn't load your workout history. Check your connection and
                 try again.
               </Text>
-              <TouchableOpacity
-                accessibilityRole='button'
-                accessibilityLabel='Retry loading workout history'
-                onPress={() => {
-                  loadSessionHistory().catch(handleHistoryError);
-                }}
-                hitSlop={8}
-              >
-                <Text style={styles.errorBannerRetry}>Retry</Text>
-              </TouchableOpacity>
+              {loadingHistory ? (
+                <ActivityIndicator
+                  size='small'
+                  color={colors.error}
+                  accessibilityLabel='Retrying'
+                />
+              ) : (
+                <TouchableOpacity
+                  accessibilityRole='button'
+                  accessibilityLabel='Retry loading workout history'
+                  onPress={() => {
+                    loadSessionHistory().catch(handleHistoryError);
+                  }}
+                  hitSlop={8}
+                >
+                  <Text style={styles.errorBannerRetry}>Retry</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
@@ -884,6 +1024,18 @@ export default function HomeScreen(): React.JSX.Element {
               editMode={widgetBoard.editMode}
               onDone={() => widgetBoard.setEditMode(false)}
             />
+          )}
+
+          {!widgetsLoaded && (
+            <View
+              accessible
+              accessibilityLabel='Loading widgets'
+              style={styles.skeletonWrap}
+            >
+              <View style={[styles.skeletonCard, styles.skeletonCardTall]} />
+              <View style={styles.skeletonCard} />
+              <View style={styles.skeletonCard} />
+            </View>
           )}
 
           {widgetsLoaded && widgets.length === 0 && (
@@ -898,25 +1050,47 @@ export default function HomeScreen(): React.JSX.Element {
               >
                 <Text style={styles.emptyButtonText}>+ Add a Widget</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.emptySecondaryButton}
+                accessibilityRole='button'
+                onPress={() => void resetToDefaults()}
+              >
+                <Text style={styles.emptySecondaryButtonText}>
+                  Restore default widgets
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
 
           <WidgetsPanel
-            widgets={
-              sorenessDue || widgetBoard.editMode
-                ? widgets
-                : widgets.filter((w) => w.type !== "doms_followup")
-            }
+            widgets={visibleWidgets}
             editMode={widgetBoard.editMode}
             onCycleSize={cycleWidgetSize}
             onRemove={removeWidget}
             onReorder={reorderWidgets}
             renderContent={renderWidgetContent}
             registry={HOME_WIDGET_REGISTRY}
+            getCardBackgroundColor={(w) =>
+              w.type === "next_workout" ? nextWorkoutTint : undefined
+            }
+            getHeaderTextColor={(w) =>
+              w.type === "next_workout" && nextWorkoutTint
+                ? getDayOverviewTextColor(colors)
+                : undefined
+            }
+            getCardStyleOverride={(w) =>
+              w.type === "next_workout" && nextWorkoutTint && !widgetBoard.editMode
+                ? { borderColor: nextWorkoutTint }
+                : undefined
+            }
           />
 
           {widgetsLoaded && widgets.length > 0 && (
-            <WidgetEditButton onPress={widgetBoard.openGallery} />
+            <WidgetEditButton
+              onPress={widgetBoard.openGallery}
+              editMode={widgetBoard.editMode}
+              onDone={() => widgetBoard.setEditMode(false)}
+            />
           )}
         </View>
 
@@ -941,14 +1115,14 @@ export default function HomeScreen(): React.JSX.Element {
           ))}
           <View style={styles.modalFooter}>
             <Text style={styles.modalFooterText}>
-              🔒 Locked days can be viewed in read-only mode • Resets every
-              Monday
+              Days you finished can be viewed but not changed. They reset every
+              Monday.
             </Text>
           </View>
         </ModalSheet>
 
         <ModalSheet
-          visible={selectedDate !== null}
+          visible={selectedDate !== null && !showSessionDetails}
           onClose={() => setSelectedDate(null)}
           title={
             selectedDate
@@ -1007,6 +1181,7 @@ export default function HomeScreen(): React.JSX.Element {
         onEditWidgets={widgetBoard.editWidgets}
         sources={HOME_WIDGET_SOURCE}
         subSources={HOME_WIDGET_SUBSOURCE}
+        onRestoreDefaults={restoreDefaults}
       />
 
       {AlertComponent}
@@ -1033,14 +1208,14 @@ function DayOptionRow({
     <TouchableOpacity
       style={[
         styles.dayOption,
-        isCurrent && styles.dayOptionCurrent,
         isLocked && styles.dayOptionComplete,
+        isCurrent && styles.dayOptionCurrent,
       ]}
       accessibilityRole='button'
       accessibilityLabel={[
         `Day ${displayNumber}`,
         (day.primaryMuscles ?? []).join(", "),
-        isLocked ? "locked, opens in view-only mode" : "",
+        isLocked ? "done this week, opens in view-only mode" : "",
         isCurrent ? "current day" : "",
       ]
         .filter(Boolean)
@@ -1052,28 +1227,28 @@ function DayOptionRow({
         <Text
           style={[
             styles.dayOptionNumber,
-            isCurrent && styles.dayOptionTextCurrent,
             isLocked && styles.dayOptionTextComplete,
+            isCurrent && styles.dayOptionTextCurrent,
           ]}
         >
-          {`Day ${displayNumber}${isLocked ? " 🔒" : ""}`}
+          {`Day ${displayNumber}`}
         </Text>
         <Text style={styles.dayOptionMuscles}>
           {(day.primaryMuscles ?? []).join(", ")}
         </Text>
         {isLocked && (
-          <Text style={styles.lockedText}>Locked - Tap to View</Text>
+          <Text style={styles.lockedText}>Done · tap to view</Text>
         )}
       </View>
       <View style={styles.dayOptionRight}>
+        {isCurrent && (
+          <View style={styles.currentBadge}>
+            <Text style={styles.currentBadgeText}>Current</Text>
+          </View>
+        )}
         {isLocked && (
           <View style={styles.completeIcon}>
             <Text style={styles.completeIconText}>✓</Text>
-          </View>
-        )}
-        {isCurrent && !isLocked && (
-          <View style={styles.currentBadge}>
-            <Text style={styles.currentBadgeText}>Current</Text>
           </View>
         )}
       </View>
@@ -1119,7 +1294,7 @@ function SessionListItem({
         </Text>
         <View style={styles.sessionListMeta}>
           <Text style={styles.sessionListTime}>
-            {`⏱️ ${formatSessionTime(session.startTime)}`}
+            {formatSessionTime(session.startTime)}
           </Text>
           {!!session.totalDuration && (
             <Text style={styles.sessionListDuration}>
@@ -1152,8 +1327,12 @@ function SessionDetails({
   return (
     <>
       <View style={styles.detailSection}>
-        <Text style={styles.detailTitle}>{`Day ${session.dayNumber}`}</Text>
-        <Text style={styles.detailSubtitle}>{session.dayTitle ?? ""}</Text>
+        <Text style={styles.detailTitle} accessibilityRole='header'>
+          {`Day ${session.dayNumber}`}
+        </Text>
+        {!!getSessionTitle(session) && (
+          <Text style={styles.detailSubtitle}>{getSessionTitle(session)}</Text>
+        )}
         {Array.isArray(session.primaryMuscles) &&
           session.primaryMuscles.length > 0 && (
             <View style={styles.muscleGroupsRow}>
@@ -1211,7 +1390,9 @@ function SessionDetails({
       {Array.isArray(session.groupedExercises) &&
         session.groupedExercises.length > 0 && (
           <View style={styles.detailSection}>
-            <Text style={styles.detailSectionTitle}>Exercises</Text>
+            <Text style={styles.detailSectionTitle} accessibilityRole='header'>
+              Exercises
+            </Text>
             {session.groupedExercises.map((exercise: GroupedExercise) => (
               <ExerciseCard
                 key={exercise.exerciseName}
@@ -1244,10 +1425,11 @@ function ExerciseCard({
         >{`${exercise.sets.length} sets`}</Text>
       </View>
 
-      {exercise.sets.map((set: SetTiming) => (
+      {exercise.sets.map((set: SetTiming, index: number) => (
         <SetTimingCard
           key={set.id ?? `${set.setIndex}-${set.endTime}`}
           set={set}
+          isFirst={index === 0}
           weightUnit={weightUnit}
           styles={styles}
         />
@@ -1258,28 +1440,34 @@ function ExerciseCard({
 
 function SetTimingCard({
   set,
+  isFirst,
   weightUnit,
   styles,
 }: {
   readonly set: SetTiming;
+  readonly isFirst: boolean;
   readonly weightUnit: "kg" | "lbs";
   readonly styles: ReturnType<typeof makeStyles>;
 }): React.JSX.Element {
   return (
-    <View style={styles.setTimingCard}>
-      <View style={styles.setTimingHeader}>
-        <Text style={styles.setTimingTitle}>{`Set ${set.setIndex + 1}`}</Text>
-      </View>
-      <View style={styles.setTimingDetails}>
-        <Text style={styles.setTimingDetail}>
-          {formatSetLine(set.weight, set.reps, weightUnit)}
-        </Text>
-        {!!set.setDuration && (
-          <Text style={styles.setTimingDetail}>
-            {`Duration: ${formatTime(set.setDuration)}`}
-          </Text>
-        )}
-      </View>
+    <View
+      style={[styles.setRow, isFirst && styles.setRowFirst]}
+      accessible
+      accessibilityLabel={[
+        `Set ${set.setIndex + 1}`,
+        formatSetLine(set.weight, set.reps, weightUnit),
+        set.setDuration ? formatTime(set.setDuration) : "",
+      ]
+        .filter(Boolean)
+        .join(", ")}
+    >
+      <Text style={styles.setRowIndex}>{set.setIndex + 1}</Text>
+      <Text style={styles.setRowMain}>
+        {formatSetLine(set.weight, set.reps, weightUnit)}
+      </Text>
+      <Text style={styles.setRowDuration}>
+        {set.setDuration ? formatTime(set.setDuration) : ""}
+      </Text>
     </View>
   );
 }
@@ -1312,6 +1500,56 @@ const makeStyles = (colors: ThemeColors) => {
       fontWeight: "700",
       color: colors.error,
     },
+    noticeBanner: {
+      paddingLeft: 12,
+      paddingVertical: 2,
+      marginBottom: 16,
+      borderRadius: 12,
+      backgroundColor: colors.inputBackground,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+    },
+    noticeBannerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    noticeBannerText: {
+      flex: 1,
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    noticeBannerAction: {
+      minWidth: 44,
+      minHeight: 44,
+      paddingHorizontal: 8,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    noticeBannerLink: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.accent,
+    },
+    noticeBannerDetail: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      paddingRight: 12,
+      paddingBottom: 10,
+    },
+    skeletonWrap: {
+      marginBottom: 20,
+    },
+    skeletonCard: {
+      height: 70,
+      borderRadius: 14,
+      marginBottom: 12,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    skeletonCardTall: {
+      height: 120,
+    },
     widgetLineMuted: {
       fontSize: 12,
       color: colors.textSecondary,
@@ -1329,9 +1567,20 @@ const makeStyles = (colors: ThemeColors) => {
       marginTop: 16,
     },
     widgetEmptyButtonText: {
-      color: colors.surface,
+      color: colors.textOnAccent,
       fontWeight: "600",
       fontSize: 15,
+    },
+    widgetRetryButton: {
+      minHeight: 44,
+      paddingHorizontal: 20,
+      justifyContent: "center",
+      marginTop: 8,
+    },
+    widgetRetryButtonText: {
+      color: colors.accent,
+      fontWeight: "700",
+      fontSize: 14,
     },
     emptyState: {
       alignItems: "center",
@@ -1352,23 +1601,26 @@ const makeStyles = (colors: ThemeColors) => {
       borderRadius: 12,
     },
     emptyButtonText: {
-      color: colors.surface,
+      color: colors.textOnAccent,
       fontWeight: "600",
       fontSize: 15,
+    },
+    emptySecondaryButton: {
+      minHeight: 44,
+      paddingHorizontal: 16,
+      justifyContent: "center",
+      marginTop: 8,
+    },
+    emptySecondaryButtonText: {
+      color: colors.accent,
+      fontWeight: "600",
+      fontSize: 14,
     },
     modalEmptyText: {
       fontSize: 15,
       color: colors.textMuted,
       textAlign: "center",
       paddingVertical: 24,
-    },
-    currentDayCard: {
-      backgroundColor: getDayOverviewTint(colors, false, false),
-      borderRadius: 12,
-      padding: 12,
-    },
-    currentDayCardLocked: {
-      backgroundColor: getDayOverviewTint(colors, true, false),
     },
     currentDayHeader: {
       flexDirection: "row",
@@ -1383,7 +1635,7 @@ const makeStyles = (colors: ThemeColors) => {
       color: onTint,
     },
     completeBadge: {
-      backgroundColor: "rgba(255, 255, 255, 0.2)",
+      backgroundColor: `${onTint}33`,
       paddingHorizontal: 10,
       paddingVertical: 4,
       borderRadius: 16,
@@ -1394,7 +1646,7 @@ const makeStyles = (colors: ThemeColors) => {
       fontWeight: "600",
     },
     lockedBadge: {
-      backgroundColor: "rgba(255, 255, 255, 0.3)",
+      backgroundColor: `${onTint}4D`,
       paddingHorizontal: 10,
       paddingVertical: 4,
       borderRadius: 16,
@@ -1411,7 +1663,9 @@ const makeStyles = (colors: ThemeColors) => {
     },
     changeDayButton: {
       flex: 1,
-      backgroundColor: "rgba(255, 255, 255, 0.2)",
+      minHeight: 44,
+      justifyContent: "center",
+      backgroundColor: `${onTint}33`,
       paddingHorizontal: 12,
       paddingVertical: 9,
       borderRadius: 8,
@@ -1426,6 +1680,8 @@ const makeStyles = (colors: ThemeColors) => {
     },
     goToWorkoutButton: {
       flex: 1,
+      minHeight: 44,
+      justifyContent: "center",
       backgroundColor: colors.surface,
       paddingVertical: 9,
       borderRadius: 8,
@@ -1435,9 +1691,6 @@ const makeStyles = (colors: ThemeColors) => {
       fontSize: 14,
       fontWeight: "600",
       textAlign: "center",
-    },
-    goToWorkoutButtonTextLocked: {
-      color: colors.textSecondary,
     },
     lockedHintText: {
       marginTop: 8,
@@ -1504,9 +1757,17 @@ const makeStyles = (colors: ThemeColors) => {
       borderColor: colors.success,
     },
     weeklyProgressDotCheck: {
-      color: colors.surface,
+      color: colors.textOnAccent,
       fontSize: 12,
       fontWeight: "bold",
+    },
+    weeklyProgressDotNumber: {
+      color: colors.textSecondary,
+      fontSize: 11,
+      fontWeight: "700",
+    },
+    weeklyProgressDotNumberToday: {
+      color: colors.accent,
     },
     streakWrap: {
       alignItems: "center",
@@ -1586,6 +1847,9 @@ const makeStyles = (colors: ThemeColors) => {
     },
     dayOptionRight: {
       marginLeft: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
     },
     completeIcon: {
       width: 32,
@@ -1596,7 +1860,7 @@ const makeStyles = (colors: ThemeColors) => {
       justifyContent: "center",
     },
     completeIconText: {
-      color: colors.surface,
+      color: colors.textOnAccent,
       fontSize: 18,
       fontWeight: "bold",
     },
@@ -1607,7 +1871,7 @@ const makeStyles = (colors: ThemeColors) => {
       borderRadius: 12,
     },
     currentBadgeText: {
-      color: colors.surface,
+      color: colors.textOnAccent,
       fontSize: 12,
       fontWeight: "600",
     },
@@ -1630,9 +1894,7 @@ const makeStyles = (colors: ThemeColors) => {
       alignItems: "center",
       paddingVertical: 16,
       paddingHorizontal: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.separator,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.inputBackground,
       borderRadius: 8,
       marginBottom: 8,
     },
@@ -1664,7 +1926,7 @@ const makeStyles = (colors: ThemeColors) => {
     },
     sessionListArrow: {
       fontSize: 24,
-      color: colors.surfaceBorder,
+      color: colors.textMuted,
       marginLeft: 10,
     },
     detailSection: {
@@ -1726,7 +1988,8 @@ const makeStyles = (colors: ThemeColors) => {
       backgroundColor: colors.inputBackground,
       borderRadius: 12,
       padding: 16,
-      marginBottom: 16,
+      paddingBottom: 8,
+      marginBottom: 12,
       borderWidth: 1,
       borderColor: colors.inputBorder,
     },
@@ -1734,10 +1997,7 @@ const makeStyles = (colors: ThemeColors) => {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: 12,
-      paddingBottom: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.inputBorder,
+      paddingBottom: 8,
     },
     exerciseName: {
       fontSize: 16,
@@ -1750,28 +2010,29 @@ const makeStyles = (colors: ThemeColors) => {
       color: colors.accent,
       fontWeight: "600",
     },
-    setTimingCard: {
-      backgroundColor: colors.surface,
-      borderRadius: 8,
-      padding: 12,
-      marginBottom: 8,
-    },
-    setTimingHeader: {
+    setRow: {
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: 6,
+      paddingVertical: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.inputBorder,
     },
-    setTimingTitle: {
+    setRowFirst: {
+      borderTopWidth: 0,
+    },
+    setRowIndex: {
+      width: 28,
+      fontSize: 14,
+      fontWeight: "700",
+      color: colors.textMuted,
+    },
+    setRowMain: {
+      flex: 1,
       fontSize: 15,
       fontWeight: "600",
       color: colors.textPrimary,
     },
-    setTimingDetails: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-    },
-    setTimingDetail: {
+    setRowDuration: {
       fontSize: 14,
       color: colors.textSecondary,
     },

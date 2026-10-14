@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { Text, TextInput, type TextStyle } from "react-native";
 import { useTheme } from "@shared/context/ThemeContext";
 import ModalSheet from "@shared/components/ModalSheet";
-import { PASSWORD_RULE_TEXT } from "@features/auth/utils/passwordPolicy";
+import {
+  PASSWORD_RULE_TEXT,
+  passwordPolicyError,
+} from "@features/auth/utils/passwordPolicy";
 
 // An export file is offline and brute-forceable at the attacker's own pace, so
 // the passphrase is the only thing setting its strength.
@@ -11,6 +14,7 @@ export const MIN_EXPORT_PASSPHRASE = 12;
 interface FormSheetStyles {
   readonly input: TextStyle;
   readonly modalDescription: TextStyle;
+  readonly fieldLabel: TextStyle;
 }
 
 interface SheetProps {
@@ -36,10 +40,58 @@ function useSheetForm<T extends object>(visible: boolean, initial: T) {
   return [form, field] as const;
 }
 
+function LabeledInput({
+  label,
+  hint,
+  styles,
+  ...input
+}: ComponentProps<typeof TextInput> & {
+  readonly label: string;
+  readonly hint?: string | null;
+  readonly styles: FormSheetStyles;
+}) {
+  const { colors } = useTheme();
+  return (
+    <>
+      <Text style={styles.fieldLabel} importantForAccessibility="no">
+        {label}
+      </Text>
+      <TextInput
+        style={styles.input}
+        placeholderTextColor={colors.textMuted}
+        accessibilityLabel={label}
+        accessibilityHint={hint ?? undefined}
+        {...input}
+      />
+      {hint ? (
+        <Text
+          style={{ color: colors.error, fontSize: 13, marginTop: -6, marginBottom: 10 }}
+          accessibilityLiveRegion="polite"
+        >
+          {hint}
+        </Text>
+      ) : null}
+    </>
+  );
+}
+
 export interface PasswordChangeInput {
   current: string;
   next: string;
   confirm: string;
+}
+
+export function passwordChangeHints(form: PasswordChangeInput): {
+  next: string | null;
+  confirm: string | null;
+} {
+  return {
+    next: form.next ? passwordPolicyError(form.next) : null,
+    confirm:
+      form.confirm && form.confirm !== form.next
+        ? "The passwords do not match"
+        : null,
+  };
 }
 
 export function ChangePasswordModal({
@@ -51,17 +103,16 @@ export function ChangePasswordModal({
 }: SheetProps & {
   readonly onSubmit: (input: PasswordChangeInput) => void;
 }) {
-  const { colors } = useTheme();
   const [form, field] = useSheetForm<PasswordChangeInput>(visible, {
     current: "",
     next: "",
     confirm: "",
   });
+  const hints = passwordChangeHints(form);
   const secureProps = {
-    style: styles.input,
+    styles,
     secureTextEntry: true,
     autoCapitalize: "none" as const,
-    placeholderTextColor: colors.textMuted,
   };
   return (
     <ModalSheet
@@ -71,32 +122,31 @@ export function ChangePasswordModal({
       dirty={!!(form.current || form.next || form.confirm)}
       onConfirm={() => onSubmit(form)}
       confirmText={busy ? "Saving..." : "Change Password"}
-      confirmDisabled={busy}
+      confirmDisabled={busy || !!hints.next || !!hints.confirm}
     >
       <Text style={styles.modalDescription}>
         Your new password must have {PASSWORD_RULE_TEXT}. Every other
         signed-in device will be signed out.
       </Text>
-      <TextInput
+      <LabeledInput
         {...secureProps}
+        label="Current password"
         value={form.current}
         onChangeText={field("current")}
-        placeholder="Current password"
-        accessibilityLabel="Current password"
       />
-      <TextInput
+      <LabeledInput
         {...secureProps}
+        label="New password"
+        hint={hints.next}
         value={form.next}
         onChangeText={field("next")}
-        placeholder="New password"
-        accessibilityLabel="New password"
       />
-      <TextInput
+      <LabeledInput
         {...secureProps}
+        label="Confirm new password"
+        hint={hints.confirm}
         value={form.confirm}
         onChangeText={field("confirm")}
-        placeholder="Confirm new password"
-        accessibilityLabel="Confirm new password"
       />
     </ModalSheet>
   );
@@ -124,7 +174,6 @@ export function DeleteAccountModal({
   /** The account has no password, so a fresh Google sign-in confirms instead. */
   readonly googleOnly: boolean;
 }) {
-  const { colors } = useTheme();
   const [form, field] = useSheetForm<DeleteAccountInput>(visible, {
     password: "",
     confirmText: "",
@@ -137,7 +186,10 @@ export function DeleteAccountModal({
       onConfirm={() => onSubmit(form)}
       confirmText={busy ? "Deleting…" : "Delete Forever"}
       confirmDisabled={
-        busy || (isOffline && !isDeleteConfirmed(form.confirmText))
+        busy ||
+        (isOffline
+          ? !isDeleteConfirmed(form.confirmText)
+          : !googleOnly && !form.password)
       }
     >
       <Text style={styles.modalDescription}>
@@ -146,36 +198,31 @@ export function DeleteAccountModal({
           : "This permanently deletes your account on the server along with every workout, photo, reminder, and friend connection. It cannot be undone."}
       </Text>
       {isOffline ? (
-        <>
-          {/* An offline profile has no password, so typing the word is the
-              only deliberate step available for the most destructive action
-              in the app. */}
-          <Text style={styles.modalDescription}>Type DELETE to confirm.</Text>
-          <TextInput
-            style={styles.input}
-            value={form.confirmText}
-            onChangeText={field("confirmText")}
-            autoCapitalize="characters"
-            autoCorrect={false}
-            placeholder="DELETE"
-            placeholderTextColor={colors.textMuted}
-            accessibilityLabel="Type DELETE to confirm account deletion"
-          />
-        </>
+        // An offline profile has no password, so typing the word is the only
+        // deliberate step available for the most destructive action in the app.
+        <LabeledInput
+          styles={styles}
+          label="Type DELETE to confirm"
+          value={form.confirmText}
+          onChangeText={field("confirmText")}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          placeholder="DELETE"
+          accessibilityLabel="Type DELETE to confirm account deletion"
+        />
       ) : googleOnly ? (
         <Text style={styles.modalDescription}>
           You will be asked to sign in with Google to confirm.
         </Text>
       ) : (
-        <TextInput
-          style={styles.input}
+        <LabeledInput
+          styles={styles}
+          label="Current password"
           value={form.password}
           onChangeText={field("password")}
           secureTextEntry
           autoCapitalize="none"
-          placeholder="Current password"
           accessibilityLabel="Current password to confirm account deletion"
-          placeholderTextColor={colors.textMuted}
         />
       )}
     </ModalSheet>
@@ -191,7 +238,6 @@ export function UnlinkGoogleModal({
 }: SheetProps & {
   readonly onSubmit: (password: string) => void;
 }) {
-  const { colors } = useTheme();
   const [form, field] = useSheetForm(visible, { password: "" });
   return (
     <ModalSheet
@@ -205,15 +251,14 @@ export function UnlinkGoogleModal({
       <Text style={styles.modalDescription}>
         You will sign in with your password only. Signing in with Google again later asks for this password to link it back.
       </Text>
-      <TextInput
-        style={styles.input}
+      <LabeledInput
+        styles={styles}
+        label="Current password"
         value={form.password}
         onChangeText={field("password")}
         secureTextEntry
         autoCapitalize="none"
-        placeholder="Current password"
         accessibilityLabel="Current password to confirm unlinking Google"
-        placeholderTextColor={colors.textMuted}
       />
     </ModalSheet>
   );
@@ -228,7 +273,6 @@ export function ClearDataPasswordModal({
 }: SheetProps & {
   readonly onSubmit: (password: string) => void;
 }) {
-  const { colors } = useTheme();
   const [form, field] = useSheetForm(visible, { password: "" });
   return (
     <ModalSheet
@@ -243,18 +287,31 @@ export function ClearDataPasswordModal({
         Enter your password to delete your data on this device and on the
         server. Your account stays.
       </Text>
-      <TextInput
-        style={styles.input}
+      <LabeledInput
+        styles={styles}
+        label="Current password"
         value={form.password}
         onChangeText={field("password")}
         secureTextEntry
         autoCapitalize="none"
-        placeholder="Current password"
         accessibilityLabel="Current password to confirm clearing all data"
-        placeholderTextColor={colors.textMuted}
       />
     </ModalSheet>
   );
+}
+
+export function exportPassphraseHints(
+  passphrase: string,
+  confirm: string,
+): { passphrase: string | null; confirm: string | null } {
+  return {
+    passphrase:
+      passphrase && passphrase.length < MIN_EXPORT_PASSPHRASE
+        ? `Use at least ${MIN_EXPORT_PASSPHRASE} characters`
+        : null,
+    confirm:
+      confirm && confirm !== passphrase ? "The passphrases do not match" : null,
+  };
 }
 
 export function ExportPassphraseModal({
@@ -266,8 +323,8 @@ export function ExportPassphraseModal({
 }: SheetProps & {
   readonly onSubmit: (passphrase: string, confirm: string) => void;
 }) {
-  const { colors } = useTheme();
   const [form, field] = useSheetForm(visible, { passphrase: "", confirm: "" });
+  const hints = exportPassphraseHints(form.passphrase, form.confirm);
   return (
     <ModalSheet
       visible={visible}
@@ -276,32 +333,33 @@ export function ExportPassphraseModal({
       dirty={!!(form.passphrase || form.confirm)}
       onConfirm={() => onSubmit(form.passphrase, form.confirm)}
       confirmText={busy ? "Exporting…" : "Export"}
-      confirmDisabled={busy}
+      confirmDisabled={busy || !!hints.passphrase || !!hints.confirm}
     >
       <Text style={styles.modalDescription}>
         The export holds your email, workout history, measurements and progress
-        photos, so it is encrypted with a passphrase you choose. Use at least{" "}
-        {MIN_EXPORT_PASSPHRASE} characters. A forgotten passphrase cannot be
+        photos. Choose a passphrase of at least {MIN_EXPORT_PASSPHRASE}{" "}
+        characters to encrypt it, or leave both fields empty to export without
+        encryption (not recommended). A forgotten passphrase cannot be
         recovered and the backup would be unreadable.
       </Text>
-      <TextInput
-        style={styles.input}
+      <LabeledInput
+        styles={styles}
+        label="Passphrase"
+        hint={hints.passphrase}
         value={form.passphrase}
         onChangeText={field("passphrase")}
         secureTextEntry
         autoCapitalize="none"
-        placeholder="Passphrase"
-        placeholderTextColor={colors.textMuted}
         accessibilityLabel="Export passphrase"
       />
-      <TextInput
-        style={styles.input}
+      <LabeledInput
+        styles={styles}
+        label="Confirm passphrase"
+        hint={hints.confirm}
         value={form.confirm}
         onChangeText={field("confirm")}
         secureTextEntry
         autoCapitalize="none"
-        placeholder="Confirm passphrase"
-        placeholderTextColor={colors.textMuted}
         accessibilityLabel="Confirm export passphrase"
       />
     </ModalSheet>
@@ -317,7 +375,6 @@ export function RestorePassphraseModal({
 }: SheetProps & {
   readonly onSubmit: (passphrase: string) => void;
 }) {
-  const { colors } = useTheme();
   const [form, field] = useSheetForm(visible, { passphrase: "" });
   return (
     <ModalSheet
@@ -333,14 +390,13 @@ export function RestorePassphraseModal({
         This backup is encrypted. Enter the passphrase you set when you exported
         it.
       </Text>
-      <TextInput
-        style={styles.input}
+      <LabeledInput
+        styles={styles}
+        label="Passphrase"
         value={form.passphrase}
         onChangeText={field("passphrase")}
         secureTextEntry
         autoCapitalize="none"
-        placeholder="Passphrase"
-        placeholderTextColor={colors.textMuted}
         accessibilityLabel="Backup passphrase"
       />
     </ModalSheet>
@@ -362,7 +418,6 @@ export function TimeBetweenSetsModal({
   readonly onSave: (seconds: number) => void;
   readonly current: number;
 }) {
-  const { colors } = useTheme();
   const initial = String(current ?? "");
   const [form, field] = useSheetForm(visible, { seconds: initial });
   const parsed = parseTimeBetweenSets(form.seconds);
@@ -379,19 +434,18 @@ export function TimeBetweenSetsModal({
       confirmDisabled={parsed === null}
     >
       <Text style={styles.modalDescription}>
-        How many seconds does it typically take from finishing one set to
-        finishing the next? (includes rest time + actual exercise time) Anything
-        from 1 to 600 seconds.
+        Seconds from finishing one set to finishing the next, rest included. 1
+        to 600.
       </Text>
-      <TextInput
-        style={styles.input}
+      <LabeledInput
+        styles={styles}
+        label="Seconds between sets"
+        hint={form.seconds && parsed === null ? "Enter 1 to 600 seconds" : null}
         value={form.seconds}
         onChangeText={field("seconds")}
         keyboardType="number-pad"
         maxLength={3}
         placeholder="120"
-        placeholderTextColor={colors.textMuted}
-        accessibilityLabel="Seconds between sets"
       />
     </ModalSheet>
   );

@@ -53,7 +53,7 @@ export const SessionStatsWidget = React.memo(function SessionStatsWidget({
   if (!workoutStartTime || isCurrentDayLocked || tick === 0) {
     return (
       <Text style={styles.widgetLineMuted}>
-        Starts once you begin a session.
+        Starts when you log your first set.
       </Text>
     );
   }
@@ -78,7 +78,7 @@ export const SessionStatsWidget = React.memo(function SessionStatsWidget({
     <View>
       <View style={styles.sessionStatsRow}>
         <View style={styles.sessionStat}>
-          <Text style={styles.sessionStatLabel}>⏱️ Total Time</Text>
+          <Text style={styles.sessionStatLabel}>Total Time</Text>
           <Text style={styles.sessionStatValue}>
             {formatDuration(totalSessionTime)}
           </Text>
@@ -86,8 +86,8 @@ export const SessionStatsWidget = React.memo(function SessionStatsWidget({
         <View style={styles.sessionStat}>
           <Text style={styles.sessionStatLabel} numberOfLines={1}>
             {exerciseRest !== null && lastExercise
-              ? `💤 ${lastExercise.name}`
-              : "💤 Avg Rest/Set"}
+              ? `${lastExercise.name} rest`
+              : "Avg Rest/Set"}
           </Text>
           <Text style={styles.sessionStatValue}>
             {formatDuration(Math.round(baselineRest))}
@@ -103,12 +103,15 @@ export const SessionStatsWidget = React.memo(function SessionStatsWidget({
           }`}
           onPress={onOpenReminderModal}
         >
-          <Text style={styles.sessionStatLabel}>⏰ Reminder</Text>
-          <Text style={styles.sessionStatValue}>
-            {restReminderEnabled && restReminderSeconds > 0
-              ? formatDuration(restReminderSeconds)
-              : "Off"}
-          </Text>
+          <Text style={styles.sessionStatLabel}>Reminder</Text>
+          <View style={styles.reminderPill}>
+            <Text style={styles.sessionStatValue}>
+              {restReminderEnabled && restReminderSeconds > 0
+                ? formatDuration(restReminderSeconds)
+                : "Off"}{" "}
+              ›
+            </Text>
+          </View>
         </TouchableOpacity>
       </View>
       {currentRest > 0 && (

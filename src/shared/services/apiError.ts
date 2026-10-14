@@ -59,6 +59,9 @@ export function userFacingError(error: unknown, fallback: string): string {
     const coded = messageForCode(error.code, error.retryAfterMs)
     if (coded) return coded
     if (error.status >= 500) return "The server had a problem. Try again in a moment."
+    // A ValidationError's message is a generic "Validation failed". The reasons are in details.
+    const reasons = error.status === 400 && Array.isArray(error.details) ? error.details : []
+    if (reasons.length && reasons.every((d) => typeof d === "string")) return reasons.join("\n")
     if (error.status >= 400 && error.message) return error.message
     return fallback
   }

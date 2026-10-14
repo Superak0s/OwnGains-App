@@ -1,15 +1,25 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, TouchableOpacity, Animated, StyleSheet } from "react-native";
+import {
+  AccessibilityInfo,
+  View,
+  Text,
+  TouchableOpacity,
+  Animated,
+  StyleSheet,
+} from "react-native";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { PartnerProgress } from "@shared/context/hooks/useJointSession";
 import { getPartnerStatusText } from "../utils";
+import { useFriendPhoto } from "@features/friends/friendPhoto";
+import { Image } from "expo-image";
 
 interface PartnerBannerProps {
   partnerProgress: PartnerProgress | null;
   isPartnerReady: boolean;
   syncPulse: boolean;
   partnerUsername: string;
+  partnerUserId?: string | number;
   onLeave: () => void;
 }
 
@@ -18,6 +28,7 @@ export function PartnerBanner({
   isPartnerReady,
   syncPulse,
   partnerUsername,
+  partnerUserId,
   onLeave,
 }: Readonly<PartnerBannerProps>): React.JSX.Element {
   const { colors } = useTheme();
@@ -26,14 +37,24 @@ export function PartnerBanner({
 
   useEffect(() => {
     if (!syncPulse) return;
+    let cancelled = false;
     const step = (toValue: number) =>
       Animated.timing(pulse, { toValue, duration: 120, useNativeDriver: true });
-    Animated.loop(Animated.sequence([step(1.04), step(1)]), {
-      iterations: 2,
-    }).start();
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .catch(() => false)
+      .then((reduceMotion) => {
+        if (cancelled || reduceMotion) return;
+        Animated.loop(Animated.sequence([step(1.04), step(1)]), {
+          iterations: 2,
+        }).start();
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [syncPulse, pulse]);
 
   const statusText = getPartnerStatusText(isPartnerReady, partnerProgress);
+  const partnerPhoto = useFriendPhoto(partnerUserId);
 
   return (
     <Animated.View
@@ -41,9 +62,17 @@ export function PartnerBanner({
     >
       <View style={bannerStyles.liveDot} />
       <View style={bannerStyles.avatarRing}>
-        <Text style={bannerStyles.avatarText}>
-          {partnerUsername?.charAt(0).toUpperCase() || "?"}
-        </Text>
+        {partnerPhoto ? (
+          <Image
+            source={{ uri: partnerPhoto }}
+            style={bannerStyles.avatarPhoto}
+            accessibilityIgnoresInvertColors
+          />
+        ) : (
+          <Text style={bannerStyles.avatarText}>
+            {partnerUsername?.charAt(0).toUpperCase() || "?"}
+          </Text>
+        )}
       </View>
       <Text style={bannerStyles.label} numberOfLines={1}>
         <Text style={bannerStyles.name}>{partnerUsername}</Text>
@@ -54,6 +83,7 @@ export function PartnerBanner({
         style={bannerStyles.leaveBtn}
         accessibilityRole='button'
         accessibilityLabel='Leave joint session'
+        hitSlop={12}
         onPress={onLeave}
       >
         <Text style={bannerStyles.leaveBtnText}>Leave</Text>
@@ -89,7 +119,8 @@ const makeBannerStyles = (colors: ThemeColors) =>
       borderColor: colors.info,
     },
     avatarText: { color: colors.textOnAccent, fontWeight: "700", fontSize: 12 },
-    label: { flex: 1, fontSize: 12 },
+    avatarPhoto: { width: 23, height: 23, borderRadius: 11.5 },
+    label: { flex: 1, fontSize: 14 },
     name: { color: colors.textPrimary, fontWeight: "700" },
     status: { color: colors.textSecondary },
     leaveBtn: {
@@ -102,7 +133,7 @@ const makeBannerStyles = (colors: ThemeColors) =>
     },
     leaveBtnText: {
       color: colors.textSecondary,
-      fontSize: 11,
+      fontSize: 14,
       fontWeight: "600",
     },
   });

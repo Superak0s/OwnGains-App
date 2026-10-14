@@ -57,7 +57,13 @@ export const makeTrainerBannerStyles = (colors: ThemeColors) =>
       borderColor: colors.info,
     },
     avatarText: { color: colors.textOnAccent, fontWeight: "700", fontSize: 12 },
-    label: { flex: 1, fontSize: 12, color: colors.textPrimary },
+    label: { flex: 1, fontSize: 14, color: colors.textPrimary },
     name: { color: colors.textPrimary, fontWeight: "700" },
     status: { color: colors.textSecondary },
+    stopButton: {
+      minWidth: 48,
+      minHeight: 48,
+      alignItems: "center",
+      justifyContent: "center",
+    },
   });

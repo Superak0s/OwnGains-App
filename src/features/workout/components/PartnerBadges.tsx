@@ -57,7 +57,7 @@ export function PartnerExerciseMatchBadge({
       style={[matchStyles.badge, { backgroundColor: bgColor, borderColor }]}
     >
       <Text style={[matchStyles.setsText, { color: diffColor }]}>
-        🤝 {diffText}
+        {diffText}
       </Text>
     </View>
   );
@@ -73,9 +73,11 @@ export function PriorityMuscleGroupBadge({
         matchStyles.badge,
         { backgroundColor: colors.warningLight, borderColor: colors.warning },
       ]}
+      accessible
+      accessibilityLabel={`Priority, ${muscleGroup} is behind this week`}
     >
-      <Text style={[matchStyles.setsText, { color: colors.warning }]}>
-        💪 Priority: {muscleGroup} is behind this week
+      <Text style={[matchStyles.setsText, { color: colors.textPrimary }]}>
+        Priority
       </Text>
     </View>
   );
@@ -100,7 +102,7 @@ const makePillStyles = (colors: ThemeColors) =>
       borderRadius: 3.5,
       backgroundColor: colors.accentDark,
     },
-    text: { fontSize: 11, fontWeight: "700", color: colors.accentDark },
+    text: { fontSize: 12, fontWeight: "700", color: colors.accentDark },
   });
 
 const matchStyles = StyleSheet.create({
@@ -114,5 +116,5 @@ const matchStyles = StyleSheet.create({
     paddingVertical: 4,
     marginBottom: 8,
   },
-  setsText: { fontSize: 11, fontWeight: "700" },
+  setsText: { fontSize: 12, fontWeight: "700" },
 });

@@ -37,6 +37,7 @@ export const friendsApi = {
         id: friend.friendUserId as string | number,
         username: friend.username as string,
         createdAt: friend.friendsSince as string,
+        photoHash: friend.photoHash as string | null | undefined,
       })),
     )
   },

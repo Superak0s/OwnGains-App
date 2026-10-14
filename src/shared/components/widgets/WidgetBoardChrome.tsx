@@ -13,7 +13,7 @@ export function WidgetPullHint({
     <View pointerEvents='none' style={styles.pullHint}>
       <Text style={styles.pullHintText}>
         {armed
-          ? "Release to add a widget ✨"
+          ? "Release to add a widget"
           : "Pull to add a widget ↓"}
       </Text>
     </View>
@@ -34,10 +34,12 @@ export function WidgetEditHeader({
 
   return (
     <View style={styles.header}>
-      <Text style={styles.title}>Editing Widgets</Text>
+      <Text style={styles.title} accessibilityRole='header'>
+        Editing widgets
+      </Text>
       <TouchableOpacity
         onPress={onDone}
-        hitSlop={8}
+        style={styles.doneButton}
         accessibilityRole='button'
         accessibilityLabel='Done editing widgets'
       >
@@ -71,8 +73,16 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: 10,
+      marginBottom: 12,
+      paddingLeft: 14,
+      borderRadius: 12,
+      backgroundColor: colors.accent,
     },
-    title: { fontSize: 14, fontWeight: "700", color: colors.textSecondary },
-    done: { fontSize: 14, fontWeight: "700", color: colors.accent },
+    title: { fontSize: 15, fontWeight: "700", color: colors.textOnAccent },
+    doneButton: {
+      minHeight: 44,
+      paddingHorizontal: 16,
+      justifyContent: "center",
+    },
+    done: { fontSize: 15, fontWeight: "700", color: colors.textOnAccent },
   })
