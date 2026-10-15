@@ -48,3 +48,8 @@ export const formatCountdown = (ms: number): string => {
 
 export const formatInterval = (minutes: number): string =>
   formatCountdown(minutes * 60_000);
+
+export const supplementSettingsKey = (
+  supplementId: number,
+  userId: string | number,
+): string => `supplementSettings_${supplementId}_user_${userId}`;

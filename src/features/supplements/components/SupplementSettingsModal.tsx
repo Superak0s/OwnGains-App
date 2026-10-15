@@ -26,7 +26,12 @@ import {
   initializeSupplementNotifications,
 } from "@shared/services/supplementReminders";
 import type { SupplementSummary } from "../types";
-import { MAX_DOSES_PER_DAY, formatInterval, parseTimeOfDay } from "../utils";
+import {
+  MAX_DOSES_PER_DAY,
+  formatInterval,
+  parseTimeOfDay,
+  supplementSettingsKey,
+} from "../utils";
 import { parseDecimal } from "@utils/format";
 import TimeOfDayPicker from "./TimeOfDayPicker";
 import ModalSheet from "@shared/components/ModalSheet";
@@ -90,7 +95,7 @@ export default function SupplementSettingsModal({
   }, [visible, supplement.id]);
 
   const settingsKey = (uid: string | number) =>
-    `supplementSettings_${supplement.id}_user_${uid}`;
+    supplementSettingsKey(supplement.id, uid);
 
   const applyStoredSettings = (raw: string) => {
     const stored = JSON.parse(raw) as {
@@ -268,19 +273,19 @@ export default function SupplementSettingsModal({
       return;
     }
 
-    // A refused notification permission must not throw away an unrelated dose
-    // change: save what does not need notifications, and say what was skipped.
-    const remindersOn =
-      timeBasedEnabled && (await ensureNotificationPermission());
-    // The dose timer is scheduled from the log button, which never prompts, so
-    // the permission has to be asked for here.
-    if (!timeBasedEnabled && validation.intervalMinutes !== null) {
-      await initializeSupplementNotifications();
-    }
-
     isSavingRef.current = true;
     setSaving(true);
     try {
+      // A refused notification permission must not throw away an unrelated dose
+      // change: save what does not need notifications, and say what was skipped.
+      const remindersOn =
+        timeBasedEnabled && (await ensureNotificationPermission());
+      // The dose timer is scheduled from the log button, which never prompts, so
+      // the permission has to be asked for here.
+      if (!timeBasedEnabled && validation.intervalMinutes !== null) {
+        await initializeSupplementNotifications();
+      }
+
       const timeStr = formatTimeStr(reminderTime);
 
       await persistSettings(
@@ -330,6 +335,7 @@ export default function SupplementSettingsModal({
     // Cancelled first: if the update fails the OS-level reminder is already
     // off, rather than firing daily while the app believes it is disabled.
     await cancelTimeReminder(userId, supplement.id);
+    await cancelNextDoseReminder(userId, supplement.id);
     await supplementsApi.update(supplement.id, {
       reminderEnabled: false,
       reminderTime: null,
@@ -342,8 +348,7 @@ export default function SupplementSettingsModal({
       supplementId: supplement.id,
       name: supplement.name,
       unit: supplement.unit,
-      defaultAmount:
-        Number.parseFloat(defaultAmount) || supplement.defaultAmount,
+      defaultAmount: parseDecimal(defaultAmount) || supplement.defaultAmount,
       timeBasedEnabled: false,
       reminderTime: formatTimeStr(reminderTime),
       enabled: false,

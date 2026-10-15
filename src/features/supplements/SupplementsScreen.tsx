@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import ScreenTitle from "@shared/components/ScreenTitle";
 import {
   View,
@@ -44,9 +44,16 @@ import {
   formatInterval,
   nextDoseAt,
   quickAmountsFor,
+  supplementSettingsKey,
 } from "./utils";
-import { formatDate as formatDateUtil, formatClockTime, parseDecimal } from "@utils/format";
+import {
+  formatDate as formatDateUtil,
+  formatClockTime,
+  parseDecimal,
+  toDateString,
+} from "@utils/format";
 import LocalOnlyNotice from "@shared/components/LocalOnlyNotice";
+import { removeStorageItem } from "@shared/services/sqliteStorage";
 import { captureException, metric } from "@shared/services/crashReporting";
 import { userFacingError } from "@shared/services/apiError";
 import { SCREEN_PADDING } from "@shared/layout";
@@ -138,6 +145,8 @@ export default function SupplementsScreen(): React.JSX.Element {
   const [newAmount, setNewAmount] = useState("5");
   const [newIcon, setNewIcon] = useState("💊");
   const [saving, setSaving] = useState(false);
+  // `saving` disables the buttons only after a re-render, too late for a fast double tap.
+  const savingRef = useRef(false);
 
   const [quickLogSupplement, setQuickLogSupplement] =
     useState<SupplementSummary | null>(null);
@@ -154,15 +163,10 @@ export default function SupplementsScreen(): React.JSX.Element {
   const [showHistorySheet, setShowHistorySheet] = useState(false);
 
   const [now, setNow] = useState(() => new Date());
-  useFocusEffect(
-    useCallback(() => {
-      setNow(new Date());
-      const timer = setInterval(() => setNow(new Date()), 30_000);
-      return () => clearInterval(timer);
-    }, []),
-  );
 
-  const loadSupplements = useCallback(async (quiet = false) => {
+  const loadSupplements = useCallback(async (
+    quiet = false,
+  ): Promise<SupplementSummary[] | null> => {
     if (!quiet) setLoading(true);
     try {
       const res = await supplementsApi.list();
@@ -173,6 +177,7 @@ export default function SupplementsScreen(): React.JSX.Element {
           userId,
           res.supplements.map((s) => s.id),
         );
+      return res.supplements;
     } catch (err) {
       // Never show the empty state on a load error: a user with twenty supplements
       // must not be told they have none and invited to re-create them.
@@ -182,15 +187,30 @@ export default function SupplementsScreen(): React.JSX.Element {
       setLoadError(
         userFacingError(err, "Could not load your supplements."),
       );
+      return null;
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [userId]);
 
-  useEffect(() => {
-    void loadSupplements();
-  }, [loadSupplements]);
+  // The tab stays mounted, so "taken today" goes stale across a focus change or midnight.
+  useFocusEffect(
+    useCallback(() => {
+      void loadSupplements(true);
+      setNow(new Date());
+      let day = toDateString(new Date());
+      const timer = setInterval(() => {
+        const next = new Date();
+        setNow(next);
+        if (toDateString(next) !== day) {
+          day = toDateString(next);
+          void loadSupplements(true);
+        }
+      }, 30_000);
+      return () => clearInterval(timer);
+    }, [loadSupplements]),
+  );
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -198,6 +218,8 @@ export default function SupplementsScreen(): React.JSX.Element {
   };
 
   const handleAddFromTemplate = async (template: SupplementTemplate) => {
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     try {
       const params: CreateSupplementParams = {
@@ -218,6 +240,7 @@ export default function SupplementsScreen(): React.JSX.Element {
         "error",
       );
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -256,6 +279,8 @@ export default function SupplementsScreen(): React.JSX.Element {
       );
       return;
     }
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     try {
       await supplementsApi.create({
@@ -278,6 +303,7 @@ export default function SupplementsScreen(): React.JSX.Element {
         "error",
       );
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -294,8 +320,7 @@ export default function SupplementsScreen(): React.JSX.Element {
         note: note || null,
         ...(takenAt && { takenAt }),
       });
-      await loadSupplements(true);
-      void syncNextDoseReminder(supp, takenAt);
+      void reloadAndSyncReminder(supp.id);
       return true;
     } catch (err) {
       alert(
@@ -308,16 +333,10 @@ export default function SupplementsScreen(): React.JSX.Element {
     }
   };
 
-  // Only a dose taken now starts the timer: a backdated one says nothing about
-  // when the next is due today.
-  const syncNextDoseReminder = async (
-    supp: SupplementSummary,
-    takenAt: string | null,
-  ) => {
-    if (user?.id == null || takenAt) return;
-    const userId = String(user.id);
-    const remaining = supp.dosesPerDay - (supp.dosesToday + 1);
-    if (remaining <= 0 || !supp.doseIntervalMinutes) {
+  const syncNextDoseReminder = async (supp: SupplementSummary) => {
+    if (!userId) return;
+    const due = nextDoseAt(supp);
+    if (!due) {
       await cancelNextDoseReminder(userId, supp.id);
       return;
     }
@@ -327,19 +346,30 @@ export default function SupplementsScreen(): React.JSX.Element {
       supp.name,
       supp.defaultAmount,
       supp.unit,
-      new Date(Date.now() + supp.doseIntervalMinutes * 60_000),
+      due,
     );
   };
 
+  const reloadAndSyncReminder = async (suppId: number) => {
+    const fresh = (await loadSupplements(true))?.find((s) => s.id === suppId);
+    if (fresh) await syncNextDoseReminder(fresh);
+  };
+
+  const historyRequestRef = useRef(0);
+
   const openHistory = async (supp: SupplementSummary) => {
+    const request = ++historyRequestRef.current;
+    const isCurrent = () => request === historyRequestRef.current;
     setHistorySupp(supp);
     setShowHistorySheet(true);
     setHistoryLoading(true);
     try {
       const res = await supplementsApi.getLog(supp.id, 30);
+      if (!isCurrent()) return;
       setHistory(res.entries);
       setHistoryError(null);
     } catch (err) {
+      if (!isCurrent()) return;
       // Distinct from an empty log: "no entries yet" would be a lie, and the
       // user would have no way to retry.
       setHistory([]);
@@ -347,7 +377,7 @@ export default function SupplementsScreen(): React.JSX.Element {
         userFacingError(err, "Could not load the history."),
       );
     } finally {
-      setHistoryLoading(false);
+      if (isCurrent()) setHistoryLoading(false);
     }
   };
 
@@ -355,7 +385,7 @@ export default function SupplementsScreen(): React.JSX.Element {
     try {
       await supplementsApi.deleteLogEntry(entry.supplementId, entry.id);
       removeHistoryEntry(entry.id);
-      await loadSupplements(true);
+      void reloadAndSyncReminder(entry.supplementId);
     } catch (err) {
       alert(
         "Error",
@@ -387,7 +417,6 @@ export default function SupplementsScreen(): React.JSX.Element {
   };
 
   const performDeleteSupplement = async (supp: SupplementSummary) => {
-    const userId = user?.id == null ? null : String(user.id);
     if (!userId) {
       alert(
         "Not ready yet",
@@ -397,10 +426,11 @@ export default function SupplementsScreen(): React.JSX.Element {
       );
       return;
     }
-    const reminderConfig = (await readSupplementReminderConfigs(userId)).find(
-      (c) => c.supplementId === supp.id,
-    );
+    let reminderConfig: SupplementReminderConfig | undefined;
     try {
+      reminderConfig = (await readSupplementReminderConfigs(userId)).find(
+        (c) => c.supplementId === supp.id,
+      );
       // Reminder first: a supplement deleted before its reminder config is
       // removed leaves the boot re-arm scheduling a daily notification for
       // something the app no longer knows about, with no UI to stop it.
@@ -409,8 +439,14 @@ export default function SupplementsScreen(): React.JSX.Element {
       await removeSupplementReminderConfig(userId, supp.id);
       await supplementsApi.delete(supp.id);
       removeSupplementFromList(supp.id);
+      void removeStorageItem(supplementSettingsKey(supp.id, userId));
     } catch (err) {
-      if (reminderConfig) await restoreReminder(userId, reminderConfig);
+      try {
+        if (reminderConfig) await restoreReminder(userId, reminderConfig);
+        await syncNextDoseReminder(supp);
+      } catch (restoreErr) {
+        captureException(restoreErr, { stage: "restoreSupplementReminder" });
+      }
       alert(
         "Error",
         userFacingError(err, "Failed"),

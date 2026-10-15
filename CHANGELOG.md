@@ -76,6 +76,13 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - A Home widget that is no longer available says how to remove it, instead of showing an internal name.
 - The progress error in Settings says clearly that your progress on this device is unaffected.
 - Fixed stray spaces and doubled divider lines on the Workout and Settings screens.
+- The Supplements screen refreshes when you return to it and when a new day starts, so doses taken yesterday no longer show as done today.
+- The next-dose reminder is set from the right count after the first dose of a new day, and is updated or cancelled when you delete a logged dose.
+- "Turn off all reminders" for a supplement also stops its next-dose reminder.
+- Tapping fast no longer adds the same supplement twice or saves its settings twice.
+- Opening one supplement's history and then another's quickly no longer shows the first one's entries.
+- Deleting a supplement shows an error when its reminders can't be read or restored, instead of failing without a word.
+- A supplement amount typed with a comma, such as 2,5, is kept when you turn its reminders off.
 
 ### Security
 
@@ -84,6 +91,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ### Internal
 
+- Regression tests for the Supplements screen and supplement settings sheet, and a deleted supplement's settings key is now removed from storage.
 - Usability audit of Home, Workout and Settings (frontend-design-audit), with regression tests for each behavior fix.
 - Settings rows and groups share one `SettingsRow`/`SettingsGroup` component, and the tutorial and privacy policy point to the new Settings pages.
 - `syncFromServer` resolves to whether the sync succeeded instead of the merged completed days.
