@@ -19,6 +19,7 @@ export const dayExercises = (
   data?.days?.find((d) => d.dayNumber === dayNumber)?.split?.[split]
     ?.exercises ?? [];
 
+/** Layers the override onto the plan for that day only, and returns `data` untouched without one. */
 export const applyDayOverride = (
   data: WorkoutData | null,
   override: DayOverride | null,

@@ -73,6 +73,7 @@ export const isEncryptedExport = (value: unknown): value is EncryptedExport =>
   typeof (value as EncryptedExport).data === "string" &&
   typeof (value as EncryptedExport).salt === "string";
 
+/** Encrypts with a fresh random salt, always at the current `ENCRYPTED_VERSION`. */
 export const encryptExport = async (
   payload: unknown,
   passphrase: string,
@@ -91,6 +92,10 @@ export const encryptExport = async (
   };
 };
 
+/**
+ * @throws When the file is from a newer app version, or the passphrase is wrong
+ * or the data damaged (AES-GCM cannot tell those apart).
+ */
 export const decryptExport = async (
   envelope: EncryptedExport,
   passphrase: string,

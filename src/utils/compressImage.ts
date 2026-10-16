@@ -20,6 +20,7 @@ function getImageSize(uri: string): Promise<{ width: number; height: number }> {
   })
 }
 
+/** Resolves the original `uri` if compression fails, so an upload is never blocked by it. */
 export async function compressImageForUpload(uri: string): Promise<string> {
   try {
     const { width, height } = await getImageSize(uri)
@@ -49,6 +50,7 @@ export async function compressImageForUpload(uri: string): Promise<string> {
   }
 }
 
+/** Resolves null on failure. */
 export async function makeThumbnail(uri: string): Promise<string | null> {
   try {
     const { width, height } = await getImageSize(uri)

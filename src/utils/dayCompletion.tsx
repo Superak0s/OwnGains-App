@@ -55,6 +55,7 @@ const areAllExercisesComplete = (
   );
 };
 
+/** A locked day is complete whatever was logged. */
 export const isDayComplete = (
   lockedDays: LockedDays,
   dayNumber: number,

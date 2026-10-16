@@ -26,6 +26,7 @@ export const isSessionInactive = (
   return elapsed > INACTIVITY_THRESHOLD_MS
 }
 
+/** A server-mode session started offline, still queued for sync and awaiting a real id. */
 export const isLocalSessionId = (
   sessionId: string | null | undefined,
 ): boolean => {
