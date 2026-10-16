@@ -123,6 +123,10 @@ const refreshDelayFor = (token: string, received: ReceivedToken | null): number 
   return Math.max(expiresAt - REFRESH_LEAD_MS - Date.now(), MIN_REFRESH_DELAY_MS);
 };
 
+/**
+ * Owns the session: restores it on launch, refreshes the access token ahead of
+ * its expiry, and follows app-mode and server-URL changes.
+ */
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);

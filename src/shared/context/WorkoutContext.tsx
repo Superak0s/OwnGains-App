@@ -360,6 +360,10 @@ function intOrNull(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/**
+ * With `actAs` every read and write goes to the trainee's account through
+ * `traineeFetch`, and fails in offline mode instead of queuing locally.
+ */
 export const WorkoutProvider = ({
   children,
   actAs,

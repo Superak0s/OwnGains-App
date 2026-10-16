@@ -74,6 +74,7 @@ export const useJointSessionContext = (): JointSessionContextValue => {
   return context;
 };
 
+/** Returns undefined outside a provider instead of throwing. */
 export const useJointSessionContextOptional = ():
   | JointSessionContextValue
   | undefined => useContext(JointSessionContext);
