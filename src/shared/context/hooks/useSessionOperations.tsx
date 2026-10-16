@@ -95,6 +95,11 @@ export interface SetDetailsOptions {
 interface UseSessionOperationsReturn {
   updateLastActivityTime: () => Promise<void>;
   clearActiveWorkout: () => Promise<void>;
+  /**
+   * Resolves the session id (a `local_` id when the start was queued offline),
+   * or null when no session could be started. Concurrent calls share one start.
+   * @throws When a trainer write cannot go to the server, see `isTraineeWriteRefused`.
+   */
   startWorkout: (untimed?: boolean, startAt?: Date) => Promise<string | null>;
   endWorkout: (autoCompleted?: boolean) => Promise<boolean>;
   saveSetDetails: (

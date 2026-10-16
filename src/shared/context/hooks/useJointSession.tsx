@@ -138,6 +138,11 @@ interface AcceptInviteResponse {
   inviteId?: string
 }
 
+/**
+ * Joint sessions (both users train) and watching (one spectates). Partner and
+ * watch state only advances through `handleSocketMessage`, so the caller must
+ * route the realtime socket's messages into it.
+ */
 export const useJointSession = ({
   userId,
   currentSessionId,

@@ -30,6 +30,7 @@ interface UseWidgetsConfig<T extends string> {
   enabled?: boolean
 }
 
+/** Loads, persists and edits one screen's widget layout for the given user. */
 export function useWidgets<T extends string>(
   userId: string | null,
   { registry, defaults, storageKey, enabled = true }: UseWidgetsConfig<T>,
