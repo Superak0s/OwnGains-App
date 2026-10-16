@@ -58,7 +58,7 @@ process.stdin.on("end", () => {
   if (!(added + untracked).includes("/api/")) return;
 
   const versionFile = path.join(cwd, "src/shared/services/serverVersion.ts");
-  const min = fs.readFileSync(versionFile, "utf8").match(/MIN_SERVER_VERSION = "([^"]+)"/)?.[1];
+  const min = /MIN_SERVER_VERSION = "([^"]+)"/.exec(fs.readFileSync(versionFile, "utf8"))?.[1];
   if (!min) return;
 
   const atMin = missingAtTag(`v${min}`);

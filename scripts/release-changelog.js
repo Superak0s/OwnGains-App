@@ -12,7 +12,7 @@ const LINK_REF = /^\[([^\]]+)\]:\s*(\S+)/;
 const BULLET = /^[-*] /;
 const UNRELEASED = "Unreleased";
 
-const splitLines = (md) => md.replace(/\r\n/g, "\n").split("\n");
+const splitLines = (md) => md.replaceAll("\r\n", "\n").split("\n");
 
 function findSection(lines, version) {
   const start = lines.findIndex((l) => RELEASE_HEADING.exec(l)?.[1] === version);

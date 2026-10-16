@@ -45,6 +45,7 @@ Read the sentence before you cut it.
 - **Placement:** the comment goes on its own line above the code, never at the end of a line.
 - **JSX:** `{/* … */}` on its own line above the element, held to the same bar. A comment
   that only labels a section ("Header", "Buttons") is a Delete.
+- **Doc comments follow TSDoc** (CLAUDE.md "Format"): summary first, `@param name - text`, no types in tags.
 - **JSDoc on props and exported types (`/** … */`):** keep it when it gives a contract
   the type can't: units, who owns it, when it's read, what `undefined` means. Delete it
   when it just repeats the prop name ("`onClose`: called on close").

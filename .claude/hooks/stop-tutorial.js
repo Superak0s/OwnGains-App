@@ -25,7 +25,7 @@ process.stdin.on("end", () => {
   let section = "";
   const entries = [];
   for (const line of git("diff", "-U100000", "HEAD", "--", "CHANGELOG.md").split("\n")) {
-    const heading = line.match(/^[ +]### (\w+)/);
+    const heading = /^[ +]### (\w+)/.exec(line);
     if (heading) section = heading[1];
     else if (line.startsWith("+- ") && TEACHABLE.has(section)) entries.push(line.slice(3));
   }

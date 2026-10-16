@@ -28,7 +28,7 @@ process.stdin.on("end", () => {
 
   // Whole-repo scan rather than per-file: the script takes no arguments and
   // runs in ~100ms, and CI keeps the count at zero so any hit is from this edit.
-  if (/\.tsx$/.test(file)) {
+  if (file.endsWith(".tsx")) {
     const a11y = run("python3 scripts/find-unlabeled-icons.py");
     if (a11y.status === 1)
       fail(
