@@ -96,6 +96,7 @@ export default function ExpandedChart({
   const selectedPoint = selected == null ? undefined : model.pointAt[selected];
   const decimals = decimalsFor(model.visible.map((p) => p.value));
   const fmt = (v: number) => `${v.toFixed(decimals)}${suffix}`;
+  const unit = suffix ? ` (${suffix.trim()})` : "";
 
   useEffect(() => {
     setSelected(null);
@@ -148,7 +149,7 @@ export default function ExpandedChart({
           : await writeTextExport(
               `chart-${slug}`,
               "csv",
-              toCsv(model.visible, `${title}${suffix ? ` (${suffix.trim()})` : ""}`),
+              toCsv(model.visible, `${title}${unit}`),
               "text/csv",
             );
       showToast(`Chart ${DESTINATION_TEXT[result.destination]}`);
@@ -356,7 +357,7 @@ export default function ExpandedChart({
           )}
           <Text style={styles.section}>Goal</Text>
           <View style={styles.row}>
-            {field(`Goal${suffix ? ` (${suffix.trim()})` : ""}`, settings.goal, (t) => update({ goal: parseNumber(t) }), "None", true, focusGoal)}
+            {field(`Goal${unit}`, settings.goal, (t) => update({ goal: parseNumber(t) }), "None", true, focusGoal)}
           </View>
           <Text style={styles.hint}>
             {settings.goal == null

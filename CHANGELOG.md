@@ -91,6 +91,11 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ### Internal
 
+- Set TSDoc as the comment format in CLAUDE.md and the comment-cleanup skill.
+- Added a comment-add skill for adding why-comments and TSDoc under the Code Comments rules.
+- Added a comment-sweep skill that applies the comment-add rules across the whole repo in resumable batches.
+- SonarQube cleanup: dead Settings code removed, a typed Settings navigation call, and helpers split out of the API error, joint session, body fat and history-edit code to cut complexity.
+- `scripts/sonarqube.py` sends its own User-Agent (the proxy refuses curl's default) and exits with the response body when a page is not JSON.
 - Regression tests for the Supplements screen and supplement settings sheet, and a deleted supplement's settings key is now removed from storage.
 - Usability audit of Home, Workout and Settings (frontend-design-audit), with regression tests for each behavior fix.
 - Settings rows and groups share one `SettingsRow`/`SettingsGroup` component, and the tutorial and privacy policy point to the new Settings pages.

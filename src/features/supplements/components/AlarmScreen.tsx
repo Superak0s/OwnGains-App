@@ -10,10 +10,10 @@ import {
 } from "@shared/services/supplementAlarms";
 
 interface Props {
-  notificationId?: string;
-  title?: string;
-  body?: string;
-  snoozeSeconds?: number;
+  readonly notificationId?: string;
+  readonly title?: string;
+  readonly body?: string;
+  readonly snoozeSeconds?: number;
 }
 
 const formatNow = () =>

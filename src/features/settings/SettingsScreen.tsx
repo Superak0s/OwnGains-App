@@ -13,7 +13,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Switch,
   ActivityIndicator,
   Share,
   Linking,
@@ -334,8 +333,6 @@ const ACCOUNT_COPY = {
 
 export default function SettingsScreen(): React.JSX.Element {
   const { colors } = useTheme();
-  const switchThumbColor = (on: boolean) =>
-    on ? colors.textOnAccent : colors.textMuted;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { user, logout, updateProfile, refreshUser, unlinkGoogle } = useAuth();
   // Server-granted, so offline profiles are never admin.

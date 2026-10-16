@@ -43,15 +43,42 @@ const readingDate = (entry: BodyFatEntryWithFields) =>
 const readingPercent = (entry: BodyFatEntryWithFields) =>
   Number(entry.percentage ?? entry.bodyFatPercentage ?? 0);
 
+function renderHeight({ height, heightUnit, openHeightModal }: BodyFatRenderCtx) {
+  const heightCm = height?.heightCm;
+  if (!heightCm)
+    return (
+      <Placeholder
+        text="Body fat is calculated from your height. Add it once and you're set."
+        action={{ label: "Add height", onPress: openHeightModal }}
+      />
+    );
+
+  const imperial = toFeetInches(heightCm);
+  const metric = heightUnit === "cm";
+  return (
+    <View style={{ gap: space.md }}>
+      <Metric
+        label='Height'
+        value={metric ? heightCm.toFixed(1) : `${imperial.feet}′ ${imperial.inches}″`}
+        unit={metric ? "cm" : undefined}
+        meta='Used to calculate your body fat percentage'
+      />
+      <Button
+        label='Change height'
+        onPress={openHeightModal}
+        variant='quiet'
+        size='sm'
+      />
+    </View>
+  );
+}
+
 export function renderBodyFatWidget(
   type: string,
   ctx: BodyFatRenderCtx,
 ): React.ReactNode {
   const {
     history,
-    height,
-    heightUnit,
-    openHeightModal,
     openBodyFatModal,
     setSelectedLogDate,
     deleteBodyFatEntry,
@@ -61,39 +88,8 @@ export function renderBodyFatWidget(
   } = ctx;
 
   switch (type) {
-    case "bodyfat_height": {
-      const heightCm = height?.heightCm;
-      const imperial = heightCm ? toFeetInches(heightCm) : null;
-
-      if (!heightCm)
-        return (
-          <Placeholder
-            text="Body fat is calculated from your height. Add it once and you're set."
-            action={{ label: "Add height", onPress: openHeightModal }}
-          />
-        );
-
-      return (
-        <View style={{ gap: space.md }}>
-          <Metric
-            label='Height'
-            value={
-              heightUnit === "cm"
-                ? heightCm.toFixed(1)
-                : `${imperial?.feet}′ ${imperial?.inches}″`
-            }
-            unit={heightUnit === "cm" ? "cm" : undefined}
-            meta='Used to calculate your body fat percentage'
-          />
-          <Button
-            label='Change height'
-            onPress={openHeightModal}
-            variant='quiet'
-            size='sm'
-          />
-        </View>
-      );
-    }
+    case "bodyfat_height":
+      return renderHeight(ctx);
 
     case "bodyfat_calendar":
       return (

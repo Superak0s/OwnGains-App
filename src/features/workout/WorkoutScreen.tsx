@@ -2387,7 +2387,7 @@ Note: ${existing.note}`;
                 <TouchableOpacity
                   style={styles.machineRowBody}
                   accessibilityRole='button'
-                  accessibilityLabel={`${name}${detail ? `, ${detail}` : ""}${isDefault ? ", default machine" : ""}`}
+                  accessibilityLabel={[name, detail, isDefault && "default machine"].filter(Boolean).join(", ")}
                   accessibilityHint='Makes this the default machine'
                   accessibilityState={{ selected: isDefault }}
                   onPress={() => handleSetDefaultMachine(name)}

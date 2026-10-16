@@ -50,21 +50,23 @@ export function messageForCode(
  * Alert copy for a failed request. Server 4xx prose is shown as-is. Transport
  * and 5xx errors get plain wording, and anything else falls back.
  */
+function apiErrorMessage(error: ApiError, fallback: string): string {
+  const coded = messageForCode(error.code, error.retryAfterMs)
+  if (coded) return coded
+  if (error.status >= 500) return "The server had a problem. Try again in a moment."
+  // A ValidationError's message is a generic "Validation failed". The reasons are in details.
+  const reasons = error.status === 400 && Array.isArray(error.details) ? error.details : []
+  if (reasons.length && reasons.every((d) => typeof d === "string")) return reasons.join("\n")
+  if (error.status >= 400 && error.message) return error.message
+  return fallback
+}
+
 export function userFacingError(error: unknown, fallback: string): string {
   // Every caller is a catch block that only shows this text, so this is
   // where those errors get reported.
   captureUnreported(error)
   if (error instanceof ServerUnreachableError) return error.message
-  if (error instanceof ApiError) {
-    const coded = messageForCode(error.code, error.retryAfterMs)
-    if (coded) return coded
-    if (error.status >= 500) return "The server had a problem. Try again in a moment."
-    // A ValidationError's message is a generic "Validation failed". The reasons are in details.
-    const reasons = error.status === 400 && Array.isArray(error.details) ? error.details : []
-    if (reasons.length && reasons.every((d) => typeof d === "string")) return reasons.join("\n")
-    if (error.status >= 400 && error.message) return error.message
-    return fallback
-  }
+  if (error instanceof ApiError) return apiErrorMessage(error, fallback)
   const message = error instanceof Error ? error.message : ""
   if (/network|fetch|timeout|abort|offline/i.test(message))
     return "Couldn't reach the server. Check your connection and try again."

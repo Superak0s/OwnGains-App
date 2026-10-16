@@ -241,6 +241,21 @@ export const useJointSession = ({
     setPartnerCompletedSets([])
   }, [])
 
+  const applyInviteStatus = useCallback(
+    (statusMsg: InviteStatusMessage) => {
+      if (statusMsg.status === "accepted" && statusMsg.jointSession) {
+        setInviteStatus("active")
+        setJointSession(statusMsg.jointSession)
+        jointSessionIdRef.current = statusMsg.jointSession.id
+      } else if (statusMsg.status === "declined") {
+        setInviteStatus("declined")
+      } else if (statusMsg.status === "session_ended") {
+        resetJointState()
+      }
+    },
+    [resetJointState],
+  )
+
   const applyJointProgress = useCallback(
     (progress: JointProgressPayload) => {
       // The server broadcasts to every participant, so our own push comes
@@ -342,16 +357,7 @@ export const useJointSession = ({
 
         case "invite_status": {
           // Cast through unknown first to narrow to InviteStatusMessage
-          const statusMsg = msg as unknown as InviteStatusMessage
-          if (statusMsg.status === "accepted" && statusMsg.jointSession) {
-            setInviteStatus("active")
-            setJointSession(statusMsg.jointSession)
-            jointSessionIdRef.current = statusMsg.jointSession.id
-          } else if (statusMsg.status === "declined") {
-            setInviteStatus("declined")
-          } else if (statusMsg.status === "session_ended") {
-            resetJointState()
-          }
+          applyInviteStatus(msg as unknown as InviteStatusMessage)
           break
         }
 
@@ -363,8 +369,7 @@ export const useJointSession = ({
         case "watch_progress": {
           const target = watchTargetRef.current
           if (
-            !target ||
-            String(msg.friendId) !== target.friendId ||
+            String(msg.friendId) !== target?.friendId ||
             String(msg.sessionId) !== target.sessionId
           )
             break
@@ -388,7 +393,7 @@ export const useJointSession = ({
           break
       }
     },
-    [isInJointSession, applyJointProgress, resetJointState, applyWatchSnapshot],
+    [isInJointSession, applyJointProgress, applyInviteStatus, resetJointState, applyWatchSnapshot],
   )
 
   // Nothing else clears these, so the invite UI would stay in its failed state

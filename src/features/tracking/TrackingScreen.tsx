@@ -52,7 +52,9 @@ import type {
   WidgetInstance,
   WidgetDefinition,
   WeightEntry,
+  RootStackParamList,
 } from "@shared/types";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { toDefaultWidgets } from "@shared/types";
 import HealthWidget from "@features/healthConnect/HealthWidget";
 import {
@@ -324,7 +326,7 @@ export default function TrackingScreen({
     embedWidget ? tabForWidget(embedWidget) : TRACKING_TABS[0].key,
   );
   const [refreshing, setRefreshing] = useState(false);
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const requestedTab = (useRoute().params as { tab?: string } | undefined)?.tab;
   useEffect(() => {
     if (!requestedTab || embedWidget) return;
@@ -1010,7 +1012,7 @@ export default function TrackingScreen({
       return (
         <HealthWidget
           type={instance.type as HealthWidgetType}
-          onOpenSettings={() => navigation.navigate("Settings" as never)}
+          onOpenSettings={() => navigation.navigate("Settings")}
         />
       );
     }

@@ -85,6 +85,36 @@ function groupSetsByExercise(sets: SetTiming[]): GroupedExercise[] {
   return order.map((name) => groups.get(name)!);
 }
 
+function indexExerciseNames(sessions: { setTimings?: SetTiming[] }[]): {
+  sorted: GroupedExercise[];
+  muscleGroups: string[];
+} {
+  const exercises = new Map<string, GroupedExercise>();
+  const groups = new Set<string>();
+  for (const set of sessions.flatMap((s) => s.setTimings ?? [])) {
+    const name = set.exerciseName?.trim();
+    if (name && !exercises.has(name)) {
+      exercises.set(name, {
+        exerciseName: name,
+        primaryMuscles: set.exercisePrimaryMuscles,
+        secondaryMuscles: set.exerciseSecondaryMuscles,
+        sets: [],
+      });
+    }
+    for (const muscle of [
+      ...(set.exercisePrimaryMuscles ?? []),
+      ...(set.exerciseSecondaryMuscles ?? []),
+    ]) {
+      const trimmed = muscle.trim();
+      if (trimmed) groups.add(trimmed);
+    }
+  }
+  const sorted = Array.from(exercises.values()).sort((a, b) =>
+    a.exerciseName.localeCompare(b.exerciseName),
+  );
+  return { sorted, muscleGroups: Array.from(groups) };
+}
+
 function formatSessionLabel(session: WorkoutSession): string {
   const dateStr = session.startTime
     ? formatDate(session.startTime, {
@@ -614,35 +644,11 @@ export default function EditWorkoutHistoryModal({
         200,
         true,
       );
-      const exercises = new Map<string, GroupedExercise>();
-      const groups = new Set<string>();
-      const sessionsWithTimings = (withTimings ??
-        []) as (WorkoutSession & { setTimings?: SetTiming[] })[];
-      for (const session of sessionsWithTimings) {
-        for (const set of session.setTimings ?? []) {
-          const name = set.exerciseName?.trim();
-          if (name && !exercises.has(name)) {
-            exercises.set(name, {
-              exerciseName: name,
-              primaryMuscles: set.exercisePrimaryMuscles,
-              secondaryMuscles: set.exerciseSecondaryMuscles,
-              sets: [],
-            });
-          }
-          for (const muscle of [
-            ...(set.exercisePrimaryMuscles ?? []),
-            ...(set.exerciseSecondaryMuscles ?? []),
-          ]) {
-            const trimmed = muscle.trim();
-            if (trimmed) groups.add(trimmed);
-          }
-        }
-      }
-      const sorted = Array.from(exercises.values()).sort((a, b) =>
-        a.exerciseName.localeCompare(b.exerciseName),
+      const { sorted, muscleGroups } = indexExerciseNames(
+        (withTimings ?? []) as (WorkoutSession & { setTimings?: SetTiming[] })[],
       );
       setKnownExercises(sorted);
-      setKnownMuscleGroups(Array.from(groups));
+      setKnownMuscleGroups(muscleGroups);
       nameIndexBuiltRef.current = true;
       setNameIndexFailed(false);
       return sorted;
