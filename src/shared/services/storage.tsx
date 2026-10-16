@@ -1,6 +1,7 @@
 import { getStorageItem, getStorageItems, setStorageItem, removeStorageItem, removeStorageItems } from "@shared/services/sqliteStorage"
 import { captureException, metric } from "@shared/services/crashReporting"
 
+/** Namespaces `key` per account. Without a `userId` the key is returned unchanged. */
 export const getUserKey = (key: string, userId: string | null = null): string => {
   if (!userId) return key
   return `${key}_user_${userId}`
@@ -24,6 +25,7 @@ export const saveToStorage = async (
   }
 }
 
+/** Null when the key is missing or its stored JSON is unreadable. Pass `parse = false` for a raw string. */
 export const loadFromStorage = async <T = unknown,>(
   key: string,
   userId: string | null = null,

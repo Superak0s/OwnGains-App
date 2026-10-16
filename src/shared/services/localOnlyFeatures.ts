@@ -147,6 +147,10 @@ const prime = (): Promise<void> =>
     }
   })())
 
+/**
+ * Features to keep on-device. Until the server has answered this is the known
+ * list, else every health feature, or none in offline mode.
+ */
 export const getLocalOnlyFeatures = async (): Promise<string[]> => {
   if (cached === null && Date.now() >= retryAfter) await prime()
   if (cached) return cached

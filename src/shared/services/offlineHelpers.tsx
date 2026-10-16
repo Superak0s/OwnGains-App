@@ -66,12 +66,18 @@ export function getRecordStoreUser(): string | null {
   return activeUserId
 }
 
+/** Switches the active account and drops every store's cached reads and collection name. */
 export function setRecordStoreUser(userId: string | null): void {
   if (userId === activeUserId) return
   activeUserId = userId
   for (const reset of recordStoreResets) reset()
 }
 
+/**
+ * One-row-per-record store over `kv_records`, scoped to the active account. The
+ * first access moves any data from the old single-blob `legacyBlobKey` into rows.
+ * `sortKeyOf` orders reads, most recent first.
+ */
 export function createRecordStore<T>(
   collection: string,
   legacyBlobKey: string,
@@ -242,6 +248,7 @@ export function nextId(counterKey: string): Promise<number> {
   })
 }
 
+/** Consecutive days with a timestamp, counted back from today, or from yesterday when today has none. */
 export function computeDailyStreak(timestamps: string[]): number {
   if (timestamps.length === 0) return 0
 

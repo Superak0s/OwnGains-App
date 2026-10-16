@@ -25,6 +25,7 @@ export const toPendingSyncRow = (
   value: JSON.stringify(sync),
 });
 
+/** Oldest first, the order the queue replays in. */
 export const loadPendingSyncs = async (
   userId: string | null,
 ): Promise<PendingSync[]> => {

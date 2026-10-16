@@ -7,6 +7,7 @@ import { apiCall } from "./apiClient";
 import { isServerless } from "./appMode";
 import { compareVersions } from "./serverVersion";
 
+/** Starts an immediate Play update when the server's `minAppVersion` is above `current`. */
 export async function forcePlayUpdate(
   current = Constants.expoConfig?.version ?? "0.0.0",
   updates = new SpInAppUpdates(false),

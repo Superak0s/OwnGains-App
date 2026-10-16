@@ -441,6 +441,7 @@ export const getRecord = (
     return row?.value ?? null;
   });
 
+/** Values in descending `sort_key` order. */
 export const listRecords = (
   collection: string,
   limit?: number,
