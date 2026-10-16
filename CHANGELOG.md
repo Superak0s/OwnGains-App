@@ -94,6 +94,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Set TSDoc as the comment format in CLAUDE.md and the comment-cleanup skill.
 - Added a comment-add skill for adding why-comments and TSDoc under the Code Comments rules.
 - Added a comment-sweep skill that applies the comment-add rules across the whole repo in resumable batches.
+- Documented the sync, auth, storage and context layers, the utils and the feature services with TSDoc.
 - SonarQube cleanup: dead Settings code removed, a typed Settings navigation call, and helpers split out of the API error, joint session, body fat and history-edit code to cut complexity.
 - `scripts/sonarqube.py` sends its own User-Agent (the proxy refuses curl's default) and exits with the response body when a page is not JSON.
 - Regression tests for the Supplements screen and supplement settings sheet, and a deleted supplement's settings key is now removed from storage.
