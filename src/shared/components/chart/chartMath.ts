@@ -274,6 +274,7 @@ export interface YBounds {
   sections: number;
 }
 
+/** Rounded axis bounds. A manual range is ignored unless both ends are set and max exceeds min. */
 export function yBounds(
   values: number[],
   settings: Pick<ChartSettings, "yAxis" | "yMin" | "yMax">,
@@ -355,6 +356,10 @@ export interface ChartModel {
   bounds: YBounds;
 }
 
+/**
+ * Everything a chart draws, on one shared index axis. A goal projection replaces
+ * the logged points, and while it does the trend, comparison and records are off.
+ */
 export function chartModel(
   points: ChartPoint[],
   settings: ChartSettings,
