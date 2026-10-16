@@ -63,6 +63,7 @@ export const musclesOf = (
 const weeksIn = (dayCount: number): number =>
   Math.max(1, Math.ceil(dayCount / 7));
 
+/** Weekly sets per muscle, with secondary muscles counted at `SECONDARY_WEIGHT` of each set. */
 export const muscleFrequency = (
   program: WorkoutData | null | undefined,
   split: string | null = null,

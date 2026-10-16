@@ -65,6 +65,7 @@ export interface OfflineMigrationInput {
   withdrawHealthConsent?: boolean;
 }
 
+/** Resolves false instead of throwing when any step fails, leaving the app mode unchanged. */
 export const doMigrateOffline = async ({
   user,
   selectedSplit,

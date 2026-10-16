@@ -259,6 +259,10 @@ const resolveOccurrence = (
   return changed;
 };
 
+/**
+ * Returns a copy with exercise ids and muscles filled in from the exercise database.
+ * `unresolved` lists names it could not match, and `changed` says whether the copy differs from the input.
+ */
 export const matchProgram = (program: WorkoutData): MatchProgramResult => {
   const cloned = structuredClone(program);
   const entries = occurrences(cloned);
