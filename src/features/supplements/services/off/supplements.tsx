@@ -233,6 +233,7 @@ export const supplementsApi = {
     return { success: true, id: entryId, streak }
   },
 
+  /** Reads the full history only when the streak window holds fewer entries than `limit`. */
   getLog: async (id: number, limit = 30): Promise<SupplementLogResponse> => {
     const list = await getAllSupplements()
     requireSupplement(list, id)

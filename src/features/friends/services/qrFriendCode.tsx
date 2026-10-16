@@ -18,6 +18,7 @@ const isValidUserId = (id: unknown): id is number | string =>
   (typeof id === "number" && Number.isInteger(id) && id > 0) ||
   (typeof id === "string" && id.trim().length > 0)
 
+/** Returns null for anything that isn't a well-formed OwnGains friend code, so scanning an unrelated QR is ignored. */
 export function parseFriendQrPayload(raw: string): FriendQrPayload | null {
   try {
     const data = JSON.parse(raw)
