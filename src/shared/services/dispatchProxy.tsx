@@ -26,6 +26,11 @@ type ServiceMethod = (...args: never[]) => unknown
 type ServiceModule<T> = { [K in keyof T]: ServiceMethod }
 type Invoke = (...args: unknown[]) => unknown
 
+/**
+ * Routes each call to `onImpl` or `offImpl` by app mode, or by the server's
+ * local-only feature list when `feature` is given. `metricName` defaults to
+ * `feature`, and calls are not counted when both are undefined.
+ */
 export function createDispatchProxy<T extends ServiceModule<T>>(
   onImpl: T,
   offImpl: T,

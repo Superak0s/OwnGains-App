@@ -103,6 +103,11 @@ export const setSessionRefresher = (
 // another refresh: the rejection path is what triggered the sign-out.
 const SIGNOUT_ROUTE = "/api/auth/signout"
 
+/**
+ * Fetch with the bearer token attached for the configured server only. GET and
+ * HEAD retry once on a transport error. A 401 triggers one session refresh and
+ * one replay, then throws `ApiError("SESSION_EXPIRED", 401)`.
+ */
 export const authenticatedFetch = (
   url: string,
   options: AuthenticatedFetchOptions = {},

@@ -132,6 +132,7 @@ export const validateServerUrl = (url: string): ServerUrlValidation => {
   return { valid: true }
 }
 
+/** Returns false when the URL fails validation or storage throws. Subscribers are notified only on a change. */
 export const setServerUrl = async (url: string): Promise<boolean> => {
   const normalized = normalizeServerUrl(url)
   if (!validateServerUrl(normalized).valid) return false

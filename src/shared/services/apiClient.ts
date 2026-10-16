@@ -19,6 +19,10 @@ export const isCredentialRejection = (error: unknown): boolean =>
   error.status !== 408 &&
   error.status !== 429
 
+/**
+ * Parses a JSON response body, throwing an `ApiError` for a non-2xx status or
+ * `success: false`. Server `code`s map to user-facing copy before the raw body message.
+ */
 export async function parseApiResponse<T = unknown>(res: Response): Promise<T> {
   let data: unknown
   try {
@@ -48,6 +52,7 @@ export async function parseApiResponse<T = unknown>(res: Response): Promise<T> {
   return data as T
 }
 
+/** `authenticatedFetch` followed by `parseApiResponse`. */
 export async function apiCall<T = unknown>(
   url: string,
   options?: AuthenticatedFetchOptions,

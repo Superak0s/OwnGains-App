@@ -11,6 +11,10 @@ const LATEST_RELEASE_URL =
 const LAST_CHECK_KEY = "@github_update_last_check";
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Returns the latest release when it is newer than `current`, checking GitHub
+ * at most once a day. A failed request does not start the 24 hour wait.
+ */
 export async function checkForGitHubUpdate(
   current: string,
   now = Date.now(),
