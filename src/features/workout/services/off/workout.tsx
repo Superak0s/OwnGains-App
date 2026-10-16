@@ -351,6 +351,7 @@ export const workoutApi = {
     return filtered.map((s) => toPublicSession(s, includeTimings));
   },
 
+  /** `before` is a stringified offset into the newest-first list, not a timestamp, and `nextCursor` is the next offset. */
   getSessionHistoryPage: async (
     split: string | null = null,
     before: string | null = null,

@@ -107,6 +107,7 @@ export const menstrualApi = {
     return { success: true, data };
   },
 
+  /** Average length comes from the gaps between logged cycle starts and falls back to the configured length until two cycles exist. */
   getCycleStats: async (
     settingsOverride?: MenstrualSettings,
   ): Promise<ApiResponse<CycleStats>> => {
