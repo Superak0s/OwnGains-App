@@ -42,7 +42,6 @@ const LOCAL_ID_BASE = 1_000_000_000
 const SUPPLEMENTS_KEY = "@offline:supplements:list"
 const SUPPLEMENT_ID_COUNTER = "@offline:supplements:id_counter"
 const ENTRY_ID_COUNTER = "@offline:supplements:entry_id_counter"
-const entriesKey = (id: number) => `@offline:supplements:${id}:entries`
 
 async function getAllSupplements(): Promise<StoredSupplement[]> {
   return readJSON<StoredSupplement[]>(SUPPLEMENTS_KEY, [])
@@ -61,7 +60,6 @@ function entryStoreFor(id: number): RecordStore<SupplementEntry> {
   if (!store) {
     store = createRecordStore<SupplementEntry>(
       `supplement_entries_${id}`,
-      entriesKey(id),
       (e) => e.id,
       (e) => e.takenAt,
     )

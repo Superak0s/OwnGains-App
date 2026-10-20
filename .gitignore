@@ -87,3 +87,6 @@ docs/superpowers/
 
 # Local-only Play Console helper
 scripts/play-recover.js
+
+# Firebase config for FCM push, read by app.config.js when present
+google-services.json

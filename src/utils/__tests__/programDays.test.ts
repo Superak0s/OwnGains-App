@@ -1,4 +1,5 @@
-import { visibleDaysForSplit } from "../programDays";
+import { traineeSplit, visibleDaysForSplit } from "../programDays";
+import type { WorkoutData } from "@shared/types";
 
 const ex = (sets: Record<string, number>) => ({
   name: "Bench",
@@ -29,5 +30,24 @@ describe("visibleDaysForSplit", () => {
   it("keeps days that have no exercises at all", () => {
     const withEmpty = [...days, { dayNumber: 5, exercises: [] }];
     expect(visibleDaysForSplit(withEmpty, "Me")).toHaveLength(3);
+  });
+});
+
+describe("traineeSplit", () => {
+  const program = {
+    split: ["Me"],
+    days: [{ dayNumber: 1, split: { Me: { exercises: [] } } }],
+  } as unknown as WorkoutData;
+
+  it("keeps the last session's split when the program has it", () => {
+    expect(traineeSplit(program, "Me")).toBe("Me");
+  });
+
+  it("falls back to the program's first split for a session logged under another name", () => {
+    expect(traineeSplit(program, "Upper/Lower")).toBe("Me");
+  });
+
+  it("is null without a program", () => {
+    expect(traineeSplit(null, "Me")).toBeNull();
   });
 });

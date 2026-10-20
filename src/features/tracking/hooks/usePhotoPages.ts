@@ -1,11 +1,12 @@
 import { useCallback, useRef, useState } from "react";
-import { progressPhotoApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import { captureException } from "@shared/services/crashReporting";
 import type { PhotoCursor, ProgressPhotoMuscle } from "../types/muscleRecovery";
 
 export const PHOTO_PAGE_SIZE = 50;
 
 export function usePhotoPages() {
+  const { progressPhotoApi } = useTrackingApis();
   const [photos, setPhotos] = useState<ProgressPhotoMuscle[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);

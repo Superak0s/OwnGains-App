@@ -57,8 +57,18 @@ import {
   loadTabOrder,
   onTabOrderChange,
   TAB_META,
+  TRAINER_TAB_META,
+  visibleTabs,
+  tabLabel,
+  type MainTabName,
   type TabName,
 } from "./src/shared/services/tabOrder";
+import {
+  effectiveRole,
+  getAppRole,
+  onAppRoleChange,
+} from "./src/shared/services/appRole";
+import ClientsScreen from "./src/features/trainer/ClientsScreen";
 import { useTabBar, TabBarProvider } from "./src/shared/context/TabBarContext";
 import { ThemeProvider, useTheme } from "./src/shared/context/ThemeContext";
 
@@ -117,6 +127,12 @@ const AnalyticsScreen = lazyScreen(
 const TrackingScreen = lazyScreen(
   () => import("./src/features/tracking/TrackingScreen"),
 );
+const TrainerAnalyticsScreen = lazyScreen(
+  () => import("./src/features/trainer/TrainerAnalyticsScreen"),
+);
+const TrainerTrackingScreen = lazyScreen(
+  () => import("./src/features/trainer/TrainerTrackingScreen"),
+);
 const SupplementsScreen = lazyScreen(
   () => import("./src/features/supplements/SupplementsScreen"),
 );
@@ -136,14 +152,20 @@ import {
 import { getNotifications } from "./src/shared/services/notifications";
 import { sweepStaleExports } from "./src/utils/writeJsonExport";
 import { useGitHubUpdateCheck } from "./src/shared/services/githubUpdate";
+import { useWhatsNewOnUpdate } from "./src/features/settings/hooks/useWhatsNewOnUpdate";
 import { usePlayForcedUpdate } from "./src/shared/services/playUpdate";
 import { useHealthConnectSync } from "./src/features/healthConnect/importer";
+import { useTrackingShare } from "./src/features/trainer/utils/trackingShare";
 import { HydrationTileModal } from "./src/features/tracking/hydrationTiles";
+import { MessagesProvider, useMessages } from "./src/features/messages/MessagesContext";
+import { ScheduleProvider } from "./src/features/schedule/ScheduleContext";
+import { messageSender } from "./src/features/messages/push";
 
 interface TabIconProps {
   readonly icon: string;
   readonly label: string;
   readonly focused: boolean;
+  readonly badge?: number;
 }
 
 interface CustomTabBarProps {
@@ -156,6 +178,7 @@ interface CustomTabBarProps {
     {
       options: {
         tabBarIcon?: (opts: { focused: boolean }) => React.ReactNode;
+        tabBarAccessibilityLabel?: string;
       };
     }
   >;
@@ -177,13 +200,17 @@ setTimeout(() => {
       const Notifications = await getNotifications();
       if (Notifications?.setNotificationHandler) {
         Notifications.setNotificationHandler({
-          handleNotification: async () => ({
-            shouldShowAlert: true,
-            shouldPlaySound: true,
-            shouldSetBadge: false,
-            shouldShowBanner: true,
-            shouldShowList: true,
-          }),
+          handleNotification: async (notification) => {
+            // The open app already shows the message, so only a backgrounded one alerts.
+            const show = !(messageSender(notification) && AppState.currentState === "active");
+            return {
+              shouldShowAlert: show,
+              shouldPlaySound: show,
+              shouldSetBadge: false,
+              shouldShowBanner: show,
+              shouldShowList: show,
+            };
+          },
         });
       }
       // Clears the sticky water quick-log notification that 0.2.x could leave on.
@@ -221,7 +248,7 @@ const showNavBarTemporarily = async (ms = 3000) => {
   }
 };
 
-const TabIcon = ({ icon, label, focused }: TabIconProps) => {
+const TabIcon = ({ icon, label, focused, badge = 0 }: TabIconProps) => {
   const { colors } = useTheme();
   return (
     <View style={styles.tabIconContainer}>
@@ -236,6 +263,11 @@ const TabIcon = ({ icon, label, focused }: TabIconProps) => {
         ]}
       >
         <Text style={styles.icon}>{icon}</Text>
+        {badge > 0 && (
+          <View style={[styles.badge, { backgroundColor: colors.error }]}>
+            <Text style={styles.badgeText}>{badge > 99 ? "99+" : badge}</Text>
+          </View>
+        )}
       </View>
       <Text
         style={[
@@ -368,7 +400,7 @@ const CustomTabBar = ({
                 style={styles.tabButton}
                 activeOpacity={0.7}
                 accessibilityRole='tab'
-                accessibilityLabel={route.name}
+                accessibilityLabel={options.tabBarAccessibilityLabel ?? route.name}
                 accessibilityState={{ selected: isFocused }}
               >
                 {IconComponent?.({ focused: isFocused })}
@@ -432,10 +464,18 @@ const createTabBarIcon = (icon: string, label: string) => {
   return TabBarIcon;
 };
 
+const createUnreadTabBarIcon = (icon: string, label: string) => {
+  const TabBarIcon = ({ focused }: { readonly focused: boolean }) => (
+    <TabIcon icon={icon} label={label} focused={focused} badge={useMessages().unreadCount} />
+  );
+  TabBarIcon.displayName = `TabBarIcon(${label})`;
+  return TabBarIcon;
+};
+
 // A render crash in one tab shows a retry in that tab only, instead of
 // replacing the whole app (and an in-progress workout) with the root fallback.
 const withTabBoundary = (
-  name: TabName,
+  name: MainTabName,
   Screen: React.ComponentType,
 ): React.ComponentType => {
   const Bounded = () => (
@@ -458,45 +498,61 @@ const TAB_COMPONENTS = Object.fromEntries(
       ["Supplements", SupplementsScreen],
       ["Friends", FriendsScreen],
       ["Settings", SettingsScreen],
+      ["Clients", ClientsScreen],
     ] as const
   ).map(([name, Screen]) => [name, withTabBoundary(name, Screen)]),
-) as Record<TabName, React.ComponentType>;
+) as Record<MainTabName, React.ComponentType>;
 
-const FROZEN_WHEN_BLURRED = new Set<TabName>(["Settings", "Analytics", "Plan"]);
+const TRAINER_TAB_COMPONENTS: Partial<Record<MainTabName, React.ComponentType>> = {
+  Analytics: withTabBoundary("Analytics", TrainerAnalyticsScreen),
+  Tracking: withTabBoundary("Tracking", TrainerTrackingScreen),
+};
+
+const FROZEN_WHEN_BLURRED = new Set<MainTabName>(["Settings", "Analytics", "Plan"]);
 
 const TAB_ICONS = Object.fromEntries(
   DEFAULT_TAB_ORDER.map((name) => [
     name,
-    createTabBarIcon(TAB_META[name].icon, TAB_META[name].label),
+    (name === "Friends" ? createUnreadTabBarIcon : createTabBarIcon)(TAB_META[name].icon, TAB_META[name].label),
   ]),
 ) as Record<TabName, ReturnType<typeof createTabBarIcon>>;
+
+const TRAINER_TAB_ICONS = Object.fromEntries(
+  Object.entries(TRAINER_TAB_META).map(([name, meta]) => [
+    name,
+    (name === "Clients" ? createUnreadTabBarIcon : createTabBarIcon)(meta.icon, meta.label),
+  ]),
+) as Record<keyof typeof TRAINER_TAB_META, ReturnType<typeof createTabBarIcon>>;
 
 function MainTabs() {
   const { user } = useAuth();
   const { colors } = useTheme();
   useTutorialGate();
   useHealthConnectSync(user?.id ?? null);
+  useTrackingShare(user?.id == null ? null : String(user.id));
   const updateAlert = useGitHubUpdateCheck();
+  const whatsNew = useWhatsNewOnUpdate();
   usePlayForcedUpdate();
-  const [isOffline, setIsOffline] = useState(
-    () => getAppModeSync() === "offline",
-  );
-  useEffect(
-    () => onAppModeChange.subscribe((mode) => setIsOffline(mode === "offline")),
-    [],
-  );
-  const [tabOrder, setTabOrder] = useState<TabName[]>([...DEFAULT_TAB_ORDER]);
+  const [appMode, setAppMode] = useState(getAppModeSync);
+  useEffect(() => onAppModeChange.subscribe(setAppMode), []);
+  const [role, setRole] = useState(getAppRole);
+  useEffect(() => onAppRoleChange.subscribe(setRole), []);
+  const activeRole = effectiveRole(role, appMode);
+  const isTrainer = activeRole === "trainer";
+  const [tabOrder, setTabOrder] = useState<MainTabName[]>([...DEFAULT_TAB_ORDER]);
   useEffect(() => {
     let active = true;
-    void loadTabOrder().then((order) => {
+    void loadTabOrder(activeRole).then((order) => {
       if (active) setTabOrder(order);
     });
-    const unsubscribe = onTabOrderChange.subscribe(setTabOrder);
+    const unsubscribe = onTabOrderChange.subscribe((change) => {
+      if (change.role === activeRole) setTabOrder(change.order);
+    });
     return () => {
       active = false;
       unsubscribe();
     };
-  }, []);
+  }, [activeRole]);
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -569,6 +625,8 @@ function MainTabs() {
       style={{ flex: 1, backgroundColor: colors.background }}
       {...panResponder.panHandlers}
     >
+      <MessagesProvider>
+      <ScheduleProvider>
       <Tab.Navigator
         screenOptions={{
           headerShown: false,
@@ -578,24 +636,28 @@ function MainTabs() {
         }}
         tabBar={renderCustomTabBar}
       >
-        {tabOrder
-          .filter((name) => !(isOffline && name === "Friends"))
-          .map((name) => (
-            <Tab.Screen
-              key={name}
-              name={name}
-              component={TAB_COMPONENTS[name]}
-              options={{
-                tabBarIcon: TAB_ICONS[name],
-                // The other tabs run effects (rest reminders, live sessions)
-                // that must run while the tab is in the background.
-                freezeOnBlur: FROZEN_WHEN_BLURRED.has(name),
-              }}
-            />
-          ))}
+        {visibleTabs(appMode, tabOrder).map((name) => (
+          <Tab.Screen
+            key={name}
+            name={name}
+            component={(isTrainer && TRAINER_TAB_COMPONENTS[name]) || TAB_COMPONENTS[name]}
+            options={{
+              tabBarIcon: isTrainer
+                ? TRAINER_TAB_ICONS[name as keyof typeof TRAINER_TAB_ICONS]
+                : TAB_ICONS[name as TabName],
+              tabBarAccessibilityLabel: tabLabel(name, isTrainer),
+              // The other tabs run effects (rest reminders, live sessions)
+              // that must run while the tab is in the background.
+              freezeOnBlur: FROZEN_WHEN_BLURRED.has(name),
+            }}
+          />
+        ))}
       </Tab.Navigator>
+      </ScheduleProvider>
+      </MessagesProvider>
       {user?.id != null && <HydrationTileModal />}
       {updateAlert}
+      {whatsNew}
     </View>
   );
 }
@@ -873,6 +935,18 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   icon: { fontSize: 24 },
+  badge: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
   label: {
     fontSize: 10,
     fontWeight: "600",

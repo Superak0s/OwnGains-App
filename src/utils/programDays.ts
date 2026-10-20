@@ -2,6 +2,7 @@ import {
   getDayExerciseList,
   type ProgramDayLike,
 } from "@shared/components/ProgramDayCardBase";
+import type { WorkoutData } from "@shared/types";
 
 interface VisibleDay<Day> {
   day: Day;
@@ -31,4 +32,20 @@ export function visibleDaysForSplit<Day extends ProgramDayLike>(
       dayIdx,
       displayNumber: split ? position + 1 : (day.dayNumber ?? position + 1),
     }));
+}
+
+/**
+ * The split a trainee last trained, or the program's first split when their
+ * program no longer has it (a session can be logged under any split name).
+ */
+export function traineeSplit(
+  data: WorkoutData | null,
+  lastSessionSplit: string | null | undefined,
+): string | null {
+  const splits = [
+    ...(data?.split ?? []),
+    ...(data?.days ?? []).flatMap((d) => Object.keys(d.split ?? {})),
+  ];
+  if (lastSessionSplit && splits.includes(lastSessionSplit)) return lastSessionSplit;
+  return splits[0] ?? null;
 }

@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useTheme } from "@shared/context/ThemeContext";
-import { sorenessApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import { DOMSStats, MUSCLE_GROUP_LABELS } from "../types/muscleRecovery";
 import ProgressChart from "@shared/components/ProgressChart";
 import { getSeverityColor } from "@utils/severityColor";
@@ -29,6 +29,7 @@ function recoveryTimeLabel(days: number): string {
 }
 
 export const DOMSHeatmap: React.FC<DOMSHeatmapProps> = ({ onSelectMuscle }) => {
+  const { sorenessApi } = useTrackingApis();
   const { colors } = useTheme();
   const [stats, setStats] = useState<DOMSStats | null>(null);
   const [loading, setLoading] = useState(true);

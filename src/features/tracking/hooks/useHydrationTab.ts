@@ -3,7 +3,7 @@ import type { UseAlertReturn } from "@shared/components/CustomAlert";
 import { useState, useCallback, useMemo } from "react";
 import type { HydrationEntry } from "../services/types";
 import { DEFAULT_HYDRATION_SETTINGS } from "../services/types";
-import { hydrationApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import { createDeleteHandler, withConfirm, describeError } from "../helpers";
 import { isoToLocalDateStr } from "../utils";
 import { useRetryKey } from "./useRetryKey";
@@ -19,6 +19,7 @@ interface UseHydrationTabDeps {
 }
 
 export function useHydrationTab(deps: UseHydrationTabDeps) {
+  const { hydrationApi } = useTrackingApis();
   const { alert, loadTabData, setDayModal, selectedLogDate, setSelectedLogDate, buildLocalISOForDate } = deps;
 
   const [hydrationEntries, setHydrationEntries] = useState<HydrationEntry[]>([]);

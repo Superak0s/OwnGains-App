@@ -2,7 +2,7 @@ import type { DayModalState } from "../types";
 import type { UseAlertReturn } from "@shared/components/CustomAlert";
 import { useState, useCallback, useMemo } from "react";
 import type { SorenessEntry } from "../services/types";
-import { sorenessApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import { createDeleteHandler, withConfirm } from "../helpers";
 import { isoToLocalDateStr } from "../utils";
 import { toDateString } from "@utils/format";
@@ -13,6 +13,7 @@ interface UseSorenessTabDeps {
 }
 
 export function useSorenessTab(deps: UseSorenessTabDeps) {
+  const { sorenessApi } = useTrackingApis();
   const { alert, setDayModal } = deps;
 
   const [sorenessEntries, setSorenessEntries] = useState<SorenessEntry[]>([]);

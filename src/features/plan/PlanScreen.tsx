@@ -18,7 +18,19 @@ import {
   LayoutAnimation,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useWorkoutPick } from "@shared/context/WorkoutContext";
+import {
+  useWorkoutPick,
+  WorkoutProvider,
+} from "@shared/context/WorkoutContext";
+import { useFocusEffect } from "@react-navigation/native";
+import ClientPickerSheet from "@features/trainer/components/ClientPickerSheet";
+import { trainerApi, type ClientSummary } from "@features/trainer/services";
+import { toDateKey, weekStart } from "@features/trainer/utils/roster";
+import { getAppRole, onAppRoleChange } from "@shared/services/appRole";
+import {
+  getActiveTrainee,
+  onActiveTraineeChange,
+} from "@shared/services/trainerEvents";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import { useAlert } from "@shared/components/CustomAlert";
@@ -26,8 +38,13 @@ import { matchProgram, applyResolution } from "./utils/matchProgram";
 import type { UnresolvedExercise } from "./utils/matchProgram";
 import MatchReviewModal from "./components/MatchReviewModal";
 import { workoutApi } from "@features/workout/services/index";
-import { programApi } from "@features/plan/services/index";
-import { log, metric, trackSpan, captureException } from "@shared/services/crashReporting";
+import {
+  log,
+  metric,
+  trackSpan,
+  captureException,
+  reportAndReturn,
+} from "@shared/services/crashReporting";
 import { useWidgets, useWidgetBoard } from "@shared/context/hooks/useWidgets";
 import WidgetGallery from "@shared/components/widgets/WidgetGallery";
 import WidgetEditButton from "@shared/components/widgets/WidgetEditButton";
@@ -85,6 +102,7 @@ import { userFacingError } from "@shared/services/apiError";
 import { markProgramDirty } from "@shared/services/programDirty";
 import { tutorialAnchor } from "@features/tutorial/anchors";
 import { SCREEN_PADDING } from "@shared/layout";
+import ScheduleWidget from "@features/schedule/ScheduleWidget";
 
 export type Styles = ReturnType<typeof makeStyles>;
 
@@ -116,25 +134,16 @@ const reportProgramSyncFailure = (op: string, err: unknown): void => {
   captureException(err, { stage: "programSync", op }, "warning");
 };
 
-const syncProgram = async (
-  op: string,
-  program: WorkoutData,
-  userId: string | null,
-): Promise<boolean> => {
-  try {
-    await programApi.saveProgram(program);
-    return true;
-  } catch (err) {
-    reportProgramSyncFailure(op, err);
-    await markProgramDirty(userId);
-    return false;
-  }
-};
-
-const planSubtitle = (dayTotal: number | null, split: string | null | undefined): string => {
-  if (dayTotal === null) return "Start from a template, build your own, or import a spreadsheet.";
+const planSubtitle = (
+  dayTotal: number | null,
+  split: string | null | undefined,
+): string => {
+  if (dayTotal === null)
+    return "Start from a template, build your own, or import a spreadsheet.";
   const days = `${dayTotal} ${dayTotal === 1 ? "day" : "days"}`;
-  return split ? `Training ${split}: ${days}` : `${days} ready. Pick a split to train.`;
+  return split
+    ? `Training ${split}: ${days}`
+    : `${days} ready. Pick a split to train.`;
 };
 
 const splitSubmitText = (editing: boolean, hasProgram: boolean): string => {
@@ -142,11 +151,15 @@ const splitSubmitText = (editing: boolean, hasProgram: boolean): string => {
   return hasProgram ? "Start as new program" : "Create split";
 };
 
-export default function PlanScreen({
+function PlanScreenBody({
   embedWidget,
+  title = "Plan",
+  onTitlePress,
 }: {
   readonly embedWidget?: PlanWidgetType;
-} = {}): React.JSX.Element {
+  readonly title?: string;
+  readonly onTitlePress?: () => void;
+}): React.JSX.Element {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const {
@@ -155,14 +168,42 @@ export default function PlanScreen({
     saveWorkoutData,
     saveSelectedSplit,
     userId,
+    actAs,
+    programApi,
   } = useWorkoutPick(
     "workoutData",
     "selectedSplit",
     "saveWorkoutData",
     "saveSelectedSplit",
     "userId",
+    "actAs",
+    "programApi",
   );
   const { alert, AlertComponent } = useAlert();
+
+  // A client's program has no offline copy to push later, so a refused save
+  // puts their server copy back and fails instead of reporting "on this device".
+  const syncProgram = useCallback(
+    async (op: string, program: WorkoutData): Promise<boolean> => {
+      try {
+        await programApi.saveProgram(program);
+        return true;
+      } catch (err) {
+        if (actAs) {
+          await saveWorkoutData(
+            await programApi
+              .fetchSavedProgram()
+              .catch(reportAndReturn(null, { stage: "clientProgramRollback" })),
+          );
+          throw err;
+        }
+        reportProgramSyncFailure(op, err);
+        await markProgramDirty(userId ?? null);
+        return false;
+      }
+    },
+    [programApi, actAs, saveWorkoutData, userId],
+  );
 
   const warnSaveFailed = useCallback(
     (error: unknown) => {
@@ -281,10 +322,10 @@ export default function PlanScreen({
     setUnresolvedMatches(unresolved);
     if (changed) {
       saveWorkoutData(matched)
-        .then(() => syncProgram("auto_match", matched, userId ?? null))
+        .then(() => syncProgram("auto_match", matched))
         .catch(warnSaveFailed);
     }
-  }, [workoutData, saveWorkoutData, warnSaveFailed, userId]);
+  }, [workoutData, saveWorkoutData, warnSaveFailed, syncProgram]);
 
   const handleRecheckMatches = (): void => {
     if (!workoutData) return;
@@ -293,7 +334,7 @@ export default function PlanScreen({
     setShowMatchReview(unresolved.length > 0);
     if (changed)
       saveWorkoutData(matched)
-        .then(() => syncProgram("recheck_match", matched, userId ?? null))
+        .then(() => syncProgram("recheck_match", matched))
         .catch(warnSaveFailed);
     if (unresolved.length === 0)
       alert(
@@ -374,7 +415,7 @@ export default function PlanScreen({
     if (!pendingImportUri || selectedColumnIndices.size === 0) return;
     setIsImportingColumns(true);
     try {
-      const data = await trackSpan("plan.import_workbook", "screen.load", () =>
+      const data = await trackSpan("plan.import_workbook", () =>
         parseWorkoutFileClient(
           pendingImportUri,
           Array.from(selectedColumnIndices),
@@ -384,7 +425,7 @@ export default function PlanScreen({
       await saveWorkoutData(matched);
       setUnresolvedMatches(unresolved);
       setShowMatchReview(unresolved.length > 0);
-      const synced = await syncProgram("import", matched, userId ?? null);
+      const synced = await syncProgram("import", matched);
       alert(
         synced ? "Success!" : "Imported on this device",
         `Loaded ${data?.totalDays ?? data?.days?.length ?? 0} workout days for ${data.split?.join(", ") ?? ""}${synced ? "" : OFFLINE_SAVE_NOTE}`,
@@ -481,8 +522,8 @@ Your current program is untouched. Check that you picked the right columns, or p
     if (showMatchReview || !matchSyncDirtyRef.current) return;
     matchSyncDirtyRef.current = false;
     const data = workoutDataRef.current;
-    if (data) void syncProgram("resolve_match", data, userId ?? null);
-  }, [showMatchReview, userId]);
+    if (data) syncProgram("resolve_match", data).catch(warnSaveFailed);
+  }, [showMatchReview, syncProgram, warnSaveFailed]);
 
   const openCreateSplit = () => {
     setExpandedSplitDayIdx(0);
@@ -648,7 +689,9 @@ Your current program is untouched. Check that you picked the right columns, or p
         "Add an exercise first",
         `${emptyTitled
           .map((d) => `"${d.dayTitle.trim()}"`)
-          .join(", ")} has no exercises, so it can't be saved. Add one, or clear the title to drop the day.`,
+          .join(
+            ", ",
+          )} has no exercises, so it can't be saved. Add one, or clear the title to drop the day.`,
         [{ text: "OK" }],
         "warning",
       );
@@ -664,7 +707,7 @@ Your current program is untouched. Check that you picked the right columns, or p
         ),
       );
       await saveWorkoutData(updated);
-      const synced = await syncProgram("edit_split", updated, userId ?? null);
+      const synced = await syncProgram("edit_split", updated);
       resetCreateSplitForm();
       alert(
         synced ? "Saved!" : "Saved on this device",
@@ -784,7 +827,7 @@ Your current program is untouched. Check that you picked the right columns, or p
     );
     await saveWorkoutData(updated);
     if (isNewSplit) await saveSelectedSplit(splitName!);
-    const synced = await syncProgram("insert_days", updated, userId ?? null);
+    const synced = await syncProgram("insert_days", updated);
     alert(
       synced ? "Inserted!" : "Inserted on this device",
       `Added ${template.days.length} day(s) from "${template.name}" to your current program.${synced ? "" : OFFLINE_SAVE_NOTE}`,
@@ -807,7 +850,7 @@ Your current program is untouched. Check that you picked the right columns, or p
         const fresh = buildProgramFromTemplate(template, splitNames);
         await saveWorkoutData(fresh);
         await saveSelectedSplit(splitNames[0]);
-        const synced = await syncProgram("new_split", fresh, userId ?? null);
+        const synced = await syncProgram("new_split", fresh);
         alert(
           synced ? "Split created!" : "Split created on this device",
           `"${template.name}" is now your active program. Add exercises via the day editor.${synced ? "" : OFFLINE_SAVE_NOTE}`,
@@ -1016,7 +1059,9 @@ Your program is untouched. Try again, or pick a different destination.`,
           accessibilityLabel='Create a new split'
         >
           <Text style={[styles.buildTileGlyph, styles.onAccent]}>＋</Text>
-          <Text style={[styles.buildTileLabel, styles.onAccent]}>New split</Text>
+          <Text style={[styles.buildTileLabel, styles.onAccent]}>
+            New split
+          </Text>
           <Text style={[styles.buildTileHint, styles.onAccentQuiet]}>
             Name it, add days
           </Text>
@@ -1055,7 +1100,10 @@ Your program is untouched. Try again, or pick a different destination.`,
           return (
             <TouchableOpacity
               key={template.id}
-              style={[styles.templateCard, isActive && styles.templateCardActive]}
+              style={[
+                styles.templateCard,
+                isActive && styles.templateCardActive,
+              ]}
               onPress={handlePress}
               disabled={isApplyingTemplate}
               accessibilityRole='button'
@@ -1220,7 +1268,9 @@ Your program is untouched. Try again, or pick a different destination.`,
               <View
                 style={[
                   styles.freqFill,
-                  { width: peak > 0 ? `${(row.setsPerWeek / peak) * 100}%` : 0 },
+                  {
+                    width: peak > 0 ? `${(row.setsPerWeek / peak) * 100}%` : 0,
+                  },
                 ]}
               />
             </View>
@@ -1357,6 +1407,7 @@ Your program is untouched. Try again, or pick a different destination.`,
   const WIDGET_RENDERERS: Record<PlanWidgetType, () => React.ReactNode> = {
     build_plan: renderBuildPlanWidget,
     select_split: renderSelectSplitWidget,
+    schedule: () => <ScheduleWidget />,
     muscle_frequency: renderMuscleFrequencyWidget,
     view_program: renderViewProgramWidget,
   };
@@ -1393,7 +1444,12 @@ Your program is untouched. Try again, or pick a different destination.`,
             keyboardShouldPersistTaps='handled'
           >
             <View style={styles.content}>
-              <ScreenTitle title='Plan' subtitle={headerSubtitle} />
+              <ScreenTitle
+                title={title}
+                subtitle={headerSubtitle}
+                onPress={onTitlePress}
+                accessibilityHint="Switches between your programs and a client's"
+              />
 
               {widgetsLoaded && widgets.length > 0 && (
                 <WidgetEditHeader
@@ -1638,6 +1694,73 @@ Your program is untouched. Try again, or pick a different destination.`,
   );
 }
 
+/** A trainer switches between their own programs and a client's from a searchable sheet opened by tapping the title. */
+export default function PlanScreen({
+  embedWidget,
+}: {
+  readonly embedWidget?: PlanWidgetType;
+} = {}): React.JSX.Element {
+  const [role, setRole] = useState(getAppRole);
+  const [clients, setClients] = useState<ClientSummary[]>([]);
+  const [shown, setShown] = useState(getActiveTrainee);
+  const [picking, setPicking] = useState(false);
+  useEffect(() => onAppRoleChange.subscribe(setRole), []);
+  useEffect(() => onActiveTraineeChange.subscribe(setShown), []);
+  const isTrainer = !embedWidget && role === "trainer";
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isTrainer) return;
+      let active = true;
+      trainerApi
+        .getClients(toDateKey(weekStart(new Date())))
+        .then((roster) => {
+          if (active) setClients(roster);
+        })
+        .catch(reportAndReturn(undefined, { stage: "trainerPlanClients" }));
+      return () => {
+        active = false;
+      };
+    }, [isTrainer]),
+  );
+
+  if (!isTrainer) return <PlanScreenBody embedWidget={embedWidget} />;
+
+  const openPicker = () => setPicking(true);
+  const choose = (id: string | null) => {
+    const client = clients.find((c) => c.userId === id);
+    setShown(
+      client ? { userId: client.userId, username: client.username } : null,
+    );
+    setPicking(false);
+  };
+
+  return (
+    <>
+      {shown ? (
+        <WorkoutProvider key={shown.userId} actAs={shown}>
+          <PlanScreenBody
+            title={`${shown.username}'s program`}
+            onTitlePress={openPicker}
+          />
+        </WorkoutProvider>
+      ) : (
+        <PlanScreenBody title='My splits' onTitlePress={openPicker} />
+      )}
+      <ClientPickerSheet
+        visible={picking}
+        onClose={() => setPicking(false)}
+        title='Show program for'
+        ownLabel='My program'
+        clients={clients}
+        selectedId={shown?.userId ?? null}
+        onChoose={choose}
+        emptyText='A client shows up here once they accept your trainer request.'
+      />
+    </>
+  );
+}
+
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -1674,7 +1797,11 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.accent,
       marginBottom: 6,
     },
-    buildTileLabel: { fontSize: 15, fontWeight: "700", color: colors.textPrimary },
+    buildTileLabel: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
     buildTileHint: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
 
     railHeading: {

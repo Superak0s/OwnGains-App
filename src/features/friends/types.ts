@@ -84,6 +84,8 @@ export interface SessionRecord {
   secondaryMuscles?: string[];
   setTimings?: SetTiming[];
   groupedExercises?: GroupedExercise[];
+  loggedByTrainerId?: string | null;
+  loggedByTrainerUsername?: string | null;
 }
 
 export interface UserSearchResult {
@@ -115,7 +117,8 @@ export type PermissionType =
   | "program"
   | "joint_session"
   | "watch_session"
-  | "trainer";
+  | "trainer"
+  | "tracking";
 
 export interface GrantedPermission {
   id: number | string;

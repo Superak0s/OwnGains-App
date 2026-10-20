@@ -4,6 +4,7 @@ import { workoutApi } from "@features/workout/services/index";
 import { STORAGE_KEYS } from "@shared/services/storage";
 import type { PendingSync } from "../../../types";
 import { ApiError } from "@shared/services/apiError";
+import { CUSTOM_DAY } from "@utils/dayCarryOver";
 
 jest.mock("expo-sqlite", () => ({
   openDatabaseSync: () => ({
@@ -113,10 +114,10 @@ describe("useSessionOperations endWorkout", () => {
   });
 
   it.each([
-    new ApiError("Session not found or unauthorized", 403),
-    new ApiError("Session not found", 404),
+    new ApiError("Session not found or unauthorized", 403, null, "SESSION_NOT_FOUND"),
+    new ApiError("Session has already ended", 409, null, "SESSION_ALREADY_ENDED"),
   ])(
-    "does not queue a sync when the server rejects with $status $message",
+    "does not queue a sync when the server rejects with $code",
     async (error) => {
       endSession.mockRejectedValue(error);
       const { endWorkout, options } = await renderEndWorkout({
@@ -170,6 +171,57 @@ describe("useSessionOperations endWorkout", () => {
         type: "endSession",
         data: { sessionId: "local_1" },
       }),
+    );
+  });
+});
+
+describe("useSessionOperations custom day", () => {
+  const startSession = workoutApi.startSession as jest.Mock;
+
+  it("ends a custom-day session without locking it or keeping its logs", async () => {
+    endSession.mockResolvedValue(undefined);
+    const { endWorkout, options } = await renderEndWorkout({
+      currentSessionId: "42",
+      currentDay: CUSTOM_DAY,
+      workoutStartTime: "2099-01-01T10:00:00",
+      completedDays: { 1: { 0: {} }, [CUSTOM_DAY]: { 0: {} } },
+    });
+
+    await act(async () => {
+      await endWorkout();
+    });
+
+    expect(options.setLockedDays).not.toHaveBeenCalled();
+    expect(options.setCompletedDays).toHaveBeenCalledWith({ 1: { 0: {} } });
+  });
+
+  it("starts the session on the day it is given rather than the current one", async () => {
+    startSession.mockResolvedValue(7);
+    const options = makeOptions({ currentDay: 1, workoutData: null });
+    let startWorkout!: ReturnType<typeof useSessionOperations>["startWorkout"];
+    function Harness() {
+      ({ startWorkout } = useSessionOperations(options));
+      return null;
+    }
+    await act(async () => {
+      create(<Harness />);
+    });
+
+    let id: string | null = null;
+    await act(async () => {
+      id = await startWorkout(false, undefined, {
+        split: "Free",
+        day: { dayNumber: CUSTOM_DAY, dayTitle: "Empty workout", split: {} },
+      });
+    });
+
+    expect(id).toBe("7");
+    expect(startSession).toHaveBeenCalledWith(
+      "Free",
+      CUSTOM_DAY,
+      "Empty workout",
+      false,
+      expect.any(String),
     );
   });
 });

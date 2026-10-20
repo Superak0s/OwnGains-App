@@ -398,7 +398,7 @@ describe("parity with the server routes", () => {
     expect(await workoutApi.getSession(id)).toMatchObject({ dayNumber: 3, dayTitle: "Legs" });
   });
 
-  it("answers the record-sessions query with an array, never the online null for an old server", async () => {
+  it("answers the record-sessions query with an array", async () => {
     const id = await startAt("2024-01-01T10:00:00.000Z");
     await record(id, "Bench Press", { weight: 120 });
 

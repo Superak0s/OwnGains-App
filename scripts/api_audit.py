@@ -98,6 +98,8 @@ def normalize(path: str) -> str:
     path = re.sub(r"\$\{[^{}]*\}", PARAM, path)
     path = path.split("${")[0] if truncated(path) else path
     path = re.sub(r":[A-Za-z_]\w*", PARAM, path)
+    # `/x/${id}${query}`: an interpolated query string tacked onto a param
+    path = re.sub(r"(?:%s)+" % PARAM, PARAM, path)
     path = re.sub(r"/+", "/", path)
     return path.rstrip("/") or "/"
 
@@ -117,7 +119,8 @@ def is_call_argument(text: str, quote: int) -> bool:
     j = quote - 1
     while j >= 0 and text[j] in " \t\r\n":
         j -= 1
-    return j >= 0 and text[j] in "(,"
+    # `?` too: the consequent of `f(q ? `/api/x?${q}` : path)` is still the argument
+    return j >= 0 and text[j] in "(,?"
 
 
 def skip_string(text: str, i: int, n: int, quote: str) -> int:
@@ -342,16 +345,17 @@ def handler_span(text: str, m) -> str:
 
 
 def route_endpoint(method, raw, file, text, m, handler, route_imports):
+    reads = with_req_helpers(handler, text, route_imports)
     return {
         "method": method.upper(),
         "path": normalize(raw),
         "raw": raw,
         "file": file,
         "line": text[: m.start()].count("\n") + 1,
-        "body": server_keys(handler, REQ_BODY) | upload_fields(text, m.start()),
-        "query": server_keys(handler, REQ_QUERY),
-        "body_open": open_reads(handler, REQ_BODY),
-        "query_open": open_reads(handler, REQ_QUERY),
+        "body": server_keys(reads, REQ_BODY) | upload_fields(text, m.start()),
+        "query": server_keys(reads, REQ_QUERY),
+        "body_open": open_reads(reads, REQ_BODY),
+        "query_open": open_reads(reads, REQ_QUERY),
         "external": external_marked(text, m.start()),
         "dead_after_read": unused_extractions(handler),
         "dead_in_callee": (
@@ -392,7 +396,7 @@ def collect_routes(prefix, f, seen, endpoints):
 def parse_server():
     routes_ts = (SERVER_ROOT / "routes.ts").read_text(encoding="utf-8")
     imports = dict(re.findall(r'import\s+(\w+)\s+from\s+"\./([^"]+)"', routes_ts))
-    mounts = re.findall(r'app\.use\(\s*"([^"]+)"\s*,\s*(\w+)\s*\)', routes_ts)
+    mounts = re.findall(r'app\.use\(\s*"([^"]+)"\s*,\s*(?:\w+\s*,\s*)*(\w+)\s*\)', routes_ts)
     # routers mounted in a loop over a `["/path", router]` table
     mounts += re.findall(r'\[\s*"(/[^"]+)"\s*,\s*(\w+Routes)\s*\]', routes_ts)
     top_level_imports = named_imports(routes_ts, SERVER_ROOT)
@@ -446,6 +450,9 @@ def server_extractions(handler: str, source: str) -> list:
                 }
             )
 
+        for m in re.finditer(r'queryString\(\s*req\s*,\s*"(\w+)"', handler):
+            out.append({"key": m.group(1), "binding": None, "kind": "direct", "at": m.end()})
+
     for m in re.finditer(
         r"const\s+(\w+)\s*=\s*%s\??\.(\w+)" % re.escape(source), handler
     ):
@@ -496,7 +503,7 @@ def open_reads(handler: str, source: str) -> bool:
     src = re.escape(source)
     return bool(
         re.search(src + r"\s*\[", handler)
-        or re.search(src + r"(?![.\?\[])[,)\}]", handler)
+        or re.search(src + r"(?![.\?\[])(?:\s*\?\?\s*\{\s*\})?[,)\}]", handler)
         or re.search(r"\b(?:const|let|var)\s+\w+\s*=\s*" + src + r"(?![.\?\[])", handler)
     )
 
@@ -595,9 +602,10 @@ def named_imports(text: str, base_dir: Path) -> dict:
     including multi-line import lists.
     """
     out = {}
-    for m in re.finditer(r'import\s*\{([^}]*)\}\s*from\s*"(\.[^"]*)"', text, re.S):
+    for m in re.finditer(r'import\s*\{([^}]*)\}\s*from\s*"(\.[^"]*|@/[^"]*)"', text, re.S):
         rel = m.group(2)
-        f = (base_dir / rel).resolve()
+        # `@/x` is the server's alias for its src/
+        f = (SERVER_ROOT / rel[2:] if rel.startswith("@/") else base_dir / rel).resolve()
         if f.suffix == ".js":
             f = f.with_suffix(".ts")
         for raw_name in m.group(1).split(","):
@@ -706,6 +714,61 @@ def find_function_cached(fn_file: Path, fn_name: str):
             find_function(_read_cached(fn_file), fn_name) if fn_file.exists() else None
         )
     return _function_cache[key]
+
+
+# their req.query reads are already extracted by key in server_extractions,
+# inlining them would turn every route that uses them into an open read
+REQ_HELPER_SKIP = {"queryLimit", "queryString"}
+
+
+def any_function(text: str, name: str):
+    """(first parameter, body) of `function NAME(...) {...}` or
+    `const NAME = (...) => ...` in `text`, exported or not. A concise arrow
+    body is read to the end of its line."""
+    fn = re.search(r"\bfunction\s+%s\s*\(" % re.escape(name), text)
+    m = fn or re.search(r"\bconst\s+%s\s*=\s*(?:async\s*)?\(" % re.escape(name), text)
+    if not m:
+        return None
+    open_paren = m.end() - 1
+    params = balanced_span(text, open_paren)
+    first = re.match(r"\s*(\w+)", params)
+    after = open_paren + len(params) + 2
+    if fn:
+        brace = skip_to_body_brace(text, after)
+        body = balanced_span(text, brace) if brace >= 0 else None
+    else:
+        rest = text[after:]
+        arrow = rest.find("=>")
+        body = rest[arrow + 2 :].lstrip() if arrow >= 0 else None
+        if body is not None:
+            body = balanced_span(body, 0) if body.startswith("{") else body.split("\n", 1)[0]
+    return (first.group(1) if first else None, body) if body is not None else None
+
+
+def with_req_helpers(handler: str, text: str, imports: dict, seen=frozenset()) -> str:
+    """`handler` plus the bodies of the helpers it hands `req`, `req.body` or
+    `req.query` to (`injuryFilter(req)`, `readFields(req.body ?? {})`),
+    recursively, so the keys a helper reads count as read by the route."""
+    out = handler
+    for name, arg in dict.fromkeys(
+        re.findall(r"\b(\w+)\(\s*(req(?:\.body|\.query)?)\b(?!\.)", handler)
+    ):
+        if name in seen or name in REQ_HELPER_SKIP:
+            continue
+        src_text, src_imports = text, imports
+        found = any_function(text, name)
+        if found is None and name in imports:
+            fn_file, original = imports[name]
+            src_text = _read_cached(fn_file)
+            src_imports = named_imports(src_text, fn_file.parent)
+            found = any_function(src_text, original)
+        if found is None or found[0] is None:
+            continue
+        param, body = found
+        # read the helper's own parameter name back as what the route passed
+        body = re.sub(r"(?<![.\w])%s\b" % re.escape(param), arg, body)
+        out += "\n" + with_req_helpers(body, src_text, src_imports, seen | {name})
+    return out
 
 
 def call_args(handler: str, fn_name: str) -> list:
@@ -973,6 +1036,35 @@ def param_types(sig_text: str) -> dict:
 # ---------------------------------------------------------------- app
 
 
+def local_query_keys(raw: str, before: str) -> set:
+    """Query keys of a string the path interpolates whole (`?${query}`,
+    `/${id}${query}`), read off the nearest `const query = ...` line above it."""
+    keys = set()
+    for name in re.findall(r"\$\{(\w+)\}", raw):
+        decls = re.findall(r"\bconst\s+%s\s*=([^\n]*)" % re.escape(name), before)
+        if decls:
+            for lit in re.findall(r"`([^`]*)`|\"([^\"]*)\"", decls[-1]):
+                keys |= set(re.findall(r"(?:^|[?&])(\w+)=", "".join(lit)))
+            # `const query = params.toString()` over `params.set("key", ...)`
+            for params in re.findall(r"(\w+)\.toString\(\)", decls[-1]):
+                keys |= set(re.findall(r"\b%s\.(?:set|append)\(\s*\"(\w+)\"" % params, before))
+    return keys
+
+
+def options_helper(span: str, text: str):
+    """`(method, span)` for a call that passes a local options helper,
+    `const post = (body) => ({ method: "POST", body: JSON.stringify(body) })`
+    used as `f(url, post(x))`. The span comes back with the helper call
+    spelled out as `{ body: JSON.stringify(x) }` so its body keys are read."""
+    for name in re.findall(r",\s*(\w+)\(", span):
+        decl = re.search(r'\bconst\s+%s\s*=[^\n]*?method:\s*"(\w+)"' % re.escape(name), text)
+        if decl:
+            if "JSON.stringify" in decl.group(0) or "JSON.stringify" in text[decl.end() :].split("\n", 1)[0]:
+                span = re.sub(r",\s*%s\(" % re.escape(name), ", { body: JSON.stringify(", span, count=1)
+            return decl.group(1), span
+    return None
+
+
 def app_call(f, text: str, m) -> dict:
     # +1 skips the string's closing quote
     span_start = m.end() + 1
@@ -984,6 +1076,10 @@ def app_call(f, text: str, m) -> dict:
     method = re.search(r'method:\s*"(\w+)"', span) or re.search(
         r'^,\s*"(%s)"' % "|".join(m.upper() for m in METHODS), span
     )
+    method = method.group(1) if method else None
+    helper = None if method else options_helper(span, text)
+    if helper:
+        method, span = helper
     raw = m.group(1)
     # a nested template literal ends the path string early, so `span` starts
     # mid-expression and its braces are not this call's arguments
@@ -991,13 +1087,13 @@ def app_call(f, text: str, m) -> dict:
         (set(), True) if truncated(raw) else app_body(span, text, m.end() + 1, f)
     )
     return {
-        "method": (method.group(1) if method else "GET").upper(),
+        "method": (method or "GET").upper(),
         "path": normalize(raw),
         "raw": raw,
         "file": str(f.relative_to(APP_ROOT)).replace("\\", "/"),
         "line": text[: m.start()].count("\n") + 1,
         "body": body,
-        "query": set(re.findall(r"[?&](\w+)=", raw)),
+        "query": set(re.findall(r"[?&](\w+)=", raw)) | local_query_keys(raw, text[: m.start()]),
         "body_open": body_open,
         "dynamic_query": "${params" in raw or "toString()" in raw or truncated(raw),
         "reads": response_reads(text, m.start()),
@@ -1211,10 +1307,18 @@ def call_ident(text: str, quote: int):
     return text[k + 1 : j]
 
 
+def inline_path_consts(text: str) -> str:
+    """`${BASE}/x` -> `/api/base/x` for every `const BASE = "/api/base"` in
+    the file, so a path built on a constant is seen as the call it is."""
+    for name, value in re.findall(r'\bconst\s+(\w+)\s*=\s*"(/api/[^"\n]*)"', text):
+        text = text.replace("${%s}" % name, value)
+    return text
+
+
 def parse_app():
     calls = []
     for f in app_sources(APP_ROOT / "src"):
-        text = read_source(f)
+        text = inline_path_consts(read_source(f))
         # the string may be prefixed, e.g. `${API_BASE_URL}/api/x`
         for m in API_PATH_LITERAL.finditer(text):
             if not is_call_argument(text, m.start()):
@@ -1544,6 +1648,25 @@ def self_test():
     assert not is_test(Path("src/a/b.ts"))
     assert normalize("/api/x/${id}?limit=1") == param_route
     assert normalize("/api/x/:id/") == param_route
+    assert normalize("/api/x/${id}${query}") == param_route
+    assert open_reads("f(req.body ?? {})", REQ_BODY)
+    assert inline_path_consts('const B = "/api/b"\nf(`${B}/x`)').endswith("f(`/api/b/x`)")
+    assert is_call_argument("f(q ? `/api/x` : p)", 6)
+    helper = options_helper(', post({ a })', 'const post = (b) => ({ method: "POST", body: JSON.stringify(b) })')
+    assert helper == ("POST", ", { body: JSON.stringify({ a })")
+    assert local_query_keys("/api/x?${q}", 'p.set("days", d)\nconst q = p.toString()\n') == {"days"}
+    assert local_query_keys(
+        "/api/x/${id}${query}", 'const query = `from=${a}&to=${b}${c ? "&all=1" : ""}`\n'
+    ) == {"from", "to", "all"}
+    assert server_keys('queryString(req, "from")', REQ_QUERY) == {"from"}
+    helper_src = (
+        "function pick(r) { return r.query.muscle }\n"
+        "const lim = (r: Request) => queryLimit(r, { def: 1, max: 2 })\n"
+        "function fields(b) { return b.title }\n"
+    )
+    helped = with_req_helpers("pick(req); lim(req); fields(req.body ?? {})", helper_src, {})
+    assert server_keys(helped, REQ_QUERY) == {"muscle", "limit"}
+    assert server_keys(helped, REQ_BODY) == {"title"}
     assert is_call_argument("f(`/api/x`)", 2)
     assert not is_call_argument("return `/api/x`", 7)
     assert paths_match(settings_route, settings_route)

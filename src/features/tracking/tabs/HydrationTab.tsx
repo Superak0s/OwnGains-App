@@ -11,7 +11,7 @@ import {
 } from "@shared/services/storage";
 import type { WidgetDefinition } from "@shared/types";
 import { toDefaultWidgets } from "@shared/types";
-import { hydrationApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import {
   DEFAULT_HYDRATION_ERROR_MARGIN,
   DEFAULT_HYDRATION_PRESETS,
@@ -114,6 +114,7 @@ export function LogHydrationModal({
   onSuccess,
   prefillDate,
 }: LogHydrationModalProps) {
+  const { hydrationApi } = useTrackingApis();
   const { colors } = useTheme();
   const { user } = useAuth();
   const [amountMl, setAmountMl] = useState<number>(500);
@@ -374,6 +375,7 @@ interface HydrationSettingsWidgetProps {
 export function HydrationSettingsWidget({
   onSettingsUpdate,
 }: HydrationSettingsWidgetProps) {
+  const { hydrationApi } = useTrackingApis();
   const { colors } = useTheme();
   const [expanded, setExpanded] = useState(true);
   const [goalMl, setGoalMl] = useState<number>(2000);

@@ -69,11 +69,8 @@ export const makeProgramApi = (http: HttpFetch) => {
     /**
      * Patch just the machine fields of one exercise.
      *
-     * This is deliberately NOT `saveProgram`: /api/program/upload replaces the
-     * whole program and the server restricts it with `denyTrainer`, so a trainer
-     * editing a trainee's machine setup would get a silent 403. It is also
-     * safer for the user's own account, since a whole-program write from a stale
-     * client copy clobbers edits made on another device.
+     * This is deliberately NOT `saveProgram`: a whole-program write from a
+     * stale client copy clobbers edits made on another device.
      */
     updateExerciseMachines: async (
       dayNumber: number,

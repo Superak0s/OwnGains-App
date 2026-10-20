@@ -1,7 +1,6 @@
 import {
   getUserKey,
   loadFromStorage,
-  removeFromStorage,
   saveToStorage,
 } from "./storage"
 import {
@@ -21,13 +20,21 @@ import {
 } from "./sqliteStorage"
 import { toDateString } from "@utils/format"
 
-export async function readJSON<T>(key: string, fallback: T): Promise<T> {
-  const value = await loadFromStorage<T>(key, getRecordStoreUser())
+export async function readJSON<T>(
+  key: string,
+  fallback: T,
+  user: string | null = getRecordStoreUser(),
+): Promise<T> {
+  const value = await loadFromStorage<T>(key, user)
   return value ?? fallback
 }
 
-export async function writeJSON<T>(key: string, value: T): Promise<void> {
-  const ok = await saveToStorage(key, value, getRecordStoreUser())
+export async function writeJSON<T>(
+  key: string,
+  value: T,
+  user: string | null = getRecordStoreUser(),
+): Promise<void> {
+  const ok = await saveToStorage(key, value, user)
   if (!ok) {
     throw new Error(`[offline storage] Failed to write "${key}"`)
   }
@@ -75,14 +82,15 @@ export function setRecordStoreUser(userId: string | null): void {
 
 /**
  * One-row-per-record store over `kv_records`, scoped to the active account. The
- * first access moves any data from the old single-blob `legacyBlobKey` into rows.
- * `sortKeyOf` orders reads, most recent first.
+ * first access claims rows written before an account was active.
+ * `sortKeyOf` orders reads, most recent first. A fixed `user` pins the store to
+ * that account instead.
  */
 export function createRecordStore<T>(
   collection: string,
-  legacyBlobKey: string,
   idOf: (record: T) => string | number,
   sortKeyOf: (record: T) => string,
+  user?: string,
 ): RecordStore<T> {
   const toWrite = (record: T) => ({
     id: String(idOf(record)),
@@ -90,16 +98,11 @@ export function createRecordStore<T>(
     value: JSON.stringify(record),
   })
 
-  let col = getUserKey(collection, activeUserId)
-  let migration: Promise<void> | null = null
+  let col = getUserKey(collection, user ?? activeUserId)
+  let migration: Promise<void> | null = user ? Promise.resolve() : null
   const ensureMigrated = (): Promise<void> => {
     migration ??= (async () => {
       if (col !== collection) await renameCollection(collection, col)
-      const legacy = await loadFromStorage<T[]>(legacyBlobKey)
-      if (legacy && legacy.length > 0) {
-        await putRecords(col, legacy.map(toWrite))
-      }
-      await removeFromStorage(legacyBlobKey)
     })().catch((error) => {
       // Caching the rejection would break every later read and write of this
       // collection for the rest of the session over one transient failure.
@@ -114,7 +117,7 @@ export function createRecordStore<T>(
   // full parsed collection is kept until any record write is queued.
   let parsed: { version: number; rows: T[] } | null = null
 
-  recordStoreResets.push(() => {
+  if (!user) recordStoreResets.push(() => {
     col = getUserKey(collection, activeUserId)
     migration = null
     inFlightReads.clear()

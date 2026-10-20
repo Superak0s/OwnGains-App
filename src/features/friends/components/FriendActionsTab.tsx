@@ -238,111 +238,8 @@ function LiftTogetherAction({
   );
 }
 
-interface TrainerActionProps {
-  readonly selectedFriend: Friend | null;
-  readonly isActive: boolean;
-  readonly onStart: (friend: Friend) => void;
-  readonly onStop: () => void;
-  readonly onSendPlan: (friend: Friend) => void;
-  readonly styles: ReturnType<typeof makeStyles>;
-  readonly jointStyles: ReturnType<typeof makeJointStyles>;
-  readonly colors: ThemeColors;
-}
-
-function TrainerAction({
-  selectedFriend,
-  isActive,
-  onStart,
-  onStop,
-  onSendPlan,
-  styles,
-  jointStyles,
-  colors,
-}: TrainerActionProps): React.JSX.Element {
-  let row: React.JSX.Element;
-  if (isActive) {
-    row = (
-      <View style={[styles.actionRow, jointStyles.activeRow]}>
-        <View style={jointStyles.liveDot} />
-        <View style={styles.actionRowText}>
-          <Text style={[styles.actionRowTitle, { color: colors.success }]}>
-            Logging their sets
-          </Text>
-          <Text style={styles.actionRowSub}>
-            You're logging {selectedFriend?.username}'s session. Open the
-            Workout tab.
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={jointStyles.leaveBtn}
-          onPress={onStop}
-          accessibilityRole="button"
-          accessibilityLabel="Stop trainer session"
-        >
-          <Text style={jointStyles.leaveBtnText}>Stop</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  } else {
-    row = (
-      <TouchableOpacity
-        style={[styles.actionRow, jointStyles.inviteRow]}
-        onPress={() => selectedFriend && onStart(selectedFriend)}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel={`Start trainer session for ${
-          selectedFriend?.username ?? "friend"
-        }`}
-      >
-        <Text style={styles.actionRowIcon}>🧑‍🏫</Text>
-        <View style={styles.actionRowText}>
-          <Text style={[styles.actionRowTitle, { color: colors.accentDark }]}>
-            Start Trainer Session
-          </Text>
-          <Text style={styles.actionRowSub}>
-            Log {selectedFriend?.username}'s sets for them from the Workout
-            tab.
-          </Text>
-        </View>
-        <Text style={[styles.actionRowArrow, { color: colors.accentDark }]}>
-          ›
-        </Text>
-      </TouchableOpacity>
-    );
-  }
-
-  return (
-    <>
-      <Text style={styles.actionsTabSectionTitle}>Trainer</Text>
-      {row}
-      <TouchableOpacity
-        style={[styles.actionRow, jointStyles.inviteRow]}
-        onPress={() => selectedFriend && onSendPlan(selectedFriend)}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel={`Send a plan to ${selectedFriend?.username ?? "friend"}`}
-      >
-        <Text style={styles.actionRowIcon}>📋</Text>
-        <View style={styles.actionRowText}>
-          <Text style={[styles.actionRowTitle, { color: colors.accentDark }]}>
-            Send a Plan
-          </Text>
-          <Text style={styles.actionRowSub}>
-            Send {selectedFriend?.username} your plan to review and use.
-          </Text>
-        </View>
-        <Text style={[styles.actionRowArrow, { color: colors.accentDark }]}>
-          ›
-        </Text>
-      </TouchableOpacity>
-    </>
-  );
-}
-
 interface FriendActionsTabProps {
   readonly selectedFriend: Friend | null;
-  readonly hasTrainerAccess: boolean;
-  readonly activeTraineeUserId: string | null;
   readonly styles: ReturnType<typeof makeStyles>;
   readonly watchStyles: ReturnType<typeof makeWatchStyles>;
   readonly jointStyles: ReturnType<typeof makeJointStyles>;
@@ -369,9 +266,6 @@ interface FriendActionsTabProps {
   readonly hasOwnActiveSession: boolean;
   readonly getInviteStatusForFriend: (friendId: number | string) => string;
   readonly onSendInvite: (friend: Friend) => void;
-  readonly onStartTrainer: (friend: Friend) => void;
-  readonly onStopTrainer: () => void;
-  readonly onSendPlan: (friend: Friend) => void;
   readonly onRemoveFriend: (friend: Friend) => void;
   readonly onBlockFriend: (friend: Friend) => void;
   readonly onReportFriend: (friend: Friend) => void;
@@ -380,8 +274,6 @@ interface FriendActionsTabProps {
 
 export function FriendActionsTab({
   selectedFriend,
-  hasTrainerAccess,
-  activeTraineeUserId,
   styles,
   watchStyles,
   jointStyles,
@@ -399,9 +291,6 @@ export function FriendActionsTab({
   hasOwnActiveSession,
   getInviteStatusForFriend,
   onSendInvite,
-  onStartTrainer,
-  onStopTrainer,
-  onSendPlan,
   onRemoveFriend,
   onBlockFriend,
   onReportFriend,
@@ -448,20 +337,6 @@ export function FriendActionsTab({
   return (
     <ScrollView style={styles.modalScroll}>
       <View style={styles.actionsTabContent}>
-        {hasTrainerAccess && (
-          <TrainerAction
-            selectedFriend={selectedFriend}
-            isActive={
-              activeTraineeUserId === String(selectedFriend?.id ?? "")
-            }
-            onStart={onStartTrainer}
-            onStop={onStopTrainer}
-            onSendPlan={onSendPlan}
-            styles={styles}
-            jointStyles={jointStyles}
-            colors={colors}
-          />
-        )}
 
         <FriendGrantedPermissions
           selectedFriend={selectedFriend}

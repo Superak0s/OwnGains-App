@@ -299,8 +299,8 @@ export function useRealtimeSocket({
       // this token so nothing else (AppState, effects) re-triggers a
       // pointless reconnect loop with the same bad token.
       if (e.code && e.code >= 4000 && e.code < 4100) {
-        // Servers without `auth.refresh` still expire the socket on the token
-        // it opened with, so a newer token in hand deserves a fresh handshake.
+        // The socket expired on a token older than the one in hand (the close
+        // beat the `auth.refreshed` ack), so the newer one deserves a fresh handshake.
         if (serverTokenRef.current !== tokenRef.current) {
           metric.count("ws.reauth_after_expiry", 1)
           retryTimerRef.current = setTimeout(connect, 0)

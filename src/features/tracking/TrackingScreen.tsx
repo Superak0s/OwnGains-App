@@ -26,14 +26,7 @@ import ModalSheet from "@shared/components/ModalSheet";
 import ScrollTabBar from "@shared/components/ScrollTabBar";
 import LocalOnlyNotice from "@shared/components/LocalOnlyNotice";
 import { useAlert } from "@shared/components/CustomAlert";
-import {
-  bodyTrackingApi,
-  macrosTrackingApi,
-  bodyFatApi,
-  hydrationApi,
-  sorenessApi,
-  bodyMeasurementsApi,
-} from "./services";
+import { useTrackingApis, useTrackingReadOnly } from "./TrackingApisContext";
 import { LogCycleModal } from "./tabs/MenstrualTab";
 import { LogSorenessModal } from "./tabs/SorenessTab";
 import { LogHydrationModal } from "./tabs/HydrationTab";
@@ -302,6 +295,7 @@ const DAY_TAB_META: Record<string, DayTabMeta> = {
   soreness: { icon: "💪", title: "Soreness", actionLabel: "Log Soreness" },
   menstrual: { icon: "🌸", title: "Cycle", actionLabel: "Log Cycle" },
 };
+const VIEW_ONLY_TABS = TRACKING_TABS.filter((t) => t.key !== "health");
 const DAY_TAB_FALLBACK: DayTabMeta = {
   icon: "📐",
   title: "Entry",
@@ -310,13 +304,27 @@ const DAY_TAB_FALLBACK: DayTabMeta = {
 
 export default function TrackingScreen({
   embedWidget,
+  onTitlePress,
 }: {
   readonly embedWidget?: TrackingWidgetType;
+  readonly onTitlePress?: () => void;
 } = {}) {
+  const { bodyTrackingApi, macrosTrackingApi, bodyFatApi, hydrationApi, sorenessApi, bodyMeasurementsApi } = useTrackingApis();
   const { user } = useAuth();
   const { colors } = useTheme();
   const { alert, AlertComponent } = useAlert();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const readOnly = useTrackingReadOnly();
+  const viewOnly = <F extends (...args: never[]) => unknown>(fn: F): F =>
+    readOnly
+      ? ((() =>
+          alert(
+            "View only",
+            "This is your client's tracking. Only they can add or change entries.",
+            [{ text: "OK" }],
+            "info",
+          )) as unknown as F)
+      : fn;
 
   const [sorenessModalOpen, setSorenessModalOpen] = useState(false);
   const [hydrationModalOpen, setHydrationModalOpen] = useState(false);
@@ -329,11 +337,11 @@ export default function TrackingScreen({
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const requestedTab = (useRoute().params as { tab?: string } | undefined)?.tab;
   useEffect(() => {
-    if (!requestedTab || embedWidget) return;
+    if (!requestedTab || embedWidget || readOnly) return;
     setActiveTab(requestedTab);
     // Cleared so the next request for the same tab still switches to it.
     navigation.setParams({ tab: undefined } as never);
-  }, [requestedTab, embedWidget, navigation]);
+  }, [requestedTab, embedWidget, readOnly, navigation]);
   const [dayModal, setDayModal] = useState<DayModalState | null>(null);
   const [selectedLogDate, setSelectedLogDate] = useState<Date | null>(null);
   const loadDataRef = useRef<() => Promise<void>>(async () => {});
@@ -406,7 +414,7 @@ export default function TrackingScreen({
     history: _weight.weightHistory,
     weightUnit: _weight.weightUnit,
     showWeightModal: _weight.showWeightModal,
-    openWeightModal: _weight.openWeightModal,
+    openWeightModal: viewOnly(_weight.openWeightModal),
     closeWeightModal: () => _weight.setShowWeightModal(false),
     entriesShown: _weight.weightEntriesShown,
     trendAverageDays: _weight.trendAverageDays,
@@ -414,7 +422,7 @@ export default function TrackingScreen({
     trend: weightTrend,
     chartData: weightChartData,
     loadMoreEntries: _weight.loadMoreWeightEntries,
-    deleteWeightEntry: _weight.deleteWeightEntry,
+    deleteWeightEntry: viewOnly(_weight.deleteWeightEntry),
     addWeight: _weight.addWeight,
     hasDataOnDate: _weight.hasWeightData,
   };
@@ -423,12 +431,12 @@ export default function TrackingScreen({
     entries: _macros.macrosEntries,
     goals: _macros.dailyMacrosGoals,
     showMacrosModal: _macros.showMacrosModal,
-    openMacrosModal: _macros.openMacrosModal,
+    openMacrosModal: viewOnly(_macros.openMacrosModal),
     closeMacrosModal: () => _macros.setShowMacrosModal(false),
     showMacrosGoalModal: _macros.showMacrosGoalModal,
-    openGoalModal: () => _macros.setShowMacrosGoalModal(true),
+    openGoalModal: viewOnly(() => _macros.setShowMacrosGoalModal(true)),
     closeGoalModal: () => _macros.setShowMacrosGoalModal(false),
-    deleteMacroEntry: _macros.deleteMacroEntry,
+    deleteMacroEntry: viewOnly(_macros.deleteMacroEntry),
     addMacrosEntry: _macros.addMacrosEntry,
     updateMacrosGoals: _macros.updateMacrosGoals,
     dailyStats: todayMacrosStats,
@@ -444,16 +452,16 @@ export default function TrackingScreen({
     heightUnit: _weight.heightUnit,
     setHeightUnit: _weight.setHeightUnit,
     showHeightModal: _weight.showHeightModal,
-    openHeightModal: () => _weight.setShowHeightModal(true),
+    openHeightModal: viewOnly(() => _weight.setShowHeightModal(true)),
     closeHeightModal: () => _weight.setShowHeightModal(false),
     showBodyFatModal: _bodyFat.showBodyFatModal,
-    openBodyFatModal: _bodyFat.openBodyFatModal,
+    openBodyFatModal: viewOnly(_bodyFat.openBodyFatModal),
     closeBodyFatModal: () => _bodyFat.setShowBodyFatModal(false),
     gender: _bodyFat.gender,
     setGenderPersist: _bodyFat.setGenderPersist,
     measurementUnit: _bodyFat.measurementUnit,
     setMeasurementUnit: _bodyFat.setMeasurementUnit,
-    deleteBodyFatEntry: _bodyFat.deleteBodyFatEntry,
+    deleteBodyFatEntry: viewOnly(_bodyFat.deleteBodyFatEntry),
     calculateBodyFat: _bodyFat.calculateBodyFat,
     saveHeight: _weight.saveHeight,
     hasDataOnDate: _bodyFat.hasBodyFatData,
@@ -462,9 +470,9 @@ export default function TrackingScreen({
   const measurements = {
     history: _measurements.measurementHistory,
     showMeasurementModal: _measurements.showMeasurementModal,
-    openMeasurementModal: () => _measurements.setShowMeasurementModal(true),
+    openMeasurementModal: viewOnly(() => _measurements.setShowMeasurementModal(true)),
     closeMeasurementModal: () => _measurements.setShowMeasurementModal(false),
-    deleteMeasurementEntry: _measurements.deleteMeasurementEntry,
+    deleteMeasurementEntry: viewOnly(_measurements.deleteMeasurementEntry),
     handleLogMeasurement: _measurements.handleLogMeasurement,
     hasDataOnDate: _measurements.hasMeasurementsData,
   };
@@ -473,15 +481,15 @@ export default function TrackingScreen({
     entries: _hydration.hydrationEntries,
     goal: _hydration.hydrationGoal,
     setGoal: _hydration.setHydrationGoal,
-    openHydrationModal: () => setHydrationModalOpen(true),
-    deleteHydrationEntry: _hydration.deleteHydrationEntry,
+    openHydrationModal: viewOnly(() => setHydrationModalOpen(true)),
+    deleteHydrationEntry: viewOnly(_hydration.deleteHydrationEntry),
     hasDataOnDate: _hydration.hasHydrationData,
   };
 
   const soreness = {
     entries: _soreness.sorenessEntries,
-    openSorenessModal: () => setSorenessModalOpen(true),
-    deleteSorenessEntry: _soreness.deleteSorenessEntry,
+    openSorenessModal: viewOnly(() => setSorenessModalOpen(true)),
+    deleteSorenessEntry: viewOnly(_soreness.deleteSorenessEntry),
     hasDataOnDate: _soreness.hasSorenessData,
   };
 
@@ -492,11 +500,11 @@ export default function TrackingScreen({
     actualDays: _menstrual.cycleActualDays,
     predictedDays: _menstrual.cyclePredictedDays,
     setPredictedDays: _menstrual.setCyclePredictedDays,
-    openCycleModal: () => setCycleModalOpen(true),
+    openCycleModal: viewOnly(() => setCycleModalOpen(true)),
     hasDataOnDate: _menstrual.hasCycleData,
     isOnPeriod: _menstrual.isOnPeriod,
-    markPeriodOver: _menstrual.markPeriodOver,
-    deleteCycleEntry: _menstrual.deleteCycleEntry,
+    markPeriodOver: viewOnly(_menstrual.markPeriodOver),
+    deleteCycleEntry: viewOnly(_menstrual.deleteCycleEntry),
   };
 
   const userId = user?.id ?? null;
@@ -1117,7 +1125,7 @@ export default function TrackingScreen({
       <DayModal
         dayModal={dayModal}
         activeTab={activeTab}
-        openLogModalForTab={openLogModalForTab}
+        openLogModalForTab={readOnly ? null : openLogModalForTab}
         existingEntriesContent={renderDayModalExistingEntries()}
         onClose={() => {
           setDayModal(null);
@@ -1141,7 +1149,7 @@ export default function TrackingScreen({
   return (
     <SafeAreaView
       style={{ flex: 1 }}
-      edges={["top"]}
+      edges={readOnly && !onTitlePress ? [] : ["top"]}
       {...widgetBoard.panHandlers}
     >
       {widgetBoard.isPulling && (
@@ -1160,20 +1168,27 @@ export default function TrackingScreen({
         }
       >
         <View style={styles.content}>
-          <ScreenTitle title='Tracking' />
+          <ScreenTitle
+            title={readOnly?.title ?? "Tracking"}
+            subtitle={readOnly?.subtitle}
+            onPress={onTitlePress}
+            accessibilityHint="Switches between your tracking and a client's"
+          />
 
           <ScrollTabBar
-            tabs={TRACKING_TABS}
+            tabs={readOnly ? VIEW_ONLY_TABS : TRACKING_TABS}
             activeTab={activeTab}
             onTabChange={setActiveTab}
             storageKey='trackingScreen_tabConfig'
           />
 
-          <LocalOnlyNotice
-            feature='tracking'
-            style={{ marginHorizontal: 0 }}
-            detail='Your entries are stored on this phone only. Back them up from Settings.'
-          />
+          {!readOnly && (
+            <LocalOnlyNotice
+              feature='tracking'
+              style={{ marginHorizontal: 0 }}
+              detail='Your entries are stored on this phone only. Back them up from Settings.'
+            />
+          )}
 
           {tabLoadError === activeTab && (
             <Placeholder
@@ -1258,7 +1273,7 @@ function DayModal({
 }: {
   readonly dayModal: DayModalState | null;
   readonly activeTab: string;
-  readonly openLogModalForTab: (tab: string) => void;
+  readonly openLogModalForTab: ((tab: string) => void) | null;
   readonly existingEntriesContent: React.ReactNode;
   readonly onClose: () => void;
   readonly styles: ReturnType<typeof makeStyles>;
@@ -1299,11 +1314,13 @@ function DayModal({
           <Text style={styles.dayModalEmptyText}>No entries for this day</Text>
         </View>
       )}
-      <Button
-        label={meta.actionLabel}
-        onPress={() => openLogModalForTab(dayModal?.tab ?? activeTab)}
-        full
-      />
+      {openLogModalForTab && (
+        <Button
+          label={meta.actionLabel}
+          onPress={() => openLogModalForTab(dayModal?.tab ?? activeTab)}
+          full
+        />
+      )}
     </ModalSheet>
   );
 }

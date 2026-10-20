@@ -21,6 +21,7 @@ jest.mock("@shared/context/JointSessionContext", () => require("test-utils/rende
 jest.mock("@react-navigation/native", () => require("test-utils/renderWithProviders").navigationModule)
 
 jest.mock("@features/tutorial/TutorialMenuSheet", () => () => null)
+jest.mock("@features/tutorial/TutorialContext", () => ({ useTutorial: () => ({ offerTrainerTour: jest.fn() }) }))
 
 jest.mock("@shared/services/appMode", () => ({
   isServerless: jest.fn(async () => false),
@@ -272,7 +273,7 @@ describe("Withdraw Health Consent", () => {
     await press("Withdraw")
 
     expect(await screen.findByText(/Nothing was deleted/)).toBeTruthy()
-    expect(recordConsent).toHaveBeenCalledWith(expect.any(String), false, true)
+    expect(recordConsent).toHaveBeenCalledWith(expect.any(String), false)
     expect(setAppMode).not.toHaveBeenCalled()
   })
 })

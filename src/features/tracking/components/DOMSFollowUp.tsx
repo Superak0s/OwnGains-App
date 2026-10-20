@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { useTheme } from "@shared/context/ThemeContext";
-import { sorenessApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import {
   ActiveSoreness,
   MUSCLE_GROUP_LABELS,
@@ -34,6 +34,7 @@ interface DOMSFollowUpProps {
 export const DOMSFollowUp: React.FC<DOMSFollowUpProps> = ({
   onNavigateToMuscleDashboard,
 }) => {
+  const { sorenessApi } = useTrackingApis();
   const { colors } = useTheme();
   const { alert, AlertComponent } = useAlert();
   const [activeSoreness, setActiveSoreness] = useState<ActiveSoreness[]>([]);

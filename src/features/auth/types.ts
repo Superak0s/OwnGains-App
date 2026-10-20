@@ -16,7 +16,6 @@ export interface ProfileUpdate {
 export interface AuthResponse {
   success: boolean
   token?: string
-  /** Absent until the server supports rotating refresh tokens. */
   refreshToken?: string
   user: AuthUser
 }

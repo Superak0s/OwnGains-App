@@ -26,7 +26,7 @@ jest.mock("react-native-zeroconf", () => ({
 }));
 jest.mock("../crashReporting", () => ({
   log: { warn: jest.fn() },
-  metric: { distribution: jest.fn() },
+  startTrace: jest.fn(() => jest.fn()),
 }));
 
 beforeEach(() => {

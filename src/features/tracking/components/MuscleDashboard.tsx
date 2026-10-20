@@ -12,12 +12,7 @@ import {
 import { ProgressPhotoThumb } from "./ProgressPhotoThumb";
 import { useTheme } from "@shared/context/ThemeContext";
 import { useAuthToken } from "@shared/context/AuthContext";
-import {
-  sorenessApi,
-  injuryApi,
-  progressPhotoApi,
-  personalNotesApi,
-} from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import {
   MuscleGroup,
   MUSCLE_GROUP_LABELS,
@@ -94,6 +89,7 @@ export const MuscleDashboard: React.FC<MuscleDashboardProps> = ({
   muscleGroup,
   onClose,
 }) => {
+  const { sorenessApi, injuryApi, progressPhotoApi, personalNotesApi } = useTrackingApis();
   const { colors } = useTheme();
   const authToken = useAuthToken();
   const [activeTab, setActiveTab] = useState<TabType>("soreness");

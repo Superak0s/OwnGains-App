@@ -1,8 +1,9 @@
-• Supplement and rest alarms ring full screen, even on silent, until dismissed
-• Log a past workout for any day from Home
-• Charts project your path to a goal
-• Faster logging: weight and reps first, Undo for added sets
-• Each exercise remembers its own kg or lbs unit
-• Tracking history grouped by day or month, with totals
-• Profile photos sync across devices and show for friends
-• Simpler Settings, new reminder time picker, supplement, accessibility and widget fixes
+• New Trainer Mode: coach clients, run sessions, edit programs, see stats and tracking
+• Message friends and clients, edit or delete sent ones
+• Schedule workouts with reminders and calendar sync
+• Start empty workouts and add exercises
+• What's New lists changes since your last update
+• Alarms ring full screen, even on silent, until dismissed
+• Log past workouts, chart goals, per-exercise kg or lbs
+• Opt-in usage and speed stats use Firebase
+• Simpler Settings and many fixes

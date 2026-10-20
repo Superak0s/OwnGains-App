@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import ModalSheet from "@shared/components/ModalSheet";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
@@ -13,16 +13,18 @@ import {
   type Release,
 } from "../utils/changelog";
 
-const RELEASES: Release[] = parseChangelog(changelogMarkdown).filter(
+export const RELEASES: Release[] = parseChangelog(changelogMarkdown).filter(
   (r) => __DEV__ || r.version !== UNRELEASED,
 );
 
-type SheetView = { kind: "all" } | { kind: "version"; version: string };
+type SheetView = { kind: "all" } | { kind: "version"; version: string } | { kind: "since" };
 
 interface Props {
   readonly visible: boolean;
   readonly onClose: () => void;
   readonly currentVersion: string | undefined;
+  /** Releases to show together, newest first, instead of only the installed one. */
+  readonly announce?: Release[];
 }
 
 function currentRelease(version: string | undefined): Release | null {
@@ -43,7 +45,7 @@ const formatDate = (iso: string | null): string | null => {
 const releaseLabel = (release: Release): string =>
   release.version === UNRELEASED ? UNRELEASED : `Version ${release.version}`;
 
-export default function ChangelogSheet({ visible, onClose, currentVersion }: Props) {
+export default function ChangelogSheet({ visible, onClose, currentVersion, announce }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const entry = currentRelease(currentVersion);
@@ -54,10 +56,11 @@ export default function ChangelogSheet({ visible, onClose, currentVersion }: Pro
 
   useEffect(() => {
     if (!visible) return;
-    setView(entry ? { kind: "version", version: entry.version } : { kind: "all" });
+    if (announce?.length) setView({ kind: "since" });
+    else setView(entry ? { kind: "version", version: entry.version } : { kind: "all" });
     setOpenedFromAll(false);
     setCategory(null);
-  }, [visible, entry]);
+  }, [visible, entry, announce]);
 
   const categoryColor = (c: ChangeCategory): string => {
     switch (c) {
@@ -102,7 +105,7 @@ export default function ChangelogSheet({ visible, onClose, currentVersion }: Pro
     );
   };
 
-  const renderVersion = (release: Release) => {
+  const renderVersion = (release: Release, showAllButton = true) => {
     const available = release.sections.map((s) => s.category);
     const activeCategory = category && available.includes(category) ? category : null;
     const sections = filterByCategory(release, activeCategory);
@@ -161,7 +164,7 @@ export default function ChangelogSheet({ visible, onClose, currentVersion }: Pro
           ))
         )}
 
-        {!openedFromAll && RELEASES.length > 1 && (
+        {showAllButton && !openedFromAll && RELEASES.length > 1 && (
           <TouchableOpacity
             style={styles.allButton}
             onPress={() => setView({ kind: "all" })}
@@ -229,12 +232,22 @@ export default function ChangelogSheet({ visible, onClose, currentVersion }: Pro
   };
 
   const selected = view.kind === "version" ? findRelease(RELEASES, view.version) : null;
+  const since = view.kind === "since" && announce?.length ? announce : null;
+
+  let body: React.ReactNode = null;
+  if (since)
+    body = since.map((release, i) => (
+      <View key={release.version} style={i > 0 ? styles.sinceGap : undefined}>
+        {renderVersion(release, i === since.length - 1)}
+      </View>
+    ));
+  else if (RELEASES.length > 0) body = selected ? renderVersion(selected) : renderAll();
 
   return (
     <ModalSheet
       visible={visible}
       onClose={onClose}
-      title={selected ? "What's New" : "All Versions"}
+      title={selected || since ? "What's New" : "All Versions"}
       showCancelButton={false}
       confirmText="Done"
       onConfirm={onClose}
@@ -244,13 +257,14 @@ export default function ChangelogSheet({ visible, onClose, currentVersion }: Pro
       {RELEASES.length === 0 && (
         <Text style={styles.emptyText}>No release notes are available.</Text>
       )}
-      {RELEASES.length > 0 && (selected ? renderVersion(selected) : renderAll())}
+      {body}
     </ModalSheet>
   );
 }
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    sinceGap: { marginTop: 28 },
     backLink: {
       minHeight: 44,
       justifyContent: "center",

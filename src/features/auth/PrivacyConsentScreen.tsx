@@ -159,8 +159,9 @@ export default function PrivacyConsentScreen({
         {askDiagnostics && (
         <>
         <Text style={styles.tagline}>
-          OwnGains can send diagnostics to the developer's self-hosted crash-report
-          server so bugs get found and fixed. This applies in offline mode too.
+          OwnGains can send crash reports to the developer's self-hosted
+          crash-report server and usage metrics to Google Analytics for Firebase,
+          so bugs get found and fixed. This applies in offline mode too.
           Nothing here includes your workouts, notes, email or server address,
           and you can change either choice later in Settings → Privacy and Data.
         </Text>
@@ -189,10 +190,11 @@ export default function PrivacyConsentScreen({
           <View style={styles.cardTextWrap}>
             <Text style={styles.cardTitle}>Usage metrics and diagnostics</Text>
             <Text style={styles.cardBody}>
-              Counters, timings, performance traces and diagnostic logs: which
-              screens and features you open, which are slow, whether syncs
-              succeed, how long your workouts last and how many sets they have.
-              Never exercise names, weights or notes. Off unless you turn it on.
+              Which screens and features you open, whether syncs succeed, how
+              long your workouts last and how fast the app starts, sent to
+              Google Firebase. Screen timings and diagnostic logs go to the
+              crash-report server. Never exercise names, weights or notes. Off
+              unless you turn it on.
             </Text>
           </View>
           <Switch

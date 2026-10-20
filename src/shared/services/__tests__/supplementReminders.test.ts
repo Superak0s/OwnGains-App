@@ -42,7 +42,6 @@ const makeNotifications = () => ({
   getPermissionsAsync: jest.fn(async () => ({ status: "granted" })),
   requestPermissionsAsync: jest.fn(async () => ({ status: "granted" })),
   setNotificationChannelAsync: jest.fn(async (_id: string, _channel: object) => {}),
-  deleteNotificationChannelAsync: jest.fn(async () => {}),
   scheduleNotificationAsync: jest.fn(async (_request: unknown) => "notif-1"),
   getAllScheduledNotificationsAsync: jest.fn(async () => []),
   cancelScheduledNotificationAsync: jest.fn(async () => {}),
@@ -176,9 +175,6 @@ describe("initializeSupplementNotifications", () => {
     for (const [, channel] of notifications.setNotificationChannelAsync.mock.calls) {
       expect(channel).not.toHaveProperty("sound");
     }
-    expect(notifications.deleteNotificationChannelAsync).toHaveBeenCalledWith(
-      "supplement-alarms",
-    );
   });
 
   it("skips channel creation off Android", async () => {

@@ -55,9 +55,14 @@ function collectErrors(values: {
   const errors: FieldErrors = {};
 
   if (!username) errors.username = "Username is required";
-  else if (!USERNAME_PATTERN.test(username))
+  else if (
+    !USERNAME_PATTERN.test(username) ||
+    (username.match(/[A-Za-z]/g)?.length ?? 0) < 3
+  )
     errors.username =
-      "3-20 characters, using only letters, numbers and underscores";
+      "3-20 characters, using only letters, numbers and underscores, at least 3 of them letters";
+  else if (/demo/i.test(username))
+    errors.username = `Username can't contain "demo"`;
 
   if (!email) errors.email = "Email is required";
   else if (email.length > 254 || !EMAIL_PATTERN.test(email))

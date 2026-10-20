@@ -17,10 +17,11 @@ import { useRealtimeSocket } from "./hooks/useRealtimeSocket";
 import { workoutApi } from "@features/workout/services";
 import { programApi } from "@features/plan/services";
 import { makeWorkoutApi } from "@features/workout/services/workoutApiFactory";
-import { makeProgramApi } from "@features/plan/services/programApiFactory";
+import { makeProgramApi, type ProgramApi } from "@features/plan/services/programApiFactory";
 import { traineeFetch } from "@shared/services/traineeFetch";
+import { restoreAppRole } from "@shared/services/appRole";
 import {
-  isTrainerEvent,
+  toTrainerEvent,
   onTrainerEvent,
   restoreActiveTrainee,
   type TrainerEvent,
@@ -68,6 +69,7 @@ import {
 } from "../../utils/session";
 import type { ExerciseRest, RestHistory } from "../../utils/session";
 import {
+  CUSTOM_DAY,
   applyDayOverride,
   carryOverDay,
   dayExercises,
@@ -106,9 +108,10 @@ import {
   traineeWriteRefused,
 } from "./hooks/useSessionOperations";
 import type { SetDetailsOptions } from "./hooks/useSessionOperations";
-import { useProgramOperations } from "./hooks/useProgramOperations";
+import { buildExercise, useProgramOperations } from "./hooks/useProgramOperations";
 import type { MachinePatch } from "@features/plan/types";
 import { createEmitter } from "@utils/emitter";
+import { traineeSplit } from "@utils/programDays";
 import { useServerSync } from "./hooks/useServerSync";
 import { JointSessionProvider } from "./JointSessionContext";
 
@@ -121,6 +124,8 @@ interface WorkoutContextValue {
   userId: string | null;
   activeTrainer: string | null;
   actAs: { userId: string; username: string } | null;
+  /** The program service for this provider's account, the trainee's under `actAs`. */
+  programApi: ProgramApi;
   workoutData: WorkoutData | null;
   /** workoutData as the live session sees it, with exercises carried over by a mid-workout day switch. */
   sessionWorkoutData: WorkoutData | null;
@@ -145,10 +150,14 @@ interface WorkoutContextValue {
   saveCompletedDays: (completed: CompletedDays) => Promise<void>;
   saveLockedDays: (locked: LockedDays) => Promise<void>;
   saveUnlockedOverrides: (overrides: Record<number, boolean>) => Promise<void>;
+  /** Unlocks a day and clears its ticked sets locally, so it can be run again. History is kept. */
+  resetDay: (dayNumber: number) => Promise<void>;
   saveTimeBetweenSets: (seconds: number) => Promise<void>;
   toggleUseManualTime: (enabled: boolean) => Promise<void>;
   hasActiveSession: () => boolean;
   startWorkout: (untimed?: boolean, startAt?: Date) => Promise<string | null>;
+  /** Starts a workout on a session-only day holding `exercises`. Nothing added to it reaches the program. */
+  startCustomWorkout: (dayTitle: string, exercises: Exercise[]) => Promise<string | null>;
   endWorkout: (autoCompleted?: boolean) => Promise<boolean>;
   saveWeightUnit: (unit: "kg" | "lbs") => Promise<void>;
 
@@ -316,6 +325,8 @@ export const useWorkoutSyncStatus = (): WorkoutSyncStatus => {
   return context;
 };
 
+// Split name of a custom workout when the user has no program to take one from.
+const FREE_SPLIT = "Workout";
 const INACTIVITY_WARNING_ID = "workout-inactivity-warning";
 
 const scheduleInactivityWarning = (
@@ -420,6 +431,10 @@ export const WorkoutProvider = ({
     () => (workoutStartTime ? applyDayOverride(workoutData, dayOverride) : workoutData),
     [workoutData, dayOverride, workoutStartTime],
   );
+  const customDay =
+    workoutStartTime && dayOverride?.dayNumber === CUSTOM_DAY ? dayOverride : null;
+  const activeDay = customDay ? CUSTOM_DAY : currentDay;
+  const activeSplit = selectedSplit ?? customDay?.split ?? null;
 
   const [serverAnalytics, setServerAnalytics] =
     useState<ServerAnalyticsType>(null);
@@ -431,9 +446,9 @@ export const WorkoutProvider = ({
   const [activeTrainer, setActiveTrainer] = useState<string | null>(null);
 
   const currentDayAllExercises = useMemo((): JointExerciseEntry[] => {
-    if (!sessionData?.days || !currentDay) return [];
+    if (!sessionData?.days || !activeDay) return [];
     const day = sessionData.days.find(
-      (d: WorkoutDay) => d.dayNumber === currentDay,
+      (d: WorkoutDay) => d.dayNumber === activeDay,
     );
     if (!day?.split) return [];
     const result: JointExerciseEntry[] = [];
@@ -443,14 +458,15 @@ export const WorkoutProvider = ({
       });
     });
     return result;
-  }, [sessionData, currentDay]);
+  }, [sessionData, activeDay]);
 
   const jointSessionMessageHandlerRef = useRef<
     ((msg: WebSocketMessage) => void) | null
   >(null);
 
   const handleSocketMessage = useCallback((msg: WebSocketMessage) => {
-    if (isTrainerEvent(msg)) onTrainerEvent.trigger(msg);
+    const trainerEvent = toTrainerEvent(msg);
+    if (trainerEvent) onTrainerEvent.trigger(trainerEvent);
     jointSessionMessageHandlerRef.current?.(msg);
   }, []);
 
@@ -572,8 +588,8 @@ export const WorkoutProvider = ({
     setLastSetEndTime,
     lastActivityTime,
     setLastActivityTime,
-    currentDay,
-    selectedSplit,
+    currentDay: activeDay,
+    selectedSplit: activeSplit,
     workoutData: sessionData,
     completedDays,
     setCompletedDays,
@@ -602,6 +618,7 @@ export const WorkoutProvider = ({
     saveToStorage,
     STORAGE_KEYS,
     programApi: api.programApi,
+    forTrainee: !!actAs,
   });
 
   const serverSync = useServerSync({
@@ -686,10 +703,10 @@ export const WorkoutProvider = ({
     async (day: number) => {
       const split = selectedSplit ?? "";
       const moved = carryOverDay({
-        fromExercises: dayExercises(sessionData, currentDay, split),
+        fromExercises: dayExercises(sessionData, activeDay, activeSplit ?? ""),
         toExercises: dayExercises(workoutData, day, split),
         completedDays,
-        fromDay: currentDay,
+        fromDay: activeDay,
         toDay: day,
         split,
       });
@@ -701,9 +718,10 @@ export const WorkoutProvider = ({
     },
     [
       selectedSplit,
+      activeSplit,
       sessionData,
       workoutData,
-      currentDay,
+      activeDay,
       completedDays,
       userId,
       saveDayOverride,
@@ -714,7 +732,7 @@ export const WorkoutProvider = ({
 
   const saveCurrentDay = useCallback(
     async (day: number) => {
-      if (day !== currentDay && workoutStartTime) await moveSessionToDay(day);
+      if (day !== activeDay && workoutStartTime) await moveSessionToDay(day);
       await saveToStorage(STORAGE_KEYS.CURRENT_DAY, day.toString(), userId);
       setCurrentDay(day);
       try {
@@ -724,7 +742,7 @@ export const WorkoutProvider = ({
         captureException(error, { stage: "pushCurrentDay" });
       }
     },
-    [api, userId, currentDay, workoutStartTime, moveSessionToDay],
+    [api, userId, activeDay, workoutStartTime, moveSessionToDay],
   );
 
   useEffect(() => {
@@ -733,8 +751,85 @@ export const WorkoutProvider = ({
 
   // Plan exercises are appended after the day's last exercise, where carried-over
   // exercises sit, so their logs have to shift one slot to stay attached.
+  const startCustomWorkout = useCallback<WorkoutContextValue["startCustomWorkout"]>(
+    async (dayTitle, exercises) => {
+      if (workoutStartTime) return null;
+      const override: DayOverride = {
+        dayNumber: CUSTOM_DAY,
+        dayTitle,
+        split: selectedSplit ?? FREE_SPLIT,
+        carried: exercises,
+        minSets: {},
+      };
+      const [day] = applyDayOverride(null, override)!.days;
+      const id = await sessionOps.startWorkout(false, undefined, { day, split: override.split });
+      // Saved only once the session exists, or the effect that drops an override without one clears it.
+      if (id) await saveDayOverride(override);
+      return id;
+    },
+    [workoutStartTime, selectedSplit, sessionOps, saveDayOverride],
+  );
+
+  const editCustomExercise = useCallback(
+    async (index: number, edit: (ex: Exercise) => Exercise) => {
+      if (!customDay?.carried[index]) return;
+      const carried = customDay.carried.map((ex, i) => (i === index ? edit(ex) : ex));
+      await saveDayOverride({ ...customDay, carried });
+    },
+    [customDay, saveDayOverride],
+  );
+
+  const updateExerciseName = useCallback<WorkoutContextValue["updateExerciseName"]>(
+    async (dayNumber, split, exerciseIndex, newName, newPrimaryMuscles, newSecondaryMuscles) => {
+      if (dayNumber !== CUSTOM_DAY) {
+        return programOps.updateExerciseName(
+          dayNumber,
+          split,
+          exerciseIndex,
+          newName,
+          newPrimaryMuscles,
+          newSecondaryMuscles,
+        );
+      }
+      await editCustomExercise(exerciseIndex, (ex) => ({
+        ...ex,
+        name: newName,
+        exerciseId: buildExercise({ name: newName, sets: ex.sets }).exerciseId,
+        primaryMuscles: newPrimaryMuscles ?? ex.primaryMuscles,
+        secondaryMuscles: newSecondaryMuscles ?? ex.secondaryMuscles,
+      }));
+    },
+    [programOps, editCustomExercise],
+  );
+
+  const updateExerciseMachines = useCallback<WorkoutContextValue["updateExerciseMachines"]>(
+    async (dayNumber, split, exerciseIndex, patch) => {
+      if (dayNumber !== CUSTOM_DAY) {
+        return programOps.updateExerciseMachines(dayNumber, split, exerciseIndex, patch);
+      }
+      await editCustomExercise(exerciseIndex, (ex) => {
+        const { selectedMachine, defaultMachine, ...rest } = patch;
+        const next: Exercise = { ...ex, ...rest };
+        if (selectedMachine === null) delete next.selectedMachine;
+        else if (selectedMachine !== undefined) next.selectedMachine = selectedMachine;
+        if (defaultMachine === null) delete next.defaultMachine;
+        else if (defaultMachine !== undefined) next.defaultMachine = defaultMachine;
+        return next;
+      });
+    },
+    [programOps, editCustomExercise],
+  );
+
   const addNewExercise = useCallback<WorkoutContextValue["addNewExercise"]>(
     async (dayNumber, split, exerciseData) => {
+      if (dayNumber === CUSTOM_DAY) {
+        if (!customDay) return;
+        await saveDayOverride({
+          ...customDay,
+          carried: [...customDay.carried, buildExercise(exerciseData)],
+        });
+        return;
+      }
       const override =
         workoutStartTime &&
         dayOverride?.dayNumber === dayNumber &&
@@ -756,7 +851,7 @@ export const WorkoutProvider = ({
       }
       await programOps.addNewExercise(dayNumber, split, exerciseData);
     },
-    [workoutStartTime, dayOverride, workoutData, completedDays, userId, programOps],
+    [workoutStartTime, dayOverride, customDay, saveDayOverride, workoutData, completedDays, userId, programOps],
   );
 
   const addExtraSetsToExercise = useCallback<
@@ -838,6 +933,19 @@ export const WorkoutProvider = ({
       });
     },
     [userId],
+  );
+
+  const resetDay = useCallback(
+    async (dayNumber: number) => {
+      const completed = { ...completedDays };
+      delete completed[dayNumber];
+      await saveCompletedDays(completed);
+      const locked = { ...lockedDays };
+      delete locked[dayNumber];
+      await saveLockedDays(locked);
+      await saveUnlockedOverrides({ ...unlockedOverrides, [dayNumber]: true });
+    },
+    [completedDays, lockedDays, unlockedOverrides, saveCompletedDays, saveLockedDays, saveUnlockedOverrides],
   );
 
   const saveTimeBetweenSets = useCallback(
@@ -944,20 +1052,18 @@ export const WorkoutProvider = ({
     return null;
   }, [userId, logout, api]);
 
-  // A trainee's split choice is stored on their own device, so infer it from their
-  // latest logged session, falling back to the program's first split.
+  // A trainee's split choice is stored on their own device, so infer it from their latest logged session.
   const resolveTraineeSplit = useCallback(
     async (data: WorkoutData | null): Promise<string | null> => {
+      let recentSplit: string | null = null;
       try {
         const [recent] = await api.workoutApi.getSessionHistory(null, null, 1);
-        if (recent?.split) return recent.split;
+        recentSplit = recent?.split ?? null;
       } catch (error) {
         log.warn("trainer.split_lookup_failed", { error: String(error) });
         captureException(error, { stage: "trainerSplitLookup" });
       }
-      return (
-        data?.split?.[0] ?? Object.keys(data?.days?.[0]?.split ?? {})[0] ?? null
-      );
+      return traineeSplit(data, recentSplit);
     },
     [api],
   );
@@ -1114,11 +1220,18 @@ export const WorkoutProvider = ({
     resolveTraineeSplit,
   ]);
 
+  // In a trainer session the trainee can also log sets from their own phone.
+  const traineeActivityRef = useRef(0);
+
   const checkAndEndStaleSession = useCallback(async (): Promise<boolean> => {
     if (!workoutStartTime || !currentSessionId) return false;
     // A workout where nothing was logged has no lastSetEndTime. Fall back to
     // its start time so it still goes stale instead of remaining open forever.
-    if (isSessionInactive(lastSetEndTime ?? workoutStartTime)) {
+    const lastActive = Math.max(
+      new Date(lastSetEndTime ?? workoutStartTime).getTime(),
+      traineeActivityRef.current,
+    );
+    if (isSessionInactive(lastActive)) {
       console.info("🔍 Detected stale session, auto-ending...");
       await sessionOps.endWorkout(true);
       console.info("✅ Stale session ended");
@@ -1143,8 +1256,8 @@ export const WorkoutProvider = ({
     () =>
       !!workoutStartTime &&
       !!currentSessionId &&
-      !isDayLocked(lockedDays, currentDay),
-    [workoutStartTime, currentSessionId, lockedDays, currentDay],
+      (!!actAs || !isDayLocked(lockedDays, currentDay)),
+    [workoutStartTime, currentSessionId, lockedDays, currentDay, actAs],
   );
 
   const getRestByExercise = useCallback(
@@ -1155,10 +1268,10 @@ export const WorkoutProvider = ({
 
   const exerciseNamesForDay = useCallback(
     (dayNumber: number): string[] =>
-      dayExercises(sessionData, dayNumber, selectedSplit ?? "").map(
+      dayExercises(sessionData, dayNumber, activeSplit ?? "").map(
         (e) => e.name,
       ),
-    [sessionData, selectedSplit],
+    [sessionData, activeSplit],
   );
 
   /** This session's measured rest for the exercise, else what it usually is. */
@@ -1186,7 +1299,7 @@ export const WorkoutProvider = ({
     (dayNumber: number) =>
       getEstimatedTimeRemaining({
         workoutData: sessionData,
-        selectedSplit,
+        selectedSplit: activeSplit,
         dayNumber,
         completedDays,
         timeBetweenSets,
@@ -1197,7 +1310,7 @@ export const WorkoutProvider = ({
       completedDays,
       timeBetweenSets,
       sessionData,
-      selectedSplit,
+      activeSplit,
       getRestByExercise,
       restHistory,
     ],
@@ -1238,7 +1351,7 @@ export const WorkoutProvider = ({
         completedDays,
         dayNumber,
         sessionData,
-        selectedSplit,
+        activeSplit,
         timeBetweenSets,
       ),
     [
@@ -1246,7 +1359,7 @@ export const WorkoutProvider = ({
       lastSetEndTime,
       completedDays,
       sessionData,
-      selectedSplit,
+      activeSplit,
       timeBetweenSets,
     ],
   );
@@ -1272,10 +1385,10 @@ export const WorkoutProvider = ({
         lockedDays,
         dayNumber,
         sessionData,
-        selectedSplit,
+        activeSplit,
         completedDays,
       ),
-    [lockedDays, sessionData, selectedSplit, completedDays],
+    [lockedDays, sessionData, activeSplit, completedDays],
   );
   const isDayLockedFunc = useCallback(
     (dayNumber: number) => isDayLocked(lockedDays, dayNumber),
@@ -1382,7 +1495,9 @@ export const WorkoutProvider = ({
 
   useEffect(() => {
     setActiveTrainer(null);
-    if (!actAs) void restoreActiveTrainee(userId);
+    if (actAs) return;
+    void restoreActiveTrainee(userId);
+    void restoreAppRole(userId);
   }, [userId, actAs]);
 
   useEffect(() => {
@@ -1412,15 +1527,29 @@ export const WorkoutProvider = ({
   }, [userId, actAs]);
 
   useEffect(() => {
+    if (!actAs || !currentSessionId) return;
+    return onTrainerEvent.subscribe((e: TrainerEvent) => {
+      if (e.traineeId !== actAs.userId) return;
+      if (e.type === "trainee_set_recorded") traineeActivityRef.current = Date.now();
+      // The server's 30-minute sweep tells the trainer this way, since the trainer's socket isn't the owner's.
+      if (
+        e.type === "trainer_session_ended" &&
+        e.sessionId === currentSessionId &&
+        !untimedSession
+      )
+        void sessionOpsRef.current.endWorkout(true);
+    });
+  }, [actAs, currentSessionId, untimedSession]);
+
+  useEffect(() => {
     if (!workoutStartTime || !currentSessionId) return;
-    if (actAs) return;
 
     const interval = setInterval(() => {
       void checkAndEndStaleSession();
     }, 60_000);
 
     return () => clearInterval(interval);
-  }, [workoutStartTime, currentSessionId, checkAndEndStaleSession, actAs]);
+  }, [workoutStartTime, currentSessionId, checkAndEndStaleSession]);
 
   // Scheduled with the OS rather than from the interval above, which JS stops
   // running once the app is backgrounded, exactly when this warning matters.
@@ -1528,10 +1657,11 @@ export const WorkoutProvider = ({
       userId,
       activeTrainer,
       actAs: actAs ?? null,
+      programApi: api.programApi,
       workoutData,
       sessionWorkoutData: sessionData,
-      selectedSplit,
-      currentDay,
+      selectedSplit: activeSplit,
+      currentDay: activeDay,
       completedDays,
       lockedDays,
       unlockedOverrides,
@@ -1551,10 +1681,12 @@ export const WorkoutProvider = ({
       saveCompletedDays,
       saveLockedDays,
       saveUnlockedOverrides,
+      resetDay,
       saveTimeBetweenSets,
       toggleUseManualTime,
       hasActiveSession,
       startWorkout,
+      startCustomWorkout,
       endWorkout,
       saveWeightUnit,
       saveSetDetails: sessionOps.saveSetDetails,
@@ -1573,8 +1705,8 @@ export const WorkoutProvider = ({
       getExerciseRestTime,
       getLastSetExercise,
       getSessionStats,
-      updateExerciseName: programOps.updateExerciseName,
-      updateExerciseMachines: programOps.updateExerciseMachines,
+      updateExerciseName,
+      updateExerciseMachines,
       addExtraSetsToExercise,
       addNewExercise,
       fetchSessionHistory: serverSync.fetchSessionHistory,
@@ -1587,6 +1719,7 @@ export const WorkoutProvider = ({
       userId,
       activeTrainer,
       actAs,
+      api.programApi,
       workoutData,
       sessionData,
       selectedSplit,
@@ -1610,10 +1743,12 @@ export const WorkoutProvider = ({
       saveCompletedDays,
       saveLockedDays,
       saveUnlockedOverrides,
+      resetDay,
       saveTimeBetweenSets,
       toggleUseManualTime,
       hasActiveSession,
       startWorkout,
+      startCustomWorkout,
       endWorkout,
       saveWeightUnit,
       sessionOps.saveSetDetails,
@@ -1632,8 +1767,8 @@ export const WorkoutProvider = ({
       getExerciseRestTime,
       getLastSetExercise,
       getSessionStats,
-      programOps.updateExerciseName,
-      programOps.updateExerciseMachines,
+      updateExerciseName,
+      updateExerciseMachines,
       addExtraSetsToExercise,
       addNewExercise,
       serverSync.fetchSessionHistory,

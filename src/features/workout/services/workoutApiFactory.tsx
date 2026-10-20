@@ -295,8 +295,7 @@ export const makeWorkoutApi = (http: HttpFetch) => {
     },
 
     /**
-     * One page of history, newest first. `nextCursor` is null on the last page,
-     * and always null from servers that predate paging.
+     * One page of history, newest first. `nextCursor` is null on the last page.
      */
     getSessionHistoryPage: async (
       split: string | null = null,
@@ -325,12 +324,10 @@ export const makeWorkoutApi = (http: HttpFetch) => {
       };
     },
 
-    /** Null from a server without the route. Its `/:sessionId` route answers 400 or 404 for it. */
-    getRecordSessions: async (): Promise<WorkoutSession[] | null> => {
+    getRecordSessions: async (): Promise<WorkoutSession[]> => {
       const res = await http("/api/sessions/exercise-records", {
         method: "GET",
       });
-      if (res.status === 400 || res.status === 404) return null;
       const data = await parseApiResponse<{ sessions?: WorkoutSession[] }>(res);
       return (data.sessions ?? []).map(normalizeSession);
     },

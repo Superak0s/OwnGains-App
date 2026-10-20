@@ -6,7 +6,7 @@ import {
   isSessionGone,
 } from "@utils/session";
 import { generateId } from "@utils/format";
-import { metric, log, captureException } from "@shared/services/crashReporting";
+import { metric, log, captureException, startTrace } from "@shared/services/crashReporting";
 import { ApiError } from "@shared/services/apiError";
 import { IDEMPOTENCY_KEY_IN_FLIGHT } from "@shared/services/apiClient";
 import type { PendingSync } from "../../types";
@@ -235,7 +235,7 @@ export const useSyncManager = ({
 
     syncingRef.current = true;
     setIsSyncing(true);
-    const runStartedAt = Date.now();
+    const stopRunTrace = startTrace("sync.run");
     try {
       console.debug(
         `Attempting to sync ${startingQueue.length} pending operations...`,
@@ -244,8 +244,8 @@ export const useSyncManager = ({
       // Spreading `{ ...s, data: { ...s.data } }` collapses the discriminated
       // union: `data` widens to the union of all three data types and no longer
       // satisfies a PendingSync variant. structuredClone keeps it.
-      // retryKeyOf falls back to timestamp+type without a syncId, which two
-      // legacy entries of the same type can share. Stamp the live queue in
+      // retryKeyOf falls back to timestamp+type without a syncId (the queue
+      // type leaves it optional), which two entries of the same type can share. Stamp the live queue in
       // place so every key below is unique, and the next persist includes it.
       for (const sync of startingQueue) sync.syncId ??= generateId("sync");
       const workingSyncs: PendingSync[] = structuredClone(startingQueue);
@@ -636,10 +636,7 @@ export const useSyncManager = ({
         depth: startingQueue.length,
       });
     } finally {
-      metric.distribution("sync.run.duration", Date.now() - runStartedAt, {
-        unit: "millisecond",
-        attributes: { queued: startingQueue.length },
-      });
+      stopRunTrace({ queued: startingQueue.length });
       syncingRef.current = false;
       removedIdsRef.current.clear();
       setIsSyncing(false);

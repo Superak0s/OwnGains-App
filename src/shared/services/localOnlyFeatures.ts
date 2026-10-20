@@ -31,10 +31,24 @@ let cached: string[] | null = null
 let primed: Promise<void> | null = null
 let retryAfter = 0
 let unreachableStreak = 0
+let disabled: string[] = []
 
 interface StoredList {
   url: string
   features: string[]
+  disabled?: string[]
+}
+
+const disabledChange = createEmitter<string[]>()
+
+/** Fires when the server's `disabledFeatures` (features it switched off, which the app hides) change. */
+export const onDisabledFeaturesChange = (listener: (features: string[]) => void): (() => void) =>
+  disabledChange.subscribe(listener)
+
+const adoptDisabled = (features: string[]): void => {
+  if (features.join() === disabled.join()) return
+  disabled = features
+  disabledChange.trigger(features)
 }
 
 export interface LocalOnlyChange {
@@ -85,14 +99,16 @@ export const refreshLocalOnlyFeatures = async (): Promise<string[] | null> => {
   if (await isServerless()) return null
   const url = getServerUrl()
   try {
-    const data = await apiCall<{ localOnlyFeatures?: string[] }>("/healthz")
+    const data = await apiCall<{ localOnlyFeatures?: string[]; disabledFeatures?: string[] }>("/healthz")
     const features = data.localOnlyFeatures ?? []
+    const off = data.disabledFeatures ?? []
     // The server may have been switched while this was in flight. This answer
     // describes the previous one, so it must not be adopted or persisted.
     if (getServerUrl() !== url) return null
     if (cached !== null) announceChange(cached, features)
     adopt(features)
-    await saveToStorage(STORAGE_KEY, { url, features })
+    adoptDisabled(off)
+    await saveToStorage(STORAGE_KEY, { url, features, disabled: off })
     return features
   } catch {
     // Unreachable server: keep the persisted list rather than silently
@@ -111,7 +127,7 @@ export const markFeatureLocal = async (feature: string): Promise<void> => {
   const next = [...cached, feature]
   announceChange(cached, next)
   adopt(next)
-  await saveToStorage(STORAGE_KEY, { url: getServerUrl(), features: next })
+  await saveToStorage(STORAGE_KEY, { url: getServerUrl(), features: next, disabled })
   void refreshLocalOnlyFeatures()
 }
 
@@ -120,7 +136,10 @@ const prime = (): Promise<void> =>
     const stored = await loadFromStorage<StoredList>(STORAGE_KEY)
     // Pinned to the server it came from, since another server has its own config,
     // and assuming this one's answer would route data to the wrong place.
-    if (stored?.url === getServerUrl()) adopt(stored.features)
+    if (stored?.url === getServerUrl()) {
+      adopt(stored.features)
+      adoptDisabled(stored.disabled ?? [])
+    }
     // A headless run (water tile, notification button) is not an app open, so it sends nothing.
     if (AppState.currentState !== "active") return
     if (cached !== null) {
@@ -162,6 +181,15 @@ export const getLocalOnlyFeatures = async (): Promise<string[]> => {
 export const getServerStoredFeatures = (): string[] | null =>
   cached && ALL_LOCAL_ONLY.filter((feature) => !cached!.includes(feature))
 
+/**
+ * Features the server switched off. Treated as none until it has answered, since
+ * an unknown server is more likely to offer a feature than not.
+ */
+export const getDisabledFeatures = async (): Promise<string[]> => {
+  await getLocalOnlyFeatures()
+  return disabled
+}
+
 export const isFeatureLocal = async (feature: string): Promise<boolean> =>
   (await getLocalOnlyFeatures()).includes(feature)
 
@@ -174,6 +202,7 @@ export const describeLocalOnlyFeatures = (features: string[]): string => {
 
 onServerUrlChange(() => {
   cached = null
+  adoptDisabled([])
   pendingChange = null
   primed = null
   retryAfter = 0

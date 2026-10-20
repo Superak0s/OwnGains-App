@@ -79,6 +79,7 @@ import { Alert } from "react-native";
 import { useRealtimeSocket } from "../hooks/useRealtimeSocket";
 import { WorkoutProvider, useWorkout } from "../WorkoutContext";
 import { TRAINEE_WRITE_REFUSED_MESSAGE } from "../hooks/useSessionOperations";
+import { onTrainerEvent } from "@shared/services/trainerEvents";
 
 const mockSocket = useRealtimeSocket as jest.Mock;
 
@@ -311,5 +312,68 @@ describe("WorkoutProvider actAs", () => {
     expect(lastSetEndWrites).toEqual([]);
 
     root.unmount();
+  });
+
+  describe("ending a trainer session", () => {
+    const json = (body: unknown) =>
+      new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+    const endCalls = () =>
+      mockAuthenticatedFetch.mock.calls.filter(([url]) => String(url).includes("/server-1/end"));
+
+    async function startForTrainee() {
+      mockAuthenticatedFetch.mockImplementation(async (url: string) =>
+        url === "/api/sessions/start" ? json({ session: { id: "server-1" } }) : json({ success: true }),
+      );
+      let root!: ReactTestRenderer;
+      await act(async () => {
+        root = create(
+          <WorkoutProvider actAs={{ userId: "trainee-9", username: "sam" }}>
+            <Probe />
+          </WorkoutProvider>,
+        );
+      });
+      await act(async () => {
+        root.root.findByProps({ testID: "start" }).props.onPress();
+      });
+      expect(root.root.findByProps({ testID: "result" }).props.children).toBe("server-1");
+      return root;
+    }
+
+    const event = (type: "trainer_session_ended" | "trainee_set_recorded") => ({
+      type,
+      traineeId: "trainee-9",
+      trainerId: "trainer-1",
+      trainerUsername: "coach",
+      sessionId: "server-1",
+    });
+
+    it("ends the workout when the server says it ended", async () => {
+      const root = await startForTrainee();
+      await act(async () => onTrainerEvent.trigger(event("trainer_session_ended")));
+      expect(endCalls()).toHaveLength(1);
+      root.unmount();
+    });
+
+    it("ends the workout after 30 minutes with no set from either phone", async () => {
+      jest.useFakeTimers({ now: new Date("2026-10-18T10:00:00Z") });
+      try {
+        const root = await startForTrainee();
+        await act(async () => {
+          await jest.advanceTimersByTimeAsync(20 * 60_000);
+        });
+        await act(async () => onTrainerEvent.trigger(event("trainee_set_recorded")));
+        await act(async () => {
+          await jest.advanceTimersByTimeAsync(20 * 60_000);
+        });
+        expect(endCalls()).toHaveLength(0);
+        await act(async () => {
+          await jest.advanceTimersByTimeAsync(11 * 60_000);
+        });
+        expect(endCalls()).toHaveLength(1);
+        root.unmount();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
   });
 });

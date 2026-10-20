@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { getStorageItem, setStorageItem } from "@shared/services/sqliteStorage"
 
 import type { HeightData } from "@shared/types";
-import { bodyFatApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import { authService } from "@features/auth/services/index";
 import { isFeatureLocal } from "@shared/services/localOnlyFeatures";
 import { createDeleteHandler, withConfirm, describeError } from "../helpers";
@@ -31,6 +31,7 @@ export interface BodyFatInput {
 }
 
 export function useBodyFatTab(deps: UseBodyFatTabDeps) {
+  const { bodyFatApi } = useTrackingApis();
   const { alert, loadData, setDayModal, selectedLogDate, setSelectedLogDate, height, getUserKey, savedFormulaSex, openHeightModal } = deps;
 
   const [bodyFatHistory, setBodyFatHistory] = useState<BodyFatEntryWithFields[]>([]);

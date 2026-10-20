@@ -13,53 +13,37 @@ import type {
 // the envelope stops at this file.
 type Enveloped<T> = { data?: T }
 
-// Servers without multi-dose support omit these fields. One dose a day is what
-// they model.
-type ServerSummary = Omit<
-  SupplementSummary,
-  "dosesPerDay" | "doseIntervalMinutes" | "dosesToday" | "lastTakenAt"
-> &
-  Partial<SupplementSummary>
-
-const withDoseDefaults = (s: ServerSummary): SupplementSummary => ({
-  ...s,
-  dosesPerDay: s.dosesPerDay ?? 1,
-  doseIntervalMinutes: s.doseIntervalMinutes ?? null,
-  dosesToday: s.dosesToday ?? (s.takenToday ? 1 : 0),
-  lastTakenAt: s.lastTakenAt ?? null,
-})
-
 export const supplementsApi = {
 
   list: async (): Promise<{ success: boolean; supplements: SupplementSummary[] }> => {
-    const res = await apiCall<Enveloped<ServerSummary[]>>(
+    const res = await apiCall<Enveloped<SupplementSummary[]>>(
       `/api/tracking/supplements`,
     )
     return {
       success: true,
-      supplements: (res.data ?? []).map(withDoseDefaults),
+      supplements: res.data ?? [],
     }
   },
 
   create: async (
     params: CreateSupplementParams,
   ): Promise<{ success: boolean; supplement: SupplementSummary }> => {
-    const res = await apiCall<Enveloped<ServerSummary>>(
+    const res = await apiCall<Enveloped<SupplementSummary>>(
       `/api/tracking/supplements`,
       { method: "POST", body: JSON.stringify(params) },
     )
-    return { success: true, supplement: withDoseDefaults(res.data!) }
+    return { success: true, supplement: res.data! }
   },
 
   update: async (
     id: number,
     params: UpdateSupplementParams,
   ): Promise<{ success: boolean; supplement: SupplementSummary }> => {
-    const res = await apiCall<Enveloped<ServerSummary>>(
+    const res = await apiCall<Enveloped<SupplementSummary>>(
       `/api/tracking/supplements/${id}`,
       { method: "PATCH", body: JSON.stringify(params) },
     )
-    return { success: true, supplement: withDoseDefaults(res.data!) }
+    return { success: true, supplement: res.data! }
   },
 
   delete: (id: number): Promise<{ success: boolean }> =>

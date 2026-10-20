@@ -12,6 +12,7 @@ import {
   sorenessApi,
 } from "@features/tracking/services/index";
 import { supplementsApi } from "@features/supplements/services/index";
+import { scheduleApi } from "@features/schedule/services";
 import { DEMO_PHOTOS } from "./demoPhotos";
 import { isServerless } from "@shared/services/appMode";
 import { isFeatureLocal } from "@shared/services/localOnlyFeatures";
@@ -46,7 +47,8 @@ type Kind =
   | "menstrual"
   | "photo"
   | "height"
-  | "supplement";
+  | "supplement"
+  | "schedule";
 type DemoRecord = [Kind, number | string];
 
 const DELETE: Record<Kind, (id: never) => Promise<unknown>> = {
@@ -62,6 +64,7 @@ const DELETE: Record<Kind, (id: never) => Promise<unknown>> = {
   photo: progressPhotoApi.deletePhoto,
   height: removeStorageItem,
   supplement: supplementsApi.delete,
+  schedule: scheduleApi.remove,
 };
 
 const idOf = (res: unknown): number | string | undefined => {
@@ -175,6 +178,15 @@ export async function fillDemoTracking(
 
     if (await isLocal("tracking")) await fillTracking(add, at);
     if (await isLocal("supplements")) await fillSupplements(records, at);
+    // A server seeds its own schedule. Negative days ago are the days ahead.
+    if (await isServerless())
+      for (const daysAhead of [1, 3])
+        await add(
+          "schedule",
+          scheduleApi
+            .create({ title: "Demo workout", startAt: at(-daysAhead, 16), reminderMinutes: 30 })
+            .then((entry) => ({ entry })),
+        );
   } finally {
     await saveToStorage(DEMO_RECORDS_KEY, records, userId);
   }

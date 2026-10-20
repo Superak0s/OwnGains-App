@@ -1,4 +1,10 @@
-import { applyDayOverride, carryOverDay, dayExercises } from "../dayCarryOver";
+import {
+  CUSTOM_DAY,
+  applyDayOverride,
+  carryOverDay,
+  dayExercises,
+  dayLabel,
+} from "../dayCarryOver";
 import type { SetDetail, WorkoutData } from "@shared/types";
 
 const set = (reps: number): SetDetail => ({
@@ -95,5 +101,42 @@ describe("carryOverDay", () => {
     const before = structuredClone(plan);
     applyDayOverride(plan, run({ 1: { 0: set(12) } }).override);
     expect(plan).toEqual(before);
+  });
+});
+
+describe("applyDayOverride on a custom day", () => {
+  const custom = {
+    dayNumber: CUSTOM_DAY,
+    dayTitle: "Free workout",
+    split: "A",
+    carried: [{ name: "Row", sets: 3 }],
+    minSets: {},
+  };
+
+  it("appends a session-only day after the plan's days", () => {
+    const result = applyDayOverride(plan, custom);
+    expect(result?.days.slice(0, 2)).toEqual(plan.days);
+    expect(result?.days[2]).toEqual({
+      dayNumber: CUSTOM_DAY,
+      dayTitle: "Free workout",
+      split: { A: { exercises: [{ name: "Row", sets: 3 }], totalSets: 3 } },
+    });
+  });
+
+  it("builds the day when there is no program at all", () => {
+    expect(applyDayOverride(null, custom)?.days).toEqual([
+      {
+        dayNumber: CUSTOM_DAY,
+        dayTitle: "Free workout",
+        split: { A: { exercises: [{ name: "Row", sets: 3 }], totalSets: 3 } },
+      },
+    ]);
+  });
+});
+
+describe("dayLabel", () => {
+  it("names plan days by number and hides the custom day's number", () => {
+    expect(dayLabel(3)).toBe("Day 3");
+    expect(dayLabel(CUSTOM_DAY)).toBe("Free");
   });
 });

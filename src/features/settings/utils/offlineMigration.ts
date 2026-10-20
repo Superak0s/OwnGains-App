@@ -5,11 +5,15 @@ import {
   getUserKey,
   STORAGE_KEYS,
 } from "@shared/services/storage";
+import { createRecordStore } from "@shared/services/offlineHelpers";
 import { setAppMode } from "@shared/services/appMode";
+import { trackSpan } from "@shared/services/crashReporting";
 import { workoutApi } from "@features/workout/services/index";
 import { authService } from "@features/auth/services/index";
 import { TERMS_VERSION } from "@features/auth/termsAcceptance";
 import type { User, WorkoutSession } from "@shared/types";
+
+const OFFLINE_USER_ID = "local";
 
 export const migrateUserData = async (
   userId: string,
@@ -52,10 +56,14 @@ export const migrateUserData = async (
     setTimings: s.setTimings ?? [],
     isDemo: false,
   });
-  await setStorageItem(
-    "@offline:workout:sessions",
-    JSON.stringify(sessions.map(mapSession)),
-  );
+  // Straight into the offline account's rows. Same collection, id and sort key
+  // as the sessions store in off/workout.tsx.
+  await createRecordStore<ReturnType<typeof mapSession>>(
+    "workout_sessions",
+    (s) => s.id,
+    (s) => s.startTime ?? "",
+    OFFLINE_USER_ID,
+  ).putMany(sessions.map(mapSession));
 };
 
 export interface OfflineMigrationInput {
@@ -75,19 +83,21 @@ export const doMigrateOffline = async ({
   try {
     const currentUserId = user?.id ?? null;
     if (currentUserId) {
-      await migrateUserData(currentUserId, selectedSplit);
+      await trackSpan("migrate.offline", () =>
+        migrateUserData(currentUserId, selectedSplit),
+      );
     }
     // Before the mode switch, which drops the online session. The server
     // erases the workouts and body data the consent covered (Art. 7(3), 17).
     if (withdrawHealthConsent)
-      await authService.recordConsent(TERMS_VERSION, false, true);
+      await authService.recordConsent(TERMS_VERSION, false);
     // Written before the mode switch, not after: setAppMode fires
     // AuthContext's un-awaited autoConnectOffline, and a profile update
     // racing that would be overwritten by the session it creates.
     await setStorageItem(
       "@offline_user",
       JSON.stringify({
-        id: "local",
+        id: OFFLINE_USER_ID,
         username: user?.username ?? "Me",
         ...(user?.name && { name: user.name }),
         email: user?.email ?? "",
@@ -101,7 +111,7 @@ export const doMigrateOffline = async ({
     );
     if (profileAvatarUri)
       await setStorageItem(
-        getUserKey("@profile_avatar", "local"),
+        getUserKey("@profile_avatar", OFFLINE_USER_ID),
         profileAvatarUri,
       );
     await setAppMode("offline");

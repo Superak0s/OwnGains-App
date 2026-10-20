@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { useTheme } from "@shared/context/ThemeContext";
 import { useAlert } from "@shared/components/CustomAlert";
-import { injuryApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import { describeError } from "../helpers";
 import {
   InjuryRecord,
@@ -47,6 +47,7 @@ const FILTERS: { value: "all" | InjuryStatus; label: string }[] = [
 export const InjuryTracker: React.FC<InjuryTrackerProps> = ({
   onLogInjury,
 }) => {
+  const { injuryApi } = useTrackingApis();
   const { colors } = useTheme();
   const { alert, AlertComponent } = useAlert();
   const [injuries, setInjuries] = useState<InjuryRecord[]>([]);

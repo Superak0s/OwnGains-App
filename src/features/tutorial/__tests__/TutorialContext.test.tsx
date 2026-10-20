@@ -10,11 +10,9 @@ jest.mock("@shared/components/CustomAlert", () => ({
   useAlert: () => ({ alert: mockAlert, AlertComponent: null }),
 }));
 let mockMode: "online" | "offline" = "online";
-const mockRestartOnboarding = jest.fn();
 jest.mock("@shared/services/appMode", () => ({
   getAppModeSync: () => mockMode,
   onAppModeChange: { subscribe: () => () => {} },
-  restartOnboarding: () => mockRestartOnboarding(),
 }));
 const mockOverlay = jest.fn();
 jest.mock("../TutorialOverlay", () => ({
@@ -24,11 +22,11 @@ jest.mock("../TutorialOverlay", () => ({
     return null;
   },
 }));
-const mockPicker = jest.fn();
-jest.mock("../RolePicker", () => ({
+const mockIntro = jest.fn();
+jest.mock("../TutorialIntro", () => ({
   __esModule: true,
   default: (props: unknown) => {
-    mockPicker(props);
+    mockIntro(props);
     return null;
   },
 }));
@@ -46,12 +44,12 @@ function Capture() {
   captured.api = useTutorial();
   return null;
 }
-const lastOverlay = () => mockOverlay.mock.calls.at(-1)?.[0] as { onNext: () => void };
+const lastOverlay = () => mockOverlay.mock.calls.at(-1)?.[0] as { onNext: () => void; chapter: { id: string } };
 function Gate() {
   useTutorialGate();
   return null;
 }
-const lastPicker = () => mockPicker.mock.calls.at(-1)?.[0] as { mode: string; onPick: (r: string) => void; onSkip: () => void };
+const lastIntro = () => mockIntro.mock.calls.at(-1)?.[0] as { onStart: () => void; onSkip: () => void };
 const flush = () => act(async () => {});
 
 let tree: ReactTestRenderer;
@@ -72,40 +70,27 @@ beforeEach(() => {
   mockMode = "online";
 });
 
-it("shows the first-run picker and records a skip with the current mode", async () => {
+it("shows the first-run intro and records a skip with the current mode", async () => {
   mockMode = "offline";
   await mount();
-  expect(lastPicker().mode).toBe("firstRun");
-  await act(async () => lastPicker().onSkip());
+  await act(async () => lastIntro().onSkip());
   await flush();
   expect(readTutorialState()).toMatchObject({ firstRunDone: true, firstRunMode: "offline", onlineTourOffered: false });
 });
 
-it("asks an offline user to switch online instead of starting a trainer track", async () => {
-  mockMode = "offline";
-  await mount();
-  await act(async () => lastPicker().onPick("trainer"));
-  expect(mockOverlay).not.toHaveBeenCalled();
-  const [title, , buttons] = mockAlert.mock.calls[0];
-  expect(title).toBe("Trainer features need online mode");
-  await act(async () => buttons[1].onPress());
-  expect(mockRestartOnboarding).toHaveBeenCalled();
-  expect(readTutorialState().firstRunDone).toBe(false);
-});
-
 it("starts the track, and logging out mid-tutorial finishes the first run", async () => {
   await mount();
-  await act(async () => lastPicker().onPick("user"));
-  expect(mockOverlay).toHaveBeenCalled();
+  await act(async () => lastIntro().onStart());
+  expect(lastOverlay().chapter.id).toBe("welcome");
   await act(async () => tree.update(<TutorialProvider navigationRef={nav}>{null}</TutorialProvider>));
   await flush();
   expect(readTutorialState()).toMatchObject({ firstRunDone: true, firstRunMode: "online", onlineTourOffered: true });
 });
 
-it("never shows the picker again once the first run is done", async () => {
+it("never shows the intro again once the first run is done", async () => {
   kv[TUTORIAL_KEY] = JSON.stringify({ firstRunDone: true, firstRunMode: "online", onlineTourOffered: true });
   await mount();
-  expect(mockPicker).not.toHaveBeenCalled();
+  expect(mockIntro).not.toHaveBeenCalled();
   expect(mockAlert).not.toHaveBeenCalled();
 });
 
@@ -116,7 +101,7 @@ it("offers the online tour once to an offline-first device", async () => {
   expect(mockAlert.mock.calls[0][0]).toBe("You're online");
   expect(readTutorialState().onlineTourOffered).toBe(true);
   await act(async () => mockAlert.mock.calls[0][2][1].onPress());
-  expect(lastPicker().mode).toBe("onlineTour");
+  expect(lastOverlay().chapter.id).toBe("friends");
   mockAlert.mockClear();
   await act(async () => tree.unmount());
   await mount();
@@ -138,4 +123,17 @@ it("does not mark an online-only chapter complete when only the needs-online car
   await act(async () => lastOverlay().onNext());
   await flush();
   expect(readTutorialState().completed).not.toContain("friends");
+});
+
+it("offers the trainer tour until its chapters are done", async () => {
+  await mount(false);
+  await act(async () => captured.api!.offerTrainerTour());
+  const [title, , buttons] = mockAlert.mock.calls[0];
+  expect(title).toBe("Trainer Mode is on");
+  await act(async () => buttons[1].onPress());
+  expect(lastOverlay().chapter.id).toBe("trainerClient");
+  mockAlert.mockClear();
+  kv[TUTORIAL_KEY] = JSON.stringify({ completed: ["trainerClient", "trainerSession", "trainerFollow"] });
+  await act(async () => captured.api!.offerTrainerTour());
+  expect(mockAlert).not.toHaveBeenCalled();
 });

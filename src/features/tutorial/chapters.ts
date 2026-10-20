@@ -1,7 +1,6 @@
 import type { AppMode } from "@shared/services/appMode";
 import { TAB_META, type TabName } from "@shared/services/tabOrder";
 import type { AnchorId } from "./anchors";
-import type { Role } from "./tutorialState";
 
 export type ChapterId =
   | "welcome" | "home" | "plan" | "workout" | "progress" | "tracking"
@@ -83,7 +82,7 @@ const chapter = (id: ChapterId, icon: string, title: string, steps: Step[], onli
 
 export const CHAPTERS: Record<ChapterId, Chapter> = {
   welcome: chapter("welcome", "💪", "Welcome", [
-    card("💪", "Welcome to OwnGains", "Log workouts, follow a plan, and track your progress and body data. Everything is saved on this device first. Online mode adds sync, friends and training together."),
+    card("💪", "Welcome to OwnGains", "Log workouts, follow a plan, and track your progress and body data. Everything is saved on this device first. Online mode adds sync, friends and training together. Coaching clients? Turn on Trainer Mode in Settings or with the Trainer Mode widget on Home, and the trainer tour starts from there."),
     spot("Home", "tab.Home", "This is the tab bar. Every screen is one tap away. Swipe it sideways to see more tabs.", "The tab bar at the bottom has every screen. Swipe it sideways to see more."),
     spot("Home", "tabbar.toggle", "The arrow beside the tab bar slides it away when you need room, and brings it back.", "The arrow beside the tab bar hides it and brings it back."),
     card("↕️", "Your tabs, your order", "Reorder or hide tabs any time in Settings → Appearance → Tab Order."),
@@ -108,6 +107,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
       ["➕", "Add exercises", "Filter the exercise library, browse by muscle, or create a custom exercise."],
     ]),
     card("📋", "Your splits at a glance", "Once you have a plan, this board shows Your splits, Weekly volume per muscle, and a card for every program day. Insert into current adds a day's exercises to the day you're on."),
+    card("📅", "Schedule workouts", "The Schedule widget books a workout on a future day with a reminder, as a notification or an alarm. Turn on Add to my calendar to copy it into your phone's calendar. A trainer can suggest one from your Plan tab, and you accept or decline it."),
     spot("Plan", "plan.import", "Import file brings in a program from a spreadsheet (.ods, .xlsx or .xls).", "Build your plan → Import file brings in a program from a spreadsheet."),
     checklist("After an import, check how each row was matched.", [
       ["🔍", "Re-check matches", "Runs matching again after you rename a row."],
@@ -138,7 +138,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
       ["🏆", "PR celebration", "A new personal record gets a celebration. You can turn it off in Settings."],
       ["📈", "Auto-progression", "When you reach the top of your rep range, it suggests adding weight."],
     ]),
-    spot("Workout", "workout.addExercise", "Add Exercise adds a movement to today's workout.", "Once a day is loaded, Add Exercise sits below the exercise list."),
+    spot("Workout", "workout.addExercise", "Add Exercise adds a movement to today's workout.", "Once a day is loaded, Add Exercise sits below the exercise list. Start empty workout below it begins a workout outside your plan."),
     card("🔄", "Change day mid-workout", "Picked the wrong day? You can change it mid-workout, and exercises you've already logged come with you."),
     spot("Workout", "workout.complete", "Complete workout ends the session and marks the day Done.", "During a session, Complete workout at the bottom ends it and marks the day Done."),
     card("📶", "Offline is fine", "Sessions logged without a connection sync on their own when you're back online."),
@@ -211,6 +211,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
       ["⚙️", "Actions", "Permissions, sessions and more."],
       ["🔒", "Locked tab", "They haven't given you access to this yet. Tap it to see what they'd need to allow."],
     ]),
+    card("💬", "Messages", "Tap Message on a friend to chat. The 💬 button next to the Friends title lists your conversations, and the Friends tab shows a badge for unread messages. Trainers and clients can message each other too, from Clients."),
     checklist("If a friendship goes wrong.", [
       ["➖", "Remove", "Ends the friendship."],
       ["⛔", "Block", "They can't find or contact you."],
@@ -264,27 +265,32 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     spot("Settings", "settings.tutorial", "Replay any chapter of this tutorial from here.", "Settings → About → Tutorial replays any chapter."),
   ]),
   trainerClient: chapter("trainerClient", "🤝", "Trainer: getting a client", [
-    card("🧑‍🏫", "Getting a client", "Trainer mode lets you log workouts for a client and edit their program. Your client stays in control: only they can give you access."),
-    practice("First, add your client as a friend.", { type: "friendRequest" }),
-    card("💬", "Ask for Trainer Access", "There's no request button. Ask your client in person or by message to turn on Trainer Access for you."),
-    practice("This is the screen your client sees: Friends → you → Actions → Trainer Access. Try it here so you can walk them through it.", { type: "permissions" }),
+    card("🧑‍🏫", "Trainer Mode", "Turn on Trainer Mode in Settings, or tap the Trainer Mode widget on Home. Your tabs become Clients, Session, Programs, Progress, Track, Supps and Settings."),
+    checklist("The Clients tab is your roster.", [
+      ["➕", "Add client", "Search their username, or tap 📷 and scan the QR code under My QR Code in their Friends tab. The trainer request is sent right away. Cancel it under Requests sent."],
+      ["⚠️", "Needs attention", "Clients who are inactive or behind their week come first."],
+      ["👤", "Client page", "Open a client for their week, recent sessions, progress and the permissions they gave you. Ask for Tracking Access sends them a request for it. Remove client at the bottom stops coaching them."],
+    ]),
+    card("✅", "They accept", "Your client sees the request under Friends → Requests. Access starts only when they accept, and they can revoke it at any time."),
+    practice("This is where a client can also grant access by hand: Friends → you → Actions → Trainer Access.", { type: "permissions" }),
     card("📊", "Ask to follow their progress too", "Ask for History, Analytics and Share My Program as well, so you can follow how they're doing."),
+    card("🔒", "Tracking Access", "A client can also grant Tracking Access, which never comes with Trainer Access on its own. Their phone sends you their weight, measurements, nutrition, injuries and progress photos, encrypted so only your phone can read them. In Track, tap the Tracking title, pick a client (search by username if you have many) and see theirs in the same Tracking screen as yours, view only, and check the safety code matches the one on their phone."),
   ], true),
   trainerSession: chapter("trainerSession", "🏋️", "Trainer: running a session", [
     checklist("Start a session for your client.", [
-      ["👤", "Pick your client", "Tap Train next to them in Friends, or open them."],
-      ["⚙️", "Actions", "Once they've granted Trainer Access, their Actions tab has Start trainer session."],
+      ["👤", "Pick your client", "Open them in Clients and tap Start session, then pick their program (then one of their splits), My program (then one of your days) or an empty workout."],
+      ["🔑", "Access", "Start session appears once they've granted you Trainer Access."],
       ["▶️", "Start", "Workout opens, and you're running their session."],
     ]),
     practice("Me and Trainees switch between your workout and your client's. The bar shows who you're logging for.", { type: "banner", variant: "trainerSession" }),
     practice("Log their sets exactly like your own.", { type: "logSet" }),
-    card("📤", "Send a plan", "In your client's Actions tab, Send a Plan shares your program. They see it in your Program tab and tap Use this plan to follow it."),
-    card("🛡️", "Built-in limits", "You can edit their program, but you can't delete their sets, remove their only machine, touch their account, or do anything destructive."),
+    card("📤", "Send a plan", "On your client's page in Clients, Send program shares the splits you tick. They see it in your Program tab and tap Use this plan to follow it."),
+    card("🛡️", "Built-in limits", "Edit program opens their program in Programs (or tap the Programs title to pick a client), where you edit it like your own, but can't empty it. You can't delete their logged sets, rename exercises in their history, touch their account, or delete anything else."),
   ], true),
   trainerFollow: chapter("trainerFollow", "📈", "Trainer: following clients", [
     checklist("Once your client grants access, follow them from their friend tabs.", [
       ["📅", "History", "Every session they've logged."],
-      ["📊", "Analytics", "Their progress charts."],
+      ["📊", "Analytics", "Their progress charts, also in your Progress tab: tap the title to pick a client."],
       ["📋", "Program", "The program they're following."],
       ["🔴", "Live", "Their session as it happens."],
     ]),
@@ -292,22 +298,9 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
   ], true),
 };
 
-const USER_TRACK: ChapterId[] = ["welcome", "home", "plan", "workout", "progress", "tracking", "supplements", "friends", "sharing", "together", "widgets", "settings"];
-
-export const TRACKS: Record<Role, ChapterId[]> = {
-  user: USER_TRACK,
-  trainer: ["welcome", "friends", "trainerClient", "trainerSession", "workout", "trainerFollow", "together", "widgets", "settings"],
-  both: [...USER_TRACK, "trainerClient", "trainerSession", "trainerFollow"],
-};
-
-export const ONLINE_TOUR: Record<Role, ChapterId[]> = {
-  user: ["friends", "sharing", "together"],
-  trainer: ["friends", "trainerClient", "trainerSession", "trainerFollow", "together"],
-  both: ["friends", "sharing", "together", "trainerClient", "trainerSession", "trainerFollow"],
-};
-
-export const chaptersFor = (role: Role): ChapterId[] => TRACKS[role];
-export const onlineChaptersFor = (role: Role): ChapterId[] => ONLINE_TOUR[role];
+export const TUTORIAL: ChapterId[] = ["welcome", "home", "plan", "workout", "progress", "tracking", "supplements", "friends", "sharing", "together", "widgets", "settings"];
+export const ONLINE_TOUR: ChapterId[] = ["friends", "sharing", "together"];
+export const TRAINER_TOUR: ChapterId[] = ["trainerClient", "trainerSession", "trainerFollow"];
 
 export function stepsFor(chapter: Chapter, mode: AppMode): Step[] {
   if (!chapter.onlineOnly || mode === "online") return chapter.steps;

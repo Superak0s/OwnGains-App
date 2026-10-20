@@ -98,6 +98,8 @@ export function editMachineMeta(
   return next;
 }
 
+export const EMPTY_WORKOUT_TITLE = "Empty workout";
+
 type EmptyStateInfo = {
   icon: string;
   title: string;

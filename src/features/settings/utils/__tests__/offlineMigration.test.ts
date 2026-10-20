@@ -3,7 +3,7 @@ import { workoutApi } from "@features/workout/services/index"
 import { authService } from "@features/auth/services/index"
 import { setAppMode } from "@shared/services/appMode"
 import { STORAGE_KEYS } from "@shared/services/storage"
-import { kv, resetMemorySqlite, setStorageItem } from "test-utils/memorySqlite"
+import { collections, kv, resetMemorySqlite, setStorageItem } from "test-utils/memorySqlite"
 import type { User, WorkoutSession } from "@shared/types"
 
 jest.mock("@shared/services/sqliteStorage", () => require("test-utils/memorySqlite"))
@@ -48,7 +48,7 @@ const migrate = (withdrawHealthConsent = false) =>
   })
 
 const copiedSessions = () =>
-  JSON.parse(kv["@offline:workout:sessions"] ?? "[]") as { id: string; split: string }[]
+  (collections.workout_sessions_user_local ?? []).map((r) => JSON.parse(r.value) as { id: string; split: string })
 
 beforeEach(() => {
   resetMemorySqlite()
@@ -112,7 +112,7 @@ describe("doMigrateOffline", () => {
 
     await expect(migrate(true)).resolves.toBe(false)
 
-    expect(recordConsent).toHaveBeenCalledWith(expect.any(String), false, true)
+    expect(recordConsent).toHaveBeenCalledWith(expect.any(String), false)
     expect(setAppModeMock).not.toHaveBeenCalled()
     expect(kv["@offline_user"]).toBeUndefined()
   })

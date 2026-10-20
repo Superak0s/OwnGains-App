@@ -20,10 +20,6 @@ describe("getFriendSessionsWithTimings", () => {
     );
   });
 
-  it("returns null from a server that ignores includeTimings", async () => {
-    mockApiCall.mockResolvedValueOnce({ sessions: [{ id: 1 }] });
-    await expect(sharingApi.getFriendSessionsWithTimings("f1")).resolves.toBeNull();
-  });
 });
 
 describe("getFriendSessionStatuses", () => {
@@ -44,9 +40,8 @@ describe("getReceivedPermissions", () => {
     mockApiCall
       .mockResolvedValueOnce({
         permissions: [
-          { id: 1, permissionType: "program", payload: { programData: {} }, hasPayload: true },
-          { id: 2, permissionType: "program", payload: null, hasPayload: true },
-          { id: 3, permissionType: "history", payload: null, hasPayload: false },
+          { id: 2, permissionType: "program", hasPayload: true },
+          { id: 3, permissionType: "history", hasPayload: false },
         ],
       })
       .mockResolvedValueOnce({ success: true, payload: { programData: { name: "P" } } });
@@ -60,19 +55,9 @@ describe("getReceivedPermissions", () => {
     expect(mockApiCall).toHaveBeenNthCalledWith(2, "/api/sharing/permissions/2/payload");
     expect(mockApiCall).toHaveBeenCalledTimes(2);
     expect(received.map((p) => p.payload)).toEqual([
-      { programData: {} },
       { programData: { name: "P" } },
       null,
     ]);
-  });
-
-  it("treats an inlined payload from an older server as present", async () => {
-    mockApiCall.mockResolvedValueOnce({
-      permissions: [{ id: 1, permissionType: "program", payload: { programData: {} } }],
-    });
-    const [permission] = await sharingApi.getReceivedPermissions();
-    expect(permission.hasPayload).toBe(true);
-    expect(mockApiCall).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the rest of the list when one payload can't be fetched", async () => {

@@ -2,10 +2,7 @@ import {
   getStorageItem,
   setStorageItem,
   removeStorageItem,
-  renameUserData,
 } from "@shared/services/sqliteStorage"
-import { removeFromStorage } from "@shared/services/storage"
-import { ACTIVE_TRAINEE_KEY } from "@shared/services/trainerEvents"
 import { assertSecureTransport, getServerUrl } from "@shared/services/config"
 import { refreshTokenStorage, tokenStorage } from "@shared/services/tokenStorage"
 import { buildDeviceBackup } from "@utils/deviceBackup"
@@ -20,27 +17,7 @@ const USER_KEY = "@user"
 const FETCH_TIMEOUT_MS = 15000
 // Logout must not hang on a dead server, and the refresh token expires on its own.
 const SIGNOUT_TIMEOUT_MS = 3000
-const LEGACY_NUMERIC_ID = /^\d+$/
-
-/**
- * Servers from before users had uuids identified them by a numeric id, and every
- * per-user row on this device is namespaced by it. The first time the same
- * account comes back with a uuid, those rows are moved over so the user keeps
- * their boards, settings and unsynced sets. A stored trainee is dropped rather
- * than moved: it holds the trainee's old numeric id, which the server now rejects.
- */
 async function persistUser(user: AuthUser): Promise<void> {
-  const previous = parseStoredUser(await getStorageItem(USER_KEY))
-  const from = previous?.id == null ? "" : String(previous.id)
-  const to = String(user.id)
-  if (
-    LEGACY_NUMERIC_ID.test(from) &&
-    !LEGACY_NUMERIC_ID.test(to) &&
-    previous?.username === user.username
-  ) {
-    await renameUserData(from, to)
-    await removeFromStorage(ACTIVE_TRAINEE_KEY, to)
-  }
   await setStorageItem(USER_KEY, JSON.stringify(user))
 }
 
@@ -142,24 +119,14 @@ export const authService = {
     return data.user
   },
 
-  // Server-side proof of consent (GDPR Art. 7(1)). A server older than the
-  // /consent route answers 404. The on-device record still stands then, except
-  // for a withdrawal (`strict`), where the server must actually erase the data.
-  recordConsent: async (
-    termsVersion: string,
-    healthConsent: boolean,
-    strict = false,
-  ): Promise<void> => {
-    try {
-      const data = await apiCall<{ user: AuthUser }>("/api/auth/consent", {
-        method: "PUT",
-        body: JSON.stringify({ termsVersion, healthConsent }),
-      })
-      // Update the cached termsVersion, or the next launch asks again.
-      await persistUser(data.user)
-    } catch (error) {
-      if (strict || !(error instanceof ApiError && error.status === 404)) throw error
-    }
+  // Server-side proof of consent (GDPR Art. 7(1)).
+  recordConsent: async (termsVersion: string, healthConsent: boolean): Promise<void> => {
+    const data = await apiCall<{ user: AuthUser }>("/api/auth/consent", {
+      method: "PUT",
+      body: JSON.stringify({ termsVersion, healthConsent }),
+    })
+    // Update the cached termsVersion, or the next launch asks again.
+    await persistUser(data.user)
   },
 
   refreshToken: async (): Promise<string | null> => {
@@ -170,7 +137,6 @@ export const authService = {
 
       const data = await unauthenticatedCall<{
         token?: string
-        accessToken?: string
         refreshToken?: string
       }>("/api/auth/refresh", {
         method: "POST",
@@ -178,7 +144,7 @@ export const authService = {
         body: JSON.stringify({ refreshToken: stored }),
       })
 
-      const newToken = data.token || data.accessToken
+      const newToken = data.token
       if (!newToken) {
         captureException(new Error("Token refresh succeeded without a token"), {
           stage: "refreshToken",

@@ -12,7 +12,7 @@ import {
 import PagerView from "react-native-pager-view";
 import { useTheme } from "@shared/context/ThemeContext";
 import { useAuthToken } from "@shared/context/AuthContext";
-import { progressPhotoApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import {
   ProgressPhotoMuscle,
   MUSCLE_GROUP_LABELS,
@@ -320,6 +320,7 @@ function UploadProgressBar({ state }: { readonly state: UploadProgressState }) {
 const HOLD_AFTER_DONE_MS = 5000;
 
 export function PhotosGalleryWidget() {
+  const { progressPhotoApi } = useTrackingApis();
   const { colors } = useTheme();
   const authToken = useAuthToken();
   const { alert, AlertComponent } = useAlert();

@@ -1,4 +1,13 @@
 import * as Sentry from "@sentry/react-native";
+import {
+  getAnalytics,
+  logEvent,
+  logScreenView,
+  setAnalyticsCollectionEnabled,
+  setUserProperty,
+} from "@react-native-firebase/analytics";
+import { getApps } from "@react-native-firebase/app";
+import { getPerformance, trace } from "@react-native-firebase/perf";
 import { AppState } from "react-native";
 import { GITHUB_BUILD } from "../distribution";
 import { ApiError, ServerUnreachableError } from "./apiErrorClasses";
@@ -10,6 +19,9 @@ import {
 } from "./sqliteStorage";
 
 const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
+// Without google-services.json at prebuild there is no default Firebase app,
+// and every analytics call would throw.
+const firebaseConfigured = getApps().length > 0;
 // Dev builds send nothing by default. Set this in .env to verify the DSN,
 // transport and consent gates from the emulator without cutting a release APK.
 // Such events are filed in the "development" environment, not "production".
@@ -78,6 +90,15 @@ const matchNativeToConsent = async (): Promise<void> => {
 export const setTelemetryEnabled = async (enabled: boolean): Promise<void> => {
   telemetryEnabled = enabled;
   await storeChoice(TELEMETRY_KEY, enabled);
+  await matchAnalyticsToConsent();
+};
+
+// firebase.json turns collection off at install, so Firebase's own automatic
+// events also wait for this switch.
+const matchAnalyticsToConsent = (): Promise<void> => {
+  if (!firebaseConfigured) return Promise.resolve();
+  getPerformance().dataCollectionEnabled = analytics();
+  return setAnalyticsCollectionEnabled(getAnalytics(), analytics());
 };
 
 export const recordPrivacyConsent = (
@@ -103,11 +124,15 @@ export const applyPrivacyChoicesFor = (userId: string | null): boolean => {
   telemetryEnabled = read(TELEMETRY_KEY) === "true";
   reportMigrationFailure();
   void matchNativeToConsent().catch(captureException);
+  void matchAnalyticsToConsent().catch(captureException);
   return !userId || (hasPrivacyConsent(userId) && !needsDiagnosticsPrompt());
 };
 
 const reporting = (): boolean => Boolean(dsn) && crashReportingEnabled;
 const telemetry = (): boolean => Boolean(dsn) && telemetryEnabled;
+// Dev builds would otherwise mix emulator sessions into the production property.
+const analytics = (): boolean =>
+  firebaseConfigured && telemetryEnabled && (!__DEV__ || forceEnabled);
 
 export type TelemetryAttributes = Record<string, string | number | boolean>;
 
@@ -315,17 +340,18 @@ export const initCrashReporting = (): void => {
     metric.count("storage.error");
     captureException(error, { subsystem: "sqliteStorage" });
   });
+  void matchAnalyticsToConsent().catch(captureException);
+  setTelemetryTag("channel", GITHUB_BUILD ? "github" : "play");
+  trackDailyOpen();
+  AppState.addEventListener("change", (state) => {
+    if (state === "active") trackDailyOpen();
+  });
   if (!dsn) {
     console.warn("EXPO_PUBLIC_SENTRY_DSN not set, crash reporting disabled");
     return;
   }
   startSentry();
-  Sentry.setTag("channel", GITHUB_BUILD ? "github" : "play");
   reportMigrationFailure();
-  trackDailyOpen();
-  AppState.addEventListener("change", (state) => {
-    if (state === "active") trackDailyOpen();
-  });
 };
 
 const startSentry = (): void => {
@@ -344,8 +370,7 @@ const startSentry = (): void => {
     beforeSendLog: (log) => (telemetryEnabled ? scrubLog(log) : null),
     beforeSendTransaction: (event) =>
       telemetryEnabled ? scrubTransaction(event) : null,
-    tracesSampler: ({ attributes, inheritOrSampleWith }) => {
-      if (attributes?.[ALWAYS_SAMPLE]) return 1;
+    tracesSampler: ({ inheritOrSampleWith }) => {
       // The first screen load carries the app-start measurement, so every
       // launch's cold-start time is kept.
       if (!firstLoadSampled) {
@@ -438,56 +463,37 @@ export const log = {
 };
 
 interface MetricOptions {
-  unit?: string;
   attributes?: TelemetryAttributes;
 }
 
-const ALWAYS_SAMPLE = "owngains.always_sample";
 const TRACE_SAMPLE_RATE = 0.1;
 
-/**
- * GlitchTip ignores Sentry.metrics (`trace_metric` envelope items), but it
- * groups transactions by name and reports their count and duration
- * percentiles, so counts and timings are sent as root transactions named after
- * the metric (plus its `outcome`, the one label worth splitting on).
- */
-const recordTransaction = (
-  name: string,
-  attributes: TelemetryAttributes = {},
-  startedAt?: number,
-): void => {
-  if (!telemetry()) return;
-  const label = attributes.outcome === undefined ? name : `${name}:${attributes.outcome}`;
-  Sentry.startSpan(
-    {
-      name: label,
-      op: "count",
-      parentSpan: null,
-      startTime: startedAt,
-      attributes: { ...attributes, [ALWAYS_SAMPLE]: true },
-    },
-    () => undefined,
+// Firebase names allow only letters, digits and underscores, up to 40
+// characters, and string parameter values up to 100.
+const firebaseName = (name: string): string => name.replace(/\W/g, "_").slice(0, 40);
+
+const firebaseParams = (attributes: TelemetryAttributes): Record<string, string | number> =>
+  Object.fromEntries(
+    Object.entries(attributes).map(([key, value]) => [
+      firebaseName(key),
+      typeof value === "number" ? value : String(value).slice(0, 100),
+    ]),
   );
+
+const recordEvent = (name: string, attributes: TelemetryAttributes = {}): void => {
+  if (analytics()) logEvent(getAnalytics(), firebaseName(name), firebaseParams(attributes));
 };
 
-// Values that are not durations have no transaction to ride on, so they are
-// kept as logs, searchable by name with the number in `value`.
-const logValue = (name: string, value: number, options?: MetricOptions): void => {
-  if (telemetry()) Sentry.logger.info(name, { ...options?.attributes, value });
+const recordValue = (name: string, value: number, options?: MetricOptions): void => {
+  recordEvent(name, { ...options?.attributes, value });
 };
 
 export const metric = {
   count: (name: string, value = 1, options?: MetricOptions): void => {
-    recordTransaction(name, { ...options?.attributes, ...(value !== 1 && { value }) });
+    recordEvent(name, { ...options?.attributes, ...(value !== 1 && { value }) });
   },
-  gauge: logValue,
-  distribution: (name: string, value: number, options?: MetricOptions): void => {
-    if (options?.unit === "millisecond") {
-      recordTransaction(name, options.attributes, Date.now() - value);
-    } else {
-      logValue(name, value, options);
-    }
-  },
+  gauge: recordValue,
+  distribution: recordValue,
 };
 
 /** Counts one use of a feature. `op` must be a code identifier, never user data. */
@@ -496,12 +502,11 @@ export const trackFeature = (
   op: string,
   attributes?: TelemetryAttributes,
 ): void => {
-  recordTransaction(`feature:${feature}.${op}`, attributes);
+  recordEvent("feature_use", { ...attributes, feature, op });
 };
 
-/** Exact screen-view counts, because navigation traces are sampled and too thin for that. */
 export const trackScreenView = (screen: string): void => {
-  recordTransaction(`screen:${screen}`);
+  if (analytics()) void logScreenView(getAnalytics(), { screen_name: screen, screen_class: screen });
 };
 
 const LAST_OPEN_DAY_KEY = "@telemetry_last_open_day";
@@ -526,43 +531,60 @@ const storedNumber = (key: string): number | null => {
   return raw === null ? null : Number(raw);
 };
 
-/** Counts each calendar day the app is opened, for an estimate of daily active users. */
+/** Counts each calendar day the app is opened, with how long since the last workout. */
 export const trackDailyOpen = (now = Date.now()): void => {
-  if (!telemetry()) return;
+  if (!analytics()) return;
   const today = new Date(now).toDateString();
   if (getStorageItemSync(LAST_OPEN_DAY_KEY) === today) return;
   void setStorageItem(LAST_OPEN_DAY_KEY, today);
-  recordTransaction("app.daily_open", {
+  recordEvent("app.daily_open", {
     days_since_workout: daysSinceBucket(storedNumber(LAST_WORKOUT_KEY), now),
   });
 };
 
-/** Spans the whole workout, so GlitchTip reports workout-length percentiles. */
 export const trackWorkoutCompleted = (
   startedAt: number,
   attributes: { sets: number; exercises: number; auto: boolean },
 ): void => {
-  if (!telemetry() || Number.isNaN(startedAt)) return;
+  if (!analytics() || Number.isNaN(startedAt)) return;
   void setStorageItem(LAST_WORKOUT_KEY, String(Date.now()));
-  recordTransaction("workout.completed", attributes, startedAt);
+  recordEvent("workout.completed", { ...attributes, value: Date.now() - startedAt });
 };
 
 /**
- * Times `fn` as an always-sampled root transaction. As a child of the
- * navigation transaction it would share that transaction's sampling.
+ * Starts a Firebase Performance custom trace and returns the function that
+ * stops it. Numeric attributes become trace metrics, the rest trace attributes
+ * (Firebase keeps at most five).
  */
-export const trackSpan = <T,>(
+export const startTrace = (name: string): ((attributes?: TelemetryAttributes) => void) => {
+  if (!analytics()) return () => undefined;
+  const span = trace(getPerformance(), firebaseName(name));
+  span.start();
+  return (attributes = {}) => {
+    for (const [key, value] of Object.entries(firebaseParams(attributes))) {
+      if (typeof value === "number") span.putMetric(key, Math.round(value));
+      else span.putAttribute(key, value);
+    }
+    span.stop();
+  };
+};
+
+/** Times `fn` as a Firebase Performance trace, tagged with whether it threw. */
+export const trackSpan = async <T,>(
   name: string,
-  op: string,
   fn: () => Promise<T>,
-  attributes?: TelemetryAttributes,
-): Promise<T> =>
-  telemetry()
-    ? Sentry.startSpan(
-        { name, op, parentSpan: null, attributes: { ...attributes, [ALWAYS_SAMPLE]: true } },
-        fn,
-      )
-    : fn();
+  attributes: TelemetryAttributes = {},
+): Promise<T> => {
+  const stop = startTrace(name);
+  try {
+    const result = await fn();
+    stop({ ...attributes, outcome: "ok" });
+    return result;
+  } catch (error) {
+    stop({ ...attributes, outcome: "error" });
+    throw error;
+  }
+};
 
 export interface SentryTestResult {
   dsn: boolean;
@@ -603,6 +625,7 @@ export const setUserContext = (userId: string | null): void => {
 
 export const setTelemetryTag = (key: string, value: string): void => {
   Sentry.setTag(key, value);
+  if (firebaseConfigured) void setUserProperty(getAnalytics(), key, value);
 };
 
 export const trackBreadcrumb = (

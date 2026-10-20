@@ -87,7 +87,6 @@ export const tokenStorage = {
 /**
  * Kept in a separate key so it is never reachable from the code paths that
  * attach the access token to a request: it goes to /api/auth/refresh and
- * nowhere else. Absent until the server starts issuing one. See the rotating
- * refresh token spec in api-requests.md.
+ * nowhere else.
  */
 export const refreshTokenStorage = refreshToken

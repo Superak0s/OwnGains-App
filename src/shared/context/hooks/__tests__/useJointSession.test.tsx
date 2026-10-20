@@ -491,7 +491,7 @@ describe("useJointSession watching", () => {
     })
 
     await act(async () => {
-      jest.advanceTimersByTime(10_000)
+      jest.advanceTimersByTime(60_000)
     })
 
     expect(result.current.isWatching).toBe(false)
@@ -548,9 +548,8 @@ describe("useJointSession watch pushes", () => {
     expect(result.current.watchError).toBe("session_ended")
   })
 
-  it("polls every 60s instead of 10s once pushes arrive over a connected socket", async () => {
-    const { result } = await watching()
-    await act(async () => result.current.handleSocketMessage(progress({ id: "pushed" })))
+  it("polls every 60s instead of 10s over a connected socket", async () => {
+    await watching()
     await act(async () => {
       jest.advanceTimersByTime(50_000)
     })
@@ -569,16 +568,6 @@ describe("useJointSession watch pushes", () => {
       jest.advanceTimersByTime(10_000)
     })
     expect(api.getFriendLiveSession).toHaveBeenCalledTimes(1)
-  })
-
-  it("keeps updating every 10s from a server that never pushes", async () => {
-    const { result } = await watching()
-    api.getFriendLiveSession.mockResolvedValue({ id: "polled" } as never)
-    await act(async () => {
-      jest.advanceTimersByTime(10_000)
-    })
-    expect(api.getFriendLiveSession).toHaveBeenCalledTimes(1)
-    expect(result.current.watchSession).toEqual({ id: "polled" })
   })
 
   it("refetches the live session when the socket reconnects, to fill in missed pushes", async () => {

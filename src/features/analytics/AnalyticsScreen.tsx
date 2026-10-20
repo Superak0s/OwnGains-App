@@ -7,7 +7,7 @@ import ExerciseAnalytics from "./components/ExerciseAnalytics";
 import type { AnalyticsWidgetType } from "./widgets";
 import type { FullSessionWithGroups, WorkoutSession } from "@shared/types";
 import { recordSessionsOutside } from "@utils/recordSets";
-import { getCurrentBodyWeight } from "@features/tracking/services";
+import { useTrackingApis } from "@features/tracking/TrackingApisContext";
 import { captureException, trackSpan } from "@shared/services/crashReporting";
 import { userFacingError } from "@shared/services/apiError";
 
@@ -86,8 +86,12 @@ function fetchSharedHistory(
 
 export default function AnalyticsScreen({
   embedWidget,
+  title = "Progress",
+  onTitlePress,
 }: {
   readonly embedWidget?: AnalyticsWidgetType;
+  readonly title?: string;
+  readonly onTitlePress?: () => void;
 } = {}): React.JSX.Element {
   const {
     workoutData,
@@ -96,6 +100,7 @@ export default function AnalyticsScreen({
     syncFromServer,
     fetchSessionHistory,
     fetchRecordSessions,
+    actAs,
   } = useWorkoutPick(
     "workoutData",
     "selectedSplit",
@@ -103,10 +108,12 @@ export default function AnalyticsScreen({
     "syncFromServer",
     "fetchSessionHistory",
     "fetchRecordSessions",
+    "actAs",
   );
 
   const { user } = useAuth();
-  const userId = user?.id ?? null;
+  const userId = actAs?.userId ?? user?.id ?? null;
+  const { getCurrentBodyWeight } = useTrackingApis();
   const { alert, AlertComponent } = useAlert();
 
   const [currentBodyWeight, setCurrentBodyWeight] = useState<number | null>(
@@ -133,10 +140,10 @@ export default function AnalyticsScreen({
     let cancelled = false;
 
     const loadBodyWeight = async (): Promise<void> => {
-      if (!user?.id) return;
+      if (!userId) return;
 
       try {
-        const bodyWeight = await getCurrentBodyWeight(user.id);
+        const bodyWeight = await getCurrentBodyWeight(userId);
         if (!cancelled && isMountedRef.current) {
           setCurrentBodyWeight(bodyWeight);
         }
@@ -153,7 +160,7 @@ export default function AnalyticsScreen({
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [userId, getCurrentBodyWeight]);
 
   const loadSessions = useCallback(async (force = false): Promise<void> => {
     if (!isMountedRef.current) return;
@@ -164,7 +171,6 @@ export default function AnalyticsScreen({
 
       const history = await trackSpan(
         "analytics.load_sessions",
-        "screen.load",
         () =>
           fetchSharedHistory(
             userId,
@@ -250,10 +256,11 @@ export default function AnalyticsScreen({
         currentBodyWeight={currentBodyWeight}
         onRefresh={embedWidget ? null : onRefresh}
         refreshing={refreshing}
-        title='Progress'
+        title={title}
+        onTitlePress={onTitlePress}
         isLoading={isLoading}
         error={error}
-        userId={user?.id ?? null}
+        userId={userId}
         historyLimit={ANALYTICS_HISTORY_LIMIT}
       />
       {AlertComponent}

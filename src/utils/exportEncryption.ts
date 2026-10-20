@@ -6,7 +6,7 @@ import {
   aesEncryptAsync,
   getRandomBytes,
 } from "expo-crypto";
-import { pbkdf2Sha256, sha256 } from "@utils/pbkdf2";
+import { pbkdf2Sha256 } from "@utils/pbkdf2";
 
 export const ENCRYPTED_FORMAT = "owngains-encrypted";
 export const ENCRYPTED_VERSION = 3;
@@ -28,42 +28,19 @@ const toHex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 
 const PBKDF2_ITERATIONS = 600_000;
-const LEGACY_SHA_ROUNDS = 100_000;
-
-/**
- * Version 3 stretches with PBKDF2-HMAC-SHA256. Versions 1 and 2 used bare
- * SHA-256 (one round, then 100k hand-rolled rounds with the salt folded back in
- * each time) and have to keep deriving the same key or existing backups stop
- * opening.
- */
+/** PBKDF2-HMAC-SHA256. */
 const deriveKey = async (
   passphrase: string,
   salt: string,
-  version: number,
 ): Promise<AESEncryptionKey> => {
   const encoder = new TextEncoder();
-
-  if (version >= 3) {
-    return AESEncryptionKey.import(
-      await pbkdf2Sha256(
-        encoder.encode(passphrase),
-        encoder.encode(salt),
-        PBKDF2_ITERATIONS,
-      ),
-    );
-  }
-
-  let hash = sha256(encoder.encode(`${salt}:${passphrase}`));
-  if (version === 2) {
-    const saltBytes = encoder.encode(salt);
-    const block = new Uint8Array(saltBytes.length + hash.length);
-    block.set(saltBytes);
-    for (let round = 0; round < LEGACY_SHA_ROUNDS; round += 1) {
-      block.set(hash, saltBytes.length);
-      hash = sha256(block);
-    }
-  }
-  return AESEncryptionKey.import(hash);
+  return AESEncryptionKey.import(
+    await pbkdf2Sha256(
+      encoder.encode(passphrase),
+      encoder.encode(salt),
+      PBKDF2_ITERATIONS,
+    ),
+  );
 };
 
 export const isEncryptedExport = (value: unknown): value is EncryptedExport =>
@@ -81,7 +58,7 @@ export const encryptExport = async (
   const salt = toHex(getRandomBytes(SALT_BYTES));
   const sealed = await aesEncryptAsync(
     new TextEncoder().encode(JSON.stringify(payload)),
-    await deriveKey(passphrase, salt, ENCRYPTED_VERSION),
+    await deriveKey(passphrase, salt),
     { nonce: { length: IV_BYTES }, tagLength: TAG_BYTES },
   );
   return {
@@ -93,7 +70,7 @@ export const encryptExport = async (
 };
 
 /**
- * @throws When the file is from a newer app version, or the passphrase is wrong
+ * @throws When the file is from another app version, or the passphrase is wrong
  * or the data damaged (AES-GCM cannot tell those apart).
  */
 export const decryptExport = async (
@@ -105,7 +82,12 @@ export const decryptExport = async (
       "This file was encrypted by a newer version of OwnGains. Update the app and try again.",
     );
   }
-  const key = await deriveKey(passphrase, envelope.salt, envelope.version ?? 1);
+  if (envelope.version !== ENCRYPTED_VERSION) {
+    throw new Error(
+      "This file was encrypted by an older version of OwnGains and can't be opened.",
+    );
+  }
+  const key = await deriveKey(passphrase, envelope.salt);
   let plaintext: Uint8Array;
   try {
     // fromCombined is the one native entry point that does not base64-decode a

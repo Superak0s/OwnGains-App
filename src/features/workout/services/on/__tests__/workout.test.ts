@@ -89,10 +89,7 @@ describe("request shapes", () => {
     expect(lastCall().url).toBe("/api/sessions/split/Upper%2FLower");
   });
 
-  it("treats a server without the exercise-records route as unsupported, not as no records", async () => {
-    http.mockImplementation(async () => respond({ error: "bad id" }, 400));
-    expect(await workoutApi.getRecordSessions()).toBeNull();
-
+  it("reads the exercise-record sessions", async () => {
     http.mockImplementation(async () => respond({ sessions: [{ id: 1, setTimings: [{ ...set, weight: "80.00" }] }] }));
     expect((await workoutApi.getRecordSessions())?.[0].setTimings?.[0].weight).toBe(80);
   });

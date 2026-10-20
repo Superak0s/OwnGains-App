@@ -1,3 +1,4 @@
+import type { Exercise } from "@shared/types"
 import { createEmitter } from "@utils/emitter"
 import { loadFromStorage, saveToStorage } from "./storage"
 
@@ -24,16 +25,17 @@ const TRAINER_EVENT_TYPES = new Set<string>([
   "trainer_session_ended",
 ])
 
-export const isTrainerEvent = (msg: unknown): msg is TrainerEvent => {
-  if (!msg || typeof msg !== "object") return false
+/** Reads a socket message as a trainer event, or `null`. The server sends `sessionId` as a number. */
+export const toTrainerEvent = (msg: unknown): TrainerEvent | null => {
+  if (!msg || typeof msg !== "object") return null
   const m = msg as Record<string, unknown>
-  return (
+  const ok =
     TRAINER_EVENT_TYPES.has(m.type as string) &&
     typeof m.traineeId === "string" &&
     typeof m.trainerId === "string" &&
     typeof m.trainerUsername === "string" &&
-    typeof m.sessionId === "string"
-  )
+    (typeof m.sessionId === "string" || typeof m.sessionId === "number")
+  return ok ? ({ ...m, sessionId: String(m.sessionId) } as TrainerEvent) : null
 }
 
 export const onTrainerEvent = createEmitter<TrainerEvent>()
@@ -71,4 +73,29 @@ export const restoreActiveTrainee = async (
       ? await loadFromStorage<TraineeOption>(ACTIVE_TRAINEE_KEY, userId)
       : null,
   )
+}
+
+/** A workout started on a session-only day, outside the plan. */
+export interface CustomWorkout {
+  dayTitle: string
+  exercises: Exercise[]
+}
+
+export interface TraineeStart {
+  start: CustomWorkout | null
+  split?: string
+}
+
+let pendingStart: (TraineeStart & { traineeId: string }) | null = null
+
+/** Hands the next act-as Workout screen for `traineeId` a workout to start, or a plan split to switch to. */
+export const queueTraineeStart = (traineeId: string, start: CustomWorkout | null, split?: string): void => {
+  pendingStart = start || split ? { traineeId, start, split } : null
+}
+
+export const takeTraineeStart = (traineeId: string): TraineeStart | null => {
+  if (pendingStart?.traineeId !== traineeId) return null
+  const { start, split } = pendingStart
+  pendingStart = null
+  return { start, split }
 }

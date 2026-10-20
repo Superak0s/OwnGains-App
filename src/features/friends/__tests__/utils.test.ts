@@ -1,6 +1,6 @@
 import type { SetTiming } from "@shared/types";
 import type { LiveData, PermissionType, ReceivedProgram } from "../types";
-import { friendTabLocks, mergeLiveSet } from "../utils";
+import { friendTabLocks, groupSessionExercises, mergeLiveSet, programPayload } from "../utils";
 
 const set = (id: number, reps = 5) => ({ id, reps }) as unknown as SetTiming;
 
@@ -66,5 +66,54 @@ describe("friendTabLocks", () => {
   it("opens Program only for a program this friend shared", () => {
     expect(friendTabLocks(5, [program], granting()).program).toBe(false);
     expect(friendTabLocks(6, [program], granting()).program).toBe(true);
+  });
+});
+
+describe("groupSessionExercises", () => {
+  const timing = (exerciseName: string | undefined, setIndex: number, exerciseId = 4) =>
+    ({ id: `${exerciseName}-${setIndex}`, exerciseName, exerciseId, setIndex }) as unknown as SetTiming;
+
+  it("groups sets by exercise in set order", () => {
+    const groups = groupSessionExercises([timing("Squat", 1), timing("Bench", 0), timing("Squat", 0)]);
+    expect(groups.map((g) => [g.exerciseName, g.sets.map((s) => s.setIndex)])).toEqual([
+      ["Squat", [0, 1]],
+      ["Bench", [0]],
+    ]);
+  });
+
+  it("names an exercise with no name by its id", () => {
+    expect(groupSessionExercises([timing(undefined, 0, 9)])[0].exerciseName).toBe("Exercise 9");
+  });
+
+  it("returns no groups for a session without set timings", () => {
+    expect(groupSessionExercises(undefined)).toEqual([]);
+  });
+});
+
+describe("programPayload", () => {
+  const ex = (name: string) => ({ name, sets: 3, primaryMuscles: [], secondaryMuscles: [] });
+  const wd = {
+    totalDays: 2,
+    split: ["A", "B"],
+    days: [
+      { dayNumber: 1, dayTitle: "Push", split: { A: { exercises: [ex("Bench")], totalSets: 3 }, B: { exercises: [ex("Dip")], totalSets: 3 } } },
+      { dayNumber: 2, dayTitle: "Pull", split: { B: { exercises: [ex("Row")], totalSets: 3 } } },
+    ],
+  } as unknown as Parameters<typeof programPayload>[0];
+
+  it("sends only the chosen splits and drops days left empty", () => {
+    const { programData } = programPayload(wd, ["A"]) as {
+      programData: { split: string[]; totalDays: number; days: { dayNumber: number; split: object }[]; name: string };
+    };
+    expect(programData.split).toEqual(["A"]);
+    expect(programData.days.map((d) => d.dayNumber)).toEqual([1]);
+    expect(Object.keys(programData.days[0].split)).toEqual(["A"]);
+    expect(programData.totalDays).toBe(1);
+    expect(programData.name).toBe("A Program, 1 Days");
+  });
+
+  it("sends the whole program when no splits are chosen", () => {
+    const { programData } = programPayload(wd) as { programData: { days: unknown[] } };
+    expect(programData.days).toHaveLength(2);
   });
 });

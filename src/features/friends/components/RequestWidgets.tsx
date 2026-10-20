@@ -3,30 +3,75 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { formatDate } from "@utils/format";
 import type { PendingFriendRequest, SentFriendRequest } from "../services";
 import type { UserRef } from "../types";
+import type { TrainerRequest } from "@features/trainer/services";
 import type { makeStyles } from "../FriendsScreen";
 import { Avatar } from "./Avatar";
 
 interface RequestsPendingWidgetProps {
   readonly pendingRequests: PendingFriendRequest[];
+  readonly trainerRequests: TrainerRequest[];
   readonly styles: ReturnType<typeof makeStyles>;
   readonly onAccept: (friendshipId: number | string) => void;
   readonly onReject: (friendshipId: number | string, username: string) => void;
+  readonly onAcceptTrainer: (request: TrainerRequest) => void;
+  readonly onDeclineTrainer: (request: TrainerRequest) => void;
+  /** True when the sender already has Trainer Access, so their request only asks for tracking. */
+  readonly isMyTrainer: (userId: string) => boolean;
   readonly onMoreActions: (user: UserRef) => void;
 }
 
 export function RequestsPendingWidget({
   pendingRequests,
+  trainerRequests,
   styles,
   onAccept,
   onReject,
+  onAcceptTrainer,
+  onDeclineTrainer,
+  isMyTrainer,
   onMoreActions,
 }: RequestsPendingWidgetProps): React.JSX.Element {
   return (
     <View>
       <Text style={styles.subsectionTitle}>
-        Pending Requests ({pendingRequests.length})
+        Pending Requests ({pendingRequests.length + trainerRequests.length})
       </Text>
-      {pendingRequests.length === 0 ? (
+      {trainerRequests.map((request) => (
+        <View key={`trainer-${request.id}`} style={styles.requestCard}>
+          <View style={styles.friendInfo}>
+            <Avatar username={request.fromUsername} />
+            <View style={styles.friendDetails}>
+              <Text style={styles.friendName}>
+                {isMyTrainer(request.fromUserId)
+                  ? `${request.fromUsername} asks for Tracking Access`
+                  : `${request.fromUsername} wants to be your trainer`}
+              </Text>
+              <Text style={styles.friendMeta}>
+                Sent {formatDate(request.createdAt)}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.requestActions}>
+            <TouchableOpacity
+              style={styles.acceptButton}
+              onPress={() => onAcceptTrainer(request)}
+              accessibilityRole="button"
+              accessibilityLabel={`Accept trainer request from ${request.fromUsername}`}
+            >
+              <Text style={styles.acceptButtonText}>✓</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.rejectButton}
+              onPress={() => onDeclineTrainer(request)}
+              accessibilityRole="button"
+              accessibilityLabel={`Decline trainer request from ${request.fromUsername}`}
+            >
+              <Text style={styles.rejectButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ))}
+      {pendingRequests.length === 0 && trainerRequests.length === 0 ? (
         <View style={styles.emptyStateSmall}>
           <Text style={styles.emptyTextSmall}>No pending friend requests</Text>
         </View>

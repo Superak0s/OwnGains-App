@@ -58,6 +58,7 @@ export function SettingsRow({
       <Switch
         value={toggle.value}
         onValueChange={toggle.onChange}
+        disabled={disabled}
         trackColor={{ false: colors.surfaceBorder, true: colors.accent }}
         thumbColor={toggle.value ? colors.textOnAccent : colors.textMuted}
         accessibilityLabel={toggle.label}
@@ -95,7 +96,7 @@ export function SettingsRow({
 
   if (!onPress)
     return (
-      <View ref={anchorRef} style={styles.row}>
+      <View ref={anchorRef} style={[styles.row, disabled && styles.disabled]}>
         {content}
       </View>
     );

@@ -16,6 +16,7 @@ import { mergeLiveSet } from "../utils";
 import { normalizeExerciseName } from "@utils/exerciseMatching";
 import { MuscleTags } from "@shared/components/MuscleTags";
 import { formatClockTime } from "@utils/format";
+import { dayLabel } from "@utils/dayCarryOver";
 import { formatTime } from "@utils/timeEstimation";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
@@ -559,7 +560,7 @@ export default function LiveSessionTab({
 
         <View style={st.headerTop}>
           <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={st.dayNumber}>Day {liveData?.dayNumber ?? "?"}</Text>
+            <Text style={st.dayNumber}>{dayLabel(liveData?.dayNumber)}</Text>
             {sessionTitle ? (
               <Text style={st.dayTitle} numberOfLines={2}>
                 {sessionTitle}

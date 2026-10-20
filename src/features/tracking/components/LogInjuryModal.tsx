@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet, TextInput, ScrollView } from "react-native";
 import { useTheme } from "@shared/context/ThemeContext";
-import { injuryApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import {
   MUSCLE_GROUPS,
   MUSCLE_GROUP_LABELS,
@@ -46,6 +46,7 @@ export const LogInjuryModal: React.FC<LogInjuryModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { injuryApi } = useTrackingApis();
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [selectedMuscles, setSelectedMuscles] = useState<MuscleGroup[]>([]);

@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { useTheme } from "@shared/context/ThemeContext";
-import { progressPhotoApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import {
   MuscleGroup,
   MUSCLE_GROUPS,
@@ -39,6 +39,7 @@ export const LogProgressPhotoModal: React.FC<LogProgressPhotoModalProps> = ({
   onUploadStart,
   onUploadEnd,
 }) => {
+  const { progressPhotoApi } = useTrackingApis();
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 

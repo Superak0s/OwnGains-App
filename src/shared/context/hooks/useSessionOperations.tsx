@@ -7,9 +7,10 @@ import {
 } from "../../../utils/session";
 import { generateId } from "../../../utils/format";
 import { weekStart } from "../../../utils/dayCompletion";
+import { CUSTOM_DAY } from "../../../utils/dayCarryOver";
 import { workoutApi as defaultWorkoutApi } from "@features/workout/services/index";
 import type { WorkoutApi } from "@features/workout/services/workoutApiFactory";
-import type { WorkoutData, PendingSync } from "../../types";
+import type { WorkoutData, WorkoutDay, PendingSync } from "../../types";
 import type { CompletedDays, LockedDays } from "../../../utils/dayCompletion";
 import {
   metric,
@@ -92,15 +93,25 @@ export interface SetDetailsOptions {
   rir?: number;
 }
 
+export interface CustomStart {
+  day: WorkoutDay;
+  split: string;
+}
+
 interface UseSessionOperationsReturn {
   updateLastActivityTime: () => Promise<void>;
   clearActiveWorkout: () => Promise<void>;
   /**
    * Resolves the session id (a `local_` id when the start was queued offline),
    * or null when no session could be started. Concurrent calls share one start.
+   * @param custom - A session-only day to start on in place of the current plan day.
    * @throws When a trainer write cannot go to the server, see `isTraineeWriteRefused`.
    */
-  startWorkout: (untimed?: boolean, startAt?: Date) => Promise<string | null>;
+  startWorkout: (
+    untimed?: boolean,
+    startAt?: Date,
+    custom?: CustomStart,
+  ) => Promise<string | null>;
   endWorkout: (autoCompleted?: boolean) => Promise<boolean>;
   saveSetDetails: (
     dayNumber: number,
@@ -230,15 +241,16 @@ export const useSessionOperations = ({
   // fresh session would be timed from the last set of the old one.
   const sessionStartTimeRef = useRef<string | null>(null);
   const startWorkoutImplRef = useRef<
-    ((untimed: boolean, startAt?: Date) => Promise<string | null>) | null
+    | ((untimed: boolean, startAt?: Date, custom?: CustomStart) => Promise<string | null>)
+    | null
   >(null);
 
   const startWorkout = useCallback(
-    (untimed = false, startAt?: Date): Promise<string | null> => {
+    (untimed = false, startAt?: Date, custom?: CustomStart): Promise<string | null> => {
     if (startWorkoutInFlightRef.current) {
       return startWorkoutInFlightRef.current;
     }
-    const promise = startWorkoutImplRef.current!(untimed, startAt).finally(() => {
+    const promise = startWorkoutImplRef.current!(untimed, startAt, custom).finally(() => {
       startWorkoutInFlightRef.current = null;
     });
     startWorkoutInFlightRef.current = promise;
@@ -250,6 +262,7 @@ export const useSessionOperations = ({
   const startWorkoutImpl = useCallback(async (
     untimed: boolean,
     startAt?: Date,
+    custom?: CustomStart,
   ): Promise<string | null> => {
     try {
       if (workoutStartTime && currentSessionId) {
@@ -264,7 +277,9 @@ export const useSessionOperations = ({
       // Resolve the day before anything is persisted: bailing out after
       // writing WORKOUT_START_TIME would leave hasActiveSession() reporting
       // an active workout that has no session behind it.
-      const day = workoutData?.days?.find((d) => d.dayNumber === currentDay);
+      const day =
+        custom?.day ?? workoutData?.days?.find((d) => d.dayNumber === currentDay);
+      const split = custom ? custom.split : selectedSplit;
       if (!day) {
         console.error(
           "startWorkout: no matching day found for currentDay.",
@@ -312,8 +327,8 @@ export const useSessionOperations = ({
           type: "startSession",
           localSessionId,
           data: {
-            split: selectedSplit ?? "",
-            dayNumber: currentDay,
+            split: split ?? "",
+            dayNumber: day.dayNumber,
             dayTitle: day.dayTitle,
             primaryMuscles: day.primaryMuscles,
             secondaryMuscles: day.secondaryMuscles,
@@ -329,8 +344,8 @@ export const useSessionOperations = ({
 
       try {
         const sessionId = await workoutApi.startSession(
-          selectedSplit,
-          currentDay,
+          split,
+          day.dayNumber,
           day.dayTitle,
           false,
           startTime,
@@ -479,6 +494,11 @@ export const useSessionOperations = ({
           new Date(workoutStartTime) < weekStart()
         ) {
           const { [currentDay]: _logged, ...rest } = completedDays;
+          await saveToStorage(STORAGE_KEYS.COMPLETED_DAYS, rest, userId);
+          setCompletedDays(rest);
+        } else if (currentDay === CUSTOM_DAY) {
+          // A custom day has no plan slot to lock, and its logs must not count toward the week.
+          const { [CUSTOM_DAY]: _logged, ...rest } = completedDays;
           await saveToStorage(STORAGE_KEYS.COMPLETED_DAYS, rest, userId);
           setCompletedDays(rest);
         } else {

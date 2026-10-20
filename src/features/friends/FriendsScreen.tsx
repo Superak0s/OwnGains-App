@@ -6,9 +6,10 @@ import React, {
   useRef,
 } from "react";
 import ScreenTitle from "@shared/components/ScreenTitle";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { trackScreenView, captureException, reportAndReturn } from "@shared/services/crashReporting";
+import InboxButton from "@features/messages/InboxButton";
+import { useMessages } from "@features/messages/MessagesContext";
+import { trackScreenView, captureException, reportAndReturn, trackFeature } from "@shared/services/crashReporting";
+import { trainerApi, type TrainerRequest } from "@features/trainer/services";
 import {
   View,
   Text,
@@ -38,11 +39,7 @@ import ModalSheet from "@shared/components/ModalSheet";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import ScrollTabBar from "@shared/components/ScrollTabBar";
 import { useAlert } from "@shared/components/CustomAlert";
-import {
-  getActiveTrainee,
-  setActiveTrainee,
-  onActiveTraineeChange,
-} from "@shared/services/trainerEvents";
+import { getActiveTrainee, setActiveTrainee } from "@shared/services/trainerEvents";
 import ExerciseAnalytics from "@features/analytics/components/ExerciseAnalytics";
 import LiveSessionTab from "./components/LiveSessionTab";
 import { InviteBanner } from "./components/InviteBanner";
@@ -50,19 +47,25 @@ import {
   LiftTogetherButton,
   makeLiftStyles,
 } from "./components/LiftTogetherButton";
-import { trainerGrantConfirmation } from "./components/FriendPermissions";
+import { trackingGrantConfirmation, trainerGrantConfirmation } from "./components/FriendPermissions";
 import {
   RequestsPendingWidget,
   RequestsSentWidget,
 } from "./components/RequestWidgets";
 import { SearchUsersWidget } from "./components/SearchWidgets";
 import { FriendTabsBar } from "./components/FriendTabsBar";
+import ScheduleWidget from "@features/schedule/ScheduleWidget";
 import { FriendProgramTab } from "./components/FriendProgramTab";
 import { FriendActionsTab } from "./components/FriendActionsTab";
+import SessionDetailsSheet, {
+  getSessionTitle,
+  loadFriendSessionDetails,
+} from "./components/SessionDetailsSheet";
 import { friendsApi, sharingApi, REPORT_REASONS } from "./services";
-import { MIN_USER_SEARCH_LENGTH } from "./utils";
+import { MIN_USER_SEARCH_LENGTH, programPayload } from "./utils";
 import { formatTime } from "@utils/timeEstimation";
 import { formatDate, toDateString } from "@utils/format";
+import { dayLabel } from "@utils/dayCarryOver";
 import {
   buildFriendQrPayload,
   parseFriendQrPayload,
@@ -99,7 +102,6 @@ import type {
   ProgramData,
   ReceivedProgram,
   SessionRecord,
-  GroupedExercise,
   UserSearchResult,
   ReportReason,
   UserRef,
@@ -108,17 +110,12 @@ import type {
   WidgetInstance,
   WidgetDefinition,
   WorkoutData,
-  RootStackParamList,
 } from "@shared/types";
 import { Avatar } from "./components/Avatar";
-import { mapWithConcurrency } from "@utils/concurrency";
 import { userFacingError } from "@shared/services/apiError";
 import { programApi } from "@features/plan/services";
 import { SCREEN_PADDING } from "@shared/layout";
 
-// The server rate-limits each IP to 200 requests a minute, and a shared NAT
-// shares that bucket, so opening a friend must not fire dozens at once.
-const FRIEND_FETCH_CONCURRENCY = 4;
 const SHARED_STATUS_TTL_MS = 10_000;
 const STATUS_BATCH_SIZE = 100;
 
@@ -235,8 +232,6 @@ interface FriendsListWidgetProps {
   readonly onSelectFriend: (friend: Friend) => void;
   readonly onFindFriends: () => void;
   readonly onSendInvite: (friend: Friend) => void;
-  readonly canTrain: (friendId: FriendId, type: PermissionType) => boolean;
-  readonly onTrain: (friend: Friend) => void;
   readonly styles: ReturnType<typeof makeStyles>;
   readonly liftStyles: ReturnType<typeof makeLiftStyles>;
   readonly watchStyles: ReturnType<typeof makeWatchStyles>;
@@ -255,8 +250,6 @@ const FriendsListWidget = React.memo(function FriendsListWidget({
   onSelectFriend,
   onFindFriends,
   onSendInvite,
-  canTrain,
-  onTrain,
   styles,
   liftStyles,
   watchStyles,
@@ -343,20 +336,6 @@ const FriendsListWidget = React.memo(function FriendsListWidget({
                   </View>
                 </View>
                 <View style={styles.friendCardRight}>
-                  {canTrain(friend.id, "trainer") && (
-                    <TouchableOpacity
-                      style={[
-                        liftStyles.button,
-                        liftStyles.buttonSmall,
-                        { backgroundColor: colors.accent },
-                      ]}
-                      onPress={() => onTrain(friend)}
-                      accessibilityRole='button'
-                      accessibilityLabel={`Start a trainer session for ${friend.username}`}
-                    >
-                      <Text style={liftStyles.labelSmall}>Train</Text>
-                    </TouchableOpacity>
-                  )}
                   {showLiftButton && (
                     <LiftTogetherButton
                       small
@@ -382,39 +361,6 @@ const FriendsListWidget = React.memo(function FriendsListWidget({
           })}
         </ScrollView>
       )}
-    </View>
-  );
-});
-
-interface SessionExerciseGroupProps {
-  readonly exercise: GroupedExercise;
-  readonly styles: ReturnType<typeof makeStyles>;
-}
-
-const SessionExerciseGroup = React.memo(function SessionExerciseGroup({
-  exercise,
-  styles,
-}: SessionExerciseGroupProps): React.JSX.Element {
-  return (
-    <View style={styles.exerciseCard}>
-      <View style={styles.exerciseHeader}>
-        <Text style={styles.exerciseName}>{exercise.exerciseName}</Text>
-        <Text style={styles.exerciseSetsCount}>
-          {exercise.sets.length} sets
-        </Text>
-      </View>
-      {exercise.sets.map((set) => (
-        <View
-          key={set.id ?? `set-${set.setIndex}`}
-          style={styles.setTimingCard}
-        >
-          <Text style={styles.setTimingTitle}>Set {set.setIndex + 1}</Text>
-          <Text style={styles.setTimingDetail}>
-            {Number.parseFloat(String(set.weight ?? 0))}kg ×{" "}
-            {Number.parseInt(String(set.reps ?? 0))}
-          </Text>
-        </View>
-      ))}
     </View>
   );
 });
@@ -554,6 +500,7 @@ export default function FriendsScreen({
     PendingFriendRequest[]
   >([]);
   const [sentRequests, setSentRequests] = useState<SentFriendRequest[]>([]);
+  const [trainerRequests, setTrainerRequests] = useState<TrainerRequest[]>([]);
 
   const searchInputRef = useRef<TextInput>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -585,6 +532,7 @@ export default function FriendsScreen({
     useState<boolean>(false);
   const [activeFriendTab, setActiveFriendTab] = useState<string>("history");
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const { available: messagesAvailable, openConversation } = useMessages();
   const friendLoadSeqRef = useRef(0);
 
   const [friendSessionHistory, setFriendSessionHistory] = useState<
@@ -596,10 +544,6 @@ export default function FriendsScreen({
     null,
   );
   const [showSessionDetails, setShowSessionDetails] = useState<boolean>(false);
-  const sessionMuscles = [
-    ...(selectedSession?.primaryMuscles ?? []),
-    ...(selectedSession?.secondaryMuscles ?? []),
-  ];
   const [friendSessionsWithTimings, setFriendSessionsWithTimings] = useState<
     SessionRecord[]
   >([]);
@@ -612,40 +556,19 @@ export default function FriendsScreen({
 
   const hasOwnActiveSession = !!workoutStartTime && !!currentSessionId;
 
-  const [trainee, setTrainee] = useState(() => getActiveTrainee());
-  useEffect(() => onActiveTraineeChange.subscribe(setTrainee), []);
-
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const handleTrainFriend = useCallback(
-    (friend: Friend): void => {
-      setActiveTrainee({
-        userId: String(friend.id),
-        username: friend.username,
-      });
-      navigation.navigate("Workout");
-    },
-    [navigation],
-  );
-
-  const handleStartTrainer = (friend: Friend): void => {
-    closeFriendDetail();
-    handleTrainFriend(friend);
-  };
-
-  const handleStopTrainer = (): void => {
-    setActiveTrainee(null);
-  };
-
   const loadFriends = useCallback(async () => {
-    const [friendsData, pendingData, sentData] = await Promise.all([
+    const [friendsData, pendingData, sentData, trainerData] = await Promise.all([
       friendsApi.getFriends(),
       friendsApi.getPendingRequests(),
       friendsApi.getSentRequests(),
+      trainerApi
+        .getReceivedRequests()
+        .catch(reportAndReturn([] as TrainerRequest[], { stage: "trainerRequestsReceived" })),
     ]);
     setFriends(friendsData || []);
     setPendingRequests(pendingData || []);
     setSentRequests(sentData || []);
+    setTrainerRequests(trainerData);
   }, []);
 
   const friendSessionStatuses = useFriendSessionStatuses(
@@ -691,11 +614,23 @@ export default function FriendsScreen({
   };
 
   const confirmGrantPermission = (friend: Friend, type: PermissionType): void => {
-    if (type !== "trainer") {
+    if (type !== "trainer" && type !== "tracking") {
       void handleGrantPermission(friend, type);
       return;
     }
-    const { title, message } = trainerGrantConfirmation(friend.username);
+    if (type === "tracking" && !getGrantedPermission(friend.id, "trainer")) {
+      alert(
+        "Grant Trainer Access first",
+        `Tracking Access only goes to your trainer. Make ${friend.username} your trainer, then turn this on.`,
+        [{ text: "OK" }],
+        "info",
+      );
+      return;
+    }
+    const { title, message } =
+      type === "trainer"
+        ? trainerGrantConfirmation(friend.username)
+        : trackingGrantConfirmation(friend.username);
     alert(
       title,
       message,
@@ -756,42 +691,6 @@ export default function FriendsScreen({
       return;
     }
     await handleGrantPermission(friend, "program", programPayload(workoutData));
-  };
-
-  const sendPlan = async (friend: Friend, program: WorkoutData) => {
-    const sent = await handleGrantPermission(
-      friend,
-      "program",
-      programPayload(program),
-    );
-    if (sent)
-      alert(
-        "Plan sent",
-        `${friend.username} can open it from your Program tab and choose to use it.`,
-        [{ text: "OK" }],
-        "success",
-      );
-  };
-
-  const handleSendPlan = (friend: Friend) => {
-    if (!workoutData) {
-      alert(
-        "No Program Loaded",
-        "Load a workout program first before sending it.",
-        [{ text: "OK" }],
-        "info",
-      );
-      return;
-    }
-    alert(
-      `Send ${friend.username} your plan`,
-      `It replaces any program you've already shared with ${friend.username}. Their own plan only changes if they choose to use it.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Send", onPress: () => void sendPlan(friend, workoutData) },
-      ],
-      "info",
-    );
   };
 
   const handleUsePlan = (program: ReceivedProgram) => {
@@ -1142,6 +1041,73 @@ export default function FriendsScreen({
     }
   };
 
+  const isMyTrainer = (userId: string): boolean =>
+    grantedPermissions.some(
+      (p) => String(p.toUserId) === userId && p.permissionType === "trainer",
+    );
+
+  const acceptTrainerRequest = (request: TrainerRequest): void => {
+    const trainer = trainerGrantConfirmation(request.fromUsername);
+    const accept = (includeTracking: boolean) =>
+      void (async () => {
+        try {
+          await trainerApi.acceptRequest(request.id, includeTracking);
+          trackFeature("trainer", "request_accepted");
+          await Promise.all([loadFriends(), loadPermissions()]);
+        } catch (error) {
+          alertError(userFacingError(error, "Failed to accept trainer request"));
+        }
+      })();
+    if (isMyTrainer(request.fromUserId)) {
+      const tracking = trackingGrantConfirmation(request.fromUsername);
+      alert(
+        tracking.title,
+        tracking.message,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Share tracking", onPress: () => accept(true) },
+        ],
+        "warning",
+      );
+      return;
+    }
+    if (!request.includeTracking) {
+      alert(
+        trainer.title,
+        trainer.message,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Accept", onPress: () => accept(false) },
+        ],
+        "warning",
+      );
+      return;
+    }
+    const tracking = trackingGrantConfirmation(request.fromUsername);
+    alert(
+      trainer.title,
+      `${trainer.message}\n\n${request.fromUsername} also asked for Tracking Access. ${tracking.message}`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Workouts only", onPress: () => accept(false) },
+        { text: "Include tracking", onPress: () => accept(true) },
+      ],
+      "warning",
+    );
+  };
+
+  const declineTrainerRequest = (request: TrainerRequest): void =>
+    confirmDestructive(
+      "Decline Request",
+      `Decline ${request.fromUsername}'s trainer request?`,
+      "Decline",
+      async () => {
+        await trainerApi.rejectRequest(request.id);
+        await loadFriends();
+      },
+      "Failed",
+    );
+
   const rejectFriendRequest = (
     friendshipId: number | string,
     username: string,
@@ -1299,18 +1265,9 @@ export default function FriendsScreen({
     const seq = friendLoadSeqRef.current;
     setLoadingAnalytics(true);
     try {
-      const batched = await sharingApi
+      const detailed = await sharingApi
         .getFriendSessionsWithTimings(friend.id, sessions.length)
-        .catch(reportAndReturn(null, { stage: "friendSessionTimings" }));
-      const detailed = batched ?? await mapWithConcurrency(
-        sessions,
-        FRIEND_FETCH_CONCURRENCY,
-        (s) =>
-          sharingApi
-            .getFriendSessionDetails(friend.id, s.id)
-            .then((d) => d ?? { ...s, setTimings: [] })
-            .catch(reportAndReturn({ ...s, setTimings: [] }, { stage: "friendSessionDetails" })),
-      );
+        .catch(reportAndReturn([], { stage: "friendSessionTimings" }));
       if (seq === friendLoadSeqRef.current)
         setFriendSessionsWithTimings(detailed as SessionRecord[]);
     } catch (error) {
@@ -1360,28 +1317,7 @@ export default function FriendsScreen({
       return;
     }
     try {
-      const details = (await sharingApi.getFriendSessionDetails(
-        friend.id,
-        session.id,
-      )) as SessionRecord | null;
-      if (!details) throw new Error("Session details unavailable");
-      if (details.setTimings && details.setTimings.length > 0) {
-        const map = new Map<string, GroupedExercise>();
-        details.setTimings.forEach((t) => {
-          const k = t.exerciseName || `Exercise ${t.exerciseId ?? "?"}`;
-          if (!map.has(k)) map.set(k, { exerciseName: k, sets: [] });
-          map.get(k)!.sets.push(t);
-        });
-        map.forEach((ex) => {
-          ex.sets = [...ex.sets].sort(
-            (a: { setIndex: number }, b: { setIndex: number }) =>
-              a.setIndex - b.setIndex,
-          );
-        });
-        details.groupedExercises = Array.from(map.values());
-      } else {
-        details.groupedExercises = [];
-      }
+      const details = await loadFriendSessionDetails(friend.id, session.id);
       setSelectedSession(details);
       setSelectedDate(null);
       setShowSessionDetails(true);
@@ -1397,11 +1333,6 @@ export default function FriendsScreen({
     const hr = Number.parseInt(h);
     if (!Number.isFinite(hr)) return "—";
     return `${hr % 12 || 12}:${m || "00"} ${hr >= 12 ? "PM" : "AM"}`;
-  };
-  const getSessionTitle = (s: SessionRecord | null): string => {
-    if (!s?.dayTitle) return `Day ${s?.dayNumber ?? ""}`;
-    const p = s.dayTitle.split("—");
-    return p.length > 1 ? p[1].trim() : s.dayTitle;
   };
 
   const closeSessionDetails = (): void => {
@@ -1492,8 +1423,6 @@ export default function FriendsScreen({
             onSelectFriend={handleSelectFriend}
             onFindFriends={handleFindFriends}
             onSendInvite={handleSendInvite}
-            canTrain={hasReceivedPermission}
-            onTrain={handleTrainFriend}
             styles={styles}
             liftStyles={liftStyles}
             watchStyles={watchStyles}
@@ -1507,9 +1436,13 @@ export default function FriendsScreen({
         return (
           <RequestsPendingWidget
             pendingRequests={pendingRequests}
+            trainerRequests={trainerRequests}
             styles={styles}
             onAccept={acceptFriendRequest}
             onReject={rejectFriendRequest}
+            onAcceptTrainer={acceptTrainerRequest}
+            onDeclineTrainer={declineTrainerRequest}
+            isMyTrainer={isMyTrainer}
             onMoreActions={showUserSafetyActions}
           />
         );
@@ -1570,7 +1503,23 @@ export default function FriendsScreen({
             <Text style={styles.modalHeaderTitle}>
               {selectedFriend?.username || ""}
             </Text>
-            <View style={styles.backButton} />
+            {messagesAvailable ? (
+            <TouchableOpacity
+              style={[styles.backButton, styles.messageButton]}
+              onPress={() => {
+                if (!selectedFriend) return;
+                const peer = { userUuid: String(selectedFriend.id), username: selectedFriend.username };
+                closeFriendDetail();
+                openConversation(peer);
+              }}
+              accessibilityRole='button'
+              accessibilityLabel={`Message ${selectedFriend?.username ?? ""}`}
+            >
+              <Text style={styles.backButtonText}>💬 Message</Text>
+            </TouchableOpacity>
+            ) : (
+              <View style={styles.backButton} />
+            )}
           </View>
 
           <FriendTabsBar
@@ -1580,6 +1529,7 @@ export default function FriendsScreen({
             hasReceivedPermission={hasReceivedPermission}
             onSelectTab={setActiveFriendTab}
             onLockedTab={handleLockedFriendTab}
+            showSchedule={selectedFriend != null && isMyTrainer(String(selectedFriend.id))}
             styles={styles}
           />
 
@@ -1671,14 +1621,15 @@ export default function FriendsScreen({
             />
           )}
 
+          {activeFriendTab === "schedule" && selectedFriend && (
+            <ScrollView contentContainerStyle={{ padding: 16 }}>
+              <ScheduleWidget trainerUuid={String(selectedFriend.id)} />
+            </ScrollView>
+          )}
+
           {activeFriendTab === "actions" && (
             <FriendActionsTab
               selectedFriend={selectedFriend}
-              hasTrainerAccess={hasReceivedPermission(
-                selectedFriend?.id,
-                "trainer",
-              )}
-              activeTraineeUserId={trainee?.userId ?? null}
               styles={styles}
               watchStyles={watchStyles}
               jointStyles={jointStyles}
@@ -1696,9 +1647,6 @@ export default function FriendsScreen({
               hasOwnActiveSession={hasOwnActiveSession}
               getInviteStatusForFriend={getInviteStatusForFriend}
               onSendInvite={handleSendInvite}
-              onStartTrainer={handleStartTrainer}
-              onStopTrainer={handleStopTrainer}
-              onSendPlan={handleSendPlan}
               onRemoveFriend={handleRemoveFriend}
               onBlockFriend={handleBlockFriend}
               onReportFriend={handleReportFriend}
@@ -1733,7 +1681,7 @@ export default function FriendsScreen({
             >
               <View style={styles.sessionListLeft}>
                 <Text style={styles.sessionListTitle}>
-                  {`Day ${session.dayNumber} - ${getSessionTitle(session)}`}
+                  {`${dayLabel(session.dayNumber)} - ${getSessionTitle(session)}`}
                 </Text>
                 <View style={styles.sessionListMeta}>
                   <Text style={styles.sessionListTime}>
@@ -1754,93 +1702,11 @@ export default function FriendsScreen({
           ))}
       </ModalSheet>
 
-      <ModalSheet
+      <SessionDetailsSheet
+        session={selectedSession}
         visible={showSessionDetails}
         onClose={closeSessionDetails}
-        title='Session Details'
-        scrollable={true}
-        showCancelButton={false}
-        showConfirmButton={false}
-      >
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={closeSessionDetails}
-            >
-              <Text style={styles.backButtonText}>← Back</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalHeaderTitle}>Workout Details</Text>
-            <View style={styles.backButton} />
-          </View>
-          <ScrollView style={styles.modalScroll}>
-            <View style={styles.sessionDetailsContent}>
-              {selectedSession && (
-                <>
-                  <View style={styles.detailSection}>
-                    <Text style={styles.detailTitle}>
-                      Day {selectedSession.dayNumber}
-                    </Text>
-                    <Text style={styles.detailSubtitle}>
-                      {getSessionTitle(selectedSession)}
-                    </Text>
-                    {sessionMuscles.length > 0 && (
-                      <View style={styles.muscleGroupsRow}>
-                        {sessionMuscles.map((g) => (
-                          <View key={g} style={styles.muscleTag}>
-                            <Text style={styles.muscleTagText}>{g}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                  <View style={styles.detailSection}>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Date</Text>
-                      <Text style={styles.detailValue}>
-                        {formatDate(
-                          selectedSession.startTime as string | number,
-                          {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          },
-                        )}
-                      </Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Duration</Text>
-                      <Text style={styles.detailValue}>
-                        {formatTime(selectedSession.totalDuration ?? 0, "N/A")}
-                      </Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Sets Completed</Text>
-                      <Text style={styles.detailValue}>
-                        {selectedSession.completedSets ?? 0}
-                      </Text>
-                    </View>
-                  </View>
-                  {Array.isArray(selectedSession.groupedExercises) &&
-                    selectedSession.groupedExercises.length > 0 && (
-                      <View style={styles.detailSection}>
-                        <Text style={styles.detailSectionTitle}>Exercises</Text>
-                        {selectedSession.groupedExercises.map((exercise) => (
-                          <SessionExerciseGroup
-                            key={exercise.exerciseName}
-                            exercise={exercise}
-                            styles={styles}
-                          />
-                        ))}
-                      </View>
-                    )}
-                </>
-              )}
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </ModalSheet>
+      />
 
       <ModalSheet
         visible={showMyQrModal}
@@ -2028,13 +1894,16 @@ export default function FriendsScreen({
             }
           >
             <View style={styles.content}>
-              <ScreenTitle title='Friends' />
+              <View style={styles.titleRow}>
+                <ScreenTitle title='Friends' style={{ flex: 1 }} />
+                <InboxButton />
+              </View>
 
               <ScrollTabBar
                 tabs={FRIENDS_TABS}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
-                badges={{ requests: pendingRequests.length }}
+                badges={{ requests: pendingRequests.length + trainerRequests.length }}
                 storageKey='friendsScreen_tabConfig'
               />
 
@@ -2160,21 +2029,6 @@ export const makeJointStyles = (colors: ThemeColors) =>
     },
     leaveBtnText: { color: colors.error, fontSize: 13, fontWeight: "600" },
   });
-
-const programPayload = (
-  wd: WorkoutData & { people?: string[] },
-): Record<string, unknown> => {
-  const split = wd.split ?? wd.people;
-  return {
-    programData: {
-      name: `${split?.join("/")} Program, ${wd.totalDays} Days`,
-      totalDays: wd.totalDays,
-      split,
-      days: wd.days,
-    },
-    message: null,
-  };
-};
 
 export const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
@@ -2413,6 +2267,8 @@ export const makeStyles = (colors: ThemeColors) =>
       borderBottomColor: colors.surfaceBorder,
     },
     backButton: { width: 80 },
+    messageButton: { alignItems: "flex-end" },
+    titleRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
     backButtonText: { fontSize: 16, color: colors.accent, fontWeight: "600" },
     modalHeaderTitle: {
       fontSize: 18,
@@ -2465,89 +2321,6 @@ export const makeStyles = (colors: ThemeColors) =>
       color: colors.surfaceBorder,
       marginLeft: 10,
     },
-    sessionDetailsContent: { padding: 16, paddingBottom: 40 },
-    detailSection: { marginBottom: 20 },
-    detailTitle: {
-      fontSize: 24,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      marginBottom: 4,
-    },
-    detailSubtitle: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      marginBottom: 12,
-    },
-    muscleGroupsRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      marginRight: -8,
-      marginBottom: -8,
-    },
-    muscleTag: {
-      backgroundColor: colors.accentLight,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
-      marginRight: 8,
-      marginBottom: 8,
-    },
-    muscleTagText: { color: colors.accent, fontSize: 13, fontWeight: "500" },
-    detailRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      paddingVertical: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.separator,
-    },
-    detailLabel: { fontSize: 15, color: colors.textSecondary },
-    detailValue: { fontSize: 15, fontWeight: "600", color: colors.textPrimary },
-    detailSectionTitle: {
-      fontSize: 18,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      marginBottom: 12,
-    },
-    exerciseCard: {
-      backgroundColor: colors.inputBackground,
-      borderRadius: 12,
-      padding: 12,
-      marginBottom: 12,
-      borderWidth: 1,
-      borderColor: colors.inputBorder,
-    },
-    exerciseHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 12,
-      paddingBottom: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.inputBorder,
-    },
-    exerciseName: {
-      fontSize: 17,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      flex: 1,
-    },
-    exerciseSetsCount: {
-      fontSize: 14,
-      color: colors.accent,
-      fontWeight: "600",
-    },
-    setTimingCard: {
-      backgroundColor: colors.surface,
-      borderRadius: 8,
-      padding: 12,
-      marginBottom: 8,
-    },
-    setTimingTitle: {
-      fontSize: 15,
-      fontWeight: "600",
-      color: colors.textPrimary,
-    },
-    setTimingDetail: { fontSize: 14, color: colors.textSecondary },
     friendTabContainer: {
       flexDirection: "row",
       backgroundColor: colors.surface,

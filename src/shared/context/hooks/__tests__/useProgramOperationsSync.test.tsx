@@ -49,6 +49,7 @@ const offline = () => Promise.reject(new Error("Network request failed"));
 function mount(
   overrides: Partial<Record<keyof ProgramApi, jest.Mock>> = {},
   saveToStorage = jest.fn().mockResolvedValue(true),
+  forTrainee = false,
 ) {
   const setWorkoutData = jest.fn();
   const programApi = {
@@ -67,6 +68,7 @@ function mount(
       saveToStorage,
       STORAGE_KEYS: { WORKOUT_DATA: "@workout_data" },
       programApi: programApi as unknown as ProgramApi,
+      forTrainee,
     });
     return null;
   }
@@ -208,5 +210,29 @@ describe("addNewExercise", () => {
     });
     expect(setWorkoutData).not.toHaveBeenCalled();
     expect(programApi.addExercise).not.toHaveBeenCalled();
+  });
+});
+
+describe("a trainer's edit to a client's program that the server refuses", () => {
+  const refused = () => Promise.reject(new Error("Trainers can't remove that"));
+
+  it("rejects, restores the client's program and leaves it clean", async () => {
+    const saveToStorage = jest.fn().mockResolvedValue(true);
+    const { api, setWorkoutData } = mount(
+      { addExercise: jest.fn(refused) },
+      saveToStorage,
+      true,
+    );
+    let error: unknown;
+    await act(async () => {
+      await api.addNewExercise(1, "A", { name: "Air Bike", sets: 2 }).catch((e) => {
+        error = e;
+      });
+    });
+    expect((error as Error).message).toBe("Trainers can't remove that");
+    expect(savedSplit(setWorkoutData).A.exercises).toHaveLength(1);
+    expect(saveToStorage.mock.calls.at(-1)![1]).toEqual(program());
+    expect(markProgramDirty).not.toHaveBeenCalled();
+    expect(captureException).not.toHaveBeenCalled();
   });
 });

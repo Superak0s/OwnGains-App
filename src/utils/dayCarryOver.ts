@@ -1,9 +1,14 @@
 import type { CompletedDays, Exercise, WorkoutData } from "@shared/types";
 import { normalizeExerciseName } from "@utils/exerciseMatching";
 
+// Past the program's 1000-day limit, so it never matches a plan day and the server still accepts it.
+export const CUSTOM_DAY = 1001;
+
 /** Session-only reshaping of one day, so a mid-workout day switch never edits the plan. */
 export interface DayOverride {
   dayNumber: number;
+  /** Title of a `CUSTOM_DAY` session, which has no plan day to take one from. */
+  dayTitle?: string;
   split: string;
   /** Logged exercises brought over from the previous day, after the plan's own. */
   carried: Exercise[];
@@ -24,7 +29,21 @@ export const applyDayOverride = (
   data: WorkoutData | null,
   override: DayOverride | null,
 ): WorkoutData | null => {
-  if (!data?.days || !override) return data;
+  if (!override) return data;
+  if (!data?.days?.some((d) => d.dayNumber === override.dayNumber)) {
+    if (override.dayNumber !== CUSTOM_DAY) return data;
+    const day = {
+      dayNumber: CUSTOM_DAY,
+      dayTitle: override.dayTitle,
+      split: {
+        [override.split]: {
+          exercises: override.carried,
+          totalSets: override.carried.reduce((sum, ex) => sum + ex.sets, 0),
+        },
+      },
+    };
+    return { ...data, days: [...(data?.days ?? []), day] };
+  }
   return {
     ...data,
     days: data.days.map((day) => {
@@ -111,3 +130,7 @@ export const carryOverDay = ({
     override: changed ? { dayNumber: toDay, split, carried, minSets } : null,
   };
 };
+
+/** "Day N" for a plan day. The custom day's number is internal, so it never shows. */
+export const dayLabel = (dayNumber: number | string | null | undefined): string =>
+  dayNumber === CUSTOM_DAY ? "Free" : `Day ${dayNumber ?? "?"}`;

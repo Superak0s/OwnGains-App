@@ -11,16 +11,14 @@ import {
   markOnlineTourOffered,
   onTutorialStateChange,
   parseTutorialState,
-  pickOutcome,
   readTutorialState,
-  setTutorialRole,
 } from "../tutorialState";
 
 beforeEach(() => resetMemorySqlite());
 
 describe("parseTutorialState", () => {
   it("falls back to a fresh state for missing or malformed data", () => {
-    const fresh = { role: null, completed: [], firstRunDone: false, firstRunMode: null, onlineTourOffered: false };
+    const fresh = { completed: [], firstRunDone: false, firstRunMode: null, onlineTourOffered: false };
     expect(parseTutorialState(null)).toEqual(fresh);
     expect(parseTutorialState("{nope")).toEqual(fresh);
     expect(parseTutorialState(JSON.stringify({ role: "admin", completed: [1, "home"], firstRunDone: "yes" })))
@@ -55,11 +53,6 @@ it("does not duplicate completed chapters and notifies listeners", async () => {
   expect(seen).toEqual([["home"], ["home"]]);
 });
 
-it("remembers the role", async () => {
-  await setTutorialRole("both");
-  expect(readTutorialState().role).toBe("both");
-});
-
 describe("markFirstRunDone", () => {
   it("online first run never offers the online tour", async () => {
     await markFirstRunDone("online");
@@ -91,20 +84,5 @@ describe("gateAction", () => {
     expect(gateAction(readTutorialState(), "online")).toBe("onlineTour");
     await markOnlineTourOffered();
     expect(gateAction(readTutorialState(), "online")).toBeNull();
-  });
-});
-
-describe("pickOutcome", () => {
-  it("asks offline users to go online for trainer roles in every picker mode", () => {
-    for (const mode of ["firstRun", "onlineTour", "change"] as const) {
-      expect(pickOutcome("trainer", "offline", mode)).toBe("needsOnline");
-      expect(pickOutcome("both", "offline", mode)).toBe("needsOnline");
-    }
-  });
-
-  it("starts or only records the role otherwise", () => {
-    expect(pickOutcome("user", "offline", "firstRun")).toBe("start");
-    expect(pickOutcome("trainer", "online", "onlineTour")).toBe("start");
-    expect(pickOutcome("trainer", "online", "change")).toBe("setRole");
   });
 });

@@ -9,6 +9,7 @@ import { toDefaultWidgets } from "@shared/types";
 export type PlanWidgetType =
   | "build_plan"
   | "select_split"
+  | "schedule"
   | "muscle_frequency"
   | "view_program";
 
@@ -32,6 +33,14 @@ export const PLAN_WIDGET_REGISTRY: Record<
     availableSizes: ["medium"],
     defaultSize: "medium",
   },
+  schedule: {
+    type: "schedule",
+    title: "Schedule",
+    description:
+      "Plan workouts ahead with reminders, accept your trainer's suggestions, and sync them to your calendar",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
+  },
   muscle_frequency: {
     type: "muscle_frequency",
     title: "Weekly volume",
@@ -52,6 +61,7 @@ export const PLAN_WIDGET_REGISTRY: Record<
 export const DEFAULT_PLAN_WIDGETS = toDefaultWidgets(PLAN_WIDGET_REGISTRY, [
   "build_plan",
   "select_split",
+  "schedule",
   "muscle_frequency",
   "view_program",
 ]);

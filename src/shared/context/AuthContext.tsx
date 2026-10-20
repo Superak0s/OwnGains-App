@@ -31,6 +31,7 @@ import { setRecordStoreUser } from "../services/offlineHelpers";
 import type { ProfileUpdate } from "@features/auth/types";
 import type { User } from "../types";
 import { cancelAllSupplementReminders } from "@shared/services/supplementReminders";
+import { unregisterPushToken } from "@features/messages/push";
 import { userFacingError } from "@shared/services/apiError";
 
 export type { User };
@@ -155,6 +156,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const clearSession = useCallback((): void => {
+    void unregisterPushToken();
     sessionGenerationRef.current += 1;
     setAuthToken("");
     seatUser(null);
@@ -342,6 +344,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Offline mode is documented as zero-backend. A live server
           // credential must not sit in SecureStore for the whole of it. The
           // proxy already routes offline, so revoke through the online service.
+          void unregisterPushToken();
           await onlineAuthService
             .logout()
             .catch(reportAndReturn(undefined, { stage: "revokeOnSwitch" }));

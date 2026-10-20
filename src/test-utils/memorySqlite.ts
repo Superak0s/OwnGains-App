@@ -130,16 +130,3 @@ export const replaceCollection = jest.fn(async (c: string, records: Row[]) => {
   records.forEach((r) => upsert(c, r))
 })
 
-export const renameUserData = jest.fn(async (from: string, to: string) => {
-  const src = `_user_${from}`
-  const dst = `_user_${to}`
-  const rekey = (k: string) => k.slice(0, -src.length) + dst
-  for (const k of Object.keys(kv).filter((k) => k.endsWith(src))) {
-    kv[rekey(k)] = kv[k]
-    delete kv[k]
-  }
-  for (const c of Object.keys(collections).filter((c) => c.endsWith(src))) {
-    collections[rekey(c)] = collections[c]
-    delete collections[c]
-  }
-})

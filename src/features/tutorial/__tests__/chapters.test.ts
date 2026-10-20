@@ -1,33 +1,21 @@
-import { CHAPTERS, ONLINE_TOUR, TRACKS, chaptersFor, onlineChaptersFor, stepsFor, type ChapterId } from "../chapters";
+import { CHAPTERS, ONLINE_TOUR, TRAINER_TOUR, TUTORIAL, stepsFor, type ChapterId } from "../chapters";
 
 const ALL = Object.keys(CHAPTERS) as ChapterId[];
-const TRAINER_ONLY: ChapterId[] = ["trainerClient", "trainerSession", "trainerFollow"];
 
-it("keeps the track orders from the spec", () => {
-  expect(TRACKS.user).toEqual(["welcome", "home", "plan", "workout", "progress", "tracking", "supplements", "friends", "sharing", "together", "widgets", "settings"]);
-  expect(TRACKS.trainer).toEqual(["welcome", "friends", "trainerClient", "trainerSession", "workout", "trainerFollow", "together", "widgets", "settings"]);
-  expect(TRACKS.both).toEqual([...TRACKS.user, ...TRAINER_ONLY]);
-  expect(chaptersFor("trainer")).toBe(TRACKS.trainer);
+it("covers every chapter in the tutorial or the trainer tour, once", () => {
+  expect([...TUTORIAL, ...TRAINER_TOUR].sort()).toEqual([...ALL].sort());
 });
 
-it("covers every chapter in some track", () => {
-  const used = new Set([...TRACKS.user, ...TRACKS.trainer, ...TRACKS.both]);
-  expect(ALL.filter((id) => !used.has(id))).toEqual([]);
+it("opens with the trainer mode hint", () => {
+  const first = CHAPTERS[TUTORIAL[0]].steps[0];
+  expect(first).toMatchObject({ kind: "card" });
+  expect(first.kind === "card" && first.body).toContain("Trainer Mode");
 });
 
-it("hides trainer features from the user track and granting from the trainer track", () => {
-  expect(TRACKS.user.filter((id) => TRAINER_ONLY.includes(id))).toEqual([]);
-  expect(TRACKS.trainer).not.toContain("sharing");
-});
-
-it("online tours contain exactly the online-only chapters of the track", () => {
-  expect(onlineChaptersFor("user")).toEqual(["friends", "sharing", "together"]);
-  expect(onlineChaptersFor("trainer")).toEqual(["friends", "trainerClient", "trainerSession", "trainerFollow", "together"]);
-  expect(onlineChaptersFor("both")).toEqual(["friends", "sharing", "together", "trainerClient", "trainerSession", "trainerFollow"]);
-  for (const role of ["user", "trainer", "both"] as const) {
-    expect(ONLINE_TOUR[role].every((id) => CHAPTERS[id].onlineOnly)).toBe(true);
-    expect(TRACKS[role].filter((id) => CHAPTERS[id].onlineOnly).sort()).toEqual([...ONLINE_TOUR[role]].sort());
-  }
+it("the online tour is exactly the online-only chapters of the tutorial", () => {
+  expect(ONLINE_TOUR.every((id) => CHAPTERS[id].onlineOnly)).toBe(true);
+  expect(TUTORIAL.filter((id) => CHAPTERS[id].onlineOnly).sort()).toEqual([...ONLINE_TOUR].sort());
+  expect(TRAINER_TOUR.every((id) => CHAPTERS[id].onlineOnly)).toBe(true);
 });
 
 it("turns an online-only chapter into one card offline and leaves others alone", () => {

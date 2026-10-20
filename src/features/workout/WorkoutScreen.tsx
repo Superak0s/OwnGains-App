@@ -21,6 +21,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useWorkoutPick, WorkoutProvider } from "@shared/context/WorkoutContext";
 import { useJointSessionContextOptional } from "@shared/context/JointSessionContext";
 import { getAppMode, onAppModeChange } from "@shared/services/appMode";
+import { getAppRole, onAppRoleChange } from "@shared/services/appRole";
 import ScrollTabBar from "@shared/components/ScrollTabBar";
 import {
   getActiveTrainee,
@@ -103,6 +104,7 @@ import {
   muscleDisplayName,
   resolveExerciseUnit,
   parseRestDuration,
+  EMPTY_WORKOUT_TITLE,
   type ProgressionSuggestion,
   type WeightUnit,
 } from "./utils";
@@ -123,7 +125,13 @@ import {
 import { TrainerBanner } from "./components/TrainerBanner";
 import { WatchersBanner } from "./components/WatchersBanner";
 import { TrainerSessionBar } from "./components/TrainerSessionBar";
-import type { TraineeOption } from "@shared/services/trainerEvents";
+import {
+  takeTraineeStart,
+  type CustomWorkout,
+  type TraineeOption,
+} from "@shared/services/trainerEvents";
+import { userFacingError } from "@shared/services/apiError";
+import { CUSTOM_DAY } from "@utils/dayCarryOver";
 
 const MAX_ADDITIONAL_SETS = 20;
 // An hour of rest is already far past any real set. Beyond it the reminder is
@@ -250,6 +258,10 @@ function WorkoutScreenBody({
     fetchRecordSessions,
     hasActiveSession,
     actAs,
+    saveSelectedSplit,
+    resetDay,
+    startCustomWorkout,
+    isLoading,
   } = useWorkoutPick(
     "userId",
     "sessionWorkoutData",
@@ -260,6 +272,8 @@ function WorkoutScreenBody({
     "saveSetDetails",
     "deleteSetDetails",
     "actAs",
+    "saveSelectedSplit",
+    "resetDay",
     "isSetComplete",
     "getSetDetails",
     "getExerciseCompletedSets",
@@ -281,6 +295,8 @@ function WorkoutScreenBody({
     "fetchSessionHistory",
     "fetchRecordSessions",
     "hasActiveSession",
+    "startCustomWorkout",
+    "isLoading",
   );
 
   const joint = useJointSessionContextOptional();
@@ -294,6 +310,44 @@ function WorkoutScreenBody({
   const leaveJointSession = joint?.leaveJointSession;
 
   const { alert, AlertComponent } = useAlert();
+  // Only a trainee provider's edits reject: the client's server refused them.
+  const reportRefused = useCallback(
+    (edit: Promise<void>) =>
+      void edit.catch((error: unknown) =>
+        alert(
+          "Couldn't Change Program",
+          userFacingError(error, "The change was not saved."),
+          [{ text: "OK" }],
+          "error",
+        ),
+      ),
+    [alert],
+  );
+
+  const startFreeWorkout = useCallback(
+    async (start: CustomWorkout) => {
+      const fail = (text: string) =>
+        alert("Couldn't Start Workout", text, [{ text: "OK" }], "error");
+      try {
+        const id = await startCustomWorkout(start.dayTitle, start.exercises);
+        if (!id) fail("Finish the open workout first.");
+      } catch (error) {
+        fail(userFacingError(error, "The workout could not be started."));
+      }
+    },
+    [startCustomWorkout, alert],
+  );
+  const startEmptyWorkout = useCallback(
+    () => startFreeWorkout({ dayTitle: EMPTY_WORKOUT_TITLE, exercises: [] }),
+    [startFreeWorkout],
+  );
+
+  useEffect(() => {
+    if (!actAs || isLoading) return;
+    const queued = takeTraineeStart(actAs.userId);
+    if (queued?.split) void saveSelectedSplit(queued.split);
+    if (queued?.start) void startFreeWorkout(queued.start);
+  }, [actAs, isLoading, startFreeWorkout, saveSelectedSplit]);
 
   const warnDayLocked = useCallback(
     (message: string) => alert("Day Locked", message, [{ text: "OK" }], "lock"),
@@ -524,7 +578,9 @@ function WorkoutScreenBody({
     undertrainedDisplayMode,
   );
 
-  const isCurrentDayLocked = isDayLocked(currentDay);
+  const dayLockedByPlan = isDayLocked(currentDay);
+  // A trainer can log on a day the client already finished: they get a warning instead of a lock.
+  const isCurrentDayLocked = dayLockedByPlan && !actAs;
   useRestReminder({
     enabled: !actAs && !untimedSession,
     workoutStartTime,
@@ -1233,7 +1289,7 @@ Note: ${existing.note}`;
 
   const patchMachines = (index: number | null, patch: MachinePatch) => {
     if (index === null || !selectedSplit) return;
-    updateExerciseMachines(currentDay, selectedSplit, index, patch);
+    reportRefused(updateExerciseMachines(currentDay, selectedSplit, index, patch));
   };
 
   const handleSelectMachine = (name: string) => {
@@ -1374,13 +1430,15 @@ Note: ${existing.note}`;
     primaryMuscles: string[],
     secondaryMuscles: string[],
   ) => {
-    updateExerciseName(
-      currentDay,
-      selectedSplit!,
-      editingExercise!.index,
-      finalName,
-      primaryMuscles,
-      secondaryMuscles,
+    reportRefused(
+      updateExerciseName(
+        currentDay,
+        selectedSplit!,
+        editingExercise!.index,
+        finalName,
+        primaryMuscles,
+        secondaryMuscles,
+      ),
     );
     closeEditModal();
   };
@@ -1462,7 +1520,7 @@ Note: ${existing.note}`;
         return;
       }
       const exercise = dayWorkout?.exercises?.[exerciseIndex];
-      void addExtraSetsToExercise(currentDay, selectedSplit!, exerciseIndex, 1);
+      reportRefused(addExtraSetsToExercise(currentDay, selectedSplit!, exerciseIndex, 1));
       // The server refuses destructive program edits from a trainer, so an
       // undo would fail for them.
       if (actAs || !exercise) {
@@ -1484,6 +1542,7 @@ Note: ${existing.note}`;
       selectedSplit,
       dayWorkout,
       actAs,
+      reportRefused,
     ],
   );
 
@@ -1504,7 +1563,7 @@ Note: ${existing.note}`;
       showToast("That set was already logged, so it was kept");
       return;
     }
-    void addExtraSetsToExercise(day, selectedSplit!, exerciseIndex, -1);
+    reportRefused(addExtraSetsToExercise(day, selectedSplit!, exerciseIndex, -1));
   }, [
     quickAdded,
     dayWorkout,
@@ -1512,6 +1571,7 @@ Note: ${existing.note}`;
     getSetDetails,
     addExtraSetsToExercise,
     selectedSplit,
+    reportRefused,
   ]);
 
   const handleAddMultipleSets = useCallback(
@@ -1558,7 +1618,7 @@ Note: ${existing.note}`;
         {
           text: "Remove",
           style: "destructive",
-          onPress: () => void removeSet(),
+          onPress: () => reportRefused(removeSet()),
         },
       ],
       "warning",
@@ -1577,11 +1637,13 @@ Note: ${existing.note}`;
       );
       return;
     }
-    addExtraSetsToExercise(
-      currentDay,
-      selectedSplit!,
-      addingSetsExercise.index,
-      sets,
+    reportRefused(
+      addExtraSetsToExercise(
+        currentDay,
+        selectedSplit!,
+        addingSetsExercise.index,
+        sets,
+      ),
     );
     setShowAddSetsModal(false);
     setAddingSetsExercise(null);
@@ -1644,19 +1706,21 @@ Note: ${existing.note}`;
     secondaryMuscles: string[],
     setsNum: number,
   ) => {
-    addNewExercise(currentDay, selectedSplit!, {
-      name: finalName,
-      // The typo check can substitute a plan-local name for the one the user
-      // picked, which would leave the id pointing at a different exercise.
-      exerciseId:
-        finalName === newExercise.name.trim()
-          ? newExercise.exerciseId
-          : undefined,
-      primaryMuscles,
-      secondaryMuscles,
-      sets: setsNum,
-      reps: newExercise.reps.trim() || undefined,
-    });
+    reportRefused(
+      addNewExercise(currentDay, selectedSplit!, {
+        name: finalName,
+        // The typo check can substitute a plan-local name for the one the user
+        // picked, which would leave the id pointing at a different exercise.
+        exerciseId:
+          finalName === newExercise.name.trim()
+            ? newExercise.exerciseId
+            : undefined,
+        primaryMuscles,
+        secondaryMuscles,
+        sets: setsNum,
+        reps: newExercise.reps.trim() || undefined,
+      }),
+    );
     closeAddExerciseModal();
   };
 
@@ -1696,8 +1760,11 @@ Note: ${existing.note}`;
     setNewExerciseSuggestions([]);
   };
 
+  const isCustomDay = currentDay === CUSTOM_DAY;
   const getCompleteWorkoutMessage = (done: number, total: number): string => {
-    const lock = "The day will be locked and view-only.";
+    const lock = isCustomDay
+      ? "It is saved to your history only, not to your plan."
+      : "The day will be locked and view-only.";
     if (done >= total) return `All ${total} sets are logged. ${lock}`;
     const missing = total - done;
     return `${missing} of ${total} sets ${missing === 1 ? "isn't" : "aren't"} logged. ${lock}`;
@@ -1709,7 +1776,7 @@ Note: ${existing.note}`;
     if (ended)
       alert(
         "Workout Completed!",
-        `Day ${currentDay} is now locked.`,
+        isCustomDay ? "Saved to your history." : `Day ${currentDay} is now locked.`,
         [{ text: "OK" }],
         "success",
       );
@@ -1739,12 +1806,12 @@ Note: ${existing.note}`;
     const done = getCompletedSetsCount();
     const total = dayWorkout?.totalSets || 0;
     alert(
-      `Finish Day ${currentDay}?`,
+      isCustomDay ? "Finish workout?" : `Finish Day ${currentDay}?`,
       getCompleteWorkoutMessage(done, total),
       [
         { text: "Keep logging", style: "cancel" },
         {
-          text: "Finish & lock",
+          text: isCustomDay ? "Finish" : "Finish & lock",
           onPress: confirmCompleteWorkout,
         },
       ],
@@ -1802,6 +1869,16 @@ Note: ${existing.note}`;
               <Text style={styles.emptyActionText}>
                 {emptyState.actionLabel}
               </Text>
+            </TouchableOpacity>
+          )}
+          {!workoutStartTime && !actAs && (
+            <TouchableOpacity
+              style={styles.emptyAction}
+              accessibilityRole='button'
+              accessibilityLabel='Start empty workout'
+              onPress={startEmptyWorkout}
+            >
+              <Text style={styles.emptyActionText}>Start empty workout</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -1894,7 +1971,9 @@ Note: ${existing.note}`;
       case "day_number":
         return (
           <View style={styles.dayNumberWidgetInner}>
-            <Text style={styles.dayNumberValue}>{dayWorkout?.dayNumber}</Text>
+            <Text style={styles.dayNumberValue}>
+              {dayWorkout?.dayNumber === CUSTOM_DAY ? "Free" : dayWorkout?.dayNumber}
+            </Text>
             {isCurrentDayLocked && (
               <View style={styles.dayNumberLockedTag}>
                 <Text style={styles.dayNumberLockedText}>Locked</Text>
@@ -2016,16 +2095,28 @@ Note: ${existing.note}`;
           />
         )}
 
-        {isCurrentDayLocked && (
+        {dayLockedByPlan && (
           <View style={styles.lockedBanner}>
             <View style={styles.lockedBannerTextContainer}>
               <Text style={styles.lockedBannerTitle}>
-                Day Completed & Locked
+                {actAs ? "Day already completed" : "Day Completed & Locked"}
               </Text>
               <Text style={styles.lockedBannerText}>
-                This workout is view-only. Select another day to continue.
+                {actAs
+                  ? `${actAs.username} already finished this day this week. Start it again to run it as a new session.`
+                  : "This workout is view-only. Select another day to continue."}
               </Text>
             </View>
+            {actAs && !workoutStartTime && (
+              <TouchableOpacity
+                style={styles.restartDayButton}
+                onPress={() => void resetDay(currentDay)}
+                accessibilityRole="button"
+                accessibilityLabel={`Start this day again for ${actAs.username}`}
+              >
+                <Text style={styles.restartDayText}>Start again</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -2157,6 +2248,16 @@ Note: ${existing.note}`;
               onPress={handleAddNewExercise}
             >
               <Text style={styles.addExerciseButtonText}>+ Add exercise</Text>
+            </TouchableOpacity>
+          )}
+          {!workoutStartTime && !actAs && (
+            <TouchableOpacity
+              style={styles.addExerciseButton}
+              accessibilityRole='button'
+              accessibilityLabel='Start empty workout'
+              onPress={startEmptyWorkout}
+            >
+              <Text style={styles.addExerciseButtonText}>Start empty workout</Text>
             </TouchableOpacity>
           )}
           {widgetsLoaded && widgets.length > 0 && (
@@ -2914,6 +3015,15 @@ export const makeStyles = (colors: ThemeColors) => {
       marginBottom: 2,
     },
     lockedBannerText: { fontSize: 14, color: colors.textPrimary },
+    restartDayButton: {
+      minHeight: 44,
+      marginLeft: 12,
+      paddingHorizontal: 14,
+      justifyContent: "center",
+      borderRadius: 10,
+      backgroundColor: colors.warning,
+    },
+    restartDayText: { color: colors.textOnAccent, fontWeight: "700" },
     headerCardInner: {
       backgroundColor: "transparent",
     },
@@ -3641,7 +3751,61 @@ export default function WorkoutScreen(): React.JSX.Element {
     [],
   );
 
+  const [role, setRole] = useState(getAppRole);
+  useEffect(() => onAppRoleChange.subscribe(setRole), []);
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   const sessionActive = isOnline === true && trainee !== null;
+
+  if (isOnline === true && role === "trainer") {
+    if (!trainee) {
+      return (
+        <SafeAreaView
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+            backgroundColor: colors.background,
+          }}
+        >
+          <Text style={{ color: colors.textPrimary, fontSize: 16, marginBottom: 16 }}>
+            Pick a client to start a session
+          </Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Clients")}
+            accessibilityRole="button"
+            style={{
+              minHeight: 48,
+              paddingHorizontal: 20,
+              justifyContent: "center",
+              borderRadius: 12,
+              backgroundColor: colors.accent,
+            }}
+          >
+            <Text style={{ color: colors.textOnAccent, fontWeight: "600" }}>
+              Go to Clients
+            </Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      );
+    }
+    return (
+      <WorkoutProvider key={trainee.userId} actAs={trainee}>
+        <WorkoutScreenBody
+          visible
+          hidePartnerControls
+          header={
+            <TrainerSessionBar
+              username={trainee.username}
+              onStop={() => setActiveTrainee(null)}
+            />
+          }
+        />
+      </WorkoutProvider>
+    );
+  }
 
   // Rendered inside each body's own SafeAreaView, not above them: a second
   // top-inset wrapper out here doubles the status-bar gap and pins a band of

@@ -61,14 +61,7 @@ const SESSION_GONE_CODES = new Set(["SESSION_ALREADY_ENDED", "SESSION_NOT_FOUND"
  * 401, "Exercise not found", a network failure) must remain queued and retry.
  */
 export const isSessionGone = (error: unknown): boolean => {
-  if (!(error instanceof ApiError)) return false
-  if (error.code && SESSION_GONE_CODES.has(error.code)) return true
-  // Servers that predate SESSION_NOT_FOUND answer a missing or foreign session
-  // with this message and no code.
-  return (
-    (error.status === 403 || error.status === 404) &&
-    /^session not found/i.test(error.message)
-  )
+  return error instanceof ApiError && !!error.code && SESSION_GONE_CODES.has(error.code)
 }
 
 // Clamped at 0: a device clock moved backwards (NTP correction, manual change)

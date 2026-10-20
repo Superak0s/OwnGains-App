@@ -1,6 +1,6 @@
 import type { UseAlertReturn } from "@shared/components/CustomAlert";
 import { useState, useCallback, useMemo } from "react";
-import { menstrualApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import type { MenstrualEntry, CycleStats, MenstrualPrefs } from "../services/types";
 import {
   saveToStorage,
@@ -25,6 +25,7 @@ interface UseMenstrualTabDeps {
 }
 
 export function useMenstrualTab(deps: UseMenstrualTabDeps) {
+  const { menstrualApi } = useTrackingApis();
   const { alert, user, setDayModal } = deps;
 
   const [cycleEntries, setCycleEntries] = useState<MenstrualEntry[]>([]);

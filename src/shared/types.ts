@@ -128,6 +128,8 @@ export interface WorkoutSession {
   secondaryMuscles?: string[];
   /** Only populated when the history request includes timings */
   setTimings?: SetTiming[];
+  loggedByTrainerId?: string | null;
+  loggedByTrainerUsername?: string | null;
 }
 
 /** Full session detail returned by getSession */
@@ -157,6 +159,8 @@ export interface FullSession {
   dayNumber: number;
   endTime?: string;
   setTimings?: SetTiming[];
+  loggedByTrainerId?: string | null;
+  loggedByTrainerUsername?: string | null;
 }
 
 /** Enriched session detail with grouped exercises, built client-side */
@@ -306,6 +310,7 @@ export type RootStackParamList = {
   Workout: undefined;
   Tracking: undefined;
   Friends: undefined;
+  Clients: undefined;
   Settings: undefined;
   Analytics: undefined;
   Supplements: undefined;

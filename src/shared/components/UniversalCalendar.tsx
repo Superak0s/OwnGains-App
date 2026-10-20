@@ -32,6 +32,8 @@ interface UniversalCalendarProps {
   readonly legendText?: string;
   readonly dotColor?: string;
   readonly getDayDecoration?: (date: Date) => DayDecoration | null;
+  /** Lets future days be pressed, for planning rather than logging. */
+  readonly allowFuture?: boolean;
 }
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -111,6 +113,7 @@ export default function UniversalCalendar({
   legendText = "Data logged",
   dotColor,
   getDayDecoration,
+  allowFuture = false,
 }: UniversalCalendarProps) {
   const { colors } = useTheme();
   const resolvedDotColor = dotColor ?? colors.accent;
@@ -198,7 +201,7 @@ export default function UniversalCalendar({
 
     const isToday = isSameLocalDay(date, today);
     const hasData = hasDataOnDate ? hasDataOnDate(date) : false;
-    const isFuture = date > today && !isToday;
+    const isFuture = !allowFuture && date > today && !isToday;
 
     const dayNumber = date.getDate();
     const dayName = DAY_NAMES[date.getDay()];
@@ -227,11 +230,7 @@ export default function UniversalCalendar({
         accessibilityLabel={dayAccessibilityLabel(date, isToday, hasData)}
         accessibilityState={{ disabled: isFuture }}
       >
-        {compact ? (
-          <Text style={[styles.monthDayName, ...dayTextStyles]}>
-            {dayName.slice(0, 1)}
-          </Text>
-        ) : (
+        {!compact && (
           <Text style={[styles.dayName, ...dayTextStyles]}>{dayName}</Text>
         )}
         <Text
@@ -393,13 +392,13 @@ const makeStyles = (colors: ThemeColors) =>
     monthRow: { flexDirection: "row" },
     monthCell: {
       flex: 1,
+      aspectRatio: 1,
       alignItems: "center",
-      paddingVertical: 4,
+      justifyContent: "center",
       borderRadius: 8,
       marginVertical: 1,
       marginHorizontal: 0.5,
     },
-    monthDayName: { fontSize: 9, color: colors.textMuted },
     monthDayNumber: {
       fontSize: 13,
       fontWeight: "600",

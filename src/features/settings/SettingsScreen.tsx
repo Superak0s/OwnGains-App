@@ -80,15 +80,24 @@ import {
 } from "@utils/strengthLevelImport";
 import { formatTime as formatDuration } from "@utils/timeEstimation";
 import {
+  getAppModeSync,
   isServerless,
   onAppModeChange,
   restartOnboarding,
 } from "@shared/services/appMode";
+import {
+  type AppRole,
+  effectiveRole,
+  getAppRole,
+  onAppRoleChange,
+  setAppRole,
+} from "@shared/services/appRole";
 import { workoutApi } from "@features/workout/services/index";
 import { programApi } from "@features/plan/services/index";
 import {
   DEMO_SPLIT,
   buildDemoProgram,
+  demoDataChanged,
 } from "./utils/demoData";
 import { clearDemoTracking, fillDemoTracking } from "./utils/demoTracking";
 import { doMigrateOffline as runOfflineMigration } from "./utils/offlineMigration";
@@ -176,6 +185,7 @@ const ALERT_PREVIEWS: ReadonlyArray<{
 
 import TutorialMenuSheet from "@features/tutorial/TutorialMenuSheet";
 import { tutorialAnchor } from "@features/tutorial/anchors";
+import { useTutorial } from "@features/tutorial/TutorialContext";
 import { friendsApi } from "@features/friends/services";
 import HealthConnectSection from "@features/healthConnect/HealthConnectSection";
 import type { BlockedUser } from "@features/friends/services";
@@ -185,6 +195,7 @@ import {
   isTelemetryEnabled,
   setTelemetryEnabled,
   trackFeature,
+  trackSpan,
   sendTestEvent,
   captureException,
 } from "@shared/services/crashReporting";
@@ -222,15 +233,14 @@ import {
 } from "@shared/services/serverVersion";
 import {
   loadTabOrder,
+  type MainTabName,
   moveTab,
   saveTabOrder,
-  TAB_META,
-  type TabName,
+  tabMeta,
 } from "@shared/services/tabOrder";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { userFacingError } from "@shared/services/apiError";
-import { ApiError } from "@shared/services/apiErrorClasses";
 import { SCREEN_PADDING } from "@shared/layout";
 
 export type SettingsStyles = ReturnType<typeof makeStyles>;
@@ -395,10 +405,10 @@ export default function SettingsScreen(): React.JSX.Element {
     syncPendingData,
     clearActiveWorkout,
     saveUnlockedOverrides,
-    unlockedOverrides,
     syncFromServer,
     saveWorkoutData,
     saveSelectedSplit,
+    resetDay,
   } = useWorkoutPick(
     "workoutData",
     "selectedSplit",
@@ -416,10 +426,10 @@ export default function SettingsScreen(): React.JSX.Element {
     "syncPendingData",
     "clearActiveWorkout",
     "saveUnlockedOverrides",
-    "unlockedOverrides",
     "syncFromServer",
     "saveWorkoutData",
     "saveSelectedSplit",
+    "resetDay",
   );
   const {
     pendingSyncs,
@@ -438,17 +448,20 @@ export default function SettingsScreen(): React.JSX.Element {
   const [showTabOrderModal, setShowTabOrderModal] = useState<boolean>(false);
   const [showChangelog, setShowChangelog] = useState<boolean>(false);
   const [showTipJar, setShowTipJar] = useState<boolean>(false);
-  const [tabOrder, setTabOrder] = useState<TabName[]>([]);
+  const [tabOrder, setTabOrder] = useState<MainTabName[]>([]);
+  const [tabOrderRole, setTabOrderRole] = useState<AppRole>("personal");
 
   const openTabOrder = async () => {
-    setTabOrder(await loadTabOrder());
+    const role = effectiveRole(getAppRole(), getAppModeSync());
+    setTabOrderRole(role);
+    setTabOrder(await loadTabOrder(role));
     setShowTabOrderModal(true);
   };
 
   const handleMoveTab = (index: number, direction: -1 | 1) => {
     const next = moveTab(tabOrder, index, direction);
     setTabOrder(next);
-    void saveTabOrder(next);
+    void saveTabOrder(next, tabOrderRole);
   };
   const [isImporting, setIsImporting] = useState<boolean>(false);
   const [fillingDemoData, setFillingDemoData] = useState<boolean>(false);
@@ -464,6 +477,9 @@ export default function SettingsScreen(): React.JSX.Element {
   const [loadingProgress, setLoadingProgress] = useState<boolean>(false);
   const [isOffline, setIsOffline] = useState<boolean>(false);
   const googleOnly = !isOffline && user?.hasPassword === false;
+  const [appRole, setAppRoleState] = useState(getAppRole);
+  useEffect(() => onAppRoleChange.subscribe(setAppRoleState), []);
+  const { offerTrainerTour } = useTutorial();
   const [progressError, setProgressError] = useState<boolean>(false);
   const [blockedError, setBlockedError] = useState<boolean>(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -711,10 +727,11 @@ export default function SettingsScreen(): React.JSX.Element {
       );
       const tracked =
         tracking + (await fillDemoTracking(user?.id ?? null, user?.heightCm));
+      demoDataChanged.trigger();
       if (!isMountedRef.current) return;
       await syncFromServer();
       const extras = [
-        friends ? `${friends} demo friends` : null,
+        friends ? `${friends} demo friends with messages` : null,
         tracked ? `${tracked} tracking and supplement entries` : null,
       ].filter(Boolean);
       const extrasNote = extras.length ? `, plus ${extras.join(" and ")}` : "";
@@ -741,8 +758,8 @@ export default function SettingsScreen(): React.JSX.Element {
     alert(
       "Fill Demo Data?",
       workoutData?.days?.length
-        ? "Adds about five weeks of generated sessions to your current program, plus demo friends, tracking and supplement entries, so every screen has something to show. Earlier demo data is replaced."
-        : "Creates a sample program and adds about five weeks of generated sessions to it, plus demo friends, tracking and supplement entries.",
+        ? "Adds about five weeks of generated sessions to your current program, plus demo friends and messages, scheduled workouts, tracking and supplement entries, so every screen has something to show. Earlier demo data is replaced."
+        : "Creates a sample program and adds about five weeks of generated sessions to it, plus demo friends and messages, scheduled workouts, tracking and supplement entries.",
       [
         { text: "Cancel", style: "cancel" },
         { text: "Fill", onPress: runDemoFill },
@@ -840,6 +857,7 @@ export default function SettingsScreen(): React.JSX.Element {
               const tracked =
                 (result?.deletedTracking ?? 0) +
                 (await clearDemoTracking(user?.id ?? null));
+              demoDataChanged.trigger();
               await syncFromServer();
               const sessions = result?.deletedCount ?? 0;
               const friends = result?.deletedFriends ?? 0;
@@ -1185,7 +1203,11 @@ ${photoNote} ${safetyNote}`,
   const performRestore = async (backup: DeviceBackup, mode: ImportMode) => {
     setRestoringData(true);
     try {
-      const { photosOmitted } = await restoreDeviceBackup(backup, mode);
+      const { photosOmitted } = await trackSpan(
+        "backup.restore",
+        () => restoreDeviceBackup(backup, mode),
+        { restore_mode: mode },
+      );
       trackFeature("backup", "restore", { restore_mode: mode });
       const photoNoun = photosOmitted === 1 ? "photo was" : "photos were";
       const photoNote =
@@ -1555,16 +1577,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                 await clearActiveWorkout();
               }
 
-              const newCompletedDays = { ...completedDays };
-              delete newCompletedDays[dayNumber];
-              await saveCompletedDays(newCompletedDays);
-
-              const newLockedDays = { ...lockedDays };
-              delete newLockedDays[dayNumber];
-              await saveLockedDays(newLockedDays);
-
-              const newOverrides = { ...unlockedOverrides, [dayNumber]: true };
-              await saveUnlockedOverrides(newOverrides);
+              await resetDay(dayNumber);
 
               setShowResetDayModal(false);
               showToast(`${dayTitle} has been unlocked.`);
@@ -1783,8 +1796,6 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
           : profilePhotoApi.remove()
         ).catch((err: unknown) => {
           console.warn("Profile photo sync failed:", err);
-          // A server older than profile photos answers 404, and there is nothing the user can do about it.
-          if (err instanceof ApiError && err.status === 404) return;
           showToast("Photo saved on this device only. Couldn't sync it to the server.");
         });
       }
@@ -2702,7 +2713,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
         scrollable={true}
       >
         {tabOrder.map((name, index) => {
-          const { icon, label } = TAB_META[name];
+          const { icon, label } = tabMeta(name, tabOrderRole === "trainer");
           const isFirst = index === 0;
           const isLast = index === tabOrder.length - 1;
           return (
@@ -3078,6 +3089,26 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
           ›
         </Text>
       </TouchableOpacity>
+      <SettingsGroup>
+        <SettingsRow
+          icon="👥"
+          label="Trainer Mode"
+          description={
+            isOffline
+              ? "Needs online mode."
+              : "Show your clients and coaching tools instead of your own training."
+          }
+          disabled={isOffline}
+          toggle={{
+            value: !isOffline && appRole === "trainer",
+            label: "Trainer Mode",
+            onChange: (on) => {
+              void setAppRole(on ? "trainer" : "personal");
+              if (on) offerTrainerTour();
+            },
+          }}
+        />
+      </SettingsGroup>
       {indexGroups.map((group) => (
         <SettingsGroup key={group.join()}>
           {group.map((key) => (

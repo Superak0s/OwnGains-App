@@ -50,6 +50,7 @@ Split creation is a core feature. You can start from a template, from a spreadsh
 - **Rest timer & smart time estimates**: see how long you've rested and get an estimated time remaining and finish time for the session based on your pace. A rest reminder tells you when your rest reaches the time you set, as a notification or as a full-screen alarm like the supplement alarm.
 - **PR celebration & live session stats**: personal records are called out as you hit them, and a running ticker tracks the session.
 - **Add exercises or extra sets on the fly** mid-workout, with the same fuzzy matching so nothing gets duplicated, a muscle browser, and muscles filled in for known exercises.
+- **Empty workouts**: start a workout outside your plan, even with no plan at all, and add exercises as you go. It is saved to your history only.
 - **Day locking & weekly reset**: completed days lock until your week resets, keeping you on schedule (with manual unlock overrides when you need them).
 
 ### 📊 See your progress
@@ -90,14 +91,21 @@ Every tracking sub-tab is its own widget board: the calendar, the "today" card, 
 - **Daily reminders**: local notifications at the times you set. They repeat on their own and keep working after a reboot, and they work offline like everything else. Pick the time with an hour and minute picker (Morning, Noon, Evening and Night shortcuts), and choose Notification or Alarm: an alarm works like a clock app alarm: it shows the alarm icon in the status bar, wakes the screen and keeps ringing on the alarm volume (even with the ringer silent, and through Do Not Disturb) until you tap Snooze or Dismiss, or for 10 minutes. It opens full screen instead of showing a notification, on a locked phone or over another app (choosing Alarm asks for notifications, "Alarms & reminders" and "Display over other apps" in turn, each with a shortcut to its settings page).
 - **Next-dose reminders**: logging a dose of a multi-dose supplement schedules a reminder for the next one, on time (Android asks you once to allow exact alarms, and on Xiaomi, Samsung, Huawei, Honor, OnePlus, OPPO, realme and vivo phones the app also points you once at the battery settings that would delay it).
 
+### 📅 Schedule workouts
+
+- The **Schedule** widget on Plan (also placeable on Home) books workouts on future days at a 24-hour time from the native clock picker, optionally tied to a program day, with a reminder (notification or alarm) before each one.
+- Turn on **Add to my calendar** to copy them into the phone's calendar with `expo-calendar`.
+- A trainer suggests workouts from a client's Plan tab or client page, which lists only what that trainer suggested to them, and the client accepts or declines them. A Schedule tab on the trainer in Friends lists their suggestions.
+
 ### 👥 Train with friends _(server mode)_
 
 - Add friends from the **Find Friends** search bar or by scanning their **QR friend code**.
 - **Granular sharing**: switch each permission on or off per friend, grouped into Progress, Live workouts and Coaching.
 - **Use a friend's plan**: any program shared with you can be made your own with one tap.
+- **Messages**: chat with friends, and between a trainer and their clients, with unread badges, read receipts, deleting your own messages (and editing them for 15 minutes) and a notification when a message arrives, even with the app closed (needs a build with `google-services.json`, otherwise only while the app is running). It needs a server with a working FCM key: a server without one, or with `DISABLED_FEATURES=messages`, switches messaging off and the app hides it until that changes.
 - **Joint sessions**: work out together in real time, synced set-for-set.
 - **Watch sessions**: spectate a friend's live workout as it happens.
-- **Trainer mode**: grant a friend the trainer scope and they can drive your workout live from their own phone, and send you their plan. The grant is workout read/write only: a trainer request can never touch your account or delete anything.
+- **Trainer mode**: switch the app into a coaching tool from Settings or a Home widget. A Clients tab shows who needs attention and who is on track, a calendar of each client's sessions (with you or on their own), lets you send someone a trainer request (by username or by scanning their friend QR code) or cancel one you sent, and lets you stop coaching a client. Start session runs one of the client's splits, one of your own program days, or an empty workout, one client at a time. A session ends when you stop it or after 30 minutes with no set logged from either phone. Send program shares the splits you pick, and Tapping the Programs title switches between your programs and a client's, and Edit program (or a running session) opens it on the client's program, edited with the same tools as your own. A client who accepts, or grants a friend the trainer scope by hand, lets that trainer drive their workout live from their own phone and send them a plan. The grant is workout read/write only: a trainer request can never touch your account or delete anything. Each client's page lists which permissions they have given you. A Progress tab shows a client's analytics, and tapping its title switches client with the same username search as Track. Tracking Access is never granted along with Trainer Access: the client turns it on in Friends, or accepts the Ask for Tracking Access request you send from their page, and their phone then sends their tracking data and progress photos to the trainer's phone, which shows them in the normal Tracking screen where tapping the Track title switches between your own tracking and a client's, picked with a username search, view only, end to end encrypted, so the server relays it without being able to read it. Both phones show a safety code to compare. A trainer keeps their own Supplements tab, and a client sees "Logged by @trainer" on every workout their trainer logged for them.
 - **Blocking and reporting**: block or report an account, and manage blocked users from Settings.
 
 ### 🧩 Widget boards everywhere
@@ -107,7 +115,7 @@ Every screen has a customizable widget board. Add, remove, resize, and reorder w
 - **Home:** next workout, weekly progress, workout history calendar, streak, morning recovery check, **plus any widget from any other board**, so the home screen can borrow your weight trend, weekly volume, or friends list.
 - **Progress:** exercise/muscle selector, workout history, weekly sets, exercises in a muscle group, estimated 1RM, personal records, progress rate, rep range split, training frequency, rest & fatigue, plus weight progress, reps progress, all set data and last workout from the gallery
 - **Workout:** day, total sets, progress, session stats
-- **Plan:** build your plan, your splits, weekly volume, program
+- **Plan:** build your plan, your splits, schedule, weekly volume, program
 - **Friends:** find friends and your friends on one tab, pending and sent requests on the other
 - **Tracking:** each sub-tab (Hydration, Weight, Photos, Macros, Body Fat, Measurements, Recovery, Cycle, and Health on Android) has its own board
 
@@ -140,7 +148,7 @@ Under **Privacy and Data**: the privacy policy, **Export My Data**, **full devic
 - Offline mode sends none of your data anywhere. There is no account and no telemetry by default. The only requests are exercise photos from GitHub (switchable off), any crash reports you opt into, and the GitHub APK's daily update check.
 - Health Connect data is only read, never written, and the steps, heart rate and sleep summaries are kept on your device only.
 - The official server (`owngains.superak0s.com`) is run by the developer on their own hardware in Greece. It stores accounts, workouts, programs and friends, but not tracking or supplement data, which stay on the device.
-- Crash reporting and usage metrics are both opt-in, chosen on first sign-in, changeable in Settings at any time. Reports go to the developer's self-hosted [GlitchTip](https://glitchtip.com) instance (`glitchtip.superak0s.com`), not to Sentry's cloud.
+- Crash reporting and usage metrics are both opt-in, chosen on first sign-in, changeable in Settings at any time. Crash reports, screen-load traces and diagnostic logs go to the developer's self-hosted [GlitchTip](https://glitchtip.com) instance (`glitchtip.superak0s.com`), not to Sentry's cloud. Usage counts (screens, features, workouts, daily opens) go to Google Analytics for Firebase, with the advertising ID and ad personalization off, and app start and slow-operation timings go to Firebase Performance Monitoring.
 - Backups are encrypted with a passphrase you choose, so an exported file is useless to anyone else.
 - Delete Account wipes everything: the local profile and database offline, and your account with every row attached to it on the server you are signed in to. Only moderation reports are kept after the account is deleted, unlinked from it.
 - Android permissions are limited to notifications, vibrate, boot-completed (to restore reminders), exact alarms (so a next-dose reminder isn't delayed), display over other apps and full screen notifications (so a supplement or rest alarm opens full screen), internet, Wi-Fi state/multicast (for LAN server discovery), wake lock (for the Quick Settings water tiles), and read-only Health Connect access to weight, body fat, hydration, nutrition, steps, heart rate and sleep. Unused permissions are actively pruned out of the manifest at build time.
@@ -163,9 +171,10 @@ The web copies of the legal text are generated from the in-app screens: [privacy
 - **Health:** `react-native-health-connect` (Android Health Connect, read only).
 - **Payments:** `expo-iap` (Google Play Billing tip jar).
 - **Crypto:** `expo-crypto` for AES-GCM backup encryption over a PBKDF2-derived key.
-- **Notifications:** `expo-notifications` (local, repeating daily triggers).
+- **Notifications:** `expo-notifications` (local, repeating daily triggers), `expo-calendar` (scheduled workouts in the device calendar).
 - **Networking/discovery:** `react-native-zeroconf` (mDNS LAN server discovery) and a WebSocket for real-time features.
 - **Crash reporting:** `@sentry/react-native` reporting to a self-hosted [GlitchTip](https://glitchtip.com) (Sentry-compatible), DSN from `EXPO_PUBLIC_SENTRY_DSN`. GlitchTip receives errors, performance traces and structured logs. It has no session tracking (so no crash-free or active-user rates) and doesn't document support for the SDK's metrics API. To confirm what actually arrives, use Settings → diagnostics → send test event.
+- **Usage analytics:** `@react-native-firebase/analytics`, configured from `google-services.json` (gitignored and optional: builds without it send no usage metrics). `firebase.json` keeps collection off until the telemetry switch is on, and `metric.*`, `trackFeature` and `trackScreenView` in `crashReporting.tsx` log Firebase events. `trackSpan` and `startTrace` record Firebase Performance custom traces (API requests by templated route, sync runs, LAN scans, backups, restores, imports). The perf Expo plugin is deliberately not applied, so OkHttp is not instrumented and no request URLs are collected.
 - **Device/system:** `expo-dev-client`, `expo-constants`, `expo-navigation-bar`, `expo-status-bar`, `expo-splash-screen`, `expo-system-ui`, `@react-native-community/datetimepicker`.
 
 ### Architecture

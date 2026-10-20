@@ -1,10 +1,22 @@
+jest.mock("@shared/components/ScrollTabBar", () => ({ __esModule: true, default: () => null }))
+jest.mock("@features/schedule/ScheduleWidget", () => ({ __esModule: true, default: () => null }))
 jest.mock("@shared/services/sqliteStorage", () => require("test-utils/memorySqlite"))
-jest.mock("@shared/context/WorkoutContext", () => require("test-utils/renderWithProviders").workoutModule)
+jest.mock("@shared/context/WorkoutContext", () => {
+  const { workoutModule } = require("test-utils/renderWithProviders")
+  const { programApi } = require("@features/plan/services/index")
+  return {
+    ...workoutModule,
+    useWorkoutPick: () =>
+      new Proxy(workoutModule.useWorkoutPick(), {
+        get: (target, key) => (key === "programApi" ? programApi : target[key]),
+      }),
+  }
+})
 jest.mock("@shared/context/ThemeContext", () => require("test-utils/renderWithProviders").themeModule)
 jest.mock("@shared/context/AuthContext", () => require("test-utils/renderWithProviders").authModule)
 jest.mock("@react-navigation/native", () => require("test-utils/renderWithProviders").navigationModule)
 jest.mock("@features/plan/services/index", () => ({
-  programApi: { saveProgram: jest.fn(async () => ({ success: true })) },
+  programApi: { saveProgram: jest.fn(async () => ({ success: true })), fetchSavedProgram: jest.fn() },
 }))
 jest.mock("@features/workout/services/index", () => ({
   workoutApi: { pickWorkoutFile: jest.fn() },
@@ -175,6 +187,23 @@ describe("editing a split", () => {
     expect(await screen.findByText("Saved on this device")).toBeTruthy()
     expect(current.workout.saveWorkoutData).toHaveBeenCalled()
     expect(markProgramDirty).toHaveBeenCalledWith("u1")
+  })
+
+  it("puts a client's server copy back when their account refuses the edit", async () => {
+    await renderWithProviders(<PlanScreen />, {
+      workout: { workoutData: editableProgram, selectedSplit: "A", actAs: { userId: "7", username: "anna" } },
+    })
+    await press("Edit a split")
+    await press("A")
+    saveProgram.mockRejectedValueOnce(new Error("HTTP 403"))
+    ;(programApi.fetchSavedProgram as jest.Mock).mockResolvedValueOnce(editableProgram)
+    await press(/^Expand Pull/)
+    await fireEvent.changeText(screen.getByDisplayValue("Pull"), "Back")
+    await press("Save changes")
+
+    expect(await screen.findByText("Couldn't save your changes")).toBeTruthy()
+    expect(lastSaved()).toBe(editableProgram)
+    expect(markProgramDirty).not.toHaveBeenCalled()
   })
 })
 

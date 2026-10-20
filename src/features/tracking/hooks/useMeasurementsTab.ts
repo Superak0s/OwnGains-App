@@ -2,7 +2,7 @@ import type { DayModalState } from "../types";
 import type { UseAlertReturn } from "@shared/components/CustomAlert";
 import { useState, useCallback, useMemo } from "react";
 import type { MeasurementEntry } from "../services/types";
-import { bodyMeasurementsApi, customMeasurementsApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import { createDeleteHandler, withConfirm, describeError } from "../helpers";
 import { isoToLocalDateStr } from "../utils";
 import { toDateString } from "@utils/format";
@@ -32,6 +32,7 @@ const toOptionalNumber = (value: string) =>
   value ? Number.parseFloat(value) : undefined;
 
 export function useMeasurementsTab(deps: UseMeasurementsTabDeps) {
+  const { bodyMeasurementsApi, customMeasurementsApi } = useTrackingApis();
   const { alert, loadTabData, setDayModal, selectedLogDate, setSelectedLogDate, buildLocalISOForDate } = deps;
 
   const [measurementHistory, setMeasurementHistory] = useState<MeasurementEntry[]>([]);

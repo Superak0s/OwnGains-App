@@ -24,6 +24,7 @@ import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import ModalSheet from "@shared/components/ModalSheet";
+import { TrainerLoggedBadge, trainerLoggedLabel } from "@shared/components/TrainerLoggedBadge";
 import { useAlert } from "@shared/components/CustomAlert";
 import { showToast } from "@shared/components/toast";
 import { workoutApi } from "@features/workout/services/index";
@@ -35,6 +36,7 @@ import {
   toDateString,
 } from "@utils/format";
 import { visibleDaysForSplit } from "@utils/programDays";
+import { dayLabel } from "@utils/dayCarryOver";
 import {
   kgToDisplay,
   getDayOverviewTint,
@@ -72,6 +74,8 @@ import type {
 } from "@shared/types";
 import { STORAGE_KEYS } from "@shared/services/storage";
 import { isServerless, onAppModeChange } from "@shared/services/appMode";
+import { setAppRole } from "@shared/services/appRole";
+import { useTutorial } from "@features/tutorial/TutorialContext";
 import {
   describeLocalOnlyFeatures,
   onLocalOnlyFeaturesChange,
@@ -145,7 +149,7 @@ function NextWorkoutWidget({
     <View>
       <View style={styles.currentDayHeader}>
         <Text style={styles.currentDayText} numberOfLines={1}>
-          {dayTitle ? `Day ${displayDay} - ${dayTitle}` : `Day ${displayDay}`}
+          {dayTitle ? `${dayLabel(displayDay)} - ${dayTitle}` : dayLabel(displayDay)}
         </Text>
         <View style={locked ? styles.lockedBadge : styles.completeBadge}>
           <Text
@@ -403,6 +407,35 @@ function WorkoutStreakWidget({
       <Text style={styles.streakLabel}>week streak</Text>
       <Text style={styles.streakSub}>{getStreakSubtitle(weeklyStreak)}</Text>
     </View>
+  );
+}
+
+function SwitchToTrainerWidget({
+  isOffline,
+  styles,
+}: {
+  readonly isOffline: boolean;
+  readonly styles: ReturnType<typeof makeStyles>;
+}): React.JSX.Element {
+  const { offerTrainerTour } = useTutorial();
+  return (
+    <TouchableOpacity
+      style={styles.streakWrap}
+      disabled={isOffline}
+      onPress={() => {
+        void setAppRole("trainer");
+        offerTrainerTour();
+      }}
+      accessibilityRole='button'
+      accessibilityLabel={isOffline ? "Trainer Mode needs online mode" : "Switch to Trainer Mode"}
+      accessibilityState={{ disabled: isOffline }}
+    >
+      <Text style={styles.streakEmoji}>👥</Text>
+      <Text style={styles.streakLabel}>Trainer Mode</Text>
+      <Text style={styles.streakSub}>
+        {isOffline ? "Needs online mode" : "Tap to coach your clients"}
+      </Text>
+    </TouchableOpacity>
   );
 }
 
@@ -742,6 +775,8 @@ export default function HomeScreen(): React.JSX.Element {
             styles={styles}
           />
         );
+      case "switch_to_trainer":
+        return <SwitchToTrainerWidget isOffline={isOffline} styles={styles} />;
       case "health_steps":
       case "health_heart_rate":
       case "health_sleep":
@@ -1329,11 +1364,12 @@ function SessionListItem({
       accessibilityRole='button'
       accessibilityLabel={[
         title
-          ? `Day ${session.dayNumber}, ${title}`
-          : `Day ${session.dayNumber}`,
+          ? `${dayLabel(session.dayNumber)}, ${title}`
+          : dayLabel(session.dayNumber),
         formatSessionTime(session.startTime),
         session.totalDuration ? formatTime(session.totalDuration, "N/A") : "",
         `${session.completedSets} sets`,
+        trainerLoggedLabel(session),
       ]
         .filter(Boolean)
         .join(", ")}
@@ -1344,8 +1380,8 @@ function SessionListItem({
       <View style={styles.sessionListLeft}>
         <Text style={styles.sessionListTitle}>
           {title
-            ? `Day ${session.dayNumber} - ${title}`
-            : `Day ${session.dayNumber}`}
+            ? `${dayLabel(session.dayNumber)} - ${title}`
+            : dayLabel(session.dayNumber)}
         </Text>
         <View style={styles.sessionListMeta}>
           <Text style={styles.sessionListTime}>
@@ -1360,6 +1396,7 @@ function SessionListItem({
             {` • ${session.completedSets} sets`}
           </Text>
         </View>
+        <TrainerLoggedBadge {...session} />
       </View>
       {loading ? (
         <ActivityIndicator size='small' />
@@ -1383,11 +1420,12 @@ function SessionDetails({
     <>
       <View style={styles.detailSection}>
         <Text style={styles.detailTitle} accessibilityRole='header'>
-          {`Day ${session.dayNumber}`}
+          {dayLabel(session.dayNumber)}
         </Text>
         {!!getSessionTitle(session) && (
           <Text style={styles.detailSubtitle}>{getSessionTitle(session)}</Text>
         )}
+        <TrainerLoggedBadge {...session} />
         {Array.isArray(session.primaryMuscles) &&
           session.primaryMuscles.length > 0 && (
             <View style={styles.muscleGroupsRow}>

@@ -1,5 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Text } from "react-native";
+import { trackingRelayApi } from "@features/trainer/services";
+import { safetyCode } from "@features/trainer/utils/trackingCrypto";
+import { reportAndReturn } from "@shared/services/crashReporting";
 import { PermissionRow } from "./PermissionRow";
 import type { WorkoutData } from "@shared/types";
 import type {
@@ -32,6 +35,20 @@ export const PERMISSION_TYPES: Array<{
     workoutData: WorkoutData | null,
   ) => string;
 }> = [
+  {
+    type: "trainer",
+    icon: "🧑‍🏫",
+    title: "Trainer Access",
+    describe: (username) =>
+      `Let ${username} log workouts for you, edit your program, and see your workout history, analytics and notes.`,
+  },
+  {
+    type: "tracking",
+    icon: "🔒",
+    title: "Tracking Access",
+    describe: (username) =>
+      `Send ${username} your tracking data, end to end encrypted. Needs Trainer Access.`,
+  },
   {
     type: "history",
     icon: "📅",
@@ -67,22 +84,15 @@ export const PERMISSION_TYPES: Array<{
     describe: (username) =>
       `Let ${username} watch your active workout session live.`,
   },
-  {
-    type: "trainer",
-    icon: "🧑‍🏫",
-    title: "Trainer Access",
-    describe: (username) =>
-      `Let ${username} log workouts for you, edit your program, and see your workout history, analytics and notes.`,
-  },
 ];
 
 export const PERMISSION_GROUPS: ReadonlyArray<{
   label: string;
   types: readonly PermissionType[];
 }> = [
+  { label: "Coaching", types: ["trainer", "tracking"] },
   { label: "Progress", types: ["history", "analytics", "program"] },
   { label: "Live workouts", types: ["joint_session", "watch_session"] },
-  { label: "Coaching", types: ["trainer"] },
 ];
 
 /** Types that must be granted alongside `type` for it to work. */
@@ -92,8 +102,48 @@ export const permissionPrerequisites = (
 
 export const trainerGrantConfirmation = (username: string) => ({
   title: `Make ${username} your trainer?`,
-  message: `${username} will be able to start and log workouts as you, change sets in your sessions, edit your program, watch your workouts live, and see your full workout history, analytics and notes. They can't access your account settings or delete anything. You can revoke this at any time.`,
+  message: `${username} will be able to start and log workouts as you, change sets in your sessions, edit your program, watch your workouts live, and see your full workout history, analytics and notes. They can't access your account settings or delete your workout history. You can revoke this at any time.`,
 });
+
+export const TRACKED_CATEGORIES =
+  "body weight, body fat, body and custom measurements, hydration, macros and nutrition goals, injuries, soreness, muscle notes, menstrual cycle and progress photos";
+
+export const trackingGrantConfirmation = (username: string) => ({
+  title: `Share your tracking with ${username}?`,
+  message: `Your phone will send ${username} your ${TRACKED_CATEGORIES}, and keep sending updates. It is encrypted so only ${username}'s phone can read it, not the server. ${username} keeps a copy on their phone until you turn this off or end Trainer Access.`,
+});
+
+/** The codes of the trainer's devices, to compare with the code on the trainer's phone. */
+function TrackingSafetyCodes({
+  trainerId,
+  styles,
+}: {
+  readonly trainerId: FriendId;
+  readonly styles: ReturnType<typeof makeStyles>;
+}): React.JSX.Element | null {
+  const [codes, setCodes] = useState<string[] | null>(null);
+  useEffect(() => {
+    let active = true;
+    void trackingRelayApi
+      .getRecipients()
+      .catch(reportAndReturn([], { stage: "trackingSafetyCodes" }))
+      .then((recipients) => {
+        const keys = recipients.find((r) => r.trainerId === String(trainerId))?.keys ?? [];
+        if (active) setCodes(keys.map((k) => safetyCode([k.publicKey])));
+      });
+    return () => {
+      active = false;
+    };
+  }, [trainerId]);
+  if (!codes) return null;
+  return (
+    <Text style={styles.actionsTabSectionHint}>
+      {codes.length === 0
+        ? "Nothing is sent until your trainer opens Clients on their phone."
+        : `Safety code: ${codes.join(", ")}. Check that your trainer's client page shows the same code. If it does, only their phone can read your data.`}
+    </Text>
+  );
+}
 
 interface FriendGrantedPermissionsProps {
   readonly selectedFriend: Friend | null;
@@ -150,8 +200,8 @@ export function FriendGrantedPermissions({
           <Text style={styles.permissionGroupLabel}>{label}</Text>
           {PERMISSION_TYPES.filter((p) => types.includes(p.type)).map(
             ({ type, icon, title, describe }) => (
+              <React.Fragment key={type}>
               <PermissionRow
-                key={type}
                 icon={icon}
                 title={title}
                 description={describe(selectedFriend?.username, workoutData)}
@@ -163,6 +213,10 @@ export function FriendGrantedPermissions({
                   if (selectedFriend) onRevokePermission(selectedFriend, type);
                 }}
               />
+              {type === "tracking" && isGranted(type) && (
+                <TrackingSafetyCodes trainerId={friendId} styles={styles} />
+              )}
+              </React.Fragment>
             ),
           )}
         </React.Fragment>

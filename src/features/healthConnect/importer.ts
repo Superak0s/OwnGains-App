@@ -209,7 +209,7 @@ export async function syncHealthConnect(
   let run = running.get(userId);
   if (!run) {
     const trigger = force ? "manual" : "auto";
-    run = trackSpan("healthConnect.sync", "sync", () => importFromHealthConnect(userId), { trigger })
+    run = trackSpan("healthConnect.sync", () => importFromHealthConnect(userId), { trigger })
       .then((summary) => {
         trackFeature("healthConnect", "sync", {
           trigger,

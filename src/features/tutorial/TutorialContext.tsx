@@ -3,30 +3,26 @@ import { AccessibilityInfo, BackHandler, StyleSheet, View, type GestureResponder
 import type { NavigationContainerRefWithCurrent } from "@react-navigation/native";
 import { useAlert } from "@shared/components/CustomAlert";
 import { useTabBar } from "@shared/context/TabBarContext";
-import { getAppModeSync, onAppModeChange, restartOnboarding, type AppMode } from "@shared/services/appMode";
+import { getAppModeSync, onAppModeChange, type AppMode } from "@shared/services/appMode";
 import { DEFAULT_TAB_ORDER, type TabName } from "@shared/services/tabOrder";
 import type { AnchorRect } from "./anchors";
-import { CHAPTERS, chaptersFor, onlineChaptersFor, stepsFor, type ChapterId } from "./chapters";
+import { CHAPTERS, ONLINE_TOUR, TRAINER_TOUR, TUTORIAL, stepsFor, type ChapterId } from "./chapters";
 import { advance, retreat, skip, type Cursor } from "./engine";
 import {
   gateAction,
   markChapterCompleted,
   markFirstRunDone,
   markOnlineTourOffered,
-  pickOutcome,
   readTutorialState,
-  setTutorialRole,
-  type PickerMode,
-  type Role,
 } from "./tutorialState";
-import RolePicker from "./RolePicker";
+import TutorialIntro from "./TutorialIntro";
 import TutorialOverlay from "./TutorialOverlay";
 
 type NavRef = NavigationContainerRefWithCurrent<ReactNavigation.RootParamList>;
 
 export interface TutorialApi {
   start: (queue: ChapterId[], firstRun?: boolean) => void;
-  openRolePicker: (mode: PickerMode) => void;
+  offerTrainerTour: () => void;
   runGate: () => void;
   leaveMain: () => void;
 }
@@ -34,7 +30,7 @@ export interface TutorialApi {
 const noop = () => {};
 const TutorialContext = createContext<TutorialApi>({
   start: noop,
-  openRolePicker: noop,
+  offerTrainerTour: noop,
   runGate: noop,
   leaveMain: noop,
 });
@@ -70,7 +66,7 @@ export function TutorialProvider({
   const { alert, AlertComponent } = useAlert();
   const { setIsTabBarCollapsed } = useTabBar();
   const [cursor, setCursor] = useState<Cursor | null>(null);
-  const [picker, setPicker] = useState<PickerMode | null>(null);
+  const [intro, setIntro] = useState(false);
   const cursorRef = useRef<Cursor | null>(null);
   const runRef = useRef<Run | null>(null);
   const holeRef = useRef<AnchorRect | null>(null);
@@ -115,7 +111,7 @@ export function TutorialProvider({
         ? (current as TabName)
         : null;
       runRef.current = { queue, firstRun, mode: getAppModeSync(), startTab };
-      setPicker(null);
+      setIntro(false);
       show({ queue, chapter: 0, step: 0 });
     },
     [navigationRef, show],
@@ -165,7 +161,7 @@ export function TutorialProvider({
   }, [finish, show]);
 
   const leaveMain = useCallback(() => {
-    setPicker(null);
+    setIntro(false);
     finish(false);
   }, [finish]);
 
@@ -186,7 +182,7 @@ export function TutorialProvider({
 
   const runGate = useCallback(() => {
     const action = gateAction(readTutorialState(), getAppModeSync());
-    if (action === "firstRun") setPicker("firstRun");
+    if (action === "firstRun") setIntro(true);
     if (action !== "onlineTour") return;
     // Marked before asking, so dismissing the alert still counts as the one offer.
     void markOnlineTourOffered();
@@ -195,58 +191,40 @@ export function TutorialProvider({
       "Take a quick tour of friends, sharing and training?",
       [
         { text: "Not now", style: "cancel" },
-        { text: "Show me", onPress: () => setPicker("onlineTour") },
+        { text: "Show me", onPress: () => start(ONLINE_TOUR) },
       ],
       "info",
     );
-  }, [alert]);
+  }, [alert, start]);
 
-  const pick = useCallback(
-    (role: Role) => {
-      if (!picker) return;
-      const outcome = pickOutcome(role, getAppModeSync(), picker);
-      if (outcome === "needsOnline") {
-        alert(
-          "Trainer features need online mode",
-          "Coaching clients goes through a server. Switch to online mode now? You'll sign in, then pick your track again.",
-          [
-            { text: "Back", style: "cancel" },
-            {
-              text: "Switch to online",
-              onPress: () => {
-                setPicker(null);
-                void restartOnboarding();
-              },
-            },
-          ],
-          "info",
-        );
-        return;
-      }
-      void setTutorialRole(role);
-      if (outcome === "setRole") {
-        setPicker(null);
-        return;
-      }
-      start(picker === "onlineTour" ? onlineChaptersFor(role) : chaptersFor(role), picker === "firstRun");
-    },
-    [alert, picker, start],
-  );
+  const offerTrainerTour = useCallback(() => {
+    const { completed } = readTutorialState();
+    if (TRAINER_TOUR.every((id) => completed.includes(id))) return;
+    alert(
+      "Trainer Mode is on",
+      "Take a quick tour of getting clients, running their sessions and following their progress?",
+      [
+        { text: "Not now", style: "cancel" },
+        { text: "Show me", onPress: () => start(TRAINER_TOUR) },
+      ],
+      "info",
+    );
+  }, [alert, start]);
 
-  const skipPicker = useCallback(() => {
-    if (picker === "firstRun") void markFirstRunDone(getAppModeSync());
-    setPicker(null);
-  }, [picker]);
+  const skipIntro = useCallback(() => {
+    void markFirstRunDone(getAppModeSync());
+    setIntro(false);
+  }, []);
 
   useEffect(() => {
-    if (!cursor && !picker) return;
+    if (!cursor && !intro) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       if (cursor) back();
-      else skipPicker();
+      else skipIntro();
       return true;
     });
     return () => sub.remove();
-  }, [cursor, picker, back, skipPicker]);
+  }, [cursor, intro, back, skipIntro]);
 
   useEffect(() => onAppModeChange.subscribe(() => leaveMain()), [leaveMain]);
 
@@ -271,16 +249,14 @@ export function TutorialProvider({
     }
   };
 
-  const openRolePicker = useCallback((mode: PickerMode) => setPicker(mode), []);
-
   const value = useMemo<TutorialApi>(
-    () => ({ start, openRolePicker, runGate, leaveMain }),
-    [start, openRolePicker, runGate, leaveMain],
+    () => ({ start, offerTrainerTour, runGate, leaveMain }),
+    [start, offerTrainerTour, runGate, leaveMain],
   );
 
   const chapter = cursor ? CHAPTERS[cursor.queue[cursor.chapter]] : null;
   const total = chapter ? count(chapter.id) : 0;
-  const hideApp = (picker !== null && cursor === null) || (cursor !== null && !(step?.kind === "spotlight" && step.advanceOn === "tap"));
+  const hideApp = (intro && cursor === null) || (cursor !== null && !(step?.kind === "spotlight" && step.advanceOn === "tap"));
 
   return (
     <TutorialContext.Provider value={value}>
@@ -303,9 +279,7 @@ export function TutorialProvider({
             onExit={() => finish(true)}
           />
         )}
-        {picker && !cursor && (
-          <RolePicker mode={picker} appMode={getAppModeSync()} onPick={pick} onSkip={skipPicker} />
-        )}
+        {intro && !cursor && <TutorialIntro onStart={() => start(TUTORIAL, true)} onSkip={skipIntro} />}
         {AlertComponent}
       </View>
     </TutorialContext.Provider>

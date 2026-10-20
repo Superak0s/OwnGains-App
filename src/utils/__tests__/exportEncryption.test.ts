@@ -129,57 +129,11 @@ describe("exportEncryption", () => {
     expect(envelope.version).toBe(ENCRYPTED_VERSION);
   });
 
-  it("still opens a version 1 envelope written by the single-round KDF", async () => {
-    const salt = nodeCrypto.randomBytes(16).toString("hex");
-    const key = nodeCrypto
-      .createHash("sha256")
-      .update(`${salt}:correct horse`)
-      .digest();
-    const iv = nodeCrypto.randomBytes(12);
-    const cipher = nodeCrypto.createCipheriv("aes-256-gcm", key, iv);
-    const data = Buffer.concat([
-      iv,
-      cipher.update(JSON.stringify(payload), "utf8"),
-      cipher.final(),
-      cipher.getAuthTag(),
-    ]).toString("base64");
-
+  it("refuses a file written by an older format version", async () => {
+    const envelope = await encryptExport(payload, "correct horse");
     await expect(
-      decryptExport(
-        { format: "owngains-encrypted", version: 1, salt, data },
-        "correct horse",
-      ),
-    ).resolves.toEqual(payload);
-  });
-
-  it("still opens a version 2 envelope written by the 100k-round SHA-256 KDF", async () => {
-    const salt = nodeCrypto.randomBytes(16).toString("hex");
-    const saltBytes = Buffer.from(salt, "utf8");
-    let hash = nodeCrypto
-      .createHash("sha256")
-      .update(`${salt}:correct horse`, "utf8")
-      .digest();
-    for (let round = 0; round < 100_000; round += 1) {
-      hash = nodeCrypto
-        .createHash("sha256")
-        .update(Buffer.concat([saltBytes, hash]))
-        .digest();
-    }
-    const iv = nodeCrypto.randomBytes(12);
-    const cipher = nodeCrypto.createCipheriv("aes-256-gcm", hash, iv);
-    const data = Buffer.concat([
-      iv,
-      cipher.update(JSON.stringify(payload), "utf8"),
-      cipher.final(),
-      cipher.getAuthTag(),
-    ]).toString("base64");
-
-    await expect(
-      decryptExport(
-        { format: "owngains-encrypted", version: 2, salt, data },
-        "correct horse",
-      ),
-    ).resolves.toEqual(payload);
+      decryptExport({ ...envelope, version: 2 }, "correct horse"),
+    ).rejects.toThrow(/older version/);
   });
 
   it("refuses a file written by a newer format version", async () => {

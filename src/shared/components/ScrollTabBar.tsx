@@ -6,6 +6,8 @@ import {
   Text,
   View,
   StyleSheet,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native"
 import { readJSON, writeJSON } from "@shared/services/offlineHelpers"
 import { useTheme } from "../context/ThemeContext"
@@ -45,6 +47,7 @@ interface Props {
   readonly badges?: Record<string, number>
   /** SQLite key to persist order + visibility. */
   readonly storageKey: string
+  readonly style?: StyleProp<ViewStyle>
 }
 
 const ROW_HEIGHT = 68
@@ -221,6 +224,7 @@ export default function ScrollTabBar({
   onTabChange,
   badges = {},
   storageKey,
+  style,
 }: Props) {
   const { colors } = useTheme()
   const isFocused = useIsFocused()
@@ -322,7 +326,7 @@ export default function ScrollTabBar({
         ref={isFocused ? tutorialAnchor("scrollTabs") : undefined}
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.scroll}
+        style={[styles.scroll, style]}
         contentContainerStyle={styles.scrollContent}
         accessibilityRole="tablist"
       >

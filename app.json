@@ -51,6 +51,12 @@
       "expo-sqlite",
       "expo-image",
       [
+        "expo-calendar",
+        {
+          "calendarPermission": "Allow $(PRODUCT_NAME) to add your scheduled workouts to your calendar"
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {
@@ -110,7 +116,8 @@
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_BACKGROUND_LOCATION"
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "com.google.android.gms.permission.AD_ID"
       ],
       "package": "com.owngains.app"
     },

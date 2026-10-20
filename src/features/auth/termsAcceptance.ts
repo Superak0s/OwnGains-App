@@ -30,8 +30,8 @@ export const needsHealthConsent = (): boolean => getAppModeSync() === "online";
 // `serverTermsVersion`/`serverHealthConsentAt` are the signed-in user's
 // server record. A server without the acceptance or the health consent refuses
 // workout writes (403), so in online mode the on-device record alone isn't
-// enough: the screen shows again and re-sends both. `undefined` means a server
-// that doesn't report them.
+// enough: the screen shows again and re-sends both. `undefined` means the
+// server record isn't known here, so only the on-device record counts.
 export const hasAcceptedCurrentTerms = (
   userId: string,
   serverTermsVersion?: string | null,

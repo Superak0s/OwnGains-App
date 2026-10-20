@@ -26,8 +26,10 @@ jest.mock("@sentry/react-native", () => ({
 const load = () => {
   jest.resetModules();
   process.env.EXPO_PUBLIC_SENTRY_DSN = "https://key@example.invalid/1";
+  process.env.EXPO_PUBLIC_SENTRY_FORCE_ENABLE = "true";
   return {
     Sentry: require("@sentry/react-native"),
+    Firebase: require("@react-native-firebase/analytics"),
     crashReporting: require("../crashReporting"),
   };
 };
@@ -39,7 +41,7 @@ beforeEach(() => {
 
 describe("telemetry consent defaults", () => {
   it("sends nothing at all before the privacy screen is answered", () => {
-    const { Sentry, crashReporting } = load();
+    const { Sentry, Firebase, crashReporting } = load();
 
     expect(crashReporting.isCrashReportingEnabled()).toBe(false);
     expect(crashReporting.isTelemetryEnabled()).toBe(false);
@@ -50,7 +52,7 @@ describe("telemetry consent defaults", () => {
     crashReporting.log.warn("test.log");
 
     expect(Sentry.captureException).not.toHaveBeenCalled();
-    expect(Sentry.startSpan).not.toHaveBeenCalled();
+    expect(Firebase.logEvent).not.toHaveBeenCalled();
     expect(Sentry.logger.warn).not.toHaveBeenCalled();
   });
 
@@ -58,7 +60,7 @@ describe("telemetry consent defaults", () => {
     const first = load();
     await first.crashReporting.setCrashReportingEnabled(true);
 
-    const { Sentry, crashReporting } = load();
+    const { Sentry, Firebase, crashReporting } = load();
     expect(crashReporting.isCrashReportingEnabled()).toBe(true);
     expect(crashReporting.isTelemetryEnabled()).toBe(false);
 
@@ -66,7 +68,7 @@ describe("telemetry consent defaults", () => {
     crashReporting.metric.count("test.counter");
 
     expect(Sentry.captureException).toHaveBeenCalledTimes(1);
-    expect(Sentry.startSpan).not.toHaveBeenCalled();
+    expect(Firebase.logEvent).not.toHaveBeenCalled();
   });
 
   it("honours each stored flag independently", async () => {
@@ -74,12 +76,22 @@ describe("telemetry consent defaults", () => {
     await first.crashReporting.setCrashReportingEnabled(false);
     await first.crashReporting.setTelemetryEnabled(true);
 
-    const { Sentry, crashReporting } = load();
+    const { Sentry, Firebase, crashReporting } = load();
     crashReporting.captureException(new Error("boom"));
     crashReporting.metric.count("test.counter");
 
     expect(Sentry.captureException).not.toHaveBeenCalled();
-    expect(Sentry.startSpan).toHaveBeenCalledTimes(1);
+    expect(Firebase.logEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it("switches Firebase collection with the telemetry choice", async () => {
+    const { Firebase, crashReporting } = load();
+    await crashReporting.setTelemetryEnabled(true);
+    await crashReporting.setTelemetryEnabled(false);
+
+    const switches = (Firebase.setAnalyticsCollectionEnabled as jest.Mock).mock.calls;
+    expect(switches.map((call) => call[1])).toEqual([true, false]);
+    expect(require("@react-native-firebase/perf").getPerformance().dataCollectionEnabled).toBe(false);
   });
 });
 
@@ -129,7 +141,7 @@ describe("diagnostics prompt", () => {
 
 describe("sendTestEvent", () => {
   it("reports both switches off and sends nothing when consent was never given", async () => {
-    const { Sentry, crashReporting } = load();
+    const { Sentry, Firebase, crashReporting } = load();
 
     const result = await crashReporting.sendTestEvent();
 
@@ -142,7 +154,7 @@ describe("sendTestEvent", () => {
     });
     expect(Sentry.captureException).not.toHaveBeenCalled();
     expect(Sentry.logger.error).not.toHaveBeenCalled();
-    expect(Sentry.startSpan).not.toHaveBeenCalled();
+    expect(Firebase.logEvent).not.toHaveBeenCalled();
   });
 
   it("fires every channel once both gates are on", async () => {
@@ -150,7 +162,7 @@ describe("sendTestEvent", () => {
     await first.crashReporting.setCrashReportingEnabled(true);
     await first.crashReporting.setTelemetryEnabled(true);
 
-    const { Sentry, crashReporting } = load();
+    const { Sentry, Firebase, crashReporting } = load();
     const result = await crashReporting.sendTestEvent();
 
     expect(result.crashReporting).toBe(true);
@@ -158,7 +170,7 @@ describe("sendTestEvent", () => {
     expect(result.flushed).toBe(true);
     expect(Sentry.captureException).toHaveBeenCalledTimes(1);
     expect(Sentry.logger.error).toHaveBeenCalledTimes(1);
-    expect(Sentry.startSpan).toHaveBeenCalledTimes(1);
+    expect(Firebase.logEvent).toHaveBeenCalledTimes(1);
   });
 
   it("reports not-delivered when the transport does not drain", async () => {
@@ -224,73 +236,100 @@ describe("IP addresses", () => {
   });
 });
 
-describe("counts as transactions", () => {
+describe("analytics events", () => {
   const telemetryOn = async () => {
     const first = load();
     await first.crashReporting.setTelemetryEnabled(true);
     return load();
   };
-  const sentNames = (Sentry: { startSpan: jest.Mock }) =>
-    Sentry.startSpan.mock.calls.map(([options]) => options.name);
+  const sent = (Firebase: { logEvent: jest.Mock }) =>
+    Firebase.logEvent.mock.calls.map((call) => call.slice(1));
 
   it("sends nothing without telemetry consent", () => {
-    const { Sentry, crashReporting } = load();
+    const { Firebase, crashReporting } = load();
     crashReporting.metric.count("sync.dropped", 3);
     crashReporting.trackFeature("widgets", "add");
     crashReporting.trackScreenView("Tracking/weight");
-    expect(Sentry.startSpan).not.toHaveBeenCalled();
+    expect(Firebase.logEvent).not.toHaveBeenCalled();
+    expect(Firebase.logScreenView).not.toHaveBeenCalled();
   });
 
-  it("names each transaction after the count and its outcome", async () => {
-    const { Sentry, crashReporting } = await telemetryOn();
+  it("sends nothing from a dev build unless forced", async () => {
+    const first = load();
+    await first.crashReporting.setTelemetryEnabled(true);
+    process.env.EXPO_PUBLIC_SENTRY_FORCE_ENABLE = "false";
+    jest.resetModules();
+    const Firebase = require("@react-native-firebase/analytics");
+    require("../crashReporting").metric.count("sync.dropped");
+    expect(Firebase.logEvent).not.toHaveBeenCalled();
+  });
+
+  it("calls nothing in Firebase when the build has no Firebase app", async () => {
+    const first = load();
+    await first.crashReporting.setTelemetryEnabled(true);
+    jest.resetModules();
+    require("@react-native-firebase/app").getApps.mockReturnValue([]);
+    const Firebase = require("@react-native-firebase/analytics");
+    const crashReporting = require("../crashReporting");
+
+    await crashReporting.setTelemetryEnabled(true);
+    crashReporting.metric.count("sync.dropped");
+    crashReporting.trackScreenView("Home");
+    crashReporting.setTelemetryTag("app_mode", "online");
+
+    expect(Firebase.getAnalytics).not.toHaveBeenCalled();
+  });
+
+  it("maps names and attributes onto what Firebase accepts", async () => {
+    const { Firebase, crashReporting } = await telemetryOn();
     crashReporting.metric.count("auth.signin", 1, { attributes: { outcome: "ok" } });
     crashReporting.metric.count("sync.dropped", 3);
     crashReporting.trackFeature("workout", "recordSet", { mode: "online", outcome: "error" });
+    crashReporting.metric.distribution("sync.run.duration", 250, { attributes: { queued: 2 } });
     crashReporting.trackScreenView("Friends/requests");
 
-    expect(sentNames(Sentry)).toEqual([
-      "auth.signin:ok",
-      "sync.dropped",
-      "feature:workout.recordSet:error",
-      "screen:Friends/requests",
+    expect(sent(Firebase)).toEqual([
+      ["auth_signin", { outcome: "ok" }],
+      ["sync_dropped", { value: 3 }],
+      ["feature_use", { mode: "online", outcome: "error", feature: "workout", op: "recordSet" }],
+      ["sync_run_duration", { queued: 2, value: 250 }],
     ]);
-    expect(Sentry.startSpan.mock.calls[1][0]).toMatchObject({
-      parentSpan: null,
-      attributes: { value: 3 },
+    expect(Firebase.logScreenView.mock.calls[0][1]).toEqual({
+      screen_name: "Friends/requests",
+      screen_class: "Friends/requests",
     });
   });
 
-  it("sends millisecond timings as transactions and other values as logs", async () => {
-    const { Sentry, crashReporting } = await telemetryOn();
-    const now = Date.now();
-    crashReporting.metric.distribution("sync.run.duration", 250, {
-      unit: "millisecond",
-      attributes: { queued: 2 },
-    });
-    crashReporting.metric.distribution("import.parsed.days", 4);
-    crashReporting.metric.gauge("sync.queue.depth", 7, { attributes: { mode: "online" } });
-
-    expect(sentNames(Sentry)).toEqual(["sync.run.duration"]);
-    expect(Sentry.startSpan.mock.calls[0][0].startTime).toBeLessThanOrEqual(now - 250 + 50);
-    expect(Sentry.startSpan.mock.calls[0][0].startTime).toBeGreaterThanOrEqual(now - 250);
-    expect(Sentry.logger.info.mock.calls).toEqual([
-      ["import.parsed.days", { value: 4 }],
-      ["sync.queue.depth", { mode: "online", value: 7 }],
-    ]);
-  });
-
-
-  it("always samples counts and the first screen load, everything else at the trace rate", async () => {
+  it("always samples the first screen load, everything else at the trace rate", async () => {
     const { Sentry, crashReporting } = await telemetryOn();
     crashReporting.initCrashReporting();
     const { tracesSampler } = Sentry.init.mock.calls[0][0];
     const inheritOrSampleWith = (rate: number) => rate;
-    crashReporting.metric.count("auth.logout");
-    const { attributes } = Sentry.startSpan.mock.calls[0][0];
 
-    expect(tracesSampler({ name: "auth.logout", attributes, inheritOrSampleWith })).toBe(1);
-    expect(tracesSampler({ name: "Home", attributes: {}, inheritOrSampleWith })).toBe(1);
-    expect(tracesSampler({ name: "Plan", attributes: {}, inheritOrSampleWith })).toBe(0.1);
+    expect(tracesSampler({ name: "Home", inheritOrSampleWith })).toBe(1);
+    expect(tracesSampler({ name: "Plan", inheritOrSampleWith })).toBe(0.1);
+  });
+
+  it("times tracked spans as Firebase traces, stopping them when the work fails", async () => {
+    const { crashReporting } = await telemetryOn();
+    const Perf = require("@react-native-firebase/perf");
+    const failing = crashReporting.trackSpan("healthConnect.sync", async () => {
+      throw new Error("denied");
+    }, { trigger: "manual", rows: 2.6 });
+
+    await expect(failing).rejects.toThrow("denied");
+    expect(Perf.trace.mock.calls[0][1]).toBe("healthConnect_sync");
+    expect(Perf.span.putAttribute).toHaveBeenCalledWith("trigger", "manual");
+    expect(Perf.span.putAttribute).toHaveBeenCalledWith("outcome", "error");
+    expect(Perf.span.putMetric).toHaveBeenCalledWith("rows", 3);
+    expect(Perf.span.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs tracked work untimed without telemetry consent", async () => {
+    const { crashReporting } = load();
+    const Perf = require("@react-native-firebase/perf");
+    await expect(crashReporting.trackSpan("plan.import", async () => 7)).resolves.toBe(7);
+    expect(Perf.trace).not.toHaveBeenCalled();
   });
 });
 
@@ -321,39 +360,36 @@ describe("retention and workout shape", () => {
   };
 
   it("counts one open per calendar day, with days since the last workout", async () => {
-    const { Sentry, crashReporting } = await telemetryOn();
+    const { Firebase, crashReporting } = await telemetryOn();
     const morning = new Date(2026, 9, 4, 8).getTime();
 
     crashReporting.trackDailyOpen(morning);
     crashReporting.trackDailyOpen(morning + 60 * 60 * 1000);
     crashReporting.trackDailyOpen(morning + 24 * 60 * 60 * 1000);
 
-    const opens = Sentry.startSpan.mock.calls.map(([options]: [{ name: string }]) => options);
-    expect(opens).toHaveLength(2);
-    expect(opens[0]).toMatchObject({
-      name: "app.daily_open",
-      attributes: { days_since_workout: "never" },
-    });
+    expect(Firebase.logEvent).toHaveBeenCalledTimes(2);
+    expect(Firebase.logEvent.mock.calls[0].slice(1)).toEqual([
+      "app_daily_open",
+      { days_since_workout: "never" },
+    ]);
   });
 
-  it("spans a completed workout from its start and remembers when it was", async () => {
-    const { Sentry, crashReporting } = await telemetryOn();
-    crashReporting.trackWorkoutCompleted(1_000, { sets: 12, exercises: 4, auto: false });
+  it("logs a completed workout with its length and remembers when it was", async () => {
+    const { Firebase, crashReporting } = await telemetryOn();
+    crashReporting.trackWorkoutCompleted(Date.now() - 60_000, { sets: 12, exercises: 4, auto: false });
 
-    expect(Sentry.startSpan.mock.calls[0][0]).toMatchObject({
-      name: "workout.completed",
-      startTime: 1_000,
-      parentSpan: null,
-      attributes: { sets: 12, exercises: 4, auto: false },
-    });
+    const [, name, params] = Firebase.logEvent.mock.calls[0];
+    expect(name).toBe("workout_completed");
+    expect(params).toMatchObject({ sets: 12, exercises: 4, auto: "false" });
+    expect(params.value).toBeGreaterThanOrEqual(60_000);
     expect(stored["@telemetry_last_workout_at"]).toBeDefined();
   });
 
   it("records nothing without telemetry consent", () => {
-    const { Sentry, crashReporting } = load();
+    const { Firebase, crashReporting } = load();
     crashReporting.trackDailyOpen();
     crashReporting.trackWorkoutCompleted(1_000, { sets: 1, exercises: 1, auto: false });
-    expect(Sentry.startSpan).not.toHaveBeenCalled();
+    expect(Firebase.logEvent).not.toHaveBeenCalled();
     expect(stored["@telemetry_last_workout_at"]).toBeUndefined();
   });
 });

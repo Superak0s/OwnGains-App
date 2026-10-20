@@ -23,8 +23,8 @@ const mount = (signup: jest.Mock) =>
     { auth: { signup } },
   )
 
-const fillAndSubmit = async () => {
-  await fireEvent.changeText(screen.getByPlaceholderText("Choose a username"), "newbie")
+const fillAndSubmit = async (username = "newbie") => {
+  await fireEvent.changeText(screen.getByPlaceholderText("Choose a username"), username)
   await fireEvent.changeText(screen.getByPlaceholderText("your.email@example.com"), "New@Example.com ")
   await fireEvent.changeText(screen.getByPlaceholderText("Create a password"), PASSWORD)
   await fireEvent.changeText(screen.getByPlaceholderText("Re-enter your password"), PASSWORD)
@@ -60,6 +60,18 @@ describe("SignupScreen", () => {
     await fireEvent.changeText(screen.getByPlaceholderText("Re-enter your password"), PASSWORD)
     await fireEvent.press(screen.getByLabelText("Create account"))
 
+    expect(signup).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["ab_123", "at least 3 of them letters"],
+    ["mydemo", "contain \"demo\""],
+  ])("refuses the username %s before calling the server", async (username, message) => {
+    const signup = jest.fn()
+    await mount(signup)
+    await fillAndSubmit(username)
+
+    expect(await screen.findByText(new RegExp(message))).toBeTruthy()
     expect(signup).not.toHaveBeenCalled()
   })
 })

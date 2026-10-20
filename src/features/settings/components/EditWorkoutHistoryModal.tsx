@@ -36,6 +36,7 @@ import {
   toDateString,
 } from "@utils/format";
 import ModalSheet from "@shared/components/ModalSheet";
+import { TrainerLoggedBadge, trainerLoggedLabel } from "@shared/components/TrainerLoggedBadge";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import { showToast } from "@shared/components/toast";
 import { SuggestionsBox } from "@shared/components/SuggestionsBox";
@@ -192,7 +193,12 @@ const SessionRow = React.memo(function SessionRow({
       style={styles.sessionRow}
       onPress={() => onPress(session)}
       accessibilityRole="button"
-      accessibilityLabel={`Edit ${formatSessionLabel(session)}`}
+      accessibilityLabel={[
+        `Edit ${formatSessionLabel(session)}`,
+        trainerLoggedLabel(session),
+      ]
+        .filter(Boolean)
+        .join(", ")}
     >
       <View style={{ flex: 1 }}>
         <Text style={styles.sessionTitle}>{formatSessionLabel(session)}</Text>
@@ -200,6 +206,7 @@ const SessionRow = React.memo(function SessionRow({
           {session.setCount ?? 0} set
           {(session.setCount ?? 0) === 1 ? "" : "s"}
         </Text>
+        <TrainerLoggedBadge {...session} />
       </View>
       <Text style={styles.chevron} importantForAccessibility="no">
         ›

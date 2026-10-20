@@ -2,7 +2,7 @@ import type { DayModalState } from "../types";
 import type { UseAlertReturn } from "@shared/components/CustomAlert";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import type { WeightEntry, HeightData } from "@shared/types";
-import { bodyTrackingApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import { createDeleteHandler, withConfirm, describeError } from "../helpers";
 import { isoToLocalDateStr, toTrendPoints } from "../utils";
 import { toDateString } from "@utils/format";
@@ -34,6 +34,7 @@ const MIN_HEIGHT_CM = 50;
 const MAX_HEIGHT_CM = 260;
 
 export function useWeightTab(deps: UseWeightTabDeps) {
+  const { bodyTrackingApi } = useTrackingApis();
   const { alert, loadData, setDayModal, selectedLogDate, setSelectedLogDate, buildLocalISOForDate, user } = deps;
 
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);

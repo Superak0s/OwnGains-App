@@ -1,12 +1,7 @@
 import { authService } from "../auth"
 import { ServerUnreachableError } from "@shared/services/apiError"
 import { refreshTokenStorage, tokenStorage } from "@shared/services/tokenStorage"
-import {
-  getStorageItem,
-  removeStorageItem,
-  renameUserData,
-  setStorageItem,
-} from "@shared/services/sqliteStorage"
+import { setStorageItem } from "@shared/services/sqliteStorage"
 
 jest.mock("@shared/services/config", () => ({
   getServerUrl: jest.fn(() => "https://api.example.com"),
@@ -23,7 +18,6 @@ jest.mock("@shared/services/sqliteStorage", () => ({
   getStorageItem: jest.fn().mockResolvedValue(null),
   getStorageItemSync: jest.fn(() => null),
   removeStorageItem: jest.fn().mockResolvedValue(undefined),
-  renameUserData: jest.fn().mockResolvedValue(undefined),
   setStorageErrorHandler: jest.fn(),
 }))
 
@@ -102,61 +96,6 @@ describe("authService signin/signup network flow", () => {
       ServerUnreachableError,
     )
     expect(setTokenMock).not.toHaveBeenCalled()
-  })
-})
-
-describe("authService numeric-id to uuid migration", () => {
-  const uuid = "3f2b8c1e-9a4d-4e6f-8b2a-1c0d9e8f7a6b"
-  const getStorageItemMock = getStorageItem as jest.Mock
-  const renameUserDataMock = renameUserData as jest.Mock
-  const removeStorageItemMock = removeStorageItem as jest.Mock
-
-  const signinAs = async (user: { id: string | number; username: string }) => {
-    ;(globalThis.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => ({ success: true, token: "t", user }),
-    })
-    await authService.signin(user.username, "pw")
-  }
-
-  beforeEach(() => {
-    globalThis.fetch = jest.fn()
-    getStorageItemMock.mockReset()
-    renameUserDataMock.mockClear()
-    removeStorageItemMock.mockClear()
-  })
-
-  it("moves the account's rows from its numeric id to its new uuid", async () => {
-    getStorageItemMock.mockResolvedValue(JSON.stringify({ id: 2, username: "kostis" }))
-
-    await signinAs({ id: uuid, username: "kostis" })
-
-    expect(renameUserDataMock).toHaveBeenCalledWith("2", uuid)
-    expect(removeStorageItemMock).toHaveBeenCalledWith(`@active_trainee_user_${uuid}`)
-  })
-
-  it("leaves another account's rows alone", async () => {
-    getStorageItemMock.mockResolvedValue(JSON.stringify({ id: 2, username: "someone" }))
-
-    await signinAs({ id: uuid, username: "kostis" })
-
-    expect(renameUserDataMock).not.toHaveBeenCalled()
-  })
-
-  it("does nothing once the stored id is already a uuid", async () => {
-    getStorageItemMock.mockResolvedValue(JSON.stringify({ id: uuid, username: "kostis" }))
-
-    await signinAs({ id: uuid, username: "kostis" })
-
-    expect(renameUserDataMock).not.toHaveBeenCalled()
-  })
-
-  it("does nothing against a server that still sends numeric ids", async () => {
-    getStorageItemMock.mockResolvedValue(JSON.stringify({ id: 2, username: "kostis" }))
-
-    await signinAs({ id: 2, username: "kostis" })
-
-    expect(renameUserDataMock).not.toHaveBeenCalled()
   })
 })
 

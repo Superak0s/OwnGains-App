@@ -126,3 +126,32 @@ export function categoriesIn(releases: Release[]): ChangeCategory[] {
   const present = new Set(releases.flatMap((r) => r.sections.map((s) => s.category)));
   return CHANGE_CATEGORIES.filter((c) => present.has(c));
 }
+
+const compareVersions = (a: string, b: string): number => {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diff = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+};
+
+/**
+ * Releases to show once after an update, newest first: every user-facing
+ * release after the previously run version, up to the installed one. Empty on
+ * a first install, when the version is unchanged, or after a downgrade.
+ */
+export function releasesToAnnounce(
+  releases: Release[],
+  lastSeen: string | null,
+  current: string | undefined,
+): Release[] {
+  if (!lastSeen || !current || lastSeen === current) return [];
+  return releases.filter(
+    (r) =>
+      r.sections.length > 0 &&
+      compareVersions(r.version, lastSeen) > 0 &&
+      compareVersions(r.version, current) <= 0,
+  );
+}

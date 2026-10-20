@@ -3,7 +3,7 @@ import type { UseAlertReturn } from "@shared/components/CustomAlert";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import type { MacrosEntry } from "@shared/types";
 
-import { macrosTrackingApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import { createDeleteHandler, withConfirm, describeError } from "../helpers";
 import { isoToLocalDateStr, toNumberOrUndefined } from "../utils";
 import { toDateString , generateId } from "@utils/format";
@@ -67,6 +67,7 @@ interface UseMacrosTabDeps {
 }
 
 export function useMacrosTab(deps: UseMacrosTabDeps) {
+  const { macrosTrackingApi } = useTrackingApis();
   const { alert, loadData, setDayModal, selectedLogDate, setSelectedLogDate } = deps;
   const { user } = useAuth();
 

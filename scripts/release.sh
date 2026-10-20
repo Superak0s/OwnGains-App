@@ -57,7 +57,7 @@ ${B}What to build${R} ${DIM}(default: APKs and AAB)${R}
 ${B}Faster builds${R}
   --no-prebuild       Incremental prebuild. Unsafe after native deps, plugins/ or app.json change.
   --32bit             Also build the armeabi-v7a APK (arm64-v8a only by default)
-  --no-test           Skip jest. Lint and typecheck still run.
+  --no-test           Skip jest and the CI run under act. Lint and typecheck still run.
 
 ${B}Version${R}
   --bump=X            patch, minor, keep or 1.2.3 (skips the prompt)
@@ -136,6 +136,13 @@ if [ "$DEBUG_ONLY" = true ]; then
         || [ "$SKIP_RELEASE" = true ] || [ ${#GH_RELEASE_FLAGS[@]} -gt 0 ] || [ -n "$PLAY_TRACK_ARG" ] || [ "$SKIP_PLAY" = true ]; then
         die "debug only takes --no-prebuild and --32bit. The rest apply to releases."
     fi
+fi
+
+# Checked before any prompt, so a missing act doesn't cost a version choice.
+RUN_ACT=false
+if [ "$DEBUG_ONLY" = false ] && [ "$SKIP_TESTS" = false ] && [ "$SKIP_PUSH" = false ]; then
+    RUN_ACT=true
+    command -v act >/dev/null 2>&1         || die "act is not installed (winget install nektos.act, or brew/pacman install act). Or pass --no-test."
 fi
 
 if [ "$USE_WSL" = true ] && [ "$ENV_NAME" = native ]; then
@@ -541,6 +548,15 @@ done
 rm -rf "$VERIFY_LOGS"
 if [ "$VERIFY_FAILED" = true ]; then
     false
+fi
+
+# The GitHub workflow itself (npm ci from the lockfile, then the same checks on
+# Linux), so the push doesn't turn up a CI failure the local run missed. act
+# copies the source tree, uncommitted changes included, minus .gitignore.
+if [ "$RUN_ACT" = true ]; then
+    info "CI workflow under act"
+    (cd "$SRC" && act push -j check --rm -P ubuntu-latest=catthehacker/ubuntu:act-latest)
+    ok "CI (act)"
 fi
 
 # xlsx is pinned to a SheetJS CDN tarball rather than the npm registry, so

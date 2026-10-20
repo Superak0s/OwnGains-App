@@ -22,6 +22,8 @@ interface FriendTabsBarProps {
   ) => boolean;
   readonly onSelectTab: (tabKey: string) => void;
   readonly onLockedTab: (tabKey: string) => void;
+  /** Adds the Schedule tab, shown on the client's view of their trainer. */
+  readonly showSchedule?: boolean;
   readonly styles: ReturnType<typeof makeStyles>;
 }
 
@@ -32,6 +34,7 @@ export function FriendTabsBar({
   hasReceivedPermission,
   onSelectTab,
   onLockedTab,
+  showSchedule,
   styles,
 }: FriendTabsBarProps): React.JSX.Element {
   const locks = friendTabLocks(
@@ -45,6 +48,7 @@ export function FriendTabsBar({
     { key: "analytics", icon: "📊", label: "Analytics", locked: locks.analytics },
     { key: "program", icon: "📋", label: "Program", locked: locks.program },
     { key: "live", icon: "🔴", label: "Live", locked: locks.live },
+    ...(showSchedule ? [{ key: "schedule", icon: "🗓️", label: "Schedule", locked: false }] : []),
     { key: "actions", icon: "⚙️", label: "Actions", locked: locks.actions },
   ];
 

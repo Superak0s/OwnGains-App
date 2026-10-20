@@ -34,7 +34,7 @@ beforeEach(() => {
 describe("offline authService", () => {
   it("records consent, strict or not, without reaching the network", async () => {
     globalThis.fetch = jest.fn()
-    await expect(authService.recordConsent("3", false, true)).resolves.toBeUndefined()
+    await expect(authService.recordConsent("3", false)).resolves.toBeUndefined()
     await expect(authService.recordConsent("3", true)).resolves.toBeUndefined()
     expect(globalThis.fetch).not.toHaveBeenCalled()
   })

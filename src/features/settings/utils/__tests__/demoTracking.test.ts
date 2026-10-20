@@ -55,7 +55,14 @@ jest.mock("@shared/services/storage", () => ({
     mockState.store.delete(key + user);
   },
 }));
-jest.mock("@shared/services/appMode", () => ({ isServerless: async () => false }));
+jest.mock("@features/schedule/services", () => ({
+  scheduleApi: {
+    create: (p: { startAt: string }) => Promise.resolve({ id: mockState.nextId++, startAt: p.startAt }),
+    remove: (id: number) => mockDel("schedule", id),
+  },
+}));
+const mockServerless = { value: false };
+jest.mock("@shared/services/appMode", () => ({ isServerless: async () => mockServerless.value }));
 jest.mock("@shared/services/localOnlyFeatures", () => ({
   isFeatureLocal: async (f: string) => mockState.local.has(f),
 }));
@@ -68,6 +75,19 @@ beforeEach(() => {
 });
 
 describe("demo tracking", () => {
+  it("schedules two upcoming workouts only without a server, and removes them", async () => {
+    mockServerless.value = true;
+    mockState.kv.set("u2_height_cm", "170");
+    const now = Date.UTC(2026, 0, 10, 12);
+    await fillDemoTracking("u2", 180, now);
+    const records = mockState.store.get("@demo_recordsu2") as [string, number][];
+    expect(records.filter(([kind]) => kind === "schedule")).toHaveLength(2);
+    await clearDemoTracking("u2");
+    expect(mockState.deleted.filter((d) => d.startsWith("schedule:"))).toHaveLength(2);
+    mockServerless.value = false;
+    mockState.kv.clear();
+  });
+
   it("only sets a height when none is known, even when the server stores tracking", async () => {
     expect(await fillDemoTracking("u1", 180)).toBe(0);
     expect(await fillDemoTracking("u1")).toBe(1);

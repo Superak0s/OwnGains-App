@@ -29,9 +29,8 @@ export interface SupplementReminderConfig {
 
 /** "alarm" gets its own channel. Android fixes a channel's importance, sound
  * stream and DND bypass at creation, so the two types can't share one, and
- * changing the alarm's settings needs a new id (the old one is deleted on init). */
+ * changing the alarm's settings needs a new id. */
 export const ALARM_CHANNEL = "supplement-alarms-v2";
-const LEGACY_ALARM_CHANNEL = "supplement-alarms";
 const CHANNELS: Record<string, string> = {
   notification: "supplement-reminders",
   alarm: ALARM_CHANNEL,
@@ -161,7 +160,6 @@ export const initializeSupplementNotifications = async (
           lightColor: "#667eea",
           showBadge: true,
         });
-        await Notifications.deleteNotificationChannelAsync(LEGACY_ALARM_CHANNEL);
         await Notifications.setNotificationChannelAsync(WORKOUT_TIMER_CHANNEL, {
           name: "Workout Timers",
           importance: Notifications.AndroidImportance.HIGH,
@@ -315,15 +313,10 @@ const cancelExpoTimeReminder = async (
   if (!Notifications) return;
 
   try {
-    // The legacy id too: installs that predate the per-user namespace have a
-    // reminder scheduled under it that nothing else would ever cancel.
-    const ids = new Set([
-      notificationIdFor(userId, supplementId),
-      `supplement-time-${supplementId}`,
-    ]);
+    const id = notificationIdFor(userId, supplementId);
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     for (const n of scheduled) {
-      if (ids.has(n.identifier)) {
+      if (n.identifier === id) {
         await Notifications.cancelScheduledNotificationAsync(n.identifier);
       }
     }

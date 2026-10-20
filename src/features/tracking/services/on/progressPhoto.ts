@@ -94,8 +94,7 @@ export const progressPhotoApi = {
     const res = await apiCall<ApiResponse<ProgressPhotoMuscle[]> & { nextCursor?: PhotoCursor | null }>(
       `/api/tracking/photos/muscle?${params.toString()}`,
     );
-    // A server without paging ignores the cursor and resends the first page,
-    // so a missing nextCursor has to end the list.
+    // A missing nextCursor ends the list.
     return {
       success: res.success,
       data: (res.data ?? []).map(withAbsoluteUri),

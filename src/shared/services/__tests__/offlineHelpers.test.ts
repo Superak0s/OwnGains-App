@@ -79,10 +79,9 @@ const entry = (id: number, at: string, note?: string): Entry => ({
   note,
 })
 
-const makeStore = (collection = "entries", legacyKey = "legacy_entries") =>
+const makeStore = (collection = "entries") =>
   createRecordStore<Entry>(
     collection,
-    legacyKey,
     (e) => e.id,
     (e) => e.at,
   )
@@ -173,32 +172,6 @@ describe("createRecordStore", () => {
       expect.arrayContaining([expect.anything()]),
     )
     expect(sqlite.deleteRecords).not.toHaveBeenCalled()
-  })
-
-  it("migrates a legacy JSON blob into the collection exactly once", async () => {
-    kv.legacy_entries = JSON.stringify([entry(1, "2024-01-01")])
-    const store = makeStore()
-
-    await Promise.all([store.getAll(), store.getAll(), store.getOne(1)])
-
-    expect(sqlite.putRecords).toHaveBeenCalledTimes(1)
-    expect(kv.legacy_entries).toBeUndefined()
-    expect(await store.getAll()).toEqual([entry(1, "2024-01-01")])
-  })
-
-  it("skips the bulk write when there is no legacy blob", async () => {
-    await makeStore().getAll()
-    expect(sqlite.putRecords).not.toHaveBeenCalled()
-    expect(sqlite.removeStorageItem).toHaveBeenCalledWith("legacy_entries")
-  })
-
-  it("retries the migration after a transient failure instead of caching it", async () => {
-    kv.legacy_entries = JSON.stringify([entry(1, "2024-01-01")])
-    ;(sqlite.putRecords as jest.Mock).mockRejectedValueOnce(new Error("locked"))
-    const store = makeStore()
-
-    await expect(store.getAll()).rejects.toThrow("locked")
-    expect(await store.getAll()).toEqual([entry(1, "2024-01-01")])
   })
 
   it("dedupes concurrent reads but not reads that straddle a write", async () => {
@@ -301,7 +274,7 @@ describe("computeDailyStreak", () => {
 
 describe("per-user record collections", () => {
   it("keeps one user's records out of another's and migrates pre-namespace rows", async () => {
-    const store = makeStore("isolated", "legacy_isolated")
+    const store = makeStore("isolated")
 
     await store.put(entry(1, "2024-01-01"))
 

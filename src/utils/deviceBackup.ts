@@ -1,4 +1,5 @@
 import * as FileSystem from "expo-file-system/legacy";
+import { trackSpan } from "@shared/services/crashReporting";
 import {
   clearUserData,
   exportAll,
@@ -192,24 +193,25 @@ const repointSnapshot = (backup: DeviceBackup): StorageSnapshot => ({
  *
  * Photos are inlined as base64 and so are capped by PHOTO_BUDGET_BYTES.
  */
-export const buildDeviceBackup = async (
+export const buildDeviceBackup = (
   userId: string,
   extra: { profile?: unknown; server?: unknown } = {},
-): Promise<DeviceBackup> => {
-  const { kv, records } = snapshotFor(await exportAll(), userId);
-  const { photos, omitted } = await readPhotos(photoNamesIn({ kv, records }));
-  return {
-    format: BACKUP_FORMAT,
-    version: BACKUP_VERSION,
-    exportedAt: new Date().toISOString(),
-    userId,
-    kv,
-    records,
-    photos,
-    ...(omitted > 0 && { photosOmitted: omitted }),
-    ...extra,
-  };
-};
+): Promise<DeviceBackup> =>
+  trackSpan("backup.export", async () => {
+    const { kv, records } = snapshotFor(await exportAll(), userId);
+    const { photos, omitted } = await readPhotos(photoNamesIn({ kv, records }));
+    return {
+      format: BACKUP_FORMAT,
+      version: BACKUP_VERSION,
+      exportedAt: new Date().toISOString(),
+      userId,
+      kv,
+      records,
+      photos,
+      ...(omitted > 0 && { photosOmitted: omitted }),
+      ...extra,
+    };
+  });
 
 export const isDeviceBackup = (value: unknown): value is DeviceBackup =>
   typeof value === "object" &&

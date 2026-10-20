@@ -5,7 +5,7 @@ import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { captureException } from "@shared/services/crashReporting";
 import type { WidgetDefinition } from "@shared/types";
 import { toDefaultWidgets } from "@shared/types";
-import { menstrualApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import { buildLocalISOForDate } from "../utils";
 import makeTrackingStyles from "../styles";
 import { Button, IconButton, Note, Row, radius, space } from "../ui";
@@ -89,6 +89,7 @@ export function LogCycleModal({
   prefillDate,
   onSuccess,
 }: LogCycleModalProps) {
+  const { menstrualApi } = useTrackingApis();
   const { colors } = useTheme();
   const [settings, setSettings] = useState<{
     periodDays: number;
@@ -190,6 +191,7 @@ interface CycleSettingsWidgetProps {
 export function CycleSettingsWidget({
   onSettingsUpdate,
 }: CycleSettingsWidgetProps) {
+  const { menstrualApi } = useTrackingApis();
   const { colors } = useTheme();
   const [expanded, setExpanded] = useState(false);
   const [periodDays, setPeriodDays] = useState<number>(5);

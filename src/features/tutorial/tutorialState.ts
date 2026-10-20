@@ -4,17 +4,7 @@ import { trackFeature } from "@shared/services/crashReporting";
 import { withLock } from "@shared/services/offlineHelpers";
 import { createEmitter } from "@utils/emitter";
 
-export type Role = "user" | "trainer" | "both";
-export type PickerMode = "firstRun" | "onlineTour" | "change";
-
-export const ROLE_LABELS: Record<Role, string> = {
-  user: "Just me",
-  trainer: "Trainer",
-  both: "Both",
-};
-
 export interface TutorialState {
-  role: Role | null;
   completed: string[];
   firstRunDone: boolean;
   firstRunMode: AppMode | null;
@@ -25,8 +15,6 @@ export interface TutorialState {
 // switches must never bring the first-run tutorial back.
 export const TUTORIAL_KEY = "@tutorial";
 
-const ROLES: ReadonlySet<string> = new Set(["user", "trainer", "both"]);
-
 export function parseTutorialState(raw: string | null): TutorialState {
   let value: unknown = null;
   try {
@@ -36,7 +24,6 @@ export function parseTutorialState(raw: string | null): TutorialState {
   }
   const o = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
   return {
-    role: ROLES.has(o.role as string) ? (o.role as Role) : null,
     completed: Array.isArray(o.completed)
       ? o.completed.filter((c): c is string => typeof c === "string")
       : [],
@@ -80,11 +67,6 @@ export const markFirstRunDone = (mode: AppMode) =>
 export const markOnlineTourOffered = () =>
   updateTutorialState((s) => ({ ...s, onlineTourOffered: true }));
 
-export const setTutorialRole = (role: Role) => {
-  trackFeature("tutorial", "role", { role });
-  return updateTutorialState((s) => ({ ...s, role }));
-};
-
 export function gateAction(
   s: TutorialState,
   mode: AppMode,
@@ -94,13 +76,4 @@ export function gateAction(
     return "onlineTour";
   }
   return null;
-}
-
-export function pickOutcome(
-  role: Role,
-  mode: AppMode,
-  picker: PickerMode,
-): "needsOnline" | "setRole" | "start" {
-  if (role !== "user" && mode === "offline") return "needsOnline";
-  return picker === "change" ? "setRole" : "start";
 }

@@ -56,7 +56,8 @@ type HomeOwnWidgetType =
   | "next_workout"
   | "weekly_progress"
   | "workout_calendar"
-  | "workout_streak";
+  | "workout_streak"
+  | "switch_to_trainer";
 
 const HOME_OWN_REGISTRY: Record<
   HomeOwnWidgetType,
@@ -92,10 +93,18 @@ const HOME_OWN_REGISTRY: Record<
     availableSizes: ["small"],
     defaultSize: "small",
   },
+  switch_to_trainer: {
+    type: "switch_to_trainer",
+    title: "Trainer Mode",
+    description: "Switch to the coaching tools for your clients",
+    availableSizes: ["small"],
+    defaultSize: "small",
+  },
 };
 
 const HOME_PLAN_KEYS = [
   "select_split",
+  "schedule",
   "muscle_frequency",
   "view_program",
 ] as const;

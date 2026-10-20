@@ -2,7 +2,10 @@ import type { WidgetDefinition } from "@shared/types";
 import { toDefaultWidgets } from "@shared/types";
 
 export type WeightWidgetType =
-  "weight_overview" | "weight_calendar" | "weight_history" | "weight_chart";
+  | "weight_overview"
+  | "weight_calendar"
+  | "weight_history"
+  | "weight_chart";
 
 export const WEIGHT_WIDGET_REGISTRY: Record<
   WeightWidgetType,
@@ -10,7 +13,6 @@ export const WEIGHT_WIDGET_REGISTRY: Record<
 > = {
   weight_overview: {
     type: "weight_overview",
-    title: "Current Weight",
     description: "Latest weigh-in, trend vs. average, and a quick log button",
     availableSizes: ["small", "medium"],
     defaultSize: "medium",

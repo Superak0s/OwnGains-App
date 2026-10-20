@@ -1,7 +1,7 @@
 import { Platform } from "react-native"
 import Zeroconf from "react-native-zeroconf"
 import { isPrivateHost } from "./config"
-import { log, metric } from "./crashReporting"
+import { log, startTrace } from "./crashReporting"
 
 const SCAN_TIMEOUT_MS = 4000
 const LOG_PREFIX = "[lanDiscovery]"
@@ -51,14 +51,11 @@ export const scanForLanServer = (): Promise<LanServer | null> => {
     // rejects the promise instead of throwing at the call site.
     const zeroconf = new Zeroconf()
     let settled = false
-    const started = Date.now()
+    const stopTrace = startTrace("lan.scan")
     const finish = (result: LanServer | null) => {
       if (settled) return
       settled = true
-      metric.distribution("lan.scan.duration", Date.now() - started, {
-        unit: "millisecond",
-        attributes: { outcome: result ? "found" : "not_found" },
-      })
+      stopTrace({ outcome: result ? "found" : "not_found" })
       clearTimeout(timer)
       zeroconf.stop()
       zeroconf.removeAllListeners()

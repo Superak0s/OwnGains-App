@@ -32,6 +32,10 @@ type Snapshot = {
 
 const store: { snapshot: Snapshot } = { snapshot: { kv: {}, records: {} } };
 
+jest.mock("@shared/services/crashReporting", () => ({
+  trackSpan: (_name: string, fn: () => Promise<unknown>) => fn(),
+}));
+
 jest.mock("@shared/services/sqliteStorage", () => ({
   exportAll: jest.fn(async () => store.snapshot),
   clearUserData: jest.fn(async (userId: string) => {

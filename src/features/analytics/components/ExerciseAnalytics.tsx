@@ -25,6 +25,7 @@ import {
   formatClockTime,
   toDateString,
 } from "@utils/format";
+import { dayLabel } from "@utils/dayCarryOver";
 import type {
   WorkoutData,
   FullSessionWithGroups,
@@ -165,6 +166,7 @@ interface ExerciseAnalyticsProps {
   readonly onRefresh?: (() => void) | null;
   readonly refreshing?: boolean;
   readonly title?: string;
+  readonly onTitlePress?: () => void;
   readonly isLoading?: boolean;
   readonly error?: string | null;
   /** Used to key widget layout persistence per-user, same as HomeScreen. */
@@ -187,6 +189,7 @@ export default function ExerciseAnalytics({
   onRefresh = null,
   refreshing = false,
   title = "Progress",
+  onTitlePress,
   isLoading = false,
   error = null,
   userId = null,
@@ -1038,7 +1041,7 @@ export default function ExerciseAnalytics({
                   <Text style={styles.setCardStatLabel}>Reps</Text>
                 </View>
               </View>
-              <Text style={styles.setCardDay}>Day {set.dayNumber}</Text>
+              <Text style={styles.setCardDay}>{dayLabel(set.dayNumber)}</Text>
             </View>
           ))}
       </ModalSheet>
@@ -1142,7 +1145,11 @@ export default function ExerciseAnalytics({
         }
       >
         <View style={styles.content}>
-          <ScreenTitle title={title} />
+          <ScreenTitle
+            title={title}
+            onPress={onTitlePress}
+            accessibilityHint="Switches between clients"
+          />
 
           <ScrollTabBar
             tabs={FOCUS_MODE_TABS}

@@ -47,8 +47,8 @@ export const sharingApi = {
         toUserId: p.toUserId as string | number,
         toUsername: p.toUsername as string,
         permissionType: p.permissionType as PermissionType,
-        payload: p.payload ?? null,
-        hasPayload: p.hasPayload === true || (p.payload ?? null) !== null,
+        payload: null,
+        hasPayload: p.hasPayload === true,
         createdAt: p.createdAt as string,
       })) as GrantedPermission[]
   },
@@ -64,14 +64,14 @@ export const sharingApi = {
         fromUserId: p.fromUserId as string | number,
         fromUsername: p.fromUsername as string,
         permissionType: p.permissionType as PermissionType,
-        payload: (p.payload ?? null) as Record<string, unknown> | null,
-        hasPayload: p.hasPayload === true || (p.payload ?? null) !== null,
+        payload: null as Record<string, unknown> | null,
+        hasPayload: p.hasPayload === true,
         createdAt: p.createdAt as string,
       })) as ReceivedPermission[]
     // The list carries no payloads, only hasPayload. Each one is fetched on its own.
     await Promise.all(
       permissions
-        .filter((p) => p.hasPayload && p.payload === null)
+        .filter((p) => p.hasPayload)
         .map(async (p) => {
           p.payload = await sharingApi
             .getPermissionPayload(p.id)
@@ -91,23 +91,15 @@ export const sharingApi = {
     return data.sessions || []
   },
 
-  /**
-   * The history list with each session's set timings, in one request. Null
-   * when the server ignores `includeTimings` (older servers return sessions
-   * without a `setTimings` field), so the caller falls back to per-session
-   * detail calls.
-   */
+  /** The history list with each session's set timings, in one request. */
   getFriendSessionsWithTimings: async (
     friendId: number | string,
     limit: number = 60,
-  ): Promise<LiveData[] | null> => {
+  ): Promise<LiveData[]> => {
     const data = await apiCall<{ sessions: LiveData[] }>(
       `/api/sharing/sessions/friend/${friendId}?limit=${limit}&includeTimings=true`,
     )
-    const sessions = data.sessions || []
-    if (sessions.some((s) => !Array.isArray((s as { setTimings?: unknown }).setTimings)))
-      return null
-    return sessions
+    return data.sessions || []
   },
 
   getFriendSessionDetails: async (

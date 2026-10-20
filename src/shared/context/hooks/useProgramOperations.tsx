@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { programApi as defaultProgramApi } from "@features/plan/services/index";
 import type { ProgramApi } from "@features/plan/services/programApiFactory";
-import { CUSTOM_EXERCISE_ID, type WorkoutData } from "../../types";
+import { CUSTOM_EXERCISE_ID, type Exercise, type WorkoutData } from "../../types";
 import { matchExercise } from "@utils/exerciseDb";
 import { captureException, log, metric } from "../../services/crashReporting";
 import { markProgramDirty } from "../../services/programDirty";
@@ -9,6 +9,35 @@ import { markProgramDirty } from "../../services/programDirty";
 import type { MachinePatch } from "@features/plan/types";
 
 export type { MachinePatch };
+
+export interface NewExerciseData {
+  name: string;
+  exerciseId?: string;
+  primaryMuscles?: string[];
+  secondaryMuscles?: string[];
+  sets: number;
+  reps?: string;
+}
+
+/** Builds a plan exercise from what the user entered. */
+export const buildExercise = (exerciseData: NewExerciseData): Exercise => {
+  // An imported id takes precedence. Otherwise an exact database name resolves to its
+  // entry, exactly as a rename does. Anything else is the user's own
+  // wording, i.e. a custom exercise the plan matcher must not review.
+  const hit = matchExercise(exerciseData.name);
+  return {
+    name: exerciseData.name,
+    exerciseId:
+      exerciseData.exerciseId ??
+      (hit.status === "confident" && hit.candidates[0]?.score === 1
+        ? hit.candidates[0].exercise.id
+        : CUSTOM_EXERCISE_ID),
+    primaryMuscles: exerciseData.primaryMuscles ?? [],
+    secondaryMuscles: exerciseData.secondaryMuscles ?? [],
+    sets: exerciseData.sets,
+    reps: exerciseData.reps,
+  };
+};
 
 interface UseProgramOperationsOptions {
   workoutData: WorkoutData | null;
@@ -21,6 +50,11 @@ interface UseProgramOperationsOptions {
   ) => Promise<boolean>;
   STORAGE_KEYS: { WORKOUT_DATA: string };
   programApi?: ProgramApi;
+  /**
+   * The program is a client's, edited by their trainer. A refused write is
+   * undone locally and rejects, since the client's server copy is the truth.
+   */
+  forTrainee?: boolean;
 }
 
 interface UseProgramOperationsReturn {
@@ -47,14 +81,7 @@ interface UseProgramOperationsReturn {
   addNewExercise: (
     dayNumber: number,
     split: string,
-    exerciseData: {
-      name: string;
-      exerciseId?: string;
-      primaryMuscles?: string[];
-      secondaryMuscles?: string[];
-      sets: number;
-      reps?: string;
-    },
+    exerciseData: NewExerciseData,
   ) => Promise<void>;
 }
 
@@ -65,7 +92,29 @@ export const useProgramOperations = ({
   saveToStorage,
   STORAGE_KEYS,
   programApi = defaultProgramApi,
+  forTrainee = false,
 }: UseProgramOperationsOptions): UseProgramOperationsReturn => {
+  const serverWriteFailed = useCallback(
+    async (op: string, err: unknown): Promise<void> => {
+      if (forTrainee) {
+        if (workoutData) {
+          await saveToStorage(STORAGE_KEYS.WORKOUT_DATA, workoutData, userId);
+          setWorkoutData(workoutData);
+        }
+        throw err;
+      }
+      console.warn(`Could not sync ${op} to server:`, err);
+      log.warn("program.server_sync_failed", {
+        op,
+        reason: (err as Error).message,
+      });
+      // The server now has an older program, so the next sync must push this
+      // edit up instead of merging the stale copy back over it.
+      await markProgramDirty(userId);
+    },
+    [forTrainee, workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS],
+  );
+
   const updateExerciseName = useCallback(
     async (
       dayNumber: number,
@@ -121,19 +170,10 @@ export const useProgramOperations = ({
             newExerciseId,
           );
         } catch (err) {
-          console.warn(
-            "Could not sync exercise rename to server:",
-            err,
-          );
-          log.warn("program.server_sync_failed", {
-            op: "renameExercise",
-            reason: (err as Error).message,
-          });
-          // The server now has an older program, so the next sync must push this
-          // edit up instead of merging the stale copy back over it.
-          await markProgramDirty(userId);
+          await serverWriteFailed("renameExercise", err);
         }
       } catch (error) {
+        if (forTrainee) throw error;
         console.error("Error updating exercise name:", error);
         metric.count("program.edit_failed", 1, {
           attributes: { op: "renameExercise" },
@@ -141,7 +181,7 @@ export const useProgramOperations = ({
         captureException(error, { op: "renameExercise" });
       }
     },
-    [workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS, programApi],
+    [workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS, programApi, forTrainee, serverWriteFailed],
   );
 
   const updateExerciseMachines = useCallback(
@@ -174,19 +214,10 @@ export const useProgramOperations = ({
             patch,
           );
         } catch (err) {
-          console.warn(
-            "Could not sync machine settings to server:",
-            err,
-          );
-          log.warn("program.server_sync_failed", {
-            op: "updateMachines",
-            reason: (err as Error).message,
-          });
-          // The server now has an older program, so the next sync must push this
-          // edit up instead of merging the stale copy back over it.
-          await markProgramDirty(userId);
+          await serverWriteFailed("updateMachines", err);
         }
       } catch (error) {
+        if (forTrainee) throw error;
         console.error("Error updating exercise machines:", error);
         metric.count("program.edit_failed", 1, {
           attributes: { op: "updateMachines" },
@@ -194,7 +225,7 @@ export const useProgramOperations = ({
         captureException(error, { op: "updateMachines" });
       }
     },
-    [workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS, programApi],
+    [workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS, programApi, forTrainee, serverWriteFailed],
   );
 
   const addExtraSetsToExercise = useCallback(
@@ -234,19 +265,10 @@ export const useProgramOperations = ({
             delta,
           );
         } catch (err) {
-          console.warn(
-            "Could not sync set count change to server:",
-            err,
-          );
-          log.warn("program.server_sync_failed", {
-            op: "patchExerciseSets",
-            reason: (err as Error).message,
-          });
-          // The server now has an older program, so the next sync must push this
-          // edit up instead of merging the stale copy back over it.
-          await markProgramDirty(userId);
+          await serverWriteFailed("patchExerciseSets", err);
         }
       } catch (error) {
+        if (forTrainee) throw error;
         console.error("Error adding extra sets:", error);
         metric.count("program.edit_failed", 1, {
           attributes: { op: "patchExerciseSets" },
@@ -254,21 +276,14 @@ export const useProgramOperations = ({
         captureException(error, { op: "patchExerciseSets" });
       }
     },
-    [workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS, programApi],
+    [workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS, programApi, forTrainee, serverWriteFailed],
   );
 
   const addNewExercise = useCallback(
     async (
       dayNumber: number,
       split: string,
-      exerciseData: {
-        name: string;
-        exerciseId?: string;
-        primaryMuscles?: string[];
-        secondaryMuscles?: string[];
-        sets: number;
-        reps?: string;
-      },
+      exerciseData: NewExerciseData,
     ): Promise<void> => {
       try {
         if (!workoutData?.days) return;
@@ -284,22 +299,7 @@ export const useProgramOperations = ({
           day.split[split] = { exercises: [], totalSets: 0 };
         }
 
-        // An imported id takes precedence. Otherwise an exact database name resolves to its
-        // entry, exactly as a rename does. Anything else is the user's own
-        // wording, i.e. a custom exercise the plan matcher must not review.
-        const hit = matchExercise(exerciseData.name);
-        const newExercise = {
-          name: exerciseData.name,
-          exerciseId:
-            exerciseData.exerciseId ??
-            (hit.status === "confident" && hit.candidates[0]?.score === 1
-              ? hit.candidates[0].exercise.id
-              : CUSTOM_EXERCISE_ID),
-          primaryMuscles: exerciseData.primaryMuscles ?? [],
-          secondaryMuscles: exerciseData.secondaryMuscles ?? [],
-          sets: exerciseData.sets,
-          reps: exerciseData.reps,
-        };
+        const newExercise = buildExercise(exerciseData);
 
         day.split[split].exercises.push(newExercise);
         day.split[split].totalSets += exerciseData.sets;
@@ -310,19 +310,10 @@ export const useProgramOperations = ({
         try {
           await programApi.addExercise(dayNumber, split, newExercise);
         } catch (err) {
-          console.warn(
-            "Could not sync new exercise to server:",
-            err,
-          );
-          log.warn("program.server_sync_failed", {
-            op: "addExercise",
-            reason: (err as Error).message,
-          });
-          // The server now has an older program, so the next sync must push this
-          // edit up instead of merging the stale copy back over it.
-          await markProgramDirty(userId);
+          await serverWriteFailed("addExercise", err);
         }
       } catch (error) {
+        if (forTrainee) throw error;
         console.error("Error adding new exercise:", error);
         metric.count("program.edit_failed", 1, {
           attributes: { op: "addExercise" },
@@ -330,7 +321,7 @@ export const useProgramOperations = ({
         captureException(error, { op: "addExercise" });
       }
     },
-    [workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS, programApi],
+    [workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS, programApi, forTrainee, serverWriteFailed],
   );
 
   return useMemo(

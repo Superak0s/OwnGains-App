@@ -25,109 +25,113 @@ interface StoredMacrosEntry {
   note: string | null
 }
 
-const ENTRIES_KEY = "@offline_macros_entries"
 const GOALS_KEY = "@offline_macros_goals"
 
-const entriesStore = createRecordStore<StoredMacrosEntry>(
-  "macros_entries",
-  ENTRIES_KEY,
-  (e) => e.id,
-  (e) => e.takenAt,
-)
+export function createMacrosApi(user?: string) {
+  const entriesStore = createRecordStore<StoredMacrosEntry>(
+    "macros_entries",
+    (e) => e.id,
+    (e) => e.takenAt,
+    user,
+  )
 
-export const macrosTrackingApi = {
-  logMacros: async ({
-    name,
-    protein,
-    carbs,
-    fat,
-    calories,
-    errorMargin = 0,
-    time,
-    date = null,
-    note = null,
-  }: LogMacrosParams): Promise<unknown> => {
-    try {
-      const takenAt = date
-        ? backdatedToIso(date, time)
-        : new Date().toISOString()
+  const macrosTrackingApi = {
+    logMacros: async ({
+      name,
+      protein,
+      carbs,
+      fat,
+      calories,
+      errorMargin = 0,
+      time,
+      date = null,
+      note = null,
+    }: LogMacrosParams): Promise<unknown> => {
+      try {
+        const takenAt = date
+          ? backdatedToIso(date, time)
+          : new Date().toISOString()
 
-      const entry: StoredMacrosEntry = {
-        id: generateId(),
-        name: name ?? null,
-        protein: protein ?? null,
-        carbs: carbs ?? null,
-        fat: fat ?? null,
-        calories: calories ?? null,
-        errorMargin: errorMargin ?? 0,
-        time,
-        date: date ?? toDateString(new Date()),
-        takenAt,
-        note,
+        const entry: StoredMacrosEntry = {
+          id: generateId(),
+          name: name ?? null,
+          protein: protein ?? null,
+          carbs: carbs ?? null,
+          fat: fat ?? null,
+          calories: calories ?? null,
+          errorMargin: errorMargin ?? 0,
+          time,
+          date: date ?? toDateString(new Date()),
+          takenAt,
+          note,
+        }
+
+        await entriesStore.put(entry)
+
+        return { success: true, entry }
+      } catch (error) {
+        console.error("Error logging macros (offline):", error)
+        reportFailure("logMacros", error)
+        throw error
       }
+    },
 
-      await entriesStore.put(entry)
-
-      return { success: true, entry }
-    } catch (error) {
-      console.error("Error logging macros (offline):", error)
-      reportFailure("logMacros", error)
-      throw error
-    }
-  },
-
-  getMacrosHistory: async (
-    days: number = 30,
-  ): Promise<{ entries: MacrosEntry[] }> => {
-    try {
-      const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
-      const entries = await entriesStore.getSince(cutoff)
-      return { entries: entries.map((e) => ({ ...e, name: e.name ?? undefined })) }
-    } catch (error) {
-      console.error("Error getting macros history (offline):", error)
-      reportFailure("getMacrosHistory", error)
-      throw error
-    }
-  },
-
-  getMacrosGoals: async (): Promise<MacrosGoals> =>
-    readJSON<Required<MacrosGoals>>(GOALS_KEY, {
-      protein: null,
-      carbs: null,
-      fat: null,
-      calories: null,
-    }),
-
-  setMacrosGoals: async ({
-    protein,
-    carbs,
-    fat,
-    calories,
-  }: MacrosGoals): Promise<unknown> => {
-    try {
-      const goals: Required<MacrosGoals> = {
-        protein: protein ?? null,
-        carbs: carbs ?? null,
-        fat: fat ?? null,
-        calories: calories ?? null,
+    getMacrosHistory: async (
+      days: number = 30,
+    ): Promise<{ entries: MacrosEntry[] }> => {
+      try {
+        const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+        const entries = await entriesStore.getSince(cutoff)
+        return { entries: entries.map((e) => ({ ...e, name: e.name ?? undefined })) }
+      } catch (error) {
+        console.error("Error getting macros history (offline):", error)
+        reportFailure("getMacrosHistory", error)
+        throw error
       }
-      await writeJSON(GOALS_KEY, goals)
-      return { success: true, goals }
-    } catch (error) {
-      console.error("Error setting macros goals (offline):", error)
-      reportFailure("setMacrosGoals", error)
-      throw error
-    }
-  },
+    },
 
-  deleteMacrosEntry: async (id: number | string): Promise<unknown> => {
-    try {
-      await entriesStore.remove(id)
-      return { success: true }
-    } catch (error) {
-      console.error("Error deleting macros entry (offline):", error)
-      reportFailure("deleteMacrosEntry", error)
-      throw error
-    }
-  },
+    getMacrosGoals: async (): Promise<MacrosGoals> =>
+      readJSON<Required<MacrosGoals>>(GOALS_KEY, {
+        protein: null,
+        carbs: null,
+        fat: null,
+        calories: null,
+      }, user),
+
+    setMacrosGoals: async ({
+      protein,
+      carbs,
+      fat,
+      calories,
+    }: MacrosGoals): Promise<unknown> => {
+      try {
+        const goals: Required<MacrosGoals> = {
+          protein: protein ?? null,
+          carbs: carbs ?? null,
+          fat: fat ?? null,
+          calories: calories ?? null,
+        }
+        await writeJSON(GOALS_KEY, goals, user)
+        return { success: true, goals }
+      } catch (error) {
+        console.error("Error setting macros goals (offline):", error)
+        reportFailure("setMacrosGoals", error)
+        throw error
+      }
+    },
+
+    deleteMacrosEntry: async (id: number | string): Promise<unknown> => {
+      try {
+        await entriesStore.remove(id)
+        return { success: true }
+      } catch (error) {
+        console.error("Error deleting macros entry (offline):", error)
+        reportFailure("deleteMacrosEntry", error)
+        throw error
+      }
+    },
+  }
+  return { macrosTrackingApi }
 }
+
+export const { macrosTrackingApi } = createMacrosApi()

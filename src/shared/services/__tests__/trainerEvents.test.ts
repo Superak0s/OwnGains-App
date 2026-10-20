@@ -1,5 +1,5 @@
 import {
-  isTrainerEvent,
+  toTrainerEvent,
   onTrainerEvent,
   type TrainerEvent,
 } from "../trainerEvents";
@@ -15,23 +15,25 @@ const event = (over: Partial<TrainerEvent> = {}): TrainerEvent => ({
 
 describe("trainerEvents", () => {
   it("recognises the four trainer event types", () => {
-    expect(isTrainerEvent(event())).toBe(true);
-    expect(isTrainerEvent(event({ type: "trainee_set_recorded" }))).toBe(true);
-    expect(isTrainerEvent(event({ type: "trainer_session_started" }))).toBe(
-      true,
-    );
-    expect(isTrainerEvent(event({ type: "trainer_session_ended" }))).toBe(true);
+    expect(toTrainerEvent(event())).not.toBeNull();
+    expect(toTrainerEvent(event({ type: "trainee_set_recorded" }))).not.toBeNull();
+    expect(toTrainerEvent(event({ type: "trainer_session_started" }))).not.toBeNull();
+    expect(toTrainerEvent(event({ type: "trainer_session_ended" }))).not.toBeNull();
+  });
+
+  it("accepts the numeric sessionId the server sends, as a string", () => {
+    expect(toTrainerEvent({ ...event(), sessionId: 88 })?.sessionId).toBe("88");
   });
 
   it("rejects unrelated socket messages", () => {
-    expect(isTrainerEvent({ type: "joint_session_invite" })).toBe(false);
-    expect(isTrainerEvent(null)).toBe(false);
-    expect(isTrainerEvent({ type: "trainer_set_recorded" })).toBe(false);
+    expect(toTrainerEvent({ type: "joint_session_invite" })).toBeNull();
+    expect(toTrainerEvent(null)).toBeNull();
+    expect(toTrainerEvent({ type: "trainer_set_recorded" })).toBeNull();
   });
 
   it("rejects an event missing trainerUsername", () => {
     const { trainerUsername, ...rest } = event();
-    expect(isTrainerEvent(rest)).toBe(false);
+    expect(toTrainerEvent(rest)).toBeNull();
   });
 
   it("delivers events to subscribers and stops on unsubscribe", () => {

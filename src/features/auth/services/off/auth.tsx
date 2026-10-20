@@ -85,11 +85,7 @@ export const authService = {
   },
 
   // Nothing leaves the device offline, and termsAcceptance keeps the record.
-  recordConsent: async (
-    _termsVersion: string,
-    _healthConsent: boolean,
-    _strict = false,
-  ): Promise<void> => {},
+  recordConsent: async (_termsVersion: string, _healthConsent: boolean): Promise<void> => {},
 
   // The session token, not the profile row: logging out must not destroy the
   // name, email, height and body-fat settings the profile includes.

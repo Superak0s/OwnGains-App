@@ -4,7 +4,9 @@ import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import { useWorkoutPick } from "@shared/context/WorkoutContext";
 import { visibleDaysForSplit } from "@utils/programDays";
+import { dayLabel } from "@utils/dayCarryOver";
 import ModalSheet from "@shared/components/ModalSheet";
+import { useAlert } from "@shared/components/CustomAlert";
 import { makeTrainerBannerStyles } from "./TrainerBanner";
 
 interface TrainerSessionBarProps {
@@ -29,6 +31,8 @@ export function TrainerSessionBar({
     saveCurrentDay,
     isDayLocked,
     hasActiveSession,
+    workoutStartTime,
+    endWorkout,
   } = useWorkoutPick(
     "workoutData",
     "selectedSplit",
@@ -36,7 +40,31 @@ export function TrainerSessionBar({
     "saveCurrentDay",
     "isDayLocked",
     "hasActiveSession",
+    "workoutStartTime",
+    "endWorkout",
   );
+  const { alert, AlertComponent } = useAlert();
+
+  // Leaving without ending kept the workout open, and it came back the next time this client was opened.
+  const stop = () => {
+    if (!workoutStartTime) return onStop();
+    alert(
+      `End ${username}'s workout?`,
+      "The sets logged so far are saved.",
+      [
+        { text: "Keep going", style: "cancel" },
+        {
+          text: "End workout",
+          style: "destructive",
+          onPress: async () => {
+            await endWorkout();
+            onStop();
+          },
+        },
+      ],
+      "warning",
+    );
+  };
   const [showDays, setShowDays] = useState(false);
 
   const days = useMemo(
@@ -59,23 +87,24 @@ export function TrainerSessionBar({
           onPress={() => setShowDays(true)}
           disabled={dayLocked}
           accessibilityRole='button'
-          accessibilityLabel={`Day ${displayDay}, change trainee workout day`}
+          accessibilityLabel={`${dayLabel(displayDay)}, change trainee workout day`}
           accessibilityHint={
             dayLocked ? "Unavailable while a session is running" : undefined
           }
           accessibilityState={{ disabled: dayLocked }}
         >
-          <Text style={styles.dayBtnText}>Day {displayDay} ▾</Text>
+          <Text style={styles.dayBtnText}>{dayLabel(displayDay)} ▾</Text>
         </TouchableOpacity>
       )}
       <TouchableOpacity
         style={styles.stopBtn}
-        onPress={onStop}
+        onPress={stop}
         accessibilityRole='button'
         accessibilityLabel='Stop trainer session'
       >
         <Text style={styles.stopBtnText}>Stop</Text>
       </TouchableOpacity>
+      {AlertComponent}
 
       <ModalSheet
         visible={showDays}
@@ -93,7 +122,7 @@ export function TrainerSessionBar({
               key={day.dayNumber}
               style={[styles.dayRow, current && styles.dayRowCurrent]}
               accessibilityRole='button'
-              accessibilityLabel={`Day ${displayNumber}${locked ? ", locked" : ""}`}
+              accessibilityLabel={`Day ${displayNumber}${locked ? ", already done this week" : ""}`}
               accessibilityState={{ selected: current }}
               onPress={() => {
                 void saveCurrentDay(day.dayNumber);
@@ -101,7 +130,7 @@ export function TrainerSessionBar({
               }}
             >
               <Text style={styles.dayRowTitle}>
-                {`Day ${displayNumber}${locked ? " 🔒" : ""}`}
+                {`Day ${displayNumber}${locked ? " ✓ done" : ""}`}
               </Text>
               <Text style={styles.dayRowMuscles} numberOfLines={1}>
                 {(day.primaryMuscles ?? []).join(", ")}

@@ -29,16 +29,6 @@ describe("authService.recordConsent", () => {
     expect(JSON.parse(kv["@user"]).termsVersion).toBe("3")
   })
 
-  it("lets a server older than the consent route accept a normal consent", async () => {
-    apiCallMock.mockRejectedValue(new ApiError("Not found", 404))
-    await expect(authService.recordConsent("3", true)).resolves.toBeUndefined()
-  })
-
-  it("fails a withdrawal on a server that cannot record it, so nothing is deleted silently", async () => {
-    apiCallMock.mockRejectedValue(new ApiError("Not found", 404))
-    await expect(authService.recordConsent("3", false, true)).rejects.toBeInstanceOf(ApiError)
-  })
-
   it.each([
     ["a 401", new ApiError("Unauthorized", 401)],
     ["a 429", new ApiError("Too many requests", 429)],

@@ -38,4 +38,16 @@ jobs:
 
       - run: npx tsc --noEmit
 
+      # Compared against a copy, not git, because release.sh runs this job under
+      # act on a tree with uncommitted changes.
+      - name: Legal pages match the in-app screens
+        run: |
+          mkdir -p /tmp/legal
+          cp docs/privacy-policy.html docs/terms-of-service.html docs/delete-account.html /tmp/legal/
+          npm run build:privacy-policy
+          for f in privacy-policy terms-of-service delete-account; do
+            diff -u "/tmp/legal/$f.html" "docs/$f.html" \
+              || { echo "::error::docs/$f.html is stale. Run npm run build:privacy-policy and commit it."; exit 1; }
+          done
+
       - run: npm test -- --ci

@@ -33,7 +33,6 @@ interface StoredSession extends Omit<WorkoutSession, "endTime"> {
   isDemo: boolean;
 }
 
-const SESSIONS_KEY = "@offline:workout:sessions";
 const SESSION_ID_COUNTER = "@offline:workout:session_id_counter";
 const SET_ID_COUNTER = "@offline:workout:set_id_counter";
 
@@ -45,7 +44,6 @@ const SESSIONS_LOCK = "workout_sessions";
 
 const sessionsStore = createRecordStore<StoredSession>(
   "workout_sessions",
-  SESSIONS_KEY,
   (s) => s.id,
   (s) => s.startTime ?? "",
 );
@@ -374,7 +372,7 @@ export const workoutApi = {
     };
   },
 
-  getRecordSessions: async (): Promise<WorkoutSession[] | null> => {
+  getRecordSessions: async (): Promise<WorkoutSession[]> => {
     const sessions = await sessionsStore.getAll();
     return pickRecordSessions(sessions).map((s) => toPublicSession(s, true));
   },

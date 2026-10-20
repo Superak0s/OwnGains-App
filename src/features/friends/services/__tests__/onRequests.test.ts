@@ -91,9 +91,9 @@ describe("friend lists from the server", () => {
     expect(request).toMatchObject({ id: 12, receiverId: 8, receiverUsername: "pal" })
   })
 
-  it("counts a granted share as having a payload when an older server inlines it", async () => {
+  it("reads hasPayload from a granted share and drops rows without an id", async () => {
     mockFetch.mockResolvedValue(respond(200, { permissions: [
-      { id: 1, toUserId: 7, permissionType: "program", payload: { programData: {} } },
+      { id: 1, toUserId: 7, permissionType: "program", hasPayload: true },
       { id: null, toUserId: 8, permissionType: "history" },
       { id: 2, toUserId: 7, permissionType: "history", hasPayload: false },
     ] }))

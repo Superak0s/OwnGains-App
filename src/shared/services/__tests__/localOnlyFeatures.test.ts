@@ -229,6 +229,26 @@ describe("onLocalOnlyFeaturesChange", () => {
   });
 });
 
+describe("disabled features", () => {
+  it("reports what the server switched off and remembers it per server", async () => {
+    mockApiCall.mockResolvedValue({ status: "OK", disabledFeatures: ["messages"] });
+    const listener = jest.fn();
+    mod.onDisabledFeaturesChange(listener);
+
+    expect(await mod.refreshLocalOnlyFeatures()).toEqual([]);
+    expect(await mod.getDisabledFeatures()).toEqual(["messages"]);
+    expect(listener).toHaveBeenCalledWith(["messages"]);
+
+    mockApiCall.mockRejectedValue(new Error("offline"));
+    load();
+    expect(await mod.getDisabledFeatures()).toEqual(["messages"]);
+  });
+
+  it("treats nothing as disabled when the server sends no list", async () => {
+    expect(await mod.getDisabledFeatures()).toEqual([]);
+  });
+});
+
 describe("describeLocalOnlyFeatures", () => {
   it("labels one, two and three features", () => {
     expect(mod.describeLocalOnlyFeatures([])).toBe("");

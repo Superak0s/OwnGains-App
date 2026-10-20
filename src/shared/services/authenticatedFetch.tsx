@@ -1,6 +1,6 @@
 import { refreshTokenStorage, tokenStorage } from "./tokenStorage"
 import { assertSecureTransport, getServerUrl } from "./config"
-import { metric, log, trackBreadcrumb } from "./crashReporting"
+import { log, metric, startTrace, trackBreadcrumb } from "./crashReporting"
 import { ApiError, ServerUnreachableError } from "./apiError"
 
 const DEFAULT_TIMEOUT_MS = 15000
@@ -145,6 +145,7 @@ const fetchAuthenticated = async (
   const attempts = method === "GET" || method === "HEAD" ? 2 : 1
   const route = routeOf(resolvedUrl)
   const startedAt = Date.now()
+  const stopTrace = startTrace("api.request")
   const response = await fetchWithRetry(
     resolvedUrl,
     { ...init, headers },
@@ -154,6 +155,7 @@ const fetchAuthenticated = async (
     timeoutMs,
   )
 
+  stopTrace({ method, route, status: String(response.status), outcome: response.ok ? "ok" : "http_error" })
   recordResponse(response, method, route, Date.now() - startedAt)
 
   // Login, registration and refresh use raw fetch, so a 401 here can only mean
@@ -172,10 +174,6 @@ const recordResponse = (
   durationMs: number,
 ): void => {
   const status = response.status
-  metric.distribution("api.request.duration", durationMs, {
-    unit: "millisecond",
-    attributes: { method, route, status, outcome: response.ok ? "ok" : "http_error" },
-  })
   trackBreadcrumb("api", `${method} ${route}`, { status, durationMs })
   if (!response.ok) {
     log.warn("api.http_error", { method, route, status, durationMs })

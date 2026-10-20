@@ -1,4 +1,5 @@
 import type { WorkoutData } from "@shared/types";
+import { createEmitter } from "@utils/emitter";
 import type { WorkoutApi } from "@features/workout/services/workoutApiFactory";
 import {
   buildProgramFromTemplate,
@@ -6,6 +7,9 @@ import {
 } from "@features/plan/utils/splitTemplates";
 
 export const DEMO_SPLIT = "Demo";
+
+/** Fires after demo data is added or removed, so lists the fill touched reload. */
+export const demoDataChanged = createEmitter();
 
 const DEMO_TEMPLATE: SplitTemplate = {
   id: "demo",

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { View, Text, TextInput, ScrollView } from "react-native";
 import { useTheme } from "@shared/context/ThemeContext";
-import { sorenessApi } from "../services";
+import { useTrackingApis } from "../TrackingApisContext";
 import { MuscleGroup, MUSCLE_GROUP_LABELS } from "../types/muscleRecovery";
 import ModalSheet from "@shared/components/ModalSheet";
 import { IntensityPicker } from "@shared/components/IntensityPicker";
@@ -35,6 +35,7 @@ export const MuscleSorenessModal: React.FC<MuscleSorenessModalProps> = ({
   onSuccess,
   prefillDate,
 }) => {
+  const { sorenessApi } = useTrackingApis();
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [intensity, setIntensity] = useState(5);

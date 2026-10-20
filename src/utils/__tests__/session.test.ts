@@ -289,8 +289,6 @@ describe("isSessionGone", () => {
   it.each([
     ["the ended-session code", new ApiError("Session has already ended", 409, null, "SESSION_ALREADY_ENDED")],
     ["the not-found code", new ApiError("Gone", 404, null, "SESSION_NOT_FOUND")],
-    ["a 403 ownership refusal", new ApiError("Session not found or unauthorized", 403)],
-    ["a 404 session not found", new ApiError("Session not found", 404)],
   ])("treats %s as a dead session", (_label, error) => {
     expect(isSessionGone(error)).toBe(true);
   });
@@ -299,7 +297,7 @@ describe("isSessionGone", () => {
     ["a proxy 403", new ApiError("Forbidden", 403)],
     ["an expired token", new ApiError("Unauthorized", 401)],
     ["another resource not found", new ApiError("Exercise not found", 404)],
-    ["the session message on a 500", new ApiError("Session not found", 500)],
+    ["the session message without a code", new ApiError("Session not found", 404)],
     ["a plain Error with the session message", new Error("Session not found")],
     ["a network failure", new Error("Network request failed")],
   ])("does not treat %s as a dead session", (_label, error) => {

@@ -148,6 +148,22 @@ const MIGRATIONS: readonly Migration[] = [
       "DELETE FROM kv_store WHERE key = '@profile_phone' OR key LIKE '@profile_phone_user_%'",
     );
   },
+  () => {
+    db.getAllSync<{ key: string; value: string }>(
+      "SELECT key, value FROM kv_store WHERE key = 'planWidgets' OR key LIKE 'planWidgets_user_%'",
+    ).forEach((row) => {
+      const next = insertWidgetTypeBefore(
+        row.value,
+        { type: "schedule", size: "medium" },
+        "muscle_frequency",
+      );
+      if (next !== row.value)
+        db.runSync("UPDATE kv_store SET value = ? WHERE key = ?", [
+          next,
+          row.key,
+        ]);
+    });
+  },
 ];
 
 runMigrations(db, MIGRATIONS);
@@ -620,31 +636,6 @@ export const clearUserData = (userId: string): Promise<void> =>
       "DELETE FROM kv_records WHERE substr(collection, -length(?)) = ?",
       [suffix, suffix],
     );
-  });
-
-/**
- * Re-keys every row namespaced to `fromUserId` onto `toUserId`, in both tables.
- * On a collision the `from` row is kept: it holds the user's real history, while
- * the `to` row can only be a default written moments ago under the new id.
- */
-export const renameUserData = (
-  fromUserId: string,
-  toUserId: string,
-): Promise<void> =>
-  serializeRecordWrite(async () => {
-    syncCache.clear();
-    const from = `_user_${fromUserId}`;
-    const to = `_user_${toUserId}`;
-    db.withTransactionSync(() => {
-      db.runSync(
-        "UPDATE OR REPLACE kv_store SET key = substr(key, 1, length(key) - length(?)) || ? WHERE substr(key, -length(?)) = ?",
-        [from, to, from, from],
-      );
-      db.runSync(
-        "UPDATE OR REPLACE kv_records SET collection = substr(collection, 1, length(collection) - length(?)) || ? WHERE substr(collection, -length(?)) = ?",
-        [from, to, from, from],
-      );
-    });
   });
 
 export const clearCollection =(collection: string): Promise<void> =>
