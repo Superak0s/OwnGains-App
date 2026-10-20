@@ -4,6 +4,7 @@ import {
   insertWidgetTypeBefore,
   mergeWidgetTypes,
   orderWidgetTypes,
+  replayTutorialIntro,
   runMigrations,
   type Migration,
 } from "./storageMigrations";
@@ -163,6 +164,15 @@ const MIGRATIONS: readonly Migration[] = [
           row.key,
         ]);
     });
+  },
+  () => {
+    const row = db.getFirstSync<{ value: string }>(
+      "SELECT value FROM kv_store WHERE key = '@tutorial'",
+    );
+    if (!row) return;
+    const next = replayTutorialIntro(row.value);
+    if (next !== row.value)
+      db.runSync("UPDATE kv_store SET value = ? WHERE key = '@tutorial'", [next]);
   },
 ];
 

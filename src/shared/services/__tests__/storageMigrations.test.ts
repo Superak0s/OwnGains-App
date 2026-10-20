@@ -3,6 +3,7 @@ import {
   insertWidgetTypeBefore,
   mergeWidgetTypes,
   orderWidgetTypes,
+  replayTutorialIntro,
   runMigrations,
   takeMigrationFailure,
   type MigrationDb,
@@ -229,5 +230,23 @@ describe("insertWidgetTypeBefore", () => {
     const next = insertWidgetTypeBefore(json, add, "macros_today");
     expect(types(next)).toEqual(["next_workout", "doms_followup"]);
     expect(insertWidgetTypeBefore(next, add, "macros_today")).toBe(next);
+  });
+});
+
+describe("replayTutorialIntro", () => {
+  it("clears firstRunDone and keeps the rest", () => {
+    const json = JSON.stringify({ completed: ["home"], firstRunDone: true, firstRunMode: "online" });
+    expect(JSON.parse(replayTutorialIntro(json))).toEqual({
+      completed: ["home"],
+      firstRunDone: false,
+      firstRunMode: "online",
+    });
+  });
+
+  it("leaves unfinished, malformed and non-object values alone", () => {
+    const pending = JSON.stringify({ firstRunDone: false });
+    expect(replayTutorialIntro(pending)).toBe(pending);
+    expect(replayTutorialIntro("not json")).toBe("not json");
+    expect(replayTutorialIntro("[]")).toBe("[]");
   });
 });

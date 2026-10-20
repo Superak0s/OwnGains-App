@@ -6,6 +6,8 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-20
+
 ### Added
 
 - Trainer Mode turns the app into a coaching tool. Switch it on in Settings or with the Trainer Mode widget on Home, and the tab bar changes to Clients, Session, Programs, Progress, Track, Supps and Settings. Progress shows a client's analytics: tap the title to pick which client, from the same searchable list as Track. Clients lists who needs attention and who is on track, lets you send someone a trainer request, found by username or by scanning the QR code under My QR Code in their Friends tab, or cancel one you sent, and opens each client's page with a calendar of their sessions (tap a day to open its session, marked with you or on their own). A client's page also lists which permissions they have given you, grouped as in Friends, and lets you stop coaching them. Sessions and plans for a client are started and sent from Clients only, so Friends has no trainer controls. Send program lets you pick which of your splits to send. In Programs, tap the title to switch between your programs and a client's, from the same searchable list. Edit program on a client's page, or running their session, opens Programs on their program, which you edit with the same tools as your own. A session you run for a client ends after 30 minutes with no set logged from either phone, the same as your own workouts, and Stop ends it after you confirm. One client session runs at a time. A change their account refuses is undone and you are told, instead of looking saved. A trainer request shows up under Friends > Requests, where you can accept or decline it. It needs online mode. Settings > Tab Order lists the tabs of the mode you are in, and Trainer Mode keeps its own tab order.
@@ -32,7 +34,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ### Changed
 
-- The first-run tutorial starts with one Start button instead of asking whether you train, coach or both. Its welcome card shows where to turn on Trainer Mode, and turning it on offers the trainer chapters until you have finished them. Settings → About → Tutorial lists the trainer chapters while Trainer Mode is on.
+- The first-run tutorial starts with one Start button instead of asking whether you train, coach or both. Its welcome card shows where to turn on Trainer Mode, and turning it on offers the trainer chapters until you have finished them. Settings → About → Tutorial lists the trainer chapters while Trainer Mode is on. If you already finished or skipped the tutorial, it is offered once more after this update so you can see what is new.
 - Fill Demo Data adds three demo friends instead of nine: None shares nothing with you, Half shares history, analytics, your program and watching, and All shares everything, so you are its trainer. Online it also adds conversations with each of them (the newest unread), two upcoming scheduled workouts with reminders, a workout All suggests for you to accept, and your own suggestions for All. Offline it adds the two scheduled workouts. There is no demo friend request any more.
 - When you open a friend, Trainer Access and Tracking Access are now at the top of the permission list.
 - When the server refuses a name or other input, the message now says why (such as a word that isn't allowed) instead of "Validation failed". Servers from this release on also refuse names with symbols or emoji and names that contain a banned word.
@@ -119,6 +121,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Usage metrics you switch on now go to Google Analytics for Firebase instead of the developer's crash-report server, which keeps crash reports, screen-load traces and diagnostic logs. App start, screen rendering, server request and slow-operation timings (syncing, loading analytics, importing a plan, backup, restore, a Health Connect sync) go to Firebase Performance Monitoring, with API paths stripped of the server address, IDs and names. Firebase never gets your account ID, the advertising ID is not collected and the advertising ID permission is removed. The consent screen and privacy policy say so.
 
 ### Internal
+
 - Reworded figurative phrases in the privacy policy, terms of service and account deletion page, and regenerated the web copies.
 
 - `scripts/api_audit.py` follows routers mounted behind middleware, server helpers handed `req` or `req.body` (local or `@/` imports), `queryString(req, ...)`, path constants (`${BASE}/x`), query strings built in a local, and `post(...)`-style options helpers, which removes its false reports for messages, push, schedule, injuries, soreness, the tracking relay and menstrual stats.
@@ -130,7 +133,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The offline tracking services are factories bound to a record-store user, and the Tracking screen reads its services from a context, so it can show a client's unpacked copy.
 - Reset Day's logic moved from Settings into `resetDay` on `WorkoutContext`, so the trainer's Start again uses the same steps.
 - `MIN_SERVER_VERSION` is 0.6.0, the next OwnGains-Server release, since v0.5.x doesn't answer the trainer, profile photo, messages or schedule routes.
-- `scripts/release.sh` runs the GitHub CI workflow under act before pushing, and checks act is installed before its prompts.
+- `scripts/release.sh` runs the GitHub CI workflow under act before pushing, and checks act is installed and Docker is running before its prompts. It reuses the local runner image instead of pulling it on every run.
 - CI fails when `docs/privacy-policy.html`, `docs/terms-of-service.html` or `docs/delete-account.html` no longer match the in-app legal screens.
 - Set TSDoc as the comment format in CLAUDE.md and the comment-cleanup skill.
 - Added a comment-add skill for adding why-comments and TSDoc under the Code Comments rules.
@@ -158,7 +161,6 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - `app.config.js` adds `google-services.json` to the Android build when the file is present, for FCM push, and `.gitignore` keeps that file out of git.
 - Reworded comments that described older servers in the token storage, terms check, history paging, photo paging and socket reconnect code.
 - `createRecordStore` no longer takes a legacy blob key. Migrate to Offline writes sessions straight to the offline account's rows.
-
 
 ## [0.6.0] - 2026-10-10
 

@@ -143,6 +143,7 @@ RUN_ACT=false
 if [ "$DEBUG_ONLY" = false ] && [ "$SKIP_TESTS" = false ] && [ "$SKIP_PUSH" = false ]; then
     RUN_ACT=true
     command -v act >/dev/null 2>&1         || die "act is not installed (winget install nektos.act, or brew/pacman install act). Or pass --no-test."
+    docker info >/dev/null 2>&1            || die "act needs a running Docker daemon (start Docker Desktop, and under WSL enable its WSL integration for this distro). Or pass --no-test."
 fi
 
 if [ "$USE_WSL" = true ] && [ "$ENV_NAME" = native ]; then
@@ -555,7 +556,7 @@ fi
 # copies the source tree, uncommitted changes included, minus .gitignore.
 if [ "$RUN_ACT" = true ]; then
     info "CI workflow under act"
-    (cd "$SRC" && act push -j check --rm -P ubuntu-latest=catthehacker/ubuntu:act-latest)
+    (cd "$SRC" && act push -j check --rm --pull=false -P ubuntu-latest=catthehacker/ubuntu:act-latest)
     ok "CI (act)"
 fi
 

@@ -165,3 +165,17 @@ export const insertWidgetTypeBefore = (
   widgets.splice(at === -1 ? widgets.length : at, 0, added);
   return JSON.stringify(widgets.map((widget, order) => ({ ...widget, order })));
 };
+
+/** Clears the tutorial's first-run flag so the intro offers the tour again
+ * after an update adds chapters. Anything else is returned unchanged. */
+export const replayTutorialIntro = (json: string): string => {
+  let state: unknown;
+  try {
+    state = JSON.parse(json);
+  } catch {
+    return json;
+  }
+  if (!state || typeof state !== "object" || Array.isArray(state)) return json;
+  if ((state as { firstRunDone?: unknown }).firstRunDone !== true) return json;
+  return JSON.stringify({ ...state, firstRunDone: false });
+};

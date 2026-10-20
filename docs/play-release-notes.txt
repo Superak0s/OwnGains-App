@@ -2,7 +2,7 @@
 • Message friends and clients, edit or delete sent ones
 • Schedule workouts with reminders and calendar sync
 • Start empty workouts and add exercises
-• What's New lists changes since your last update
+• What's New and a fresh tutorial after you update
 • Alarms ring full screen, even on silent, until dismissed
 • Log past workouts, chart goals, per-exercise kg or lbs
 • Opt-in usage and speed stats use Firebase
