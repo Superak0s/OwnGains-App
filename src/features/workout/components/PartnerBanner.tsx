@@ -12,8 +12,7 @@ import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { PartnerProgress } from "@shared/context/hooks/useJointSession";
 import { getPartnerStatusText } from "../utils";
 import { makeTrainerBannerStyles } from "./TrainerBanner";
-import { useFriendPhoto } from "@features/friends/friendPhoto";
-import { Image } from "expo-image";
+import { Avatar } from "@shared/components/Avatar";
 
 interface PartnerBannerProps {
   partnerProgress: PartnerProgress | null;
@@ -55,26 +54,19 @@ export function PartnerBanner({
   }, [syncPulse, pulse]);
 
   const statusText = getPartnerStatusText(isPartnerReady, partnerProgress);
-  const partnerPhoto = useFriendPhoto(partnerUserId);
 
   return (
     <Animated.View
       style={[bannerStyles.container, { transform: [{ scale: pulse }] }]}
     >
       <View style={bannerStyles.liveDot} />
-      <View style={bannerStyles.avatarRing}>
-        {partnerPhoto ? (
-          <Image
-            source={{ uri: partnerPhoto }}
-            style={bannerStyles.avatarPhoto}
-            accessibilityIgnoresInvertColors
-          />
-        ) : (
-          <Text style={bannerStyles.avatarText}>
-            {partnerUsername?.charAt(0).toUpperCase() || "?"}
-          </Text>
-        )}
-      </View>
+      <Avatar
+        name={partnerUsername}
+        size={26}
+        userId={partnerUserId}
+        style={bannerStyles.avatarRing}
+        textStyle={bannerStyles.avatarText}
+      />
       <Text style={bannerStyles.label} numberOfLines={1}>
         <Text style={bannerStyles.name}>{partnerUsername}</Text>
         {"  "}
@@ -96,7 +88,6 @@ export function PartnerBanner({
 const makeBannerStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     ...makeTrainerBannerStyles(colors),
-    avatarPhoto: { width: 23, height: 23, borderRadius: 11.5 },
     leaveBtn: {
       paddingHorizontal: 10,
       paddingVertical: 4,

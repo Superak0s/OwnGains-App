@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
+import { Avatar } from "@shared/components/Avatar";
 
 interface TrainerBannerProps {
   readonly trainerUsername: string;
@@ -16,11 +17,12 @@ export function TrainerBanner({
   return (
     <View style={styles.container}>
       <View style={styles.liveDot} />
-      <View style={styles.avatarRing}>
-        <Text style={styles.avatarText}>
-          {trainerUsername?.charAt(0).toUpperCase() || "?"}
-        </Text>
-      </View>
+      <Avatar
+        name={trainerUsername}
+        size={26}
+        style={styles.avatarRing}
+        textStyle={styles.avatarText}
+      />
       <Text style={styles.label} numberOfLines={1}>
         <Text style={styles.name}>{trainerUsername}</Text>
         {"  "}
@@ -47,16 +49,11 @@ export const makeTrainerBannerStyles = (colors: ThemeColors) =>
       backgroundColor: colors.success,
     },
     avatarRing: {
-      width: 26,
-      height: 26,
-      borderRadius: 13,
       backgroundColor: colors.accentDark,
-      alignItems: "center",
-      justifyContent: "center",
       borderWidth: 1.5,
       borderColor: colors.info,
     },
-    avatarText: { color: colors.textOnAccent, fontWeight: "700", fontSize: 12 },
+    avatarText: { fontSize: 12 },
     label: { flex: 1, fontSize: 14, color: colors.textPrimary },
     name: { color: colors.textPrimary, fontWeight: "700" },
     status: { color: colors.textSecondary },

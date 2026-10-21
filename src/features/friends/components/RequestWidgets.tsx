@@ -5,7 +5,7 @@ import type { PendingFriendRequest, SentFriendRequest } from "../services";
 import type { UserRef } from "../types";
 import type { TrainerRequest } from "@features/trainer/services";
 import type { makeStyles } from "../FriendsScreen";
-import { Avatar } from "./Avatar";
+import { Avatar } from "@shared/components/Avatar";
 
 interface RequestsPendingWidgetProps {
   readonly pendingRequests: PendingFriendRequest[];
@@ -39,7 +39,7 @@ export function RequestsPendingWidget({
       {trainerRequests.map((request) => (
         <View key={`trainer-${request.id}`} style={styles.requestCard}>
           <View style={styles.friendInfo}>
-            <Avatar username={request.fromUsername} />
+            <Avatar name={request.fromUsername} size={48} />
             <View style={styles.friendDetails}>
               <Text style={styles.friendName}>
                 {isMyTrainer(request.fromUserId)
@@ -80,7 +80,7 @@ export function RequestsPendingWidget({
           {pendingRequests.map((request) => (
             <View key={String(request.id)} style={styles.requestCard}>
               <View style={styles.friendInfo}>
-                <Avatar username={request.senderUsername} />
+                <Avatar name={request.senderUsername} size={48} />
                 <View style={styles.friendDetails}>
                   <Text style={styles.friendName}>
                     {request.senderUsername}
@@ -154,7 +154,7 @@ export function RequestsSentWidget({
           {sentRequests.map((request) => (
             <View key={String(request.id)} style={styles.sentRequestCard}>
               <View style={styles.friendInfo}>
-                <Avatar username={request.receiverUsername} />
+                <Avatar name={request.receiverUsername} size={48} />
                 <View style={styles.friendDetails}>
                   <Text style={styles.friendName}>
                     {request.receiverUsername}

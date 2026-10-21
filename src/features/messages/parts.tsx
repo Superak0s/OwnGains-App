@@ -1,6 +1,7 @@
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { Avatar as BaseAvatar } from "@shared/components/Avatar";
 
 // Readable with white text in both themes.
 const AVATAR_COLORS = ["#E57373", "#F06292", "#BA68C8", "#7986CB", "#4FC3F7", "#4DB6AC", "#81C784", "#FFB74D", "#A1887F"];
@@ -13,12 +14,7 @@ const colorFor = (name: string): string => {
 
 export function Avatar({ name, size }: { readonly name: string; readonly size: number }): React.JSX.Element {
   return (
-    <View
-      style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: colorFor(name) }]}
-      importantForAccessibility="no-hide-descendants"
-    >
-      <Text style={[styles.initial, { fontSize: size * 0.42 }]}>{name.charAt(0).toUpperCase()}</Text>
-    </View>
+    <BaseAvatar name={name} size={size} style={{ backgroundColor: colorFor(name) }} textStyle={styles.initial} />
   );
 }
 
@@ -55,7 +51,6 @@ export function SendIcon({ color }: { readonly color: string }): React.JSX.Eleme
 }
 
 const styles = StyleSheet.create({
-  avatar: { alignItems: "center", justifyContent: "center" },
-  initial: { color: "#FFFFFF", fontWeight: "700" },
+  initial: { color: "#FFFFFF" },
   back: { width: 40, height: 44, alignItems: "flex-start", justifyContent: "center" },
 });

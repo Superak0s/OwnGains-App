@@ -8,7 +8,7 @@ import type {
 } from "../services";
 import type { UserSearchResult, UserRef } from "../types";
 import type { makeStyles } from "../FriendsScreen";
-import { Avatar } from "./Avatar";
+import { Avatar } from "@shared/components/Avatar";
 import { MIN_USER_SEARCH_LENGTH } from "../utils";
 
 interface SearchUsersWidgetProps {
@@ -101,7 +101,7 @@ function SearchUserResultRow({
   return (
     <View style={styles.searchResultCard}>
       <View style={styles.friendInfo}>
-        <Avatar username={result.username} />
+        <Avatar name={result.username} size={48} />
         <View style={styles.friendDetails}>
           <Text style={styles.friendName}>{result.username}</Text>
         </View>

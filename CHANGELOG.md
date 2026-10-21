@@ -19,6 +19,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The tutorial is much shorter. It opens by telling trainers to turn on Trainer Mode, skips what the app already makes obvious, and keeps only the gestures, settings and trainer tools that are easy to miss.
 - Selection chips in the set form, workout scheduling, chart settings, the widget gallery and What's New match the ones in Tracking.
 - Empty and error screens in Analytics, Friends, Messages, Supplements, Workout and Clients share one layout and button style.
+- Screen readers skip the initial shown in place of a profile photo, since the name is always read next to it.
 
 ### Fixed
 
@@ -40,6 +41,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The app config test declares its jest globals, so `npm run lint` passes again.
 - Moved the tracking UI primitives (`Button`, `Chip`, `Placeholder` and the rest) to `src/shared/components/ui.tsx`, listed in `CLAUDE.md`, and every hand-rolled selection chip uses the shared `Chip`.
 - Added a shared `EmptyState` to `src/shared/components/ui.tsx` in place of fourteen hand-rolled empty and error states.
+- Added a shared `Avatar` to `src/shared/components/Avatar.tsx` in place of the friends and messages avatars and the copies in Settings, the client page and the session banners.
 
 ## [1.0.0] - 2026-10-20
 

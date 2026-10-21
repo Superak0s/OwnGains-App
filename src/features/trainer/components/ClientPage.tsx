@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import ModalSheet from "@shared/components/ModalSheet";
+import { Avatar } from "@shared/components/Avatar";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { reportAndReturn } from "@shared/services/crashReporting";
 import { userFacingError } from "@shared/services/apiError";
@@ -166,9 +167,7 @@ export default function ClientPage({
         scrollable
       >
         <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Text style={styles.initial}>{client.username.charAt(0).toUpperCase()}</Text>
-          </View>
+          <Avatar name={client.username} size={48} style={styles.avatar} textStyle={styles.initial} />
           <View style={{ flex: 1 }}>
             <Text style={styles.line}>{clientStatusLine(client, now)}</Text>
           </View>
@@ -405,15 +404,8 @@ export default function ClientPage({
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     header: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
-    avatar: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.accentLight,
-    },
-    initial: { color: colors.accentDark, fontSize: 20, fontWeight: "700" },
+    avatar: { backgroundColor: colors.accentLight },
+    initial: { color: colors.accentDark },
     line: { color: colors.textSecondary, fontSize: 13 },
     actions: { flexDirection: "row", gap: 8, marginTop: 8, marginBottom: 16 },
     primary: {

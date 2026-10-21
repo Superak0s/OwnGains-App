@@ -73,6 +73,7 @@ import TipJarSheet from "./components/TipJarSheet";
 import { SettingsGroup, SettingsRow } from "./components/SettingsRow";
 import { showToast } from "@shared/components/toast";
 import ModalSheet from "@shared/components/ModalSheet";
+import { Avatar } from "@shared/components/Avatar";
 import {
   importStrengthLevelCSV,
   type ImportResult,
@@ -3067,19 +3068,13 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
         accessibilityRole="button"
         accessibilityLabel={`${displayName}. ${modeLine}. Open account settings`}
       >
-        <View style={styles.profileAvatar}>
-          {savedAvatarUri ? (
-            <Image
-              source={{ uri: savedAvatarUri }}
-              style={styles.profileAvatarImage}
-              contentFit="cover"
-            />
-          ) : (
-            <Text style={styles.profileInitial}>
-              {displayName.charAt(0).toUpperCase()}
-            </Text>
-          )}
-        </View>
+        <Avatar
+          name={displayName}
+          size={56}
+          photo={savedAvatarUri}
+          style={styles.profileAvatar}
+          textStyle={styles.profileInitial}
+        />
         <View style={{ flex: 1 }}>
           <Text style={styles.profileName} numberOfLines={1}>
             {displayName}
@@ -3225,17 +3220,8 @@ const makeStyles = (colors: ThemeColors) =>
       padding: 16,
       marginBottom: 24,
     },
-    profileAvatar: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      overflow: "hidden",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.accentLight,
-    },
-    profileAvatarImage: { width: 56, height: 56 },
-    profileInitial: { fontSize: 22, fontWeight: "700", color: colors.accent },
+    profileAvatar: { backgroundColor: colors.accentLight },
+    profileInitial: { fontSize: 22, color: colors.accent },
     profileName: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
     profileMode: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
     profileChevron: { fontSize: 24, color: colors.textMuted },

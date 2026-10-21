@@ -112,7 +112,7 @@ import type {
   WidgetDefinition,
   WorkoutData,
 } from "@shared/types";
-import { Avatar } from "./components/Avatar";
+import { Avatar } from "@shared/components/Avatar";
 import { userFacingError } from "@shared/services/apiError";
 import { programApi } from "@features/plan/services";
 import { SCREEN_PADDING } from "@shared/layout";
@@ -314,10 +314,11 @@ const FriendsListWidget = React.memo(function FriendsListWidget({
               >
                 <View style={styles.friendInfo}>
                   <Avatar
-                    username={friend.username}
+                    name={friend.username}
+                    size={48}
                     userId={friend.id}
                     photoHash={friend.photoHash}
-                    active={friendIsWorkingOut}
+                    style={friendIsWorkingOut && styles.avatarActive}
                   >
                     {friendIsWorkingOut && (
                       <View style={styles.workingOutDot} />
@@ -2004,7 +2005,8 @@ export const makeStyles = (colors: ThemeColors) =>
       backgroundColor: colors.infoLight,
     },
     friendCardRight: { flexDirection: "row", alignItems: "center", gap: 8 },
-    friendInfo: { flexDirection: "row", alignItems: "center", flex: 1 },
+    friendInfo: { flexDirection: "row", alignItems: "center", flex: 1, gap: 12 },
+    avatarActive: { backgroundColor: colors.accentDark },
     workingOutDot: {
       position: "absolute",
       bottom: 0,
