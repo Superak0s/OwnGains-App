@@ -1,7 +1,12 @@
 import { useCallback, useMemo } from "react";
 import { programApi as defaultProgramApi } from "@features/plan/services/index";
 import type { ProgramApi } from "@features/plan/services/programApiFactory";
-import { CUSTOM_EXERCISE_ID, type Exercise, type WorkoutData } from "../../types";
+import {
+  CUSTOM_EXERCISE_ID,
+  type Exercise,
+  type WorkoutData,
+  type WorkoutDay,
+} from "../../types";
 import { matchExercise } from "@utils/exerciseDb";
 import { captureException, log, metric } from "../../services/crashReporting";
 import { markProgramDirty } from "../../services/programDirty";
@@ -19,25 +24,26 @@ export interface NewExerciseData {
   reps?: string;
 }
 
-/** Builds a plan exercise from what the user entered. */
-export const buildExercise = (exerciseData: NewExerciseData): Exercise => {
-  // An imported id takes precedence. Otherwise an exact database name resolves to its
-  // entry, exactly as a rename does. Anything else is the user's own
-  // wording, i.e. a custom exercise the plan matcher must not review.
-  const hit = matchExercise(exerciseData.name);
-  return {
-    name: exerciseData.name,
-    exerciseId:
-      exerciseData.exerciseId ??
-      (hit.status === "confident" && hit.candidates[0]?.score === 1
-        ? hit.candidates[0].exercise.id
-        : CUSTOM_EXERCISE_ID),
-    primaryMuscles: exerciseData.primaryMuscles ?? [],
-    secondaryMuscles: exerciseData.secondaryMuscles ?? [],
-    sets: exerciseData.sets,
-    reps: exerciseData.reps,
-  };
+/**
+ * Database id for an exact database name. Anything else is the user's own
+ * wording, i.e. a custom exercise the plan matcher must not review.
+ */
+const exactExerciseId = (name: string): string => {
+  const hit = matchExercise(name);
+  return hit.status === "confident" && hit.candidates[0]?.score === 1
+    ? hit.candidates[0].exercise.id
+    : CUSTOM_EXERCISE_ID;
 };
+
+/** Builds a plan exercise from what the user entered. */
+export const buildExercise = (exerciseData: NewExerciseData): Exercise => ({
+  name: exerciseData.name,
+  exerciseId: exerciseData.exerciseId ?? exactExerciseId(exerciseData.name),
+  primaryMuscles: exerciseData.primaryMuscles ?? [],
+  secondaryMuscles: exerciseData.secondaryMuscles ?? [],
+  sets: exerciseData.sets,
+  reps: exerciseData.reps,
+});
 
 interface UseProgramOperationsOptions {
   workoutData: WorkoutData | null;
@@ -57,7 +63,7 @@ interface UseProgramOperationsOptions {
   forTrainee?: boolean;
 }
 
-interface UseProgramOperationsReturn {
+export interface UseProgramOperationsReturn {
   updateExerciseName: (
     dayNumber: number,
     split: string,
@@ -115,213 +121,107 @@ export const useProgramOperations = ({
     [forTrainee, workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS],
   );
 
-  const updateExerciseName = useCallback(
+  /**
+   * Applies `edit` to a copy of one day, saves it on the device, then sends it to the server.
+   *
+   * @param edit - Changes the day in place and returns the server write, or nothing to cancel.
+   */
+  const editProgram = useCallback(
     async (
+      op: string,
       dayNumber: number,
-      split: string,
-      exerciseIndex: number,
-      newName: string,
-      newPrimaryMuscles?: string[],
-      newSecondaryMuscles?: string[],
-    ): Promise<void> => {
-      try {
-        if (!workoutData?.days) return;
-
-        const updatedData = structuredClone(workoutData);
-        const dayIndex = updatedData.days.findIndex(
-          (d) => d.dayNumber === dayNumber,
-        );
-        if (dayIndex === -1) return;
-
-        const day = updatedData.days[dayIndex];
-        if (!day.split[split]?.exercises?.[exerciseIndex]) return;
-
-        // The old id still points at whatever the exercise used to be, so a
-        // rename has to re-resolve it. Only an exact database name is taken.
-        // Anything else is the user's own wording, i.e. a custom exercise.
-        const hit = matchExercise(newName);
-        const newExerciseId =
-          hit.status === "confident" && hit.candidates[0]?.score === 1
-            ? hit.candidates[0].exercise.id
-            : CUSTOM_EXERCISE_ID;
-
-        day.split[split].exercises[exerciseIndex].name = newName;
-        day.split[split].exercises[exerciseIndex].exerciseId = newExerciseId;
-        if (newPrimaryMuscles !== undefined) {
-          day.split[split].exercises[exerciseIndex].primaryMuscles =
-            newPrimaryMuscles;
-        }
-        if (newSecondaryMuscles !== undefined) {
-          day.split[split].exercises[exerciseIndex].secondaryMuscles =
-            newSecondaryMuscles;
-        }
-
-        await saveToStorage(STORAGE_KEYS.WORKOUT_DATA, updatedData, userId);
-        setWorkoutData(updatedData);
-
-        try {
-          await programApi.renameExercise(
-            dayNumber,
-            split,
-            exerciseIndex,
-            newName,
-            newPrimaryMuscles,
-            newSecondaryMuscles,
-            newExerciseId,
-          );
-        } catch (err) {
-          await serverWriteFailed("renameExercise", err);
-        }
-      } catch (error) {
-        if (forTrainee) throw error;
-        console.error("Error updating exercise name:", error);
-        metric.count("program.edit_failed", 1, {
-          attributes: { op: "renameExercise" },
-        });
-        captureException(error, { op: "renameExercise" });
-      }
-    },
-    [workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS, programApi, forTrainee, serverWriteFailed],
-  );
-
-  const updateExerciseMachines = useCallback(
-    async (
-      dayNumber: number,
-      split: string,
-      exerciseIndex: number,
-      patch: MachinePatch,
+      edit: (day: WorkoutDay) => (() => Promise<unknown>) | undefined,
     ): Promise<void> => {
       try {
         if (!workoutData?.days) return;
 
         const updatedData = structuredClone(workoutData);
         const day = updatedData.days.find((d) => d.dayNumber === dayNumber);
-        const target = day?.split[split]?.exercises?.[exerciseIndex];
-        if (!target) return;
-
-        Object.assign(target, patch);
-        if (patch.selectedMachine === null) delete target.selectedMachine;
-        if (patch.defaultMachine === null) delete target.defaultMachine;
+        const push = day && edit(day);
+        if (!push) return;
 
         await saveToStorage(STORAGE_KEYS.WORKOUT_DATA, updatedData, userId);
         setWorkoutData(updatedData);
 
         try {
-          await programApi.updateExerciseMachines(
-            dayNumber,
-            split,
-            exerciseIndex,
-            patch,
-          );
+          await push();
         } catch (err) {
-          await serverWriteFailed("updateMachines", err);
+          await serverWriteFailed(op, err);
         }
       } catch (error) {
         if (forTrainee) throw error;
-        console.error("Error updating exercise machines:", error);
-        metric.count("program.edit_failed", 1, {
-          attributes: { op: "updateMachines" },
-        });
-        captureException(error, { op: "updateMachines" });
+        console.error(`Program edit ${op} failed:`, error);
+        metric.count("program.edit_failed", 1, { attributes: { op } });
+        captureException(error, { op });
       }
     },
-    [workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS, programApi, forTrainee, serverWriteFailed],
+    [workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS, forTrainee, serverWriteFailed],
   );
 
-  const addExtraSetsToExercise = useCallback(
-    async (
-      dayNumber: number,
-      split: string,
-      exerciseIndex: number,
-      additionalSets: number,
-    ): Promise<void> => {
-      try {
-        if (!workoutData?.days) return;
+  const updateExerciseName = useCallback<UseProgramOperationsReturn["updateExerciseName"]>(
+    (dayNumber, split, exerciseIndex, newName, newPrimaryMuscles, newSecondaryMuscles) =>
+      editProgram("renameExercise", dayNumber, (day) => {
+        const exercise = day.split[split]?.exercises?.[exerciseIndex];
+        if (!exercise) return;
+        // The old id still points at whatever the exercise used to be, so a
+        // rename has to re-resolve it.
+        const exerciseId = exactExerciseId(newName);
+        exercise.name = newName;
+        exercise.exerciseId = exerciseId;
+        if (newPrimaryMuscles !== undefined) exercise.primaryMuscles = newPrimaryMuscles;
+        if (newSecondaryMuscles !== undefined) exercise.secondaryMuscles = newSecondaryMuscles;
+        return () =>
+          programApi.renameExercise(
+            dayNumber,
+            split,
+            exerciseIndex,
+            newName,
+            newPrimaryMuscles,
+            newSecondaryMuscles,
+            exerciseId,
+          );
+      }),
+    [editProgram, programApi],
+  );
 
-        const updatedData = structuredClone(workoutData);
-        const dayIndex = updatedData.days.findIndex(
-          (d) => d.dayNumber === dayNumber,
-        );
-        if (dayIndex === -1) return;
+  const updateExerciseMachines = useCallback<UseProgramOperationsReturn["updateExerciseMachines"]>(
+    (dayNumber, split, exerciseIndex, patch) =>
+      editProgram("updateMachines", dayNumber, (day) => {
+        const target = day.split[split]?.exercises?.[exerciseIndex];
+        if (!target) return;
+        Object.assign(target, patch);
+        if (patch.selectedMachine === null) delete target.selectedMachine;
+        if (patch.defaultMachine === null) delete target.defaultMachine;
+        return () => programApi.updateExerciseMachines(dayNumber, split, exerciseIndex, patch);
+      }),
+    [editProgram, programApi],
+  );
 
-        const day = updatedData.days[dayIndex];
-        if (!day.split[split]?.exercises?.[exerciseIndex]) return;
-
-        const exercise = day.split[split].exercises[exerciseIndex];
+  const addExtraSetsToExercise = useCallback<UseProgramOperationsReturn["addExtraSetsToExercise"]>(
+    (dayNumber, split, exerciseIndex, additionalSets) =>
+      editProgram("patchExerciseSets", dayNumber, (day) => {
+        const exercise = day.split[split]?.exercises?.[exerciseIndex];
+        if (!exercise) return;
         // A removal must not take an exercise below one set.
         const delta = Math.max(additionalSets, 1 - exercise.sets);
         if (delta === 0) return;
         exercise.sets += delta;
         day.split[split].totalSets += delta;
-
-        await saveToStorage(STORAGE_KEYS.WORKOUT_DATA, updatedData, userId);
-        setWorkoutData(updatedData);
-
-        try {
-          await programApi.patchExerciseSets(
-            dayNumber,
-            split,
-            exerciseIndex,
-            delta,
-          );
-        } catch (err) {
-          await serverWriteFailed("patchExerciseSets", err);
-        }
-      } catch (error) {
-        if (forTrainee) throw error;
-        console.error("Error adding extra sets:", error);
-        metric.count("program.edit_failed", 1, {
-          attributes: { op: "patchExerciseSets" },
-        });
-        captureException(error, { op: "patchExerciseSets" });
-      }
-    },
-    [workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS, programApi, forTrainee, serverWriteFailed],
+        return () => programApi.patchExerciseSets(dayNumber, split, exerciseIndex, delta);
+      }),
+    [editProgram, programApi],
   );
 
-  const addNewExercise = useCallback(
-    async (
-      dayNumber: number,
-      split: string,
-      exerciseData: NewExerciseData,
-    ): Promise<void> => {
-      try {
-        if (!workoutData?.days) return;
-
-        const updatedData = structuredClone(workoutData);
-        const dayIndex = updatedData.days.findIndex(
-          (d) => d.dayNumber === dayNumber,
-        );
-        if (dayIndex === -1) return;
-
-        const day = updatedData.days[dayIndex];
-        if (!day.split[split]) {
-          day.split[split] = { exercises: [], totalSets: 0 };
-        }
-
+  const addNewExercise = useCallback<UseProgramOperationsReturn["addNewExercise"]>(
+    (dayNumber, split, exerciseData) =>
+      editProgram("addExercise", dayNumber, (day) => {
+        day.split[split] ??= { exercises: [], totalSets: 0 };
         const newExercise = buildExercise(exerciseData);
-
         day.split[split].exercises.push(newExercise);
         day.split[split].totalSets += exerciseData.sets;
-
-        await saveToStorage(STORAGE_KEYS.WORKOUT_DATA, updatedData, userId);
-        setWorkoutData(updatedData);
-
-        try {
-          await programApi.addExercise(dayNumber, split, newExercise);
-        } catch (err) {
-          await serverWriteFailed("addExercise", err);
-        }
-      } catch (error) {
-        if (forTrainee) throw error;
-        console.error("Error adding new exercise:", error);
-        metric.count("program.edit_failed", 1, {
-          attributes: { op: "addExercise" },
-        });
-        captureException(error, { op: "addExercise" });
-      }
-    },
-    [workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS, programApi, forTrainee, serverWriteFailed],
+        return () => programApi.addExercise(dayNumber, split, newExercise);
+      }),
+    [editProgram, programApi],
   );
 
   return useMemo(

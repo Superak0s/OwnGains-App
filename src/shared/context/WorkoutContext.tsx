@@ -108,8 +108,11 @@ import {
   traineeWriteRefused,
 } from "./hooks/useSessionOperations";
 import type { SetDetailsOptions } from "./hooks/useSessionOperations";
-import { buildExercise, useProgramOperations } from "./hooks/useProgramOperations";
-import type { MachinePatch } from "@features/plan/types";
+import {
+  buildExercise,
+  useProgramOperations,
+  type UseProgramOperationsReturn,
+} from "./hooks/useProgramOperations";
 import { createEmitter } from "@utils/emitter";
 import { traineeSplit } from "@utils/programDays";
 import { useServerSync } from "./hooks/useServerSync";
@@ -120,7 +123,7 @@ import type { JointExerciseEntry } from "./hooks/useJointSession";
 
 type ServerAnalyticsType = WorkoutAnalytics | null;
 
-interface WorkoutContextValue {
+interface WorkoutContextValue extends UseProgramOperationsReturn {
   userId: string | null;
   activeTrainer: string | null;
   actAs: { userId: string; username: string } | null;
@@ -201,38 +204,6 @@ interface WorkoutContextValue {
   /** Which exercise the last logged set belongs to, i.e. what is being rested from. */
   getLastSetExercise: (dayNumber: number) => { index: number; name: string } | null;
   getSessionStats: (dayNumber: number) => unknown;
-  updateExerciseName: (
-    dayNumber: number,
-    split: string,
-    exerciseIndex: number,
-    newName: string,
-    newPrimaryMuscles?: string[],
-    newSecondaryMuscles?: string[],
-  ) => Promise<void>;
-  updateExerciseMachines: (
-    dayNumber: number,
-    split: string,
-    exerciseIndex: number,
-    patch: MachinePatch,
-  ) => Promise<void>;
-  addExtraSetsToExercise: (
-    dayNumber: number,
-    split: string,
-    exerciseIndex: number,
-    additionalSets: number,
-  ) => Promise<void>;
-  addNewExercise: (
-    dayNumber: number,
-    split: string,
-    exerciseData: {
-      name: string;
-      exerciseId?: string;
-      primaryMuscles?: string[];
-      secondaryMuscles?: string[];
-      sets: number;
-      reps?: string;
-    },
-  ) => Promise<void>;
   fetchSessionHistory: (
     limit?: number,
     includeTimings?: boolean,
