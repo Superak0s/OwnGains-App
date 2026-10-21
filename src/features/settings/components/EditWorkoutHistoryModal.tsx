@@ -34,6 +34,7 @@ import {
   formatDateTime,
   parseDecimal,
   toDateString,
+  toTimeString,
 } from "@utils/format";
 import ModalSheet from "@shared/components/ModalSheet";
 import { TrainerLoggedBadge, trainerLoggedLabel } from "@shared/components/TrainerLoggedBadge";
@@ -131,10 +132,9 @@ function formatSessionLabel(session: WorkoutSession): string {
 function splitIso(iso: string): { date: string; time: string } {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return { date: "", time: "" };
-  const pad = (n: number) => String(n).padStart(2, "0");
   return {
     date: toDateString(d),
-    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+    time: toTimeString(d),
   };
 }
 

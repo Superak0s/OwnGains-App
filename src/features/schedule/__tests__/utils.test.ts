@@ -1,4 +1,5 @@
-import { dayStatus, formatTime, notInPast, splitReminder } from "../utils";
+import { dayStatus, notInPast, splitReminder } from "../utils";
+import { toTimeString } from "@utils/format";
 import type { ScheduledWorkout } from "../types";
 
 describe("notInPast", () => {
@@ -10,19 +11,12 @@ describe("notInPast", () => {
   });
 
   it("moves a past time to the next 5-minute slot", () => {
-    expect(formatTime(notInPast(new Date(2026, 9, 19, 9, 0), now))).toBe("14:35");
+    expect(toTimeString(notInPast(new Date(2026, 9, 19, 9, 0), now))).toBe("14:35");
   });
 
   it("moves a time equal to now forward", () => {
     const exact = new Date(2026, 9, 19, 14, 35).getTime();
-    expect(formatTime(notInPast(new Date(exact), exact))).toBe("14:40");
-  });
-});
-
-describe("formatTime", () => {
-  it("uses a 24-hour clock", () => {
-    expect(formatTime(new Date(2026, 0, 1, 21, 5))).toBe("21:05");
-    expect(formatTime(new Date(2026, 0, 1, 0, 0))).toBe("00:00");
+    expect(toTimeString(notInPast(new Date(exact), exact))).toBe("14:40");
   });
 });
 

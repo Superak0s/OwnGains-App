@@ -1,4 +1,5 @@
 import type { ScheduledWorkout } from "./types";
+import { toTimeString } from "@utils/format";
 
 /** Entries that have not finished yet, soonest first. */
 export const upcomingEntries = (
@@ -36,11 +37,6 @@ export const notInPast = (date: Date, now: number): Date =>
     ? date
     : new Date(Math.ceil((now + 1) / SLOT_MS) * SLOT_MS);
 
-const pad = (n: number) => String(n).padStart(2, "0");
-
-export const formatTime = (date: Date): string =>
-  `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-
 export const formatDay = (date: Date): string =>
   date.toLocaleDateString([], {
     weekday: "short",
@@ -49,7 +45,7 @@ export const formatDay = (date: Date): string =>
   });
 
 export const formatWhen = (iso: string): string =>
-  `${formatDay(new Date(iso))}, ${formatTime(new Date(iso))}`;
+  `${formatDay(new Date(iso))}, ${toTimeString(new Date(iso))}`;
 
 export const MAX_REMINDER_MINUTES = 7 * 1440;
 

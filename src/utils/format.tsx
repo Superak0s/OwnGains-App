@@ -54,6 +54,9 @@ export const toDateString = (input: Date | string): string => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
+export const toTimeString = (date: Date): string =>
+  `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
+
 /**
  * A back-dated entry's timestamp as UTC ISO, so it sorts and compares against
  * `new Date().toISOString()` stamps written for "now". A naive local string

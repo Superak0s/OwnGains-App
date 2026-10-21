@@ -156,6 +156,7 @@ import {
 import { captureException, log, metric } from "@shared/services/crashReporting";
 import { tutorialAnchor } from "@features/tutorial/anchors";
 import { SCREEN_PADDING } from "@shared/layout";
+import { toTimeString } from "@utils/format";
 
 interface CurrentDayWorkout {
   dayNumber: number;
@@ -164,13 +165,6 @@ interface CurrentDayWorkout {
   secondaryMuscles?: string[];
   exercises: Exercise[];
   totalSets: number;
-}
-
-function formatEndTime(d: Date | null): string {
-  if (!d) return "";
-  const hours = String(d.getHours()).padStart(2, "0");
-  const minutes = String(d.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
 }
 
 interface WorkoutScreenBodyProps {
@@ -2025,7 +2019,7 @@ Note: ${existing.note}`;
                 estimatedRemaining > 0 &&
                 !isCurrentDayLocked && (
                   <Text style={styles.endTimeText}>
-                    Estimated finish: {formatEndTime(estimatedEnd)}
+                    Estimated finish: {toTimeString(estimatedEnd)}
                   </Text>
                 )}
             </View>

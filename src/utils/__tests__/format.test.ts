@@ -1,4 +1,4 @@
-import { parseDecimal, toDateString } from "../format";
+import { parseDecimal, toDateString, toTimeString } from "../format";
 
 // A decimal-pad keyboard emits the device locale's separator, and parseFloat("12,5")
 // returns 12 with no error, logging a 12.5 kg set as 12.
@@ -27,5 +27,12 @@ describe("toDateString", () => {
   // zero a streak instead of being visible as bad data.
   it("does not produce NaN parts for a corrupt stamp", () => {
     expect(toDateString("not a date")).toBe("—");
+  });
+});
+
+describe("toTimeString", () => {
+  it("uses a 24-hour clock", () => {
+    expect(toTimeString(new Date(2026, 0, 1, 21, 5))).toBe("21:05");
+    expect(toTimeString(new Date(2026, 0, 1, 0, 0))).toBe("00:00");
   });
 });

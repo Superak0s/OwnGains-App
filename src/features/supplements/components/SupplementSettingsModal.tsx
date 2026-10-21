@@ -32,7 +32,7 @@ import {
   parseTimeOfDay,
   supplementSettingsKey,
 } from "../utils";
-import { parseDecimal } from "@utils/format";
+import { parseDecimal, toTimeString } from "@utils/format";
 import TimeWheel from "@shared/components/TimeWheel";
 import ModalSheet from "@shared/components/ModalSheet";
 import { useAlert } from "@shared/components/CustomAlert";
@@ -185,9 +185,6 @@ export default function SupplementSettingsModal({
     if (type === "alarm") void ensureNotificationPermission(type);
   };
 
-  const formatTimeStr = (date: Date) =>
-    `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
-
   const persistSettings = async (
     amt: number,
     intervalMinutes: number | null,
@@ -286,7 +283,7 @@ export default function SupplementSettingsModal({
         await initializeSupplementNotifications();
       }
 
-      const timeStr = formatTimeStr(reminderTime);
+      const timeStr = toTimeString(reminderTime);
 
       await persistSettings(
         validation.amount,
@@ -350,7 +347,7 @@ export default function SupplementSettingsModal({
       unit: supplement.unit,
       defaultAmount: parseDecimal(defaultAmount) || supplement.defaultAmount,
       timeBasedEnabled: false,
-      reminderTime: formatTimeStr(reminderTime),
+      reminderTime: toTimeString(reminderTime),
       enabled: false,
     });
   };

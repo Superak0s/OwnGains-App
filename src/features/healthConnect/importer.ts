@@ -17,7 +17,7 @@ import {
 } from "@shared/services/crashReporting";
 import { getRecordStoreUser } from "@shared/services/offlineHelpers";
 import { loadFromStorage, saveToStorage, STORAGE_KEYS } from "@shared/services/storage";
-import { toDateString } from "@utils/format";
+import { toDateString, toTimeString } from "@utils/format";
 import { isKeepingHealthData, readRecentDays, storeRecentDays } from "./dailyHealth";
 import { getGrantedTypes, IMPORT_TYPES, readAll, type ImportType } from "./healthConnect";
 
@@ -55,10 +55,6 @@ const minute = (iso: string) => Math.floor(Date.parse(iso) / 60_000);
 const sameDayWithinTenth = (a: Entry, b: Entry) =>
   toDateString(a.at) === toDateString(b.at) &&
   Math.round(Math.abs(Number(a.value) - Number(b.value)) * 100) <= 10;
-const localTime = (iso: string) => {
-  const date = new Date(iso);
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-};
 
 const SPECS: { [T in ImportType]: TypeSpec<T> } = {
   Weight: {
@@ -124,7 +120,7 @@ const SPECS: { [T in ImportType]: TypeSpec<T> } = {
         carbs: e.carbs,
         fat: e.fat,
         date: toDateString(e.at),
-        time: localTime(e.at),
+        time: toTimeString(new Date(e.at)),
       }),
   },
 };

@@ -22,11 +22,11 @@ import { clientScheduleEvents, useSchedule } from "./ScheduleContext";
 import { makeProgramApi } from "@features/plan/services/programApiFactory";
 import { makeScheduleApi } from "./services";
 import { isCalendarSyncEnabled, setCalendarSync } from "./calendarSync";
+import { toTimeString } from "@utils/format";
 import {
   dayStatus,
   entriesOnDay,
   formatDay,
-  formatTime,
   formatWhen,
   MAX_REMINDER_MINUTES,
   notInPast,
@@ -530,7 +530,7 @@ function ScheduleForm({
       <Text style={[styles.whenMeta, inPast && styles.whenMetaError]}>
         {inPast
           ? "This time has passed. Pick a later one."
-          : `${formatTime(when)} to ${formatTime(new Date(when.getTime() + durationMin * 60_000))}`}
+          : `${toTimeString(when)} to ${toTimeString(new Date(when.getTime() + durationMin * 60_000))}`}
       </Text>
 
       {days.length > 0 && (
