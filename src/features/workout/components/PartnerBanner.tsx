@@ -11,6 +11,7 @@ import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { PartnerProgress } from "@shared/context/hooks/useJointSession";
 import { getPartnerStatusText } from "../utils";
+import { makeTrainerBannerStyles } from "./TrainerBanner";
 import { useFriendPhoto } from "@features/friends/friendPhoto";
 import { Image } from "expo-image";
 
@@ -94,35 +95,8 @@ export function PartnerBanner({
 
 const makeBannerStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    container: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: colors.background,
-      paddingHorizontal: 14,
-      paddingVertical: 7,
-      gap: 8,
-    },
-    liveDot: {
-      width: 7,
-      height: 7,
-      borderRadius: 3.5,
-      backgroundColor: colors.success,
-    },
-    avatarRing: {
-      width: 26,
-      height: 26,
-      borderRadius: 13,
-      backgroundColor: colors.accentDark,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1.5,
-      borderColor: colors.info,
-    },
-    avatarText: { color: colors.textOnAccent, fontWeight: "700", fontSize: 12 },
+    ...makeTrainerBannerStyles(colors),
     avatarPhoto: { width: 23, height: 23, borderRadius: 11.5 },
-    label: { flex: 1, fontSize: 14 },
-    name: { color: colors.textPrimary, fontWeight: "700" },
-    status: { color: colors.textSecondary },
     leaveBtn: {
       paddingHorizontal: 10,
       paddingVertical: 4,
