@@ -8,12 +8,11 @@ disable-model-invocation: true
 
 `scripts/release.sh` is the whole release path: version bump → `npm install` → lint →
 a11y → typecheck → jest → prebuild → signed per-ABI APKs, then a signed AAB, via
-`local-expo-build` → git push → `gh release create`. It takes six phases and several minutes, and it reverts the version
+`local-expo-build` → git push → `gh release create` → Play upload. It takes six phases and several minutes, and it reverts the version
 bump on failure but not the prebuild.
 
-**You do not run it.** It prompts for the version choice and the commit message on stdin,
-and this session's shell has no stdin. The run would read EOF and take the defaults, or
-hang. Your job is everything up to the command, then the handover.
+**You do not run it.** It pushes, publishes a GitHub release and uploads to Play, so the
+user starts it. Your job is everything up to the command, then the handover.
 
 ## Steps
 
@@ -80,20 +79,20 @@ hang. Your job is everything up to the command, then the handover.
    gh auth status
    ```
 
-6. **Hand over.** Tell the user the exact command to run in their own terminal, the
-   version it will bump to, and which of the four version options to pick:
+6. **Hand over.** Tell the user the exact command to run in their own terminal and the
+   version it will bump to. Pass `--bump` (patch, minor, keep or an exact `1.2.3`) and
+   `--message` (`Release v<version>` unless the user wants another), which skip both
+   prompts so the run is unattended:
 
    ```
-   bash scripts/release.sh [apk] [--no-prebuild] [--no-version-code]
+   bash scripts/release.sh [apk] [--no-prebuild] [--no-version-code] --bump=<version> --message="Release v<version>"
    ```
-
-   Note what it will ask for: the version choice (1 patch / 2 minor / 3 custom / 4 keep
-   current) and a commit message. Both are asked up front so the rest is unattended.
 
    Tell them where the output goes, in `release/`: `OwnGains-v<version>-<abi>.apk` per ABI
    (these are what get attached to the GitHub release) and, unless `apk`,
-   `OwnGains-v<version>-<versionCode>.aab`, which remains local for a manual Play Console
-   upload.
+   `OwnGains-v<version>-<versionCode>.aab`. The script uploads the AAB to the `internal`
+   Play track (or the `--play=` tracks) when `.env` sets `PLAY_SERVICE_ACCOUNT`, and leaves
+   it local for a manual Play Console upload otherwise.
 
 ## Notes
 

@@ -2,6 +2,11 @@ import React, { useMemo, useState } from "react";
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
+import { useAlert } from "@shared/components/CustomAlert";
+import { userFacingError } from "@shared/services/apiError";
+import { friendsApi } from "@features/friends/services";
+import ReportUserSheet from "@features/friends/components/ReportUserSheet";
+import type { UserRef } from "@features/friends/types";
 import { Avatar, BackButton } from "./parts";
 import { listTimeLabel } from "./utils/conversation";
 import type { Conversation, Relation } from "./types";
@@ -25,6 +30,44 @@ export default function MessagesListScreen({
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [refreshing, setRefreshing] = useState(false);
+  const [reportTarget, setReportTarget] = useState<UserRef | null>(null);
+  const { alert, AlertComponent } = useAlert();
+
+  const block = (c: Conversation): void =>
+    alert(
+      "Block User",
+      `Block ${c.username}? They can no longer message you, they are removed from your friends and ` +
+        `everything you share with each other stops. You can unblock them in Settings.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await friendsApi.blockUser(c.userUuid);
+              await onRefresh();
+              alert("Blocked", `${c.username} has been blocked.`, [{ text: "OK" }], "success");
+            } catch (e) {
+              alert("Error", userFacingError(e, "Failed to block user"), [{ text: "OK" }], "error");
+            }
+          },
+        },
+      ],
+      "warning",
+    );
+
+  const showSafetyActions = (c: Conversation): void =>
+    alert(
+      c.username,
+      "Report this account to the server's operator, or block it so it can't contact you.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Report", onPress: () => setReportTarget({ id: c.userUuid, username: c.username }) },
+        { text: "Block", style: "destructive", onPress: () => block(c) },
+      ],
+      "info",
+    );
 
   const renderItem = ({ item }: { item: Conversation }) => {
     const label = relationLabel(item.relation);
@@ -34,7 +77,11 @@ export default function MessagesListScreen({
       <TouchableOpacity
         style={styles.row}
         onPress={() => onOpen(item)}
+        onLongPress={() => showSafetyActions(item)}
         accessibilityRole="button"
+        accessibilityHint="Long press to report or block"
+        accessibilityActions={[{ name: "longpress", label: "Report or block" }]}
+        onAccessibilityAction={(e) => e.nativeEvent.actionName === "longpress" && showSafetyActions(item)}
         accessibilityLabel={[
           `Conversation with ${item.username}`,
           label,
@@ -101,6 +148,12 @@ export default function MessagesListScreen({
           </View>
         }
       />
+      <ReportUserSheet
+        target={reportTarget}
+        onClose={() => setReportTarget(null)}
+        onResult={(title, message, ok) => alert(title, message, [{ text: "OK" }], ok ? "success" : "error")}
+      />
+      {AlertComponent}
     </SafeAreaView>
   );
 }

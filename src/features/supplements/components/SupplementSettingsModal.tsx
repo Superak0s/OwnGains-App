@@ -33,7 +33,7 @@ import {
   supplementSettingsKey,
 } from "../utils";
 import { parseDecimal } from "@utils/format";
-import TimeOfDayPicker from "./TimeOfDayPicker";
+import TimeWheel from "@shared/components/TimeWheel";
 import ModalSheet from "@shared/components/ModalSheet";
 import { useAlert } from "@shared/components/CustomAlert";
 import {
@@ -551,7 +551,7 @@ export default function SupplementSettingsModal({
 
                 {timeBasedEnabled && (
                   <View style={styles.sectionBody}>
-                    <TimeOfDayPicker
+                    <TimeWheel
                       value={reminderTime}
                       onChange={setReminderTime}
                     />

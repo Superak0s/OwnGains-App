@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, Modal, Platform } from "react-native";
+import { NavigationBar } from "expo-navigation-bar";
 import { useAuth } from "@shared/context/AuthContext";
 import { useJointSessionContextOptional } from "@shared/context/JointSessionContext";
 import { ApiError } from "@shared/services/apiError";
@@ -77,6 +78,14 @@ export function MessagesProvider({ children }: { readonly children: React.ReactN
   const [sheet, setSheet] = useState<"closed" | "inbox" | Peer>("closed");
   const openPeerRef = useRef<string | null>(null);
   openPeerRef.current = typeof sheet === "object" ? sheet.userUuid : null;
+  const sheetOpen = sheet !== "closed";
+
+  // The app-wide swipe-up that reveals the nav bar can't reach the Modal's window.
+  useEffect(() => {
+    if (Platform.OS !== "android" || !sheetOpen) return;
+    NavigationBar.setHidden(false);
+    return () => NavigationBar.setHidden(true);
+  }, [sheetOpen]);
 
   const refresh = useCallback(async () => {
     if (!enabled) return;

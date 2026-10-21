@@ -88,12 +88,12 @@ Every tracking sub-tab is its own widget board: the calendar, the "today" card, 
 
 - Track your supplements and doses with fast quick-logging, per-supplement color/icon, and a daily streak.
 - **Multiple doses a day**: set how many doses a supplement takes and the gap between them. The day's count fills in as you log each one.
-- **Daily reminders**: local notifications at the times you set. They repeat on their own and keep working after a reboot, and they work offline like everything else. Pick the time with an hour and minute picker (Morning, Noon, Evening and Night shortcuts), and choose Notification or Alarm: an alarm works like a clock app alarm: it shows the alarm icon in the status bar, wakes the screen and keeps ringing on the alarm volume (even with the ringer silent, and through Do Not Disturb) until you tap Snooze or Dismiss, or for 10 minutes. It opens full screen instead of showing a notification, on a locked phone or over another app (choosing Alarm asks for notifications, "Alarms & reminders" and "Display over other apps" in turn, each with a shortcut to its settings page).
+- **Daily reminders**: local notifications at the times you set. They repeat on their own and keep working after a reboot, and they work offline like everything else. Pick the time on hour and minute scroll wheels, and choose Notification or Alarm: an alarm works like a clock app alarm: it shows the alarm icon in the status bar, wakes the screen and keeps ringing on the alarm volume (even with the ringer silent, and through Do Not Disturb) until you tap Snooze or Dismiss, or for 10 minutes. It opens full screen instead of showing a notification, on a locked phone or over another app (choosing Alarm asks for notifications, "Alarms & reminders" and "Display over other apps" in turn, each with a shortcut to its settings page).
 - **Next-dose reminders**: logging a dose of a multi-dose supplement schedules a reminder for the next one, on time (Android asks you once to allow exact alarms, and on Xiaomi, Samsung, Huawei, Honor, OnePlus, OPPO, realme and vivo phones the app also points you once at the battery settings that would delay it).
 
 ### 📅 Schedule workouts
 
-- The **Schedule** widget on Plan (also placeable on Home) books workouts on future days at a 24-hour time from the native clock picker, optionally tied to a program day, with a reminder (notification or alarm) before each one.
+- The **Schedule** widget on Plan (also placeable on Home) books workouts on future days at a 24-hour time picked on the same scroll wheels, optionally tied to a program day, with a reminder (notification or alarm) before each one.
 - Turn on **Add to my calendar** to copy them into the phone's calendar with `expo-calendar`.
 - A trainer suggests workouts from a client's Plan tab or client page, which lists only what that trainer suggested to them, and the client accepts or declines them. A Schedule tab on the trainer in Friends lists their suggestions.
 
@@ -106,7 +106,7 @@ Every tracking sub-tab is its own widget board: the calendar, the "today" card, 
 - **Joint sessions**: work out together in real time, synced set-for-set.
 - **Watch sessions**: spectate a friend's live workout as it happens.
 - **Trainer mode**: switch the app into a coaching tool from Settings or a Home widget. A Clients tab shows who needs attention and who is on track, a calendar of each client's sessions (with you or on their own), lets you send someone a trainer request (by username or by scanning their friend QR code) or cancel one you sent, and lets you stop coaching a client. Start session runs one of the client's splits, one of your own program days, or an empty workout, one client at a time. A session ends when you stop it or after 30 minutes with no set logged from either phone. Send program shares the splits you pick, and Tapping the Programs title switches between your programs and a client's, and Edit program (or a running session) opens it on the client's program, edited with the same tools as your own. A client who accepts, or grants a friend the trainer scope by hand, lets that trainer drive their workout live from their own phone and send them a plan. The grant is workout read/write only: a trainer request can never touch your account or delete anything. Each client's page lists which permissions they have given you. A Progress tab shows a client's analytics, and tapping its title switches client with the same username search as Track. Tracking Access is never granted along with Trainer Access: the client turns it on in Friends, or accepts the Ask for Tracking Access request you send from their page, and their phone then sends their tracking data and progress photos to the trainer's phone, which shows them in the normal Tracking screen where tapping the Track title switches between your own tracking and a client's, picked with a username search, view only, end to end encrypted, so the server relays it without being able to read it. Both phones show a safety code to compare. A trainer keeps their own Supplements tab, and a client sees "Logged by @trainer" on every workout their trainer logged for them.
-- **Blocking and reporting**: block or report an account, and manage blocked users from Settings.
+- **Blocking and reporting**: block or report an account from its profile, search results or by long pressing its conversation in Messages, and manage blocked users from Settings. A blocked account can no longer message you.
 
 ### 🧩 Widget boards everywhere
 
@@ -123,7 +123,7 @@ Every screen has a customizable widget board. Add, remove, resize, and reorder w
 
 - 7 built-in themes (Light, Dark, Yellow, Red, Green, Blue, Pink), plus automatic light/dark switching.
 - **Create your own custom themes** with a full color editor.
-- **Interactive tutorial**: coach-mark chapters with spotlights and practice mini-demos for each screen (home, plan, workout, progress, tracking, supplements, widgets, settings), plus friends, sharing, joint-session and trainer chapters in server mode. Reopen it any time from Settings.
+- **Interactive tutorial**: a short tour that opens by pointing trainers to Trainer Mode, then covers only the easy-to-miss parts of each screen with spotlights and practice mini-demos, plus friends, sharing, joint-session and trainer chapters in server mode. Reopen it any time from Settings.
 
 ### 🔧 Settings
 

@@ -22,7 +22,7 @@ export default function TutorialIntro({
       <Text style={styles.icon}>💪</Text>
       <Text style={styles.title} accessibilityRole="header">Welcome to OwnGains</Text>
       <Text style={styles.subtitle}>
-        A quick tour of every screen, {TUTORIAL.length} short chapters. You can replay any of them in Settings → About → Tutorial.
+        A quick tour of what is easy to miss, {TUTORIAL.length} short chapters. You can replay any of them in Settings → About → Tutorial.
       </Text>
       <TouchableOpacity style={styles.primary} onPress={onStart} accessibilityRole="button" accessibilityLabel="Start the tutorial">
         <Text style={styles.primaryText}>Start the tutorial</Text>

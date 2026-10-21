@@ -61,7 +61,8 @@ import SessionDetailsSheet, {
   getSessionTitle,
   loadFriendSessionDetails,
 } from "./components/SessionDetailsSheet";
-import { friendsApi, sharingApi, REPORT_REASONS } from "./services";
+import { friendsApi, sharingApi } from "./services";
+import ReportUserSheet from "./components/ReportUserSheet";
 import { MIN_USER_SEARCH_LENGTH, programPayload } from "./utils";
 import { formatTime } from "@utils/timeEstimation";
 import { formatDate, toDateString } from "@utils/format";
@@ -103,7 +104,6 @@ import type {
   ReceivedProgram,
   SessionRecord,
   UserSearchResult,
-  ReportReason,
   UserRef,
 } from "./types";
 import type {
@@ -444,9 +444,6 @@ export default function FriendsScreen({
       "Couldn't leave the joint session",
     );
   const [reportTarget, setReportTarget] = useState<UserRef | null>(null);
-  const [reportReason, setReportReason] = useState<ReportReason | null>(null);
-  const [reportDetails, setReportDetails] = useState("");
-  const [submittingReport, setSubmittingReport] = useState(false);
 
   const [loading, setLoading] = useState<boolean>(true);
   const [isOffline, setIsOffline] = useState<boolean>(false);
@@ -1184,8 +1181,6 @@ export default function FriendsScreen({
 
   const handleReportFriend = (friend: UserRef) => {
     setShowFriendDetailModal(false);
-    setReportReason(null);
-    setReportDetails("");
     setReportTarget(friend);
   };
 
@@ -1204,29 +1199,6 @@ export default function FriendsScreen({
       ],
       "info",
     );
-
-  const submitReport = async () => {
-    if (!reportTarget || !reportReason) return;
-    setSubmittingReport(true);
-    try {
-      await friendsApi.reportUser(
-        reportTarget.id,
-        reportReason,
-        reportDetails.trim() || undefined,
-      );
-      setReportTarget(null);
-      alert(
-        "Report Sent",
-        "Whoever runs this server can now review it. You can also block this user to cut off contact straight away.",
-        [{ text: "OK" }],
-        "success",
-      );
-    } catch (e) {
-      alertError(userFacingError(e, "Failed to submit report"));
-    } finally {
-      setSubmittingReport(false);
-    }
-  };
 
   const loadFriendData = useCallback(
     async (friend: Friend) => {
@@ -1786,48 +1758,13 @@ export default function FriendsScreen({
         </TouchableOpacity>
       </ModalSheet>
 
-      <ModalSheet
-        visible={reportTarget !== null}
+      <ReportUserSheet
+        target={reportTarget}
         onClose={() => setReportTarget(null)}
-        title={reportTarget ? `Report ${reportTarget.username}` : "Report"}
-        subtitle='Reports go to the operator of the server you are signed in to.'
-        confirmText={submittingReport ? "Sending…" : "Submit Report"}
-        confirmDisabled={!reportReason || submittingReport}
-        onConfirm={submitReport}
-        scrollable={true}
-      >
-        <View style={styles.reportModalContent}>
-          {REPORT_REASONS.map((reason) => (
-            <TouchableOpacity
-              key={reason.key}
-              style={[
-                styles.reportReasonRow,
-                reportReason === reason.key && styles.reportReasonRowActive,
-              ]}
-              onPress={() => setReportReason(reason.key)}
-              activeOpacity={0.7}
-              accessibilityRole='radio'
-              accessibilityState={{ selected: reportReason === reason.key }}
-              accessibilityLabel={reason.label}
-            >
-              <Text style={styles.reportReasonText}>{reason.label}</Text>
-              {reportReason === reason.key && (
-                <Text style={styles.reportReasonCheck}>✓</Text>
-              )}
-            </TouchableOpacity>
-          ))}
-          <TextInput
-            style={styles.reportDetailsInput}
-            value={reportDetails}
-            onChangeText={setReportDetails}
-            placeholder='Anything else the operator should know (optional)'
-            placeholderTextColor={colors.textMuted}
-            multiline={true}
-            maxLength={1000}
-            accessibilityLabel='Additional report details'
-          />
-        </View>
-      </ModalSheet>
+        onResult={(title, message, ok) =>
+          alert(title, message, [{ text: "OK" }], ok ? "success" : "error")
+        }
+      />
     </>
   );
 
@@ -1894,18 +1831,19 @@ export default function FriendsScreen({
             }
           >
             <View style={styles.content}>
-              <View style={styles.titleRow}>
-                <ScreenTitle title='Friends' style={{ flex: 1 }} />
+              <ScreenTitle title='Friends' />
+
+              <View style={styles.tabsRow}>
+                <ScrollTabBar
+                  tabs={FRIENDS_TABS}
+                  activeTab={activeTab}
+                  onTabChange={setActiveTab}
+                  badges={{ requests: pendingRequests.length + trainerRequests.length }}
+                  storageKey='friendsScreen_tabConfig'
+                  style={styles.tabsBar}
+                />
                 <InboxButton />
               </View>
-
-              <ScrollTabBar
-                tabs={FRIENDS_TABS}
-                activeTab={activeTab}
-                onTabChange={setActiveTab}
-                badges={{ requests: pendingRequests.length + trainerRequests.length }}
-                storageKey='friendsScreen_tabConfig'
-              />
 
               {activeBoard.isLoaded && activeBoard.widgets.length > 0 && (
                 <WidgetEditHeader
@@ -2268,7 +2206,8 @@ export const makeStyles = (colors: ThemeColors) =>
     },
     backButton: { width: 80 },
     messageButton: { alignItems: "flex-end" },
-    titleRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+    tabsRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 20 },
+    tabsBar: { flexGrow: 1, flexBasis: 0, marginBottom: 0 },
     backButtonText: { fontSize: 16, color: colors.accent, fontWeight: "600" },
     modalHeaderTitle: {
       fontSize: 18,
@@ -2601,39 +2540,5 @@ export const makeStyles = (colors: ThemeColors) =>
       backgroundColor: colors.overlay,
       alignItems: "center",
       justifyContent: "center",
-    },
-    reportModalContent: { paddingHorizontal: 20, paddingBottom: 12, gap: 8 },
-    reportReasonRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
-      backgroundColor: colors.surface,
-    },
-    reportReasonRowActive: {
-      borderColor: colors.accent,
-      backgroundColor: colors.accentLight,
-    },
-    reportReasonText: { fontSize: 15, color: colors.textPrimary, flex: 1 },
-    reportReasonCheck: {
-      fontSize: 16,
-      color: colors.accent,
-      fontWeight: "700",
-    },
-    reportDetailsInput: {
-      marginTop: 8,
-      minHeight: 90,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.inputBorder,
-      backgroundColor: colors.inputBackground,
-      padding: 14,
-      fontSize: 15,
-      color: colors.textPrimary,
-      textAlignVertical: "top",
     },
   });

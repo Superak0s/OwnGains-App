@@ -6,6 +6,34 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Added
+
+- Snoozing an alarm shows a notification with the time it rings again, and a Cancel button that stops the snoozed alarm.
+- Long press a conversation in Messages to report or block that person.
+
+### Changed
+
+- The Messages button on the Friends screen sits next to the tabs instead of beside the title.
+- Android's navigation buttons stay visible while Messages is open, so you can go back or leave without swiping them up first.
+- Reminder times are picked on scroll wheels for hours and minutes, in supplement reminders and when you schedule a workout for yourself or a client. Supplement reminders no longer have the Morning, Noon, Evening and Night shortcuts.
+- The tutorial is much shorter. It opens by telling trainers to turn on Trainer Mode, skips what the app already makes obvious, and keeps only the gestures, settings and trainer tools that are easy to miss.
+
+### Fixed
+
+- Usage analytics (when you opt in) are sent again. Release builds were missing the Firebase configuration.
+- Supplement alarms play your alarm tone again. With a custom tone from your music files they only vibrated.
+
+### Internal
+
+- Moved the report sheet out of `FriendsScreen` into `ReportUserSheet`, shared with the messages list.
+- `app.config.js` reads `google-services.json` from `secrets/` as well as the repo root.
+- Replaced the pre-1.0 storage migrations with no-op slots so the schema stays at version 9, and removed their widget/tutorial helpers.
+- Removed the `Write(...)` deny rules from `.claude/settings.json`, which never matched because their `Edit(...)` twins already cover writes.
+- `.claude/settings.json` denies reading and editing `secrets/`.
+- Moved the time picker to `src/shared/components/TimeWheel.tsx`, with tests.
+- Brought `CLAUDE.md` up to date (messages, schedule and trainer features, `modules/`, app role, supplement alarms, Play forced update, FCM push) and pointed its release section at `release.sh --help`.
+- The `release` skill hands over a prompt-free `release.sh` command and describes the automatic Play upload.
+
 ## [1.0.0] - 2026-10-20
 
 ### Added

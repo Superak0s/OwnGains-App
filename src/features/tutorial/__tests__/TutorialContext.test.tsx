@@ -108,12 +108,11 @@ it("offers the online tour once to an offline-first device", async () => {
   expect(mockAlert).not.toHaveBeenCalled();
 });
 
-it("Next on a tab spotlight opens that tab", async () => {
+it("a spotlight on another tab opens that tab", async () => {
   await mount(false);
-  await act(async () => captured.api!.start(["home"]));
   navigate.mockClear();
-  await act(async () => lastOverlay().onNext());
-  expect(navigate).toHaveBeenCalledWith("Main", { screen: "Home" });
+  await act(async () => captured.api!.start(["tracking"]));
+  expect(navigate).toHaveBeenCalledWith("Main", { screen: "Tracking" });
 });
 
 it("does not mark an online-only chapter complete when only the needs-online card was seen", async () => {

@@ -9,7 +9,6 @@ import { PERMISSION_TYPES, permissionPrerequisites, trainerGrantConfirmation } f
 import type { PermissionType } from "@features/friends/types";
 import { TrainerBanner, makeTrainerBannerStyles } from "@features/workout/components/TrainerBanner";
 import { PartnerBanner } from "@features/workout/components/PartnerBanner";
-import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS, type MuscleGroup } from "@features/tracking/types/muscleRecovery";
 import type { WorkoutData } from "@shared/types";
 import type { ChecklistItem } from "../chapters";
 import { Hand } from "../motion";
@@ -167,77 +166,6 @@ export function PermissionsDemo({ onComplete }: PracticeProps) {
       ))}
       {note !== "" && <Text style={s.result} accessibilityLiveRegion="polite">{note}</Text>}
       {AlertComponent}
-    </View>
-  );
-}
-
-export function FriendRequestDemo({ onComplete }: PracticeProps) {
-  const s = usePracticeStyles();
-  const [state, setState] = useState<"pending" | "accepted" | "declined">("pending");
-  const [hint, setHint] = useState("");
-  return (
-    <View style={s.demo}>
-      <View style={s.row}>
-        <TouchableOpacity style={s.chip} onPress={() => setHint("Tap the camera next to the search bar in Friends to scan a friend's QR code.")} accessibilityRole="button" accessibilityLabel="Add by QR code">
-          <Text style={s.chipText}>📷 Scan QR</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.chip} onPress={() => setHint("Search by username and tap Add to send a request.")} accessibilityRole="button" accessibilityLabel="Add by username">
-          <Text style={s.chipText}>🔎 Username</Text>
-        </TouchableOpacity>
-      </View>
-      {hint !== "" && <Text style={s.result}>{hint}</Text>}
-      <View style={s.mockList}>
-        <Text style={s.title}>👤 {DEMO_FRIEND} wants to be friends</Text>
-        {state === "pending" && (
-          <View style={s.row}>
-            <TouchableOpacity style={s.secondary} onPress={() => setState("declined")} accessibilityRole="button" accessibilityLabel={`Decline ${DEMO_FRIEND}'s friend request`}>
-              <Text style={s.secondaryText}>Decline</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.primary, { flex: 1 }]}
-              onPress={() => {
-                setState("accepted");
-                onComplete();
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={`Accept ${DEMO_FRIEND}'s friend request`}
-            >
-              <Text style={s.primaryText}>Accept</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        {state === "accepted" && <Text style={s.celebrate}>🎉 You and {DEMO_FRIEND} are friends</Text>}
-        {state === "declined" && (
-          <TouchableOpacity style={s.chip} onPress={() => setState("pending")} accessibilityRole="button" accessibilityLabel="Try again">
-            <Text style={s.chipText}>Request declined · Try again</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
-}
-
-export function SorenessDemo({ onComplete }: PracticeProps) {
-  const s = usePracticeStyles();
-  const [sore, setSore] = useState<ReadonlySet<MuscleGroup>>(new Set());
-  const toggle = (m: MuscleGroup) => {
-    setSore((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(m)) next.add(m);
-      return next;
-    });
-    onComplete();
-  };
-  return (
-    <View style={s.demo}>
-      <View style={s.effortRow}>
-        {MUSCLE_GROUPS.map((m) => (
-          <TouchableOpacity key={m} style={[s.chip, sore.has(m) && s.segmentActive]} onPress={() => toggle(m)} accessibilityRole="button" accessibilityLabel={MUSCLE_GROUP_LABELS[m]} accessibilityState={{ selected: sore.has(m) }}>
-            <Text style={[s.chipText, sore.has(m) && s.primaryText]}>{MUSCLE_GROUP_LABELS[m]}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      <Text style={s.muted}>{sore.size} sore muscle{sore.size === 1 ? "" : "s"} logged</Text>
     </View>
   );
 }

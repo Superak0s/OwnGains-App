@@ -10,7 +10,7 @@ jest.mock("@shared/components/CustomAlert", () => ({
 }));
 jest.mock("../../motion", () => ({ Hand: () => null, PulseRing: () => null }));
 
-import { Checklist, FriendRequestDemo, LogSetDemo, PermissionsDemo } from "../demos";
+import { Checklist, LogSetDemo, PermissionsDemo } from "../demos";
 
 const render = (el: React.ReactElement) => {
   let tree!: ReactTestRenderer;
@@ -76,12 +76,3 @@ it("permissions demo turns on History Access along with Analytics", () => {
   expect(isOn("History Access for Alex")).toBe(true);
 });
 
-it("friend request completes on accept, not on decline", () => {
-  const onComplete = jest.fn();
-  const tree = render(<FriendRequestDemo onComplete={onComplete} />);
-  press(tree.root, "Decline Alex's friend request");
-  expect(onComplete).not.toHaveBeenCalled();
-  press(tree.root, "Try again");
-  press(tree.root, "Accept Alex's friend request");
-  expect(onComplete).toHaveBeenCalled();
-});

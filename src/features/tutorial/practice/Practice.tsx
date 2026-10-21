@@ -3,10 +3,8 @@ import type { PracticeSpec } from "../chapters";
 import {
   BannerDemo,
   Checklist,
-  FriendRequestDemo,
   LogSetDemo,
   PermissionsDemo,
-  SorenessDemo,
   TwoFingerPullDemo,
 } from "./demos";
 
@@ -24,10 +22,6 @@ export default function Practice({
       return <LogSetDemo onComplete={onComplete} />;
     case "permissions":
       return <PermissionsDemo onComplete={onComplete} />;
-    case "friendRequest":
-      return <FriendRequestDemo onComplete={onComplete} />;
-    case "soreness":
-      return <SorenessDemo onComplete={onComplete} />;
     case "twoFingerPull":
       return <TwoFingerPullDemo onComplete={onComplete} />;
     case "banner":

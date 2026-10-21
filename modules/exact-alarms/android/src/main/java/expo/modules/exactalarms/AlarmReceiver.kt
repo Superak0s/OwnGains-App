@@ -11,6 +11,7 @@ class AlarmReceiver : BroadcastReceiver() {
       Alarms.ACTION_FIRE -> Alarms.fire(context, id)
       Alarms.ACTION_SNOOZE -> Alarms.snooze(context, id)
       Alarms.ACTION_DISMISS -> Alarms.dismiss(context, id)
+      Alarms.ACTION_CANCEL -> Alarms.cancel(context, id)
     }
   }
 }

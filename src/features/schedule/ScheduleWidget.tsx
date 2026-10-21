@@ -4,6 +4,7 @@ import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import ModalSheet from "@shared/components/ModalSheet";
+import TimeWheel from "@shared/components/TimeWheel";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import { TrainerLoggedBadge } from "@shared/components/TrainerLoggedBadge";
 import { useAlert, type UseAlertReturn } from "@shared/components/CustomAlert";
@@ -416,19 +417,6 @@ function ScheduleForm({
       },
     });
 
-  const openTime = () =>
-    DateTimePickerAndroid.open({
-      value: when,
-      mode: "time",
-      is24Hour: true,
-      display: "clock",
-      onValueChange: (_event, time) => {
-        const next = new Date(when);
-        next.setHours(time.getHours(), time.getMinutes(), 0, 0);
-        setWhen(next);
-      },
-    });
-
   const selectAlarm = (ring: boolean) => {
     setAlarm(ring);
     if (ring && !source.asTrainer) void promptForAlarmPermissions(alert);
@@ -526,8 +514,7 @@ function ScheduleForm({
       />
 
       <Text style={styles.label}>When</Text>
-      <View style={styles.whenRow}>
-        <TouchableOpacity
+      <TouchableOpacity
           style={[styles.whenButton, inPast && styles.whenButtonError]}
           onPress={openDate}
           disabled={readOnly}
@@ -537,16 +524,8 @@ function ScheduleForm({
           <Text style={styles.whenCaption}>📅 Date</Text>
           <Text style={styles.whenValue}>{formatDay(when)}</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.whenButton, inPast && styles.whenButtonError]}
-          onPress={openTime}
-          disabled={readOnly}
-          accessibilityRole="button"
-          accessibilityLabel={`Time, ${formatTime(when)}. Change`}
-        >
-          <Text style={styles.whenCaption}>🕒 Time</Text>
-          <Text style={styles.whenValue}>{formatTime(when)}</Text>
-        </TouchableOpacity>
+      <View style={styles.whenWheel}>
+        <TimeWheel value={when} onChange={setWhen} disabled={readOnly} />
       </View>
       <Text style={[styles.whenMeta, inPast && styles.whenMetaError]}>
         {inPast
@@ -754,9 +733,8 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: 20,
       marginBottom: 8,
     },
-    whenRow: { flexDirection: "row", gap: 10 },
+    whenWheel: { marginTop: 10 },
     whenButton: {
-      flex: 1,
       paddingVertical: 12,
       paddingHorizontal: 14,
       borderRadius: 14,
