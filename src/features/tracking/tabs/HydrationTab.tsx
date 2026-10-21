@@ -29,8 +29,10 @@ import {
   IconButton,
   Metric,
   Row,
+  SettingsPanel,
   radius,
   space,
+  useUi,
 } from "@shared/components/ui";
 import { NOTE_MAX_LENGTH } from "@shared/limits";
 
@@ -376,22 +378,11 @@ export function HydrationSettingsWidget({
   onSettingsUpdate,
 }: HydrationSettingsWidgetProps) {
   const { hydrationApi } = useTrackingApis();
-  const { colors } = useTheme();
-  const [expanded, setExpanded] = useState(true);
+  const { ui, colors } = useUi();
   const [goalMl, setGoalMl] = useState<number>(2000);
   const [measurementErrorPercent, setMeasurementErrorPercent] =
     useState<number>(5);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>("");
-  const [success, setSuccess] = useState(false);
 
-  const styles = useMemo(() => makeHydrationSettingsStyles(colors), [colors]);
-
-  useEffect(() => {
-    if (!success) return;
-    const timer = setTimeout(() => setSuccess(false), 3000);
-    return () => clearTimeout(timer);
-  }, [success]);
   const trackingStyles = useMemo(() => makeTrackingStyles(colors), [colors]);
 
   useEffect(() => {
@@ -417,90 +408,39 @@ export function HydrationSettingsWidget({
   };
 
   const handleSave = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      setSuccess(false);
-
-      await hydrationApi.setSettings(goalMl, measurementErrorPercent);
-
-      setSuccess(true);
-      onSettingsUpdate?.({ goalMl, measurementErrorPercent });
-    } catch (err) {
-      setError(describeError(err));
-    } finally {
-      setLoading(false);
-    }
+    await hydrationApi.setSettings(goalMl, measurementErrorPercent);
+    onSettingsUpdate?.({ goalMl, measurementErrorPercent });
   };
 
   return (
-    <View>
-      <Row
-        title="Hydration settings"
-        meta={`${(goalMl / 1000).toFixed(1)}L a day`}
-        onPress={() => setExpanded(!expanded)}
-        right={
-          <Text style={[styles.chevron, expanded && styles.chevronOpen]}>
-            {"⌄"}
-          </Text>
-        }
-        last
-      />
-
-      {expanded && (
-        <View style={styles.body}>
-          <View>
-            <Text style={trackingStyles.inputLabel}>Daily goal (ml)</Text>
-            <TextInput
-              style={trackingStyles.input}
-              value={String(goalMl)}
-              onChangeText={(text) =>
-                setGoalMl(Math.max(500, Number.parseInt(text, 10) || 2000))
-              }
-              keyboardType="number-pad"
-              accessibilityLabel="Daily hydration goal in millilitres"
+    <SettingsPanel
+      title="Hydration settings"
+      meta={`${(goalMl / 1000).toFixed(1)}L a day`}
+      defaultExpanded
+      onSave={handleSave}
+    >
+      <View>
+        <Text style={trackingStyles.inputLabel}>Daily goal (ml)</Text>
+        <TextInput
+          style={trackingStyles.input}
+          value={String(goalMl)}
+          onChangeText={(text) =>
+            setGoalMl(Math.max(500, Number.parseInt(text, 10) || 2000))
+          }
+          keyboardType="number-pad"
+          accessibilityLabel="Daily hydration goal in millilitres"
+        />
+        <View style={ui.chipRow}>
+          {PRESET_GOALS_ML.map((preset) => (
+            <Chip
+              key={preset}
+              label={`${preset / 1000}L`}
+              selected={goalMl === preset}
+              onPress={() => setGoalMl(preset)}
             />
-            <View style={styles.presetRow}>
-              {PRESET_GOALS_ML.map((preset) => (
-                <Chip
-                  key={preset}
-                  label={`${preset / 1000}L`}
-                  selected={goalMl === preset}
-                  onPress={() => setGoalMl(preset)}
-                />
-              ))}
-            </View>
-          </View>
-
-          {!!error && <Text style={styles.error}>{error}</Text>}
-          {success && <Text style={styles.success}>Settings saved.</Text>}
-
-          <View style={styles.actions}>
-            <Button
-              label={loading ? "Saving…" : "Save settings"}
-              onPress={handleSave}
-              disabled={loading}
-            />
-            <Button
-              label="Close"
-              variant="quiet"
-              onPress={() => setExpanded(false)}
-              disabled={loading}
-            />
-          </View>
+          ))}
         </View>
-      )}
-    </View>
+      </View>
+    </SettingsPanel>
   );
 }
-
-const makeHydrationSettingsStyles = (colors: ThemeColors) =>
-  StyleSheet.create({
-    chevron: { fontSize: 20, color: colors.textMuted },
-    chevronOpen: { transform: [{ rotate: "180deg" }] },
-    body: { gap: space.lg, paddingTop: space.md },
-    presetRow: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
-    error: { fontSize: 13, color: colors.error },
-    success: { fontSize: 13, color: colors.success },
-    actions: { flexDirection: "row", gap: space.sm, flexWrap: "wrap" },
-  });

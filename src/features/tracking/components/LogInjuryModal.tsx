@@ -2,12 +2,8 @@ import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet, TextInput, ScrollView } from "react-native";
 import { useTheme } from "@shared/context/ThemeContext";
 import { useTrackingApis } from "../TrackingApisContext";
-import {
-  MUSCLE_GROUPS,
-  MUSCLE_GROUP_LABELS,
-  InjuryType,
-  MuscleGroup,
-} from "../types/muscleRecovery";
+import { InjuryType, MuscleGroup } from "../types/muscleRecovery";
+import { MusclePicker } from "./MusclePicker";
 import ModalSheet from "@shared/components/ModalSheet";
 import { IntensityPicker } from "@shared/components/IntensityPicker";
 import { getSeverityColor } from "@utils/severityColor";
@@ -50,18 +46,11 @@ export const LogInjuryModal: React.FC<LogInjuryModalProps> = ({
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [selectedMuscles, setSelectedMuscles] = useState<MuscleGroup[]>([]);
-  const [muscleSearch, setMuscleSearch] = useState("");
   const [injuryType, setInjuryType] = useState<InjuryType | "">("");
   const [painLevel, setPainLevel] = useState(5);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
-  const filteredMuscles = MUSCLE_GROUPS.filter((muscle) =>
-    MUSCLE_GROUP_LABELS[muscle]
-      .toLowerCase()
-      .includes(muscleSearch.trim().toLowerCase()),
-  );
 
   const handleSelectMuscle = (muscle: MuscleGroup) => {
     setSelectedMuscles((prev) =>
@@ -91,7 +80,6 @@ export const LogInjuryModal: React.FC<LogInjuryModalProps> = ({
       );
       onSuccess();
       setSelectedMuscles([]);
-      setMuscleSearch("");
       setInjuryType("");
       setPainLevel(5);
       setNotes("");
@@ -121,31 +109,11 @@ export const LogInjuryModal: React.FC<LogInjuryModalProps> = ({
       <ScrollView style={{ maxHeight: 600 }}>
         {error ? <Text style={styles.inputError}>{error}</Text> : null}
 
-        <Text style={styles.inputLabel}>
-          Where does it hurt?{" "}
-          {selectedMuscles.length > 0 ? (
-            <Text style={styles.inputLabelOptional}>
-              ({selectedMuscles.length} selected)
-            </Text>
-          ) : null}
-        </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Search muscle groups"
-          placeholderTextColor={colors.textMuted}
-          value={muscleSearch}
-          onChangeText={setMuscleSearch}
+        <MusclePicker
+          label="Where does it hurt?"
+          selected={selectedMuscles}
+          onToggle={handleSelectMuscle}
         />
-        <View style={local.grid}>
-          {filteredMuscles.map((muscle) => (
-            <Chip
-              key={muscle}
-              label={MUSCLE_GROUP_LABELS[muscle]}
-              selected={selectedMuscles.includes(muscle)}
-              onPress={() => handleSelectMuscle(muscle)}
-            />
-          ))}
-        </View>
 
         <Text style={styles.inputLabel}>What kind of injury?</Text>
         <View style={local.grid}>

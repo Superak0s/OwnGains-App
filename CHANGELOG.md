@@ -22,6 +22,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The doses per day and chart label steppers match the measurement error stepper in Tracking, and every stepper disables its button at the limit.
 - Screen readers skip the initial shown in place of a profile photo, since the name is always read next to it.
 - A friend's or client's workout details use the same layout as your own, with the start time, how long each set took and the main muscle groups only. A day with no title shows its day number once.
+- When hydration settings fail to save, the message matches the one for cycle settings instead of showing the raw error.
 
 ### Fixed
 
@@ -47,6 +48,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Added a shared `Avatar` to `src/shared/components/Avatar.tsx` in place of the friends and messages avatars and the copies in Settings, the client page and the session banners.
 - Added a shared `Stepper` to `src/shared/components/ui.tsx`, used by the measurement error, doses per day and chart label steppers.
 - Added a shared `SessionDetails` to `src/shared/components/SessionDetails.tsx` for the Home, friend and client workout details, with one `sessionTitle` helper in place of three copies.
+- Added a shared `SettingsPanel` to `src/shared/components/ui.tsx` for the hydration and cycle settings, and a tracking `MusclePicker` for the injury and progress photo forms.
 
 ## [1.0.0] - 2026-10-20
 

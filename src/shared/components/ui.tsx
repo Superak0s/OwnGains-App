@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -8,6 +8,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
+import { userFacingError } from "@shared/services/apiError";
 
 export const radius = { sm: 8, md: 10, lg: 14, pill: 999 } as const;
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 } as const;
@@ -182,6 +183,12 @@ const makeUi = (colors: ThemeColors) =>
       color: colors.textPrimary,
     },
 
+    panelChevron: { fontSize: 20, color: colors.textMuted },
+    panelChevronOpen: { transform: [{ rotate: "180deg" }] },
+    panelBody: { gap: space.lg, paddingTop: space.md },
+    panelError: { fontSize: 13, color: colors.error },
+    panelSuccess: { fontSize: 13, color: colors.success },
+    panelActions: { flexDirection: "row", gap: space.sm, flexWrap: "wrap" },
     sectionLabel: {
       fontSize: 13,
       fontWeight: "600",
@@ -614,6 +621,85 @@ export function ErrorMarginStepper({
         max={MAX_ERROR_MARGIN}
         format={(v) => `±${v}%`}
       />
+    </View>
+  );
+}
+
+interface SettingsPanelProps {
+  readonly title: string;
+  readonly meta: string;
+  readonly defaultExpanded?: boolean;
+  readonly onSave: () => Promise<void>;
+  readonly children: React.ReactNode;
+}
+
+/** A collapsible settings row with Save and Close, which reports whether `onSave` worked. */
+export function SettingsPanel({
+  title,
+  meta,
+  defaultExpanded = false,
+  onSave,
+  children,
+}: SettingsPanelProps): React.ReactElement {
+  const { ui } = useUi();
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!success) return;
+    const timer = setTimeout(() => setSuccess(false), 3000);
+    return () => clearTimeout(timer);
+  }, [success]);
+
+  const handleSave = async () => {
+    setLoading(true);
+    setError("");
+    setSuccess(false);
+    try {
+      await onSave();
+      setSuccess(true);
+    } catch (err) {
+      setError(userFacingError(err, "Couldn't save your settings."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <View>
+      <Row
+        title={title}
+        meta={meta}
+        onPress={() => setExpanded(!expanded)}
+        right={
+          <Text style={[ui.panelChevron, expanded && ui.panelChevronOpen]}>
+            {"⌄"}
+          </Text>
+        }
+        last
+      />
+      {expanded && (
+        <View style={ui.panelBody}>
+          {children}
+          {!!error && <Text style={ui.panelError}>{error}</Text>}
+          {success && <Text style={ui.panelSuccess}>Settings saved.</Text>}
+          <View style={ui.panelActions}>
+            <Button
+              label={loading ? "Saving…" : "Save settings"}
+              onPress={handleSave}
+              disabled={loading}
+            />
+            <Button
+              label="Close"
+              variant="quiet"
+              onPress={() => setExpanded(false)}
+              disabled={loading}
+            />
+          </View>
+        </View>
+      )}
     </View>
   );
 }

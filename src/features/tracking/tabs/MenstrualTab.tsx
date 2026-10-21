@@ -8,7 +8,7 @@ import { toDefaultWidgets } from "@shared/types";
 import { useTrackingApis } from "../TrackingApisContext";
 import { buildLocalISOForDate } from "../utils";
 import makeTrackingStyles from "../styles";
-import { Button, IconButton, Note, Row, radius, space } from "@shared/components/ui";
+import { IconButton, Note, SettingsPanel, radius, space } from "@shared/components/ui";
 import { NOTE_MAX_LENGTH } from "@shared/limits";
 import { userFacingError } from "@shared/services/apiError";
 
@@ -193,20 +193,10 @@ export function CycleSettingsWidget({
 }: CycleSettingsWidgetProps) {
   const { menstrualApi } = useTrackingApis();
   const { colors } = useTheme();
-  const [expanded, setExpanded] = useState(false);
   const [periodDays, setPeriodDays] = useState<number>(5);
   const [cycleLengthDays, setCycleLengthDays] = useState<number>(28);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>("");
-  const [success, setSuccess] = useState(false);
 
   const styles = useMemo(() => makeCycleSettingsStyles(colors), [colors]);
-
-  useEffect(() => {
-    if (!success) return;
-    const timer = setTimeout(() => setSuccess(false), 3000);
-    return () => clearTimeout(timer);
-  }, [success]);
 
   useEffect(() => {
     loadSettings();
@@ -226,20 +216,8 @@ export function CycleSettingsWidget({
   };
 
   const handleSave = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      setSuccess(false);
-
-      await menstrualApi.setSettings(periodDays, cycleLengthDays);
-
-      setSuccess(true);
-      onSettingsUpdate?.({ periodDays, cycleLengthDays });
-    } catch (err) {
-      setError(userFacingError(err, "Couldn't save your settings."));
-    } finally {
-      setLoading(false);
-    }
+    await menstrualApi.setSettings(periodDays, cycleLengthDays);
+    onSettingsUpdate?.({ periodDays, cycleLengthDays });
   };
 
   const fields = [
@@ -264,86 +242,54 @@ export function CycleSettingsWidget({
   ];
 
   return (
-    <View>
-      <Row
-        title="Cycle settings"
-        meta={`${periodDays}-day period on a ${cycleLengthDays}-day cycle`}
-        onPress={() => setExpanded(!expanded)}
-        right={
-          <Text style={[styles.chevron, expanded && styles.chevronOpen]}>
-            {"⌄"}
-          </Text>
-        }
-        last
-      />
-
-      {expanded && (
-        <View style={styles.body}>
-          {fields.map((field) => (
-            <View key={field.label} style={styles.field}>
-              <Text style={styles.fieldLabel}>{field.label}</Text>
-              <View style={styles.stepperRow}>
-                <IconButton
-                  glyph={"−"}
-                  label={`Decrease ${field.label.toLowerCase()}`}
-                  onPress={() =>
-                    field.onChange(Math.max(field.min, field.value - 1))
-                  }
-                />
-                <TextInput
-                  style={styles.stepperInput}
-                  value={String(field.value)}
-                  onChangeText={(text) =>
-                    field.onChange(
-                      Math.max(
-                        field.min,
-                        Number.parseInt(text, 10) || field.fallback,
-                      ),
-                    )
-                  }
-                  keyboardType="number-pad"
-                  accessibilityLabel={field.label}
-                />
-                <IconButton
-                  glyph="+"
-                  label={`Increase ${field.label.toLowerCase()}`}
-                  onPress={() =>
-                    field.onChange(Math.min(field.max, field.value + 1))
-                  }
-                />
-                <Text style={styles.unit}>days</Text>
-              </View>
-              <Note>{field.hint}</Note>
-            </View>
-          ))}
-
-          {!!error && <Text style={styles.error}>{error}</Text>}
-          {success && <Text style={styles.success}>Settings saved.</Text>}
-
-          <View style={styles.actions}>
-            <Button
-              label={loading ? "Saving…" : "Save settings"}
-              onPress={handleSave}
-              disabled={loading}
+    <SettingsPanel
+      title="Cycle settings"
+      meta={`${periodDays}-day period on a ${cycleLengthDays}-day cycle`}
+      onSave={handleSave}
+    >
+      {fields.map((field) => (
+        <View key={field.label} style={styles.field}>
+          <Text style={styles.fieldLabel}>{field.label}</Text>
+          <View style={styles.stepperRow}>
+            <IconButton
+              glyph={"−"}
+              label={`Decrease ${field.label.toLowerCase()}`}
+              onPress={() =>
+                field.onChange(Math.max(field.min, field.value - 1))
+              }
             />
-            <Button
-              label="Close"
-              variant="quiet"
-              onPress={() => setExpanded(false)}
-              disabled={loading}
+            <TextInput
+              style={styles.stepperInput}
+              value={String(field.value)}
+              onChangeText={(text) =>
+                field.onChange(
+                  Math.max(
+                    field.min,
+                    Number.parseInt(text, 10) || field.fallback,
+                  ),
+                )
+              }
+              keyboardType="number-pad"
+              accessibilityLabel={field.label}
             />
+            <IconButton
+              glyph="+"
+              label={`Increase ${field.label.toLowerCase()}`}
+              onPress={() =>
+                field.onChange(Math.min(field.max, field.value + 1))
+              }
+            />
+            <Text style={styles.unit}>days</Text>
           </View>
+          <Note>{field.hint}</Note>
         </View>
-      )}
-    </View>
+      ))}
+    </SettingsPanel>
   );
 }
 
 const makeCycleSettingsStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    chevron: { fontSize: 20, color: colors.textMuted },
-    chevronOpen: { transform: [{ rotate: "180deg" }] },
-    body: { gap: space.lg, paddingTop: space.md },
     field: { gap: space.sm },
     fieldLabel: { fontSize: 15, fontWeight: "600", color: colors.textPrimary },
     stepperRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
@@ -361,7 +307,4 @@ const makeCycleSettingsStyles = (colors: ThemeColors) =>
       textAlign: "center",
     },
     unit: { fontSize: 14, color: colors.textMuted },
-    error: { fontSize: 13, color: colors.error },
-    success: { fontSize: 13, color: colors.success },
-    actions: { flexDirection: "row", gap: space.sm, flexWrap: "wrap" },
   });

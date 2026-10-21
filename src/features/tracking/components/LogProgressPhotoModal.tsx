@@ -5,11 +5,8 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { useTheme } from "@shared/context/ThemeContext";
 import { useTrackingApis } from "../TrackingApisContext";
-import {
-  MuscleGroup,
-  MUSCLE_GROUPS,
-  MUSCLE_GROUP_LABELS,
-} from "../types/muscleRecovery";
+import { MuscleGroup, MUSCLE_GROUPS } from "../types/muscleRecovery";
+import { MusclePicker } from "./MusclePicker";
 import ModalSheet from "@shared/components/ModalSheet";
 import { captureException } from "@shared/services/crashReporting";
 import makeStyles from "../styles";
@@ -47,7 +44,6 @@ export const LogProgressPhotoModal: React.FC<LogProgressPhotoModalProps> = ({
   const [selectedUri, setSelectedUri] = useState<string | null>(null);
   const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
   const [customMuscleInput, setCustomMuscleInput] = useState("");
-  const [muscleSearch, setMuscleSearch] = useState("");
   const [selectedAngle, setSelectedAngle] = useState<
     "front" | "back" | "side" | "custom"
   >("front");
@@ -61,7 +57,6 @@ export const LogProgressPhotoModal: React.FC<LogProgressPhotoModalProps> = ({
       setSelectedUri(null);
       setSelectedMuscles([]);
       setCustomMuscleInput("");
-      setMuscleSearch("");
       setSelectedAngle("front");
       setCustomSideName("");
       setNotes("");
@@ -141,12 +136,6 @@ export const LogProgressPhotoModal: React.FC<LogProgressPhotoModalProps> = ({
     setSelectedMuscles((prev) => (prev.includes(name) ? prev : [...prev, name]));
     setCustomMuscleInput("");
   };
-
-  const filteredMuscleGroups = MUSCLE_GROUPS.filter((muscle) =>
-    MUSCLE_GROUP_LABELS[muscle]
-      .toLowerCase()
-      .includes(muscleSearch.trim().toLowerCase()),
-  );
 
   const customMuscles = selectedMuscles.filter(
     (m) => !(MUSCLE_GROUPS as readonly string[]).includes(m),
@@ -269,30 +258,11 @@ export const LogProgressPhotoModal: React.FC<LogProgressPhotoModalProps> = ({
           />
         )}
 
-        <Text style={styles.inputLabel}>
-          Muscle groups{" "}
-          {selectedMuscles.length > 0 ? (
-            <Text style={styles.inputLabelOptional}>
-              ({selectedMuscles.length} selected)
-            </Text>
-          ) : null}
-        </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Search muscle groups"
-          placeholderTextColor={colors.textMuted}
-          value={muscleSearch}
-          onChangeText={setMuscleSearch}
-        />
-        <View style={local.grid}>
-          {filteredMuscleGroups.map((muscle) => (
-            <Chip
-              key={muscle}
-              label={MUSCLE_GROUP_LABELS[muscle]}
-              selected={selectedMuscles.includes(muscle)}
-              onPress={() => toggleMuscle(muscle)}
-            />
-          ))}
+        <MusclePicker
+          label="Muscle groups"
+          selected={selectedMuscles}
+          onToggle={toggleMuscle}
+        >
           {customMuscles.map((muscle) => (
             <Chip
               key={muscle}
@@ -301,7 +271,7 @@ export const LogProgressPhotoModal: React.FC<LogProgressPhotoModalProps> = ({
               onPress={() => toggleMuscle(muscle)}
             />
           ))}
-        </View>
+        </MusclePicker>
 
         <View style={local.addRow}>
           <TextInput
