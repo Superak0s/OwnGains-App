@@ -5,6 +5,7 @@ import {
   buildProgramFromTemplate,
   type SplitTemplate,
 } from "@features/plan/utils/splitTemplates";
+import { DAY_MS } from "@utils/format";
 
 export const DEMO_SPLIT = "Demo";
 
@@ -52,7 +53,6 @@ const DEMO_TEMPLATE: SplitTemplate = {
 export const buildDemoProgram = (split: string = DEMO_SPLIT): WorkoutData =>
   buildProgramFromTemplate(DEMO_TEMPLATE, [split]);
 
-const DAY_MS = 86_400_000;
 const SET_MS = 45_000;
 const REST_MS = 150_000;
 const DAYS_BETWEEN_SESSIONS = 2;

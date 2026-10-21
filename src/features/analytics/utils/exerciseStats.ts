@@ -1,6 +1,6 @@
 import { estimateOneRepMax } from "@utils/oneRepMax";
 import { RECORD_REP_LIMIT } from "@utils/recordSets";
-import { parseDate, toDateString } from "@utils/format";
+import { DAY_MS, parseDate, toDateString } from "@utils/format";
 import type { ChartPoint } from "@shared/components/chart/chartMath";
 import { REST_WINDOW_MAX_SEC, REST_WINDOW_MIN_SEC } from "@utils/session";
 import type {
@@ -16,7 +16,6 @@ import type {
   PlannedExercise,
 } from "../types";
 
-const DAY_MS = 86_400_000;
 const WEEK_MS = 7 * DAY_MS;
 const REP_MAX_TABLE_LIMIT = RECORD_REP_LIMIT;
 const TREND_WINDOW_SESSIONS = 8;
@@ -371,7 +370,7 @@ const average = (values: number[]): number =>
 const finite = (value: number | null | undefined): number =>
   Number.isFinite(value) ? (value as number) : 0;
 
-const resolveExerciseName = (timing: SetTiming): string =>
+export const resolveExerciseName = (timing: SetTiming): string =>
   timing.exerciseName?.trim() || "Unknown Exercise";
 
 const isAssistedName = (name: string): boolean =>

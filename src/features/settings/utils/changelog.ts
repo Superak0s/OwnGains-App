@@ -1,3 +1,5 @@
+import { compareVersions } from "@shared/services/serverVersion";
+
 export const CHANGE_CATEGORIES = [
   "Added",
   "Changed",
@@ -126,16 +128,6 @@ export function categoriesIn(releases: Release[]): ChangeCategory[] {
   const present = new Set(releases.flatMap((r) => r.sections.map((s) => s.category)));
   return CHANGE_CATEGORIES.filter((c) => present.has(c));
 }
-
-const compareVersions = (a: string, b: string): number => {
-  const pa = a.split(".").map(Number);
-  const pb = b.split(".").map(Number);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const diff = (pa[i] ?? 0) - (pb[i] ?? 0);
-    if (diff !== 0) return diff;
-  }
-  return 0;
-};
 
 /**
  * Releases to show once after an update, newest first: every user-facing

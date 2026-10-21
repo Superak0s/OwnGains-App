@@ -28,6 +28,7 @@ import ProgressChart from "@shared/components/ProgressChart";
 import { getSeverityColor, SEVERITY_STOPS } from "@utils/severityColor";
 import { captureException } from "@shared/services/crashReporting";
 import type { ApiResponse } from "../services/types";
+import { recoveryTimeLabel } from "../utils";
 import { describeError } from "../helpers";
 import {
   Bar,
@@ -68,13 +69,6 @@ const STATUS_COLORS: Record<string, string> = {
   recovering: SEVERITY_STOPS.warn,
 };
 const RECOVERED_COLOR = SEVERITY_STOPS.good;
-
-function recoveryTimeLabel(days: number): string {
-  const rounded = Math.round(days);
-  if (rounded < 1) return "under a day";
-  if (rounded === 1) return "1 day";
-  return `${rounded} days`;
-}
 
 function StatusBadge({ status }: { readonly status: string }) {
   const color = STATUS_COLORS[status] ?? RECOVERED_COLOR;

@@ -17,6 +17,7 @@ import {
   setStorageItem,
   setStorageErrorHandler,
 } from "./sqliteStorage";
+import { DAY_MS } from "@utils/format";
 
 const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
 // Without google-services.json at prebuild there is no default Firebase app,
@@ -511,7 +512,6 @@ export const trackScreenView = (screen: string): void => {
 
 const LAST_OPEN_DAY_KEY = "@telemetry_last_open_day";
 const LAST_WORKOUT_KEY = "@telemetry_last_workout_at";
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Ranges rather than exact days, as the privacy policy describes.
 export const daysSinceBucket = (lastAt: number | null, now: number): string => {

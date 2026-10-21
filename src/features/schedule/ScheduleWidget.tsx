@@ -22,7 +22,7 @@ import { clientScheduleEvents, useSchedule } from "./ScheduleContext";
 import { makeProgramApi } from "@features/plan/services/programApiFactory";
 import { makeScheduleApi } from "./services";
 import { isCalendarSyncEnabled, setCalendarSync } from "./calendarSync";
-import { toTimeString } from "@utils/format";
+import { DAY_MS, toTimeString } from "@utils/format";
 import {
   dayStatus,
   entriesOnDay,
@@ -36,7 +36,6 @@ import {
 } from "./utils";
 import type { ScheduledWorkout, ScheduleParams } from "./types";
 
-const DAY_MS = 86_400_000;
 const UPCOMING_SHOWN = 4;
 const DURATIONS = [30, 45, 60, 90];
 const REMINDERS: { label: string; minutes: number | null }[] = [

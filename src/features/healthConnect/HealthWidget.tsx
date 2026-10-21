@@ -6,6 +6,7 @@ import ProgressChart from "@shared/components/ProgressChart";
 import { useAuth } from "@shared/context/AuthContext";
 import { Metric, Placeholder } from "@features/tracking/ui";
 import { toTrendPoints } from "@features/tracking/utils";
+import { startOfToday } from "@utils/format";
 import type { ChartPoint } from "@shared/components/ProgressChart";
 import { captureException } from "@shared/services/crashReporting";
 import { loadHealthHistory, mergeHistory, readRecentDays, type DailyHealth } from "./dailyHealth";
@@ -27,12 +28,6 @@ interface Reader {
   suffix?: string;
   read: (userId: string | null) => Promise<Result | null>;
 }
-
-const startOfToday = () => {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date;
-};
 
 const today = () => ({
   operator: "between" as const,

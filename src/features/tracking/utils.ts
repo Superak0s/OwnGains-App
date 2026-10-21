@@ -4,6 +4,13 @@ import type { BodyFatEntryWithFields } from "./types";
 import { toDateString, formatDate, parseDate, daysSinceLocal } from "@utils/format";
 import type { ChartPoint } from "@shared/components/chart/chartMath";
 
+export function recoveryTimeLabel(days: number): string {
+  const rounded = Math.round(days);
+  if (rounded < 1) return "under a day";
+  if (rounded === 1) return "1 day";
+  return `${rounded} days`;
+}
+
 export function isoToLocalDateStr(isoStr: string | null | undefined): string {
   if (!isoStr) return "";
   if (/^\d{4}-\d{2}-\d{2}$/.test(isoStr)) return isoStr;

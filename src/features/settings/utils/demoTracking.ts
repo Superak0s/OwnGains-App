@@ -27,9 +27,9 @@ import {
   removeFromStorage,
   saveToStorage,
 } from "@shared/services/storage";
+import { DAY_MS } from "@utils/format";
 
 const DEMO_RECORDS_KEY = "@demo_records";
-const DAY_MS = 86_400_000;
 const DAYS = 35;
 const DEMO_HEIGHT_CM = 178;
 

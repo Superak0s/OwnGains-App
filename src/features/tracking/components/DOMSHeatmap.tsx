@@ -14,18 +14,12 @@ import ProgressChart from "@shared/components/ProgressChart";
 import { getSeverityColor } from "@utils/severityColor";
 import { Bar, Metric, Placeholder, SectionLabel, space } from "../ui";
 import { captureException, metric } from "@shared/services/crashReporting";
+import { recoveryTimeLabel } from "../utils";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 interface DOMSHeatmapProps {
   readonly onSelectMuscle?: (muscle: string) => void;
-}
-
-function recoveryTimeLabel(days: number): string {
-  const rounded = Math.round(days);
-  if (rounded < 1) return "under a day";
-  if (rounded === 1) return "1 day";
-  return `${rounded} days`;
 }
 
 export const DOMSHeatmap: React.FC<DOMSHeatmapProps> = ({ onSelectMuscle }) => {

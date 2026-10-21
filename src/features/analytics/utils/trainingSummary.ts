@@ -2,7 +2,7 @@ import type { WorkoutData, SetTiming } from "@shared/types";
 import type { CompletedDays } from "../types";
 import { normalizeExerciseName } from "@utils/exerciseMatching";
 import { parseDate } from "@utils/format";
-import { dedupeHistory } from "./exerciseStats";
+import { dedupeHistory, resolveExerciseName } from "./exerciseStats";
 
 export type SummaryPeriod = "quarter" | "month" | "week" | "custom";
 
@@ -95,10 +95,6 @@ interface SessionLike {
 interface RawSetEntry extends TrainingSetEntry {
   setNumber: number;
   source: "server" | "local";
-}
-
-function resolveExerciseName(timing: SetTiming): string {
-  return timing.exerciseName?.trim() || "Unknown Exercise";
 }
 
 /** Builds the deduped set-entry list that feeds aggregateTrainingSummary, from

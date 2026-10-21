@@ -7,17 +7,11 @@ import {
   AppState,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
-import { toDateString } from "@utils/format";
+import { startOfToday, toDateString } from "@utils/format";
 import type { ThemeColors } from "@shared/context/ThemeContext"
 
 
 type CalendarView = "week" | "month";
-
-function startOfToday(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
 
 interface DayDecoration {
   backgroundColor?: string;

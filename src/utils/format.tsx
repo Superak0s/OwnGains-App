@@ -1,5 +1,7 @@
 type DateInput = Date | string | number
 
+export const DAY_MS = 86_400_000
+
 const DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   month: "short",
   day: "numeric",
@@ -54,13 +56,19 @@ export const toDateString = (input: Date | string): string => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
+export function startOfToday(): Date {
+  const date = new Date()
+  date.setHours(0, 0, 0, 0)
+  return date
+}
+
 export function daysSinceLocal(start: Date, today: Date = new Date()): number {
   const from = new Date(start)
   from.setHours(0, 0, 0, 0)
   const to = new Date(today)
   to.setHours(0, 0, 0, 0)
   // rounded, not floored: DST shifts make a calendar day 23 or 25 hours long
-  return Math.round((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24))
+  return Math.round((to.getTime() - from.getTime()) / DAY_MS)
 }
 
 export const toTimeString = (date: Date): string =>

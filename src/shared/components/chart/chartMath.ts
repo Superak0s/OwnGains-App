@@ -1,4 +1,4 @@
-import { formatDate, toDateString } from "@utils/format";
+import { DAY_MS, formatDate, toDateString } from "@utils/format";
 
 export interface ChartPoint {
   date: Date;
@@ -50,7 +50,6 @@ export const DEFAULT_CHART_SETTINGS: ChartSettings = {
   compare: "off",
 };
 
-const DAY_MS = 86_400_000;
 
 const RANGE_DAYS: Partial<Record<ChartRange, number>> = {
   "1W": 7,

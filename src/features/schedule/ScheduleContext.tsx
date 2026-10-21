@@ -10,8 +10,8 @@ import { scheduleApi } from "./services";
 import { syncScheduleReminders } from "./reminders";
 import { syncCalendar } from "./calendarSync";
 import type { ScheduledWorkout, ScheduleParams } from "./types";
+import { DAY_MS } from "@utils/format";
 
-const DAY_MS = 86_400_000;
 const WINDOW_DAYS = 400;
 
 interface ScheduleContextValue {

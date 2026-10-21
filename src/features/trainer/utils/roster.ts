@@ -1,10 +1,10 @@
 import type { SessionRecord } from "@features/friends/types"
 import type { ClientSummary } from "../types"
+import { DAY_MS } from "@utils/format"
 
 export const INACTIVE_AFTER_DAYS = 7
 export const MAX_WEEKLY_TARGET = 7
 
-const DAY_MS = 86_400_000
 
 export type ClientStatus = "inactive" | "behind" | "on_track"
 
