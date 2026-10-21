@@ -18,11 +18,11 @@ import SessionDetailsSheet, {
   getSessionTitle,
   loadFriendSessionDetails,
 } from "@features/friends/components/SessionDetailsSheet";
-import { formatDate } from "@utils/format";
+import { formatDate, toDateString } from "@utils/format";
 import { EMPTY_WORKOUT_TITLE } from "@features/workout/utils";
 import type { ClientSummary } from "../types";
 import type { CustomWorkout, DayChoice } from "../utils/sessionStart";
-import { sessionOrigin, toDateKey } from "../utils/roster";
+import { sessionOrigin } from "../utils/roster";
 import { clientStatusLine } from "./ClientRow";
 import { getDeviceKey, safetyCode } from "../utils/trackingCrypto";
 
@@ -148,11 +148,11 @@ export default function ClientPage({
   );
 
   const sessionsOn = (date: string) =>
-    (sessions ?? []).filter((s) => s.startTime !== undefined && toDateKey(new Date(s.startTime)) === date);
+    (sessions ?? []).filter((s) => s.startTime !== undefined && toDateString(new Date(s.startTime)) === date);
   const onDatePress = (date: Date) => {
-    const onDay = sessionsOn(toDateKey(date));
+    const onDay = sessionsOn(toDateString(date));
     if (onDay.length === 1) void openSession(onDay[0]);
-    setSelectedDate(onDay.length > 1 ? toDateKey(date) : null);
+    setSelectedDate(onDay.length > 1 ? toDateString(date) : null);
   };
   const isGranted = (type: PermissionType) => granted?.includes(type) ?? false;
 
@@ -311,7 +311,7 @@ export default function ClientPage({
         {sessions?.length === 0 && <Text style={styles.line}>No sessions yet</Text>}
         {sessions !== null && sessions.length > 0 && (
           <UniversalCalendar
-            hasDataOnDate={(date) => sessionsOn(toDateKey(date)).length > 0}
+            hasDataOnDate={(date) => sessionsOn(toDateString(date)).length > 0}
             onDatePress={onDatePress}
             legendText="Workout day"
           />

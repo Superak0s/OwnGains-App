@@ -2,14 +2,15 @@ import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import type { ClientSummary } from "../types";
-import { toDateKey, weeklyTarget } from "../utils/roster";
+import { weeklyTarget } from "../utils/roster";
+import { toDateString } from "@utils/format";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const daysAgoText = (iso: string, now: Date): string => {
   const days = Math.round(
-    (new Date(`${toDateKey(now)}T00:00:00`).getTime() -
-      new Date(`${toDateKey(new Date(iso))}T00:00:00`).getTime()) /
+    (new Date(`${toDateString(now)}T00:00:00`).getTime() -
+      new Date(`${toDateString(new Date(iso))}T00:00:00`).getTime()) /
       DAY_MS,
   );
   if (days <= 0) return "today";

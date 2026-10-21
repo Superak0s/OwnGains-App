@@ -8,17 +8,6 @@ const DAY_MS = 86_400_000
 
 export type ClientStatus = "inactive" | "behind" | "on_track"
 
-export function weekStart(now: Date): Date {
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  start.setDate(start.getDate() - ((start.getDay() + 6) % 7))
-  return start
-}
-
-export function toDateKey(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
 export function weeklyTarget(dayCount: number | null): number | null {
   return dayCount ? Math.min(dayCount, MAX_WEEKLY_TARGET) : null
 }

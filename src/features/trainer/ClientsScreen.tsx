@@ -30,7 +30,9 @@ import {
   type ClientSummary,
   type TrainerRequest,
 } from "./services";
-import { groupRoster, toDateKey, weekStart } from "./utils/roster";
+import { groupRoster } from "./utils/roster";
+import { weekStart } from "@utils/dayCompletion";
+import { toDateString } from "@utils/format";
 import { trainerDayChoices, type CustomWorkout } from "./utils/sessionStart";
 import ClientRow, { daysAgoText } from "./components/ClientRow";
 import ClientPage from "./components/ClientPage";
@@ -67,7 +69,7 @@ export default function ClientsScreen(): React.JSX.Element {
     lastLoadRef.current = Date.now();
     try {
       const [roster, requests] = await Promise.all([
-        trainerApi.getClients(toDateKey(weekStart(new Date()))),
+        trainerApi.getClients(toDateString(weekStart())),
         trainerApi.getSentRequests(),
       ]);
       setClients(roster);

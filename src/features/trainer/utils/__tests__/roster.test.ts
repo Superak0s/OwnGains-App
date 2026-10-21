@@ -4,8 +4,6 @@ import {
   expectedByToday,
   groupRoster,
   sessionOrigin,
-  toDateKey,
-  weekStart,
   weeklyTarget,
 } from "../roster"
 
@@ -25,12 +23,6 @@ const client = (over: Partial<ClientSummary> = {}): ClientSummary => ({
 })
 
 describe("week boundaries", () => {
-  it("starts the week on Monday in local time, even late on Sunday", () => {
-    expect(weekStart(SUN)).toEqual(new Date(2026, 9, 12))
-    expect(toDateKey(weekStart(SUN))).toBe("2026-10-12")
-    expect(weekStart(MON)).toEqual(new Date(2026, 9, 12))
-  })
-
   it("caps the weekly target at 7 and has none without a program", () => {
     expect(weeklyTarget(3)).toBe(3)
     expect(weeklyTarget(10)).toBe(7)

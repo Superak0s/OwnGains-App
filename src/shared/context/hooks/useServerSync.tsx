@@ -13,6 +13,7 @@ import type {
 } from "../../types";
 import { captureException, log, metric } from "../../services/crashReporting";
 import { clearProgramDirty, isProgramDirty } from "../../services/programDirty";
+import { weekStart } from "@utils/dayCompletion";
 
 
 interface UseServerSyncOptions {
@@ -58,16 +59,6 @@ interface UseServerSyncReturn {
   syncFromServer: () => Promise<boolean>;
 }
 
-function getCurrentWeekMonday(): Date {
-  const now = new Date();
-  const day = now.getDay();
-  const daysFromMonday = day === 0 ? 6 : day - 1;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - daysFromMonday);
-  monday.setHours(0, 0, 0, 0);
-  return monday;
-}
-
 async function fetchWeeklySessions(
   split: string,
   api: WorkoutApi,
@@ -77,11 +68,11 @@ async function fetchWeeklySessions(
   const allSessions = await api.getSessionHistory(split, null, 100, true);
   if (!allSessions?.length) return [];
 
-  const weekStart = getCurrentWeekMonday();
+  const monday = weekStart();
   return allSessions
     .filter((s) => {
       const raw = s.startTime ?? s.createdAt;
-      return s.dayNumber != null && !!raw && new Date(raw) >= weekStart;
+      return s.dayNumber != null && !!raw && new Date(raw) >= monday;
     })
     .map((s) => ({
       id: s.id,

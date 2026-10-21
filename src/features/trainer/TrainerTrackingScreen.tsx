@@ -1,12 +1,12 @@
 import React, { useCallback, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { reportAndReturn } from "@shared/services/crashReporting";
-import { formatDateTime } from "@utils/format";
+import { formatDateTime, toDateString } from "@utils/format";
 import TrackingScreen from "@features/tracking/TrackingScreen";
 import { TrackingViewProvider, type TrackingView } from "@features/tracking/TrackingApisContext";
 import ClientPickerSheet from "./components/ClientPickerSheet";
 import { trainerApi } from "./services";
-import { toDateKey, weekStart } from "./utils/roster";
+import { weekStart } from "@utils/dayCompletion";
 import { loadTrackingCopy, syncTrackingInbox, unpackTrackingCopy } from "./utils/trackingInbox";
 import { clientTrackingApis } from "./utils/trackingView";
 
@@ -27,7 +27,7 @@ export default function TrainerTrackingScreen(): React.JSX.Element {
     useCallback(() => {
       let active = true;
       void (async () => {
-        const roster = (await trainerApi.getClients(toDateKey(weekStart(new Date())))).filter(
+        const roster = (await trainerApi.getClients(toDateString(weekStart()))).filter(
           (c) => c.hasTrackingAccess,
         );
         await syncTrackingInbox().catch(reportAndReturn([], { stage: "trackingInbox" }));
