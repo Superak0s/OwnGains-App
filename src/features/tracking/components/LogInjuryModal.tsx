@@ -22,7 +22,7 @@ interface LogInjuryModalProps {
   readonly onSuccess: () => void;
 }
 
-const INJURY_TYPES: { value: InjuryType; label: string }[] = [
+export const INJURY_TYPES: { value: InjuryType; label: string }[] = [
   { value: "strain", label: "Strain" },
   { value: "sprain", label: "Sprain" },
   { value: "tendonitis", label: "Tendonitis" },

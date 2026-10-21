@@ -6,29 +6,17 @@ import { useTrackingApis } from "../TrackingApisContext";
 import { describeError } from "../helpers";
 import {
   InjuryRecord,
-  InjuryType,
   InjuryStatus,
   MUSCLE_GROUP_LABELS,
 } from "../types/muscleRecovery";
 import { getSeverityColor, SEVERITY_STOPS } from "@utils/severityColor";
 import { Bar, Button, Chip, Placeholder, TINT, radius, space } from "../ui";
 import { captureException, metric } from "@shared/services/crashReporting";
+import { INJURY_TYPES } from "./LogInjuryModal";
 
 interface InjuryTrackerProps {
   readonly onLogInjury?: () => void;
 }
-
-const INJURY_TYPES: { value: InjuryType; label: string }[] = [
-  { value: "strain", label: "Strain" },
-  { value: "sprain", label: "Sprain" },
-  { value: "tendonitis", label: "Tendonitis" },
-  { value: "fracture", label: "Fracture" },
-  { value: "dislocation", label: "Dislocation" },
-  { value: "tear", label: "Tear" },
-  { value: "overuse", label: "Overuse" },
-  { value: "surgery", label: "Surgery" },
-  { value: "other", label: "Other" },
-];
 
 const STATUS_CONFIG: Record<InjuryStatus, { label: string; color: string }> = {
   active: { label: "Active", color: SEVERITY_STOPS.bad },
