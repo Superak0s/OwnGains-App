@@ -19,6 +19,7 @@ import { captureException } from "@shared/services/crashReporting";
 import { commitAutofill } from "../../../modules/autofill";
 import type { RootStackParamList } from "./types";
 import GoogleSignInButton from "./components/GoogleSignInButton";
+import PasswordField from "./components/PasswordField";
 import { PASSWORD_HINT, passwordPolicyError } from "./utils/passwordPolicy";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 
@@ -98,9 +99,6 @@ export default function SignupScreen({
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [ageConfirmed, setAgeConfirmed] = useState<boolean>(false);
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [showConfirmPassword, setShowConfirmPassword] =
-    useState<boolean>(false);
   const [errors, setErrors] = useState<FieldErrors>({});
 
   const { signup } = useAuth();
@@ -338,45 +336,23 @@ export default function SignupScreen({
                 <Text style={styles.inputLabel}>
                   Password <Text style={styles.required}>*</Text>
                 </Text>
-                <View
-                  style={[
-                    styles.passwordContainer,
-                    errors.password && styles.inputInvalid,
-                  ]}
-                >
-                  <TextInput
-                    ref={passwordRef}
-                    style={styles.passwordInput}
-                    placeholder='Create a password'
-                    placeholderTextColor={colors.textMuted}
-                    value={password}
-                    onChangeText={(value) => {
-                      setPassword(value);
-                      clearError("password");
-                    }}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize='none'
-                    autoComplete='new-password'
-                    textContentType='newPassword'
-                    maxLength={128}
-                    returnKeyType='next'
-                    onSubmitEditing={() => confirmRef.current?.focus()}
-                    editable={!isLoading}
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeButton}
-                    onPress={() => setShowPassword(!showPassword)}
-                    accessibilityRole='button'
-                    accessibilityLabel={
-                      showPassword ? "Hide password" : "Show password"
-                    }
-                    disabled={isLoading}
-                  >
-                    <Text style={styles.eyeIcon}>
-                      {showPassword ? "🙈" : "👁️"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                <PasswordField
+                  ref={passwordRef}
+                  toggleLabel='password'
+                  style={!!errors.password && styles.inputInvalid}
+                  placeholder='Create a password'
+                  value={password}
+                  onChangeText={(value) => {
+                    setPassword(value);
+                    clearError("password");
+                  }}
+                  autoComplete='new-password'
+                  textContentType='newPassword'
+                  maxLength={128}
+                  returnKeyType='next'
+                  onSubmitEditing={() => confirmRef.current?.focus()}
+                  editable={!isLoading}
+                />
 
                 {errors.password ? (
                   <Text
@@ -394,47 +370,23 @@ export default function SignupScreen({
                 <Text style={styles.inputLabel}>
                   Confirm Password <Text style={styles.required}>*</Text>
                 </Text>
-                <View
-                  style={[
-                    styles.passwordContainer,
-                    errors.confirmPassword && styles.inputInvalid,
-                  ]}
-                >
-                  <TextInput
-                    ref={confirmRef}
-                    style={styles.passwordInput}
-                    placeholder='Re-enter your password'
-                    placeholderTextColor={colors.textMuted}
-                    value={confirmPassword}
-                    onChangeText={(value) => {
-                      setConfirmPassword(value);
-                      clearError("confirmPassword");
-                    }}
-                    secureTextEntry={!showConfirmPassword}
-                    autoCapitalize='none'
-                    autoComplete='new-password'
-                    textContentType='newPassword'
-                    maxLength={128}
-                    returnKeyType='go'
-                    editable={!isLoading}
-                    onSubmitEditing={() => void handleSignup()}
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeButton}
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                    accessibilityRole='button'
-                    accessibilityLabel={
-                      showConfirmPassword
-                        ? "Hide password confirmation"
-                        : "Show password confirmation"
-                    }
-                    disabled={isLoading}
-                  >
-                    <Text style={styles.eyeIcon}>
-                      {showConfirmPassword ? "🙈" : "👁️"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                <PasswordField
+                  ref={confirmRef}
+                  toggleLabel='password confirmation'
+                  style={!!errors.confirmPassword && styles.inputInvalid}
+                  placeholder='Re-enter your password'
+                  value={confirmPassword}
+                  onChangeText={(value) => {
+                    setConfirmPassword(value);
+                    clearError("confirmPassword");
+                  }}
+                  autoComplete='new-password'
+                  textContentType='newPassword'
+                  maxLength={128}
+                  returnKeyType='go'
+                  editable={!isLoading}
+                  onSubmitEditing={() => void handleSignup()}
+                />
                 {confirmError && (
                   <Text
                     style={styles.errorText}
@@ -579,22 +531,6 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: 6,
       fontStyle: "italic",
     },
-    passwordContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
-    },
-    passwordInput: {
-      flex: 1,
-      padding: 16,
-      fontSize: 16,
-      color: colors.textPrimary,
-    },
-    eyeButton: { padding: 16 },
-    eyeIcon: { fontSize: 20 },
     errorText: {
       fontSize: 12,
       color: colors.error,

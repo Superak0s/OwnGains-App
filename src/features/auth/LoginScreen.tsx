@@ -39,6 +39,7 @@ import {
 import type { AppMode } from "@shared/services/appMode";
 import type { RootStackParamList } from "./types";
 import GoogleSignInButton from "./components/GoogleSignInButton";
+import PasswordField from "./components/PasswordField";
 import type { ThemeColors } from "@shared/context/ThemeContext"
 import { captureException, log, metric } from "@shared/services/crashReporting";
 
@@ -82,7 +83,6 @@ export default function LoginScreen({
 
   const [usernameOrEmail, setUsernameOrEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
-  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showServerModal, setShowServerModal] = useState<boolean>(false);
   const [tempServerUrl, setTempServerUrl] = useState<string>("");
@@ -400,36 +400,18 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
               {isOnline && (
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Password</Text>
-                <View style={styles.passwordContainer}>
-                  <TextInput
-                    ref={passwordRef}
-                    style={styles.passwordInput}
-                    placeholder='Enter your password'
-                    placeholderTextColor={colors.textMuted}
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize='none'
-                    autoComplete='current-password'
-                    textContentType='password'
-                    editable={!isLoading}
-                    returnKeyType='go'
-                    onSubmitEditing={handleLogin}
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeButton}
-                    onPress={() => setShowPassword(!showPassword)}
-                    disabled={isLoading}
-                    accessibilityRole='button'
-                    accessibilityLabel={
-                      showPassword ? "Hide password" : "Show password"
-                    }
-                  >
-                    <Text style={styles.eyeIcon}>
-                      {showPassword ? "🙈" : "👁️"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                <PasswordField
+                  ref={passwordRef}
+                  toggleLabel='password'
+                  placeholder='Enter your password'
+                  value={password}
+                  onChangeText={setPassword}
+                  autoComplete='current-password'
+                  textContentType='password'
+                  editable={!isLoading}
+                  returnKeyType='go'
+                  onSubmitEditing={handleLogin}
+                />
               </View>
               )}
 
@@ -666,22 +648,6 @@ const makeStyles = (colors: ThemeColors) =>
       borderWidth: 1,
       borderColor: colors.surfaceBorder,
     },
-    passwordContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
-    },
-    passwordInput: {
-      flex: 1,
-      padding: 16,
-      fontSize: 16,
-      color: colors.textPrimary,
-    },
-    eyeButton: { padding: 16 },
-    eyeIcon: { fontSize: 20 },
     forgotPassword: {
       alignSelf: "flex-end",
       minHeight: 44,
