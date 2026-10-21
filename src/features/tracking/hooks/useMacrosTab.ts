@@ -1,5 +1,4 @@
-import type { DayModalState , MacrosEntryWithFields, SavedMacroFood } from "../types";
-import type { UseAlertReturn } from "@shared/components/CustomAlert";
+import type { TabDeps, MacrosEntryWithFields, SavedMacroFood } from "../types";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import type { MacrosEntry } from "@shared/types";
 
@@ -58,12 +57,8 @@ export interface MacrosGoalInput {
   calories: string;
 }
 
-interface UseMacrosTabDeps {
-  alert: UseAlertReturn["alert"];
+interface UseMacrosTabDeps extends TabDeps {
   loadData: () => void;
-  setDayModal: (updater: (prev: DayModalState | null) => DayModalState | null) => void;
-  selectedLogDate: Date | null;
-  setSelectedLogDate: (d: Date | null) => void;
 }
 
 export function useMacrosTab(deps: UseMacrosTabDeps) {

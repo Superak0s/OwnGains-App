@@ -1,5 +1,4 @@
-import type { DayModalState , BodyFatEntryWithFields } from "../types";
-import type { UseAlertReturn } from "@shared/components/CustomAlert";
+import type { TabDeps, BodyFatEntryWithFields } from "../types";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { getStorageItem, setStorageItem } from "@shared/services/sqliteStorage"
 
@@ -12,12 +11,8 @@ import { isoToLocalDateStr } from "../utils";
 import { toDateString } from "@utils/format";
 import { log, metric } from "@shared/services/crashReporting";
 
-interface UseBodyFatTabDeps {
-  alert: UseAlertReturn["alert"];
+interface UseBodyFatTabDeps extends TabDeps {
   loadData: () => void;
-  setDayModal: (updater: (prev: DayModalState | null) => DayModalState | null) => void;
-  selectedLogDate: Date | null;
-  setSelectedLogDate: (d: Date | null) => void;
   height: HeightData | null;
   getUserKey: (key: string) => string;
   savedFormulaSex?: "male" | "female" | null;

@@ -1,5 +1,4 @@
-import type { DayModalState } from "../types";
-import type { UseAlertReturn } from "@shared/components/CustomAlert";
+import type { TabDeps } from "../types";
 import { useState, useCallback, useMemo } from "react";
 import type { MeasurementEntry } from "../services/types";
 import { useTrackingApis } from "../TrackingApisContext";
@@ -7,12 +6,8 @@ import { createDeleteHandler, withConfirm, describeError } from "../helpers";
 import { isoToLocalDateStr } from "../utils";
 import { toDateString } from "@utils/format";
 
-interface UseMeasurementsTabDeps {
-  alert: UseAlertReturn["alert"];
+interface UseMeasurementsTabDeps extends TabDeps {
   loadTabData: () => Promise<void>;
-  setDayModal: (updater: (prev: DayModalState | null) => DayModalState | null) => void;
-  selectedLogDate: Date | null;
-  setSelectedLogDate: (d: Date | null) => void;
   buildLocalISOForDate: (d: Date, t?: string) => string;
 }
 

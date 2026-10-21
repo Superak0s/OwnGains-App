@@ -1,6 +1,7 @@
 import type { ProgressPhoto, MacrosEntry, BodyFatEntry, WeightEntry } from "@shared/types";
 import type { HydrationEntry, MeasurementEntry, MenstrualEntry } from "../services/types";
 import type { SorenessEntry } from "./muscleRecovery";
+import type { UseAlertReturn } from "@shared/components/CustomAlert";
 
 export type WeightUnit = "kg" | "lbs";
 export type Gender = "male" | "female";
@@ -56,6 +57,14 @@ export interface DayModalState {
   tab: string;
   existingEntries: TrackingEntry[] | null;
   isToday: boolean;
+}
+
+/** What TrackingScreen hands every tab hook. */
+export interface TabDeps {
+  alert: UseAlertReturn["alert"];
+  setDayModal: (updater: (prev: DayModalState | null) => DayModalState | null) => void;
+  selectedLogDate: Date | null;
+  setSelectedLogDate: (d: Date | null) => void;
 }
 
 export interface MacrosEntryWithFields extends MacrosEntry {

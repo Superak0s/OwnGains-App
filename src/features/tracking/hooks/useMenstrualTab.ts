@@ -1,4 +1,3 @@
-import type { UseAlertReturn } from "@shared/components/CustomAlert";
 import { useState, useCallback, useMemo } from "react";
 import { useTrackingApis } from "../TrackingApisContext";
 import type { MenstrualEntry, CycleStats, MenstrualPrefs } from "../services/types";
@@ -15,13 +14,11 @@ import {
 } from "../utils";
 import { toDateString, formatDate, parseDate } from "@utils/format";
 import { createDeleteHandler, withConfirm, describeError } from "../helpers";
-import type { DayModalState } from "../types";
+import type { TabDeps } from "../types";
 import { captureException } from "@shared/services/crashReporting";
 
-interface UseMenstrualTabDeps {
-  alert: UseAlertReturn["alert"];
+interface UseMenstrualTabDeps extends Pick<TabDeps, "alert" | "setDayModal"> {
   user?: { id?: string } | null;
-  setDayModal: (updater: (prev: DayModalState | null) => DayModalState | null) => void;
 }
 
 export function useMenstrualTab(deps: UseMenstrualTabDeps) {

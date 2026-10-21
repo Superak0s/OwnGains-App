@@ -1,5 +1,4 @@
-import type { DayModalState } from "../types";
-import type { UseAlertReturn } from "@shared/components/CustomAlert";
+import type { TabDeps } from "../types";
 import { useState, useCallback, useMemo } from "react";
 import type { HydrationEntry } from "../services/types";
 import { DEFAULT_HYDRATION_SETTINGS } from "../services/types";
@@ -9,12 +8,8 @@ import { isoToLocalDateStr } from "../utils";
 import { useRetryKey } from "./useRetryKey";
 import { toDateString } from "@utils/format";
 
-interface UseHydrationTabDeps {
-  alert: UseAlertReturn["alert"];
+interface UseHydrationTabDeps extends TabDeps {
   loadTabData: () => Promise<void>;
-  setDayModal: (updater: (prev: DayModalState | null) => DayModalState | null) => void;
-  selectedLogDate: Date | null;
-  setSelectedLogDate: (d: Date | null) => void;
   buildLocalISOForDate: (d: Date, t?: string) => string;
 }
 

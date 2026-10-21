@@ -1,5 +1,4 @@
-import type { DayModalState } from "../types";
-import type { UseAlertReturn } from "@shared/components/CustomAlert";
+import type { TabDeps } from "../types";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import type { WeightEntry, HeightData } from "@shared/types";
 import { useTrackingApis } from "../TrackingApisContext";
@@ -14,12 +13,8 @@ import { useWorkoutPick } from "@shared/context/WorkoutContext";
 import { parseDecimal, MAX_WEIGHT_KG, displayToKg } from "@features/workout/utils";
 import { log, metric } from "@shared/services/crashReporting";
 
-interface UseWeightTabDeps {
-  alert: UseAlertReturn["alert"];
+interface UseWeightTabDeps extends TabDeps {
   loadData: () => void;
-  setDayModal: (updater: (prev: DayModalState | null) => DayModalState | null) => void;
-  selectedLogDate: Date | null;
-  setSelectedLogDate: (d: Date | null) => void;
   buildLocalISOForDate: (d: Date, t?: string) => string;
   user?: { id?: string; heightCm?: number | null } | null;
 }

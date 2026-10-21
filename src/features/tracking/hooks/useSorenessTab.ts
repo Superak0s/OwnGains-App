@@ -1,5 +1,4 @@
-import type { DayModalState } from "../types";
-import type { UseAlertReturn } from "@shared/components/CustomAlert";
+import type { TabDeps } from "../types";
 import { useState, useCallback, useMemo } from "react";
 import type { SorenessEntry } from "../services/types";
 import { useTrackingApis } from "../TrackingApisContext";
@@ -7,10 +6,7 @@ import { createDeleteHandler, withConfirm } from "../helpers";
 import { isoToLocalDateStr } from "../utils";
 import { toDateString } from "@utils/format";
 
-interface UseSorenessTabDeps {
-  alert: UseAlertReturn["alert"];
-  setDayModal: (updater: (prev: DayModalState | null) => DayModalState | null) => void;
-}
+type UseSorenessTabDeps = Pick<TabDeps, "alert" | "setDayModal">;
 
 export function useSorenessTab(deps: UseSorenessTabDeps) {
   const { sorenessApi } = useTrackingApis();
