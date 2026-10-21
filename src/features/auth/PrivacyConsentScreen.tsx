@@ -39,6 +39,7 @@ import { authService } from "./services";
 import { userFacingError } from "@shared/services/apiError";
 import type { RootStackParamList } from "@shared/types";
 import { useAuth } from "@shared/context/AuthContext";
+import { makeIntroStyles } from "./OnboardingScreen";
 
 const STORAGE_FAILURE =
   "Your choices could not be saved because OwnGains's local storage is unreachable. Tap Continue to retry. If it keeps failing, restarting the app usually clears it.";
@@ -369,29 +370,7 @@ export default function PrivacyConsentScreen({
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
-    content: {
-      flexGrow: 1,
-      justifyContent: "center",
-      paddingHorizontal: 24,
-      paddingVertical: 32,
-    },
-    logo: { fontSize: 56, textAlign: "center" },
-    title: {
-      fontSize: 30,
-      fontWeight: "800",
-      textAlign: "center",
-      color: colors.textPrimary,
-      marginTop: 8,
-    },
-    tagline: {
-      fontSize: 15,
-      lineHeight: 22,
-      textAlign: "center",
-      color: colors.textSecondary,
-      marginTop: 12,
-      marginBottom: 28,
-    },
+    ...makeIntroStyles(colors),
     card: {
       flexDirection: "row",
       alignItems: "center",

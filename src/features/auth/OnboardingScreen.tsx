@@ -205,7 +205,8 @@ export default function OnboardingScreen({
   );
 }
 
-const makeStyles = (colors: ThemeColors) =>
+/** Centered logo, title and tagline layout the privacy consent screen also uses. */
+export const makeIntroStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     content: {
@@ -230,6 +231,11 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: 12,
       marginBottom: 28,
     },
+  });
+
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    ...makeIntroStyles(colors),
     card: {
       flexDirection: "row",
       alignItems: "flex-start",
