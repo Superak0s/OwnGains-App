@@ -88,12 +88,15 @@ export const parseDate = (
 }
 
 /**
- * A `decimal-pad` keyboard emits the device locale's decimal separator, which
- * is "," across most of Europe, and `Number.parseFloat("12,5")` returns 12 without
- * an error, logging a 12 kg set as 12 instead of 12.5.
+ * Parses decimal-pad input, or returns null when it is not a plain non-negative number.
+ *
+ * @remarks The keyboard emits the device locale's decimal separator, which is "," across
+ * most of Europe, and `Number.parseFloat("12,5")` returns 12 without an error, logging a
+ * 12.5 kg set as 12.
  */
-export const parseDecimal = (value: string): number => {
+export const parseDecimal = (value: string): number | null => {
   const normalized = value.trim().replace(",", ".")
-  if (!/^-?(\d+\.?\d*|\.\d+)$/.test(normalized)) return Number.NaN
-  return Number(normalized)
+  if (!/^(\d+\.?\d*|\.\d+)$/.test(normalized)) return null
+  const n = Number(normalized)
+  return Number.isFinite(n) ? n : null
 }

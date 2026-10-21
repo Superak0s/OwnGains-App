@@ -12,7 +12,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import type { ThemeColors } from "@shared/context/ThemeContext";
-import { formatDate } from "@utils/format";
+import { formatDate, parseDecimal } from "@utils/format";
 import { trackFeature } from "@shared/services/crashReporting";
 import { estimateOneRepMax } from "@utils/oneRepMax";
 import {
@@ -20,7 +20,6 @@ import {
   LBS_TO_KG,
   displayToKg,
   kgToDisplay,
-  parseDecimal,
   parseReps,
   pickBestPerformanceSummary,
   repsInReserveLabel,

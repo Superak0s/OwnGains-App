@@ -4,13 +4,13 @@ import type { WeightEntry, HeightData } from "@shared/types";
 import { useTrackingApis } from "../TrackingApisContext";
 import { createDeleteHandler, withConfirm, describeError } from "../helpers";
 import { isoToLocalDateStr, toTrendPoints } from "../utils";
-import { toDateString } from "@utils/format";
+import { parseDecimal, toDateString } from "@utils/format";
 import { getUserKey as sharedGetUserKey } from "@shared/services/storage";
 import { getStorageItem, setStorageItem } from "@shared/services/sqliteStorage";
 import { authService } from "@features/auth/services/index";
 import { isFeatureLocal } from "@shared/services/localOnlyFeatures";
 import { useWorkoutPick } from "@shared/context/WorkoutContext";
-import { parseDecimal, MAX_WEIGHT_KG, displayToKg } from "@features/workout/utils";
+import { MAX_WEIGHT_KG, displayToKg } from "@features/workout/utils";
 import { log, metric } from "@shared/services/crashReporting";
 
 interface UseWeightTabDeps extends TabDeps {

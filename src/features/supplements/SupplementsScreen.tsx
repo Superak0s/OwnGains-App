@@ -270,7 +270,7 @@ export default function SupplementsScreen(): React.JSX.Element {
       return;
     }
     const amt = parseDecimal(newAmount);
-    if (Number.isNaN(amt) || amt <= 0) {
+    if (amt === null || amt <= 0) {
       alert(
         "Invalid Amount",
         "Please enter a valid default amount.",

@@ -50,7 +50,7 @@ export default function QuickLogSupplement({
     isLoggingRef.current = true;
     try {
       const parsed = parseDecimal(amount);
-      if (Number.isNaN(parsed) || parsed <= 0) {
+      if (parsed === null || parsed <= 0) {
         setError("Enter an amount greater than zero.");
         return;
       }

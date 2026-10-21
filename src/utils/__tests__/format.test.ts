@@ -8,12 +8,11 @@ describe("parseDecimal", () => {
     expect(parseDecimal("12,5")).toBe(12.5);
     expect(parseDecimal(" 0,25 ")).toBe(0.25);
     expect(parseDecimal(".5")).toBe(0.5);
-    expect(parseDecimal("-3,5")).toBe(-3.5);
   });
 
   it("rejects anything that is not a plain number", () => {
-    for (const bad of ["", "abc", "1.2.3", "1,2,3", "5kg", "1e5", " "]) {
-      expect(Number.isNaN(parseDecimal(bad))).toBe(true);
+    for (const bad of ["", "abc", "1.2.3", "1,2,3", "5kg", "1e5", " ", ".", "-3,5"]) {
+      expect(parseDecimal(bad)).toBeNull();
     }
   });
 });

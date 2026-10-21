@@ -8,6 +8,7 @@ import {
 } from "@utils/exerciseMatching";
 import { filterExercises, matchExercise } from "@utils/exerciseDb";
 import { estimateOneRepMax } from "@utils/oneRepMax";
+import { parseDecimal } from "@utils/format";
 import { recordSessionsOutside } from "@utils/recordSets";
 import { log, metric } from "@shared/services/crashReporting";
 
@@ -37,20 +38,6 @@ export function parseReps(value: string): number | null {
   if (!/^\d+$/.test(trimmed)) return null;
   const n = Number(trimmed);
   return n >= 1 && n <= MAX_REPS ? n : null;
-}
-
-/**
- * Strict numeric parse for weight inputs: accepts a comma decimal separator
- * (comma-decimal keyboards) and rejects anything with trailing junk, which
- * `Number.parseFloat` would silently truncate instead.
- */
-export function parseDecimal(value: string): number | null {
-  const trimmed = value.trim().replace(",", ".");
-  if (!/^\d*\.?\d*$/.test(trimmed) || trimmed === "" || trimmed === ".") {
-    return null;
-  }
-  const n = Number(trimmed);
-  return Number.isFinite(n) ? n : null;
 }
 
 /** Parse a user-entered string in the chosen unit and return kg for storage. */

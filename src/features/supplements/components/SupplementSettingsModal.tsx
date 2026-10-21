@@ -129,7 +129,7 @@ export default function SupplementSettingsModal({
 
   const validateForm = (): ValidationResult => {
     const amt = parseDecimal(defaultAmount);
-    if (Number.isNaN(amt) || amt <= 0) {
+    if (amt === null || amt <= 0) {
       alert(
         "Invalid Amount",
         "Please enter a valid default amount.",
@@ -143,7 +143,7 @@ export default function SupplementSettingsModal({
       return { valid: true, amount: amt, intervalMinutes: null };
     }
     const hours = parseDecimal(intervalHours);
-    if (Number.isNaN(hours) || hours <= 0 || hours > 24) {
+    if (hours === null || hours <= 0 || hours > 24) {
       alert(
         "Invalid Interval",
         "Time between doses must be between 0 and 24 hours, or left empty.",
@@ -513,7 +513,7 @@ export default function SupplementSettingsModal({
                         const total = (
                           dosesPerDay * (parseDecimal(defaultAmount) || 0)
                         ).toLocaleString();
-                        return hours > 0
+                        return hours !== null && hours > 0
                           ? `${total} ${supplement.unit} a day. After each dose you'll get a notification when the next is due in ${formatInterval(Math.round(hours * 60))}.`
                           : `${total} ${supplement.unit} a day. Leave empty to take doses whenever you like.`;
                       })()}

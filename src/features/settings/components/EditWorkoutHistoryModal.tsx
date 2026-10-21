@@ -1010,7 +1010,7 @@ export default function EditWorkoutHistoryModal({
       setRepsInput.trim() === "" ? undefined : parseDecimal(setRepsInput);
     if (
       weight !== undefined &&
-      (Number.isNaN(weight) || weight < 0 || weight > 2000)
+      (weight === null || weight < 0 || weight > 2000)
     ) {
       alert(
         "Invalid Weight",
@@ -1022,7 +1022,7 @@ export default function EditWorkoutHistoryModal({
     }
     if (
       reps !== undefined &&
-      (Number.isNaN(reps) || !Number.isInteger(reps) || reps < 0 || reps > 1000)
+      (reps === null || !Number.isInteger(reps) || reps < 0 || reps > 1000)
     ) {
       alert(
         "Invalid Reps",
