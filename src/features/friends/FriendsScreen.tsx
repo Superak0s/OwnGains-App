@@ -59,9 +59,9 @@ import ScheduleWidget from "@features/schedule/ScheduleWidget";
 import { FriendProgramTab } from "./components/FriendProgramTab";
 import { FriendActionsTab } from "./components/FriendActionsTab";
 import SessionDetailsSheet, {
-  getSessionTitle,
   loadFriendSessionDetails,
 } from "./components/SessionDetailsSheet";
+import { sessionTitle } from "@shared/components/SessionDetails";
 import { friendsApi, sharingApi } from "./services";
 import ReportUserSheet from "./components/ReportUserSheet";
 import { MIN_USER_SEARCH_LENGTH, programPayload } from "./utils";
@@ -1645,7 +1645,9 @@ export default function FriendsScreen({
             >
               <View style={styles.sessionListLeft}>
                 <Text style={styles.sessionListTitle}>
-                  {`${dayLabel(session.dayNumber)} - ${getSessionTitle(session)}`}
+                  {[dayLabel(session.dayNumber), sessionTitle(session)]
+                    .filter(Boolean)
+                    .join(" - ")}
                 </Text>
                 <View style={styles.sessionListMeta}>
                   <Text style={styles.sessionListTime}>

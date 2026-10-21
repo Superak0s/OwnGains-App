@@ -38,7 +38,6 @@ import {
 import { visibleDaysForSplit } from "@utils/programDays";
 import { dayLabel } from "@utils/dayCarryOver";
 import {
-  kgToDisplay,
   getDayOverviewTint,
   getDayOverviewTextColor,
 } from "@features/workout/utils";
@@ -54,6 +53,8 @@ import ForeignWidget from "./ForeignWidget";
 import { sorenessApi } from "@features/tracking/services";
 import { needsFollowUp } from "@features/tracking/utils";
 import HealthWidget from "@features/healthConnect/HealthWidget";
+import { groupSessionExercises } from "@features/friends/utils";
+import { SessionDetails, sessionTitle } from "@shared/components/SessionDetails";
 import {
   HOME_WIDGET_REGISTRY,
   HOME_WIDGET_SOURCE,
@@ -68,8 +69,6 @@ import type {
   WorkoutSession,
   FullSessionWithGroups,
   WidgetInstance,
-  SetTiming,
-  GroupedExercise,
   RootStackParamList,
 } from "@shared/types";
 import { STORAGE_KEYS } from "@shared/services/storage";
@@ -496,38 +495,6 @@ function formatSessionTime(dateString: string | null | undefined): string {
   return date ? formatClockTime(date) : "";
 }
 
-function getSessionTitle(session: WorkoutSession): string {
-  if (!session?.dayTitle) return "";
-  const parts = session.dayTitle.split("—");
-  return parts.length > 1 ? parts[1].trim() : session.dayTitle;
-}
-
-function formatSetLine(
-  weight: unknown,
-  reps: unknown,
-  weightUnit: "kg" | "lbs",
-): string {
-  const w = typeof weight === "number" ? weight : 0;
-  const r = typeof reps === "number" ? reps : 0;
-  return `${kgToDisplay(w, weightUnit)}${weightUnit} × ${r}`;
-}
-
-function groupSetTimingsByExercise(
-  setTimings: SetTiming[] | undefined,
-): GroupedExercise[] {
-  if (!setTimings || setTimings.length === 0) return [];
-
-  const exerciseMap = new Map<string, GroupedExercise>();
-  setTimings.forEach((timing) => {
-    const key = timing.exerciseName || `Exercise ${timing.exerciseId ?? "?"}`;
-    if (!exerciseMap.has(key)) {
-      exerciseMap.set(key, { exerciseName: key, sets: [] });
-    }
-    exerciseMap.get(key)!.sets.push(timing);
-  });
-
-  return Array.from(exerciseMap.values());
-}
 
 export default function HomeScreen(): React.JSX.Element {
   const navigation =
@@ -548,7 +515,6 @@ export default function HomeScreen(): React.JSX.Element {
     startWorkout,
     currentSessionId,
     userId,
-    weightUnit,
   } = useWorkoutPick(
     "workoutData",
     "selectedSplit",
@@ -561,7 +527,6 @@ export default function HomeScreen(): React.JSX.Element {
     "startWorkout",
     "currentSessionId",
     "userId",
-    "weightUnit",
   );
   const { alert, AlertComponent } = useAlert();
   const [showDayPicker, setShowDayPicker] = useState<boolean>(false);
@@ -922,7 +887,7 @@ export default function HomeScreen(): React.JSX.Element {
     try {
       const details = await workoutApi.getSession(session.id);
 
-      details.groupedExercises = groupSetTimingsByExercise(details.setTimings);
+      details.groupedExercises = groupSessionExercises(details.setTimings);
 
       setSelectedSession(details);
       setShowSessionDetails(true);
@@ -1253,11 +1218,7 @@ export default function HomeScreen(): React.JSX.Element {
           scrollable={true}
         >
           {selectedSession && (
-            <SessionDetails
-              session={selectedSession}
-              weightUnit={weightUnit}
-              styles={styles}
-            />
+            <SessionDetails session={selectedSession} />
           )}
         </ModalSheet>
       </ScrollView>
@@ -1357,7 +1318,7 @@ function SessionListItem({
   readonly onPress: () => void;
   readonly styles: ReturnType<typeof makeStyles>;
 }): React.JSX.Element {
-  const title = getSessionTitle(session);
+  const title = sessionTitle(session);
   return (
     <TouchableOpacity
       style={styles.sessionListItem}
@@ -1404,164 +1365,6 @@ function SessionListItem({
         <Text style={styles.sessionListArrow}>›</Text>
       )}
     </TouchableOpacity>
-  );
-}
-
-function SessionDetails({
-  session,
-  weightUnit,
-  styles,
-}: {
-  readonly session: FullSessionWithGroups;
-  readonly weightUnit: "kg" | "lbs";
-  readonly styles: ReturnType<typeof makeStyles>;
-}): React.JSX.Element {
-  return (
-    <>
-      <View style={styles.detailSection}>
-        <Text style={styles.detailTitle} accessibilityRole='header'>
-          {dayLabel(session.dayNumber)}
-        </Text>
-        {!!getSessionTitle(session) && (
-          <Text style={styles.detailSubtitle}>{getSessionTitle(session)}</Text>
-        )}
-        <TrainerLoggedBadge {...session} />
-        {Array.isArray(session.primaryMuscles) &&
-          session.primaryMuscles.length > 0 && (
-            <View style={styles.muscleGroupsRow}>
-              {session.primaryMuscles.map((group: string) => (
-                <View key={group} style={styles.muscleTag}>
-                  <Text style={styles.muscleTagText}>{String(group)}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-      </View>
-
-      <View style={styles.detailSection}>
-        <View style={styles.detailRow} accessible>
-          <Text style={styles.detailLabel}>Date</Text>
-          <Text style={styles.detailValue}>
-            {session.startTime
-              ? formatDateUtil(session.startTime, {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })
-              : "—"}
-          </Text>
-        </View>
-        <View style={styles.detailRow} accessible>
-          <Text style={styles.detailLabel}>Start Time</Text>
-          <Text style={styles.detailValue}>
-            {formatSessionTime(session.startTime)}
-          </Text>
-        </View>
-        {!!session.endTime && (
-          <View style={styles.detailRow} accessible>
-            <Text style={styles.detailLabel}>End Time</Text>
-            <Text style={styles.detailValue}>
-              {formatSessionTime(session.endTime)}
-            </Text>
-          </View>
-        )}
-        <View style={styles.detailRow} accessible>
-          <Text style={styles.detailLabel}>Duration</Text>
-          <Text style={styles.detailValue}>
-            {formatTime(session.totalDuration as number, "N/A")}
-          </Text>
-        </View>
-        <View style={styles.detailRow} accessible>
-          <Text style={styles.detailLabel}>Sets Completed</Text>
-          <Text
-            style={styles.detailValue}
-          >{`${session.completedSets ?? 0}`}</Text>
-        </View>
-      </View>
-
-      {Array.isArray(session.groupedExercises) &&
-        session.groupedExercises.length > 0 && (
-          <View style={styles.detailSection}>
-            <Text style={styles.detailSectionTitle} accessibilityRole='header'>
-              Exercises
-            </Text>
-            {session.groupedExercises.map((exercise: GroupedExercise) => (
-              <ExerciseCard
-                key={exercise.exerciseName}
-                exercise={exercise}
-                weightUnit={weightUnit}
-                styles={styles}
-              />
-            ))}
-          </View>
-        )}
-    </>
-  );
-}
-
-function ExerciseCard({
-  exercise,
-  weightUnit,
-  styles,
-}: {
-  readonly exercise: GroupedExercise;
-  readonly weightUnit: "kg" | "lbs";
-  readonly styles: ReturnType<typeof makeStyles>;
-}): React.JSX.Element {
-  return (
-    <View style={styles.exerciseCard}>
-      <View style={styles.exerciseHeader}>
-        <Text style={styles.exerciseName}>{exercise.exerciseName}</Text>
-        <Text
-          style={styles.exerciseSetsCount}
-        >{`${exercise.sets.length} sets`}</Text>
-      </View>
-
-      {exercise.sets.map((set: SetTiming, index: number) => (
-        <SetTimingCard
-          key={set.id ?? `${set.setIndex}-${set.endTime}`}
-          set={set}
-          isFirst={index === 0}
-          weightUnit={weightUnit}
-          styles={styles}
-        />
-      ))}
-    </View>
-  );
-}
-
-function SetTimingCard({
-  set,
-  isFirst,
-  weightUnit,
-  styles,
-}: {
-  readonly set: SetTiming;
-  readonly isFirst: boolean;
-  readonly weightUnit: "kg" | "lbs";
-  readonly styles: ReturnType<typeof makeStyles>;
-}): React.JSX.Element {
-  return (
-    <View
-      style={[styles.setRow, isFirst && styles.setRowFirst]}
-      accessible
-      accessibilityLabel={[
-        `Set ${set.setIndex + 1}`,
-        formatSetLine(set.weight, set.reps, weightUnit),
-        set.setDuration ? formatTime(set.setDuration) : "",
-      ]
-        .filter(Boolean)
-        .join(", ")}
-    >
-      <Text style={styles.setRowIndex}>{set.setIndex + 1}</Text>
-      <Text style={styles.setRowMain}>
-        {formatSetLine(set.weight, set.reps, weightUnit)}
-      </Text>
-      <Text style={styles.setRowDuration}>
-        {set.setDuration ? formatTime(set.setDuration) : ""}
-      </Text>
-    </View>
   );
 }
 
@@ -2033,113 +1836,6 @@ const makeStyles = (colors: ThemeColors) => {
       fontSize: 24,
       color: colors.textMuted,
       marginLeft: 10,
-    },
-    detailSection: {
-      marginBottom: 25,
-    },
-    detailTitle: {
-      fontSize: 24,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      marginBottom: 4,
-    },
-    detailSubtitle: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      marginBottom: 12,
-    },
-    muscleGroupsRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      marginRight: -8,
-      marginBottom: -8,
-    },
-    muscleTag: {
-      backgroundColor: colors.accentLight,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
-      marginRight: 8,
-      marginBottom: 8,
-    },
-    muscleTagText: {
-      color: colors.accent,
-      fontSize: 13,
-      fontWeight: "500",
-    },
-    detailRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      paddingVertical: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.separator,
-    },
-    detailLabel: {
-      fontSize: 15,
-      color: colors.textSecondary,
-    },
-    detailValue: {
-      fontSize: 15,
-      fontWeight: "600",
-      color: colors.textPrimary,
-    },
-    detailSectionTitle: {
-      fontSize: 18,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      marginBottom: 12,
-    },
-    exerciseCard: {
-      backgroundColor: colors.inputBackground,
-      borderRadius: 12,
-      padding: 16,
-      paddingBottom: 8,
-      marginBottom: 12,
-      borderWidth: 1,
-      borderColor: colors.inputBorder,
-    },
-    exerciseHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingBottom: 8,
-    },
-    exerciseName: {
-      fontSize: 16,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      flex: 1,
-    },
-    exerciseSetsCount: {
-      fontSize: 14,
-      color: colors.accent,
-      fontWeight: "600",
-    },
-    setRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingVertical: 8,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.inputBorder,
-    },
-    setRowFirst: {
-      borderTopWidth: 0,
-    },
-    setRowIndex: {
-      width: 28,
-      fontSize: 14,
-      fontWeight: "700",
-      color: colors.textMuted,
-    },
-    setRowMain: {
-      flex: 1,
-      fontSize: 15,
-      fontWeight: "600",
-      color: colors.textPrimary,
-    },
-    setRowDuration: {
-      fontSize: 14,
-      color: colors.textSecondary,
     },
   });
 };

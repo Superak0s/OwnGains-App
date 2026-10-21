@@ -16,9 +16,10 @@ import { PERMISSION_GROUPS, PERMISSION_TYPES } from "@features/friends/component
 import { PermissionRow } from "@features/friends/components/PermissionRow";
 import type { PermissionType, SessionRecord } from "@features/friends/types";
 import SessionDetailsSheet, {
-  getSessionTitle,
   loadFriendSessionDetails,
 } from "@features/friends/components/SessionDetailsSheet";
+import { sessionTitle } from "@shared/components/SessionDetails";
+import { dayLabel } from "@utils/dayCarryOver";
 import { formatDate, toDateString } from "@utils/format";
 import { EMPTY_WORKOUT_TITLE } from "@features/workout/utils";
 import type { ClientSummary } from "../types";
@@ -317,16 +318,17 @@ export default function ClientPage({
         )}
         {selectedDate !== null && sessionsOn(selectedDate).map((s) => {
           const tag = sessionOrigin(s, trainerId) === "with_you" ? "with you" : "on their own";
+          const title = sessionTitle(s) || dayLabel(s.dayNumber);
           return (
             <TouchableOpacity
               key={String(s.id)}
               style={styles.session}
               onPress={() => void openSession(s)}
               accessibilityRole="button"
-              accessibilityLabel={`${getSessionTitle(s)}, ${tag}. Open details`}
+              accessibilityLabel={`${title}, ${tag}. Open details`}
             >
               <View style={{ flex: 1 }}>
-                <Text style={styles.sessionTitle}>{getSessionTitle(s)}</Text>
+                <Text style={styles.sessionTitle}>{title}</Text>
                 {s.startTime !== undefined && (
                   <Text style={styles.line}>{formatDate(new Date(s.startTime))}</Text>
                 )}

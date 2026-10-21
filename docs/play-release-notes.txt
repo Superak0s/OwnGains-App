@@ -2,5 +2,5 @@
 • Pick reminder and workout times on scroll wheels
 • Snoozed alarms show when they ring again, with a Cancel button
 • Shorter tutorial that points trainers to Trainer Mode first
-• The Messages button on Friends sits next to the tabs, and Android navigation buttons stay visible in Messages
-• Fixed: alarms play a sound again, opt-in analytics are sent again, and offline plan edits no longer save twice
+• The Messages button sits next to the Friends tabs, and Android navigation buttons stay visible in Messages
+• Fixed: alarm sound, opt-in analytics, offline plan edits saving twice, and friends' workouts ignoring your weight unit

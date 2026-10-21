@@ -21,12 +21,14 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Empty and error screens in Analytics, Friends, Messages, Supplements, Workout and Clients share one layout and button style.
 - The doses per day and chart label steppers match the measurement error stepper in Tracking, and every stepper disables its button at the limit.
 - Screen readers skip the initial shown in place of a profile photo, since the name is always read next to it.
+- A friend's or client's workout details use the same layout as your own, with the start time, how long each set took and the main muscle groups only. A day with no title shows its day number once.
 
 ### Fixed
 
 - Usage analytics (when you opt in) are sent again. Release builds were missing the Firebase configuration.
 - Supplement alarms play your alarm tone again. With a custom tone from your music files they only vibrated.
 - Adding an exercise or changing its sets while offline saves the change once. After a restart the exercise showed up twice, or the sets changed by double the amount.
+- A friend's or client's workout details show weights in your chosen unit. They were always shown in kg.
 
 ### Internal
 
@@ -44,6 +46,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Added a shared `EmptyState` to `src/shared/components/ui.tsx` in place of fourteen hand-rolled empty and error states.
 - Added a shared `Avatar` to `src/shared/components/Avatar.tsx` in place of the friends and messages avatars and the copies in Settings, the client page and the session banners.
 - Added a shared `Stepper` to `src/shared/components/ui.tsx`, used by the measurement error, doses per day and chart label steppers.
+- Added a shared `SessionDetails` to `src/shared/components/SessionDetails.tsx` for the Home, friend and client workout details, with one `sessionTitle` helper in place of three copies.
 
 ## [1.0.0] - 2026-10-20
 

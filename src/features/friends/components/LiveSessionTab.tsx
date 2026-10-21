@@ -17,6 +17,7 @@ import { normalizeExerciseName } from "@utils/exerciseMatching";
 import { MuscleTags } from "@shared/components/MuscleTags";
 import { formatClockTime } from "@utils/format";
 import { dayLabel } from "@utils/dayCarryOver";
+import { sessionTitle } from "@shared/components/SessionDetails";
 import { formatTime } from "@utils/timeEstimation";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
@@ -87,13 +88,6 @@ function entryFromLoggedSets(
     totalSets: Math.max(...Object.keys(completedSetMap).map(Number)) + 1,
     completedSetMap,
   };
-}
-
-function sessionTitleOf(live: LiveData | null): string {
-  if (!live) return "";
-  if (!live.dayTitle) return `Day ${live.dayNumber ?? "?"}`;
-  if (!live.dayTitle.includes("—")) return live.dayTitle;
-  return live.dayTitle.split("—")[1]?.trim() ?? "";
 }
 
 function elapsedFromStart(raw?: string): number {
@@ -492,7 +486,7 @@ export default function LiveSessionTab({
   const progressPct =
     totalPlanned > 0 ? Math.min((totalCompleted / totalPlanned) * 100, 100) : 0;
 
-  const sessionTitle = sessionTitleOf(liveData);
+  const title = liveData ? sessionTitle(liveData) : "";
 
   if (phase === "idle" || phase === "checking") {
     return (
@@ -561,9 +555,9 @@ export default function LiveSessionTab({
         <View style={st.headerTop}>
           <View style={{ flex: 1, marginRight: 12 }}>
             <Text style={st.dayNumber}>{dayLabel(liveData?.dayNumber)}</Text>
-            {sessionTitle ? (
+            {title ? (
               <Text style={st.dayTitle} numberOfLines={2}>
-                {sessionTitle}
+                {title}
               </Text>
             ) : null}
           </View>
