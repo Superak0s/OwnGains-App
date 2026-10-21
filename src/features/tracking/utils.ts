@@ -1,7 +1,7 @@
 import type { MenstrualEntry } from "./services/types";
 import type { SorenessEntry, SorenessFollowUp } from "./types/muscleRecovery";
 import type { BodyFatEntryWithFields } from "./types";
-import { toDateString, formatDate, parseDate } from "@utils/format";
+import { toDateString, formatDate, parseDate, daysSinceLocal } from "@utils/format";
 import type { ChartPoint } from "@shared/components/chart/chartMath";
 
 export function isoToLocalDateStr(isoStr: string | null | undefined): string {
@@ -95,15 +95,6 @@ export function getCyclePhaseInfo(
   else if (dayOfCycle <= ovulationEnd) phase = "Ovulation";
 
   return { phase, dayOfCycle, cycleLength: cLen, periodEnd: pLen, ovulationStart, ovulationEnd };
-}
-
-export function daysSinceLocal(start: Date, today: Date = new Date()): number {
-  const from = new Date(start);
-  from.setHours(0, 0, 0, 0);
-  const to = new Date(today);
-  to.setHours(0, 0, 0, 0);
-  // rounded, not floored: DST shifts make a calendar day 23 or 25 hours long
-  return Math.round((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 export function getCyclePhaseLabel(

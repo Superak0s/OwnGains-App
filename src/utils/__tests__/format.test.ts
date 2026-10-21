@@ -1,4 +1,4 @@
-import { parseDecimal, toDateString, toTimeString } from "../format";
+import { daysSinceLocal, parseDecimal, toDateString, toTimeString } from "../format";
 
 // A decimal-pad keyboard emits the device locale's separator, and parseFloat("12,5")
 // returns 12 with no error, logging a 12.5 kg set as 12.
@@ -27,6 +27,22 @@ describe("toDateString", () => {
   // zero a streak instead of being visible as bad data.
   it("does not produce NaN parts for a corrupt stamp", () => {
     expect(toDateString("not a date")).toBe("—");
+  });
+});
+
+describe("daysSinceLocal", () => {
+  it("counts calendar days, not 24h blocks", () => {
+    const start = new Date(2026, 7, 24, 23, 30);
+    const today = new Date(2026, 7, 25, 0, 30);
+    expect(daysSinceLocal(start, today)).toBe(1);
+  });
+
+  it("returns 0 for the same local day", () => {
+    expect(daysSinceLocal(new Date(2026, 7, 25, 0, 5), new Date(2026, 7, 25, 23, 55))).toBe(0);
+  });
+
+  it("returns a negative count for future starts", () => {
+    expect(daysSinceLocal(new Date(2026, 7, 27), new Date(2026, 7, 25))).toBe(-2);
   });
 });
 

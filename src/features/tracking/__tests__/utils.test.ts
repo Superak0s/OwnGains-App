@@ -6,7 +6,6 @@ import {
   toDailyTotalPoints,
   toTrendPoints,
   computeUpcomingPredictedDays,
-  daysSinceLocal,
   dayLabel,
   formatDateLabel,
   signedTrend,
@@ -21,22 +20,6 @@ import {
 } from "../utils";
 import type { MenstrualEntry } from "../services/types";
 import { describeError } from "../helpers";
-
-describe("daysSinceLocal", () => {
-  it("counts calendar days, not 24h blocks", () => {
-    const start = new Date(2026, 7, 24, 23, 30);
-    const today = new Date(2026, 7, 25, 0, 30);
-    expect(daysSinceLocal(start, today)).toBe(1);
-  });
-
-  it("returns 0 for the same local day", () => {
-    expect(daysSinceLocal(new Date(2026, 7, 25, 0, 5), new Date(2026, 7, 25, 23, 55))).toBe(0);
-  });
-
-  it("returns a negative count for future starts", () => {
-    expect(daysSinceLocal(new Date(2026, 7, 27), new Date(2026, 7, 25))).toBe(-2);
-  });
-});
 
 describe("toNumberOrUndefined", () => {
   it.each(["", "abc", "-"])("rejects %p", (value) => {

@@ -9,10 +9,9 @@ import {
 import {
   getCycleDuration,
   computeUpcomingPredictedDays,
-  daysSinceLocal,
   isoToLocalDateStr,
 } from "../utils";
-import { toDateString, formatDate, parseDate } from "@utils/format";
+import { toDateString, formatDate, parseDate, daysSinceLocal } from "@utils/format";
 import { createDeleteHandler, withConfirm, describeError } from "../helpers";
 import type { TabDeps } from "../types";
 import { captureException } from "@shared/services/crashReporting";

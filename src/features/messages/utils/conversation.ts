@@ -1,4 +1,5 @@
 import type { Conversation, Message } from "../types"
+import { daysSinceLocal } from "@utils/format"
 
 /** Merges messages into a newest-first thread, dropping ids it already holds. */
 export function mergeMessages(thread: readonly Message[], incoming: readonly Message[]): Message[] {
@@ -47,18 +48,13 @@ export const markConversationRead = (list: readonly Conversation[], userUuid: st
 export const totalUnread = (list: readonly Conversation[]): number =>
   list.reduce((sum, c) => sum + c.unreadCount, 0)
 
-const DAY_MS = 86_400_000
 const RUN_GAP_MS = 5 * 60_000
-
-const startOfDay = (time: number): number => new Date(time).setHours(0, 0, 0, 0)
-const daysAgo = (iso: string, now: number): number =>
-  Math.round((startOfDay(now) - startOfDay(Date.parse(iso))) / DAY_MS)
 
 /** Whether two messages are drawn as one run of bubbles: same sender, same day, minutes apart. */
 export const sameRun = (a: Message, b: Message | undefined): boolean =>
   b !== undefined &&
   a.fromMe === b.fromMe &&
-  daysAgo(a.createdAt, Date.parse(b.createdAt)) === 0 &&
+  daysSinceLocal(new Date(a.createdAt), new Date(b.createdAt)) === 0 &&
   Math.abs(Date.parse(a.createdAt) - Date.parse(b.createdAt)) < RUN_GAP_MS
 
 export const clockLabel = (iso: string): string =>
@@ -66,7 +62,7 @@ export const clockLabel = (iso: string): string =>
 
 /** The date chip above a day's first message. */
 export function dayLabel(iso: string, now = Date.now()): string {
-  const days = daysAgo(iso, now)
+  const days = daysSinceLocal(new Date(iso), new Date(now))
   if (days === 0) return "Today"
   if (days === 1) return "Yesterday"
   const date = new Date(iso)
@@ -77,7 +73,7 @@ export function dayLabel(iso: string, now = Date.now()): string {
 
 /** The time beside a conversation in the list: a clock today, then a weekday, then a date. */
 export function listTimeLabel(iso: string, now = Date.now()): string {
-  const days = daysAgo(iso, now)
+  const days = daysSinceLocal(new Date(iso), new Date(now))
   if (days === 0) return clockLabel(iso)
   if (days === 1) return "Yesterday"
   if (days < 7) return new Date(iso).toLocaleDateString(undefined, { weekday: "short" })
