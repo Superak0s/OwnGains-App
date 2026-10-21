@@ -167,6 +167,7 @@ const makeUi = (colors: ThemeColors) =>
       gap: space.sm,
       paddingTop: space.md,
     },
+    stepperControl: { flexDirection: "row", alignItems: "center", gap: space.sm },
     stepperLabel: {
       flex: 1,
       fontSize: 14,
@@ -554,6 +555,46 @@ export function Note({ children }: { readonly children: React.ReactNode }): Reac
 
 const MAX_ERROR_MARGIN = 20;
 
+interface StepperProps {
+  readonly label: string;
+  readonly value: number;
+  readonly onChange: (value: number) => void;
+  readonly min: number;
+  readonly max: number;
+  readonly format?: (value: number) => string;
+}
+
+/** − value + buttons that step by one within `min` and `max`. `label` names it for screen readers. */
+export function Stepper({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  format = String,
+}: StepperProps): React.ReactElement {
+  const { ui } = useUi();
+  return (
+    <View style={ui.stepperControl}>
+      <IconButton
+        glyph={"−"}
+        label={`Decrease ${label}`}
+        disabled={value <= min}
+        onPress={() => onChange(Math.max(min, value - 1))}
+      />
+      <Text style={ui.stepperValue} accessibilityLabel={`${label}: ${format(value)}`}>
+        {format(value)}
+      </Text>
+      <IconButton
+        glyph="+"
+        label={`Increase ${label}`}
+        disabled={value >= max}
+        onPress={() => onChange(Math.min(max, value + 1))}
+      />
+    </View>
+  );
+}
+
 export function ErrorMarginStepper({
   value,
   onChange,
@@ -565,16 +606,13 @@ export function ErrorMarginStepper({
   return (
     <View style={ui.stepper}>
       <Text style={ui.stepperLabel}>Measurement error</Text>
-      <IconButton
-        glyph={"−"}
-        label="Lower the measurement error"
-        onPress={() => onChange(Math.max(0, value - 1))}
-      />
-      <Text style={ui.stepperValue}>±{value}%</Text>
-      <IconButton
-        glyph="+"
-        label="Raise the measurement error"
-        onPress={() => onChange(Math.min(MAX_ERROR_MARGIN, value + 1))}
+      <Stepper
+        label="measurement error"
+        value={value}
+        onChange={onChange}
+        min={0}
+        max={MAX_ERROR_MARGIN}
+        format={(v) => `±${v}%`}
       />
     </View>
   );

@@ -20,7 +20,7 @@ import { captureRef } from "react-native-view-shot";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { captureException } from "@shared/services/crashReporting";
 import { showToast } from "@shared/components/toast";
-import { Button, Chip } from "@shared/components/ui";
+import { Button, Chip, Stepper } from "@shared/components/ui";
 import { formatDate } from "@utils/format";
 import {
   DESTINATION_TEXT,
@@ -182,21 +182,7 @@ export default function ExpandedChart({
   ) => (
     <View style={styles.row}>
       <Text style={styles.label}>{label}</Text>
-      <TouchableOpacity
-        style={styles.stepButton}
-        onPress={() => onChange(Math.max(min, value - 1))}
-        accessibilityLabel={`Decrease ${label}`}
-      >
-        <Text style={styles.stepText}>−</Text>
-      </TouchableOpacity>
-      <Text style={styles.stepValue}>{value}</Text>
-      <TouchableOpacity
-        style={styles.stepButton}
-        onPress={() => onChange(Math.min(max, value + 1))}
-        accessibilityLabel={`Increase ${label}`}
-      >
-        <Text style={styles.stepText}>+</Text>
-      </TouchableOpacity>
+      <Stepper label={label} value={value} onChange={onChange} min={min} max={max} />
     </View>
   );
 
@@ -468,16 +454,6 @@ const makeStyles = (colors: ThemeColors) =>
     wrapRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
     chipRow: { gap: 8 },
     label: { flex: 1, color: colors.textPrimary },
-    stepButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.surfaceElevated,
-    },
-    stepText: { fontSize: 20, color: colors.textPrimary },
-    stepValue: { width: 40, textAlign: "center", color: colors.textPrimary },
     field: { flex: 1, marginRight: 8 },
     fieldLabel: { color: colors.textSecondary, fontSize: 12, marginBottom: 4 },
     input: {

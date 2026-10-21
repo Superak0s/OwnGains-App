@@ -35,6 +35,7 @@ import {
 import { parseDecimal, toTimeString } from "@utils/format";
 import TimeWheel from "@shared/components/TimeWheel";
 import ModalSheet from "@shared/components/ModalSheet";
+import { Stepper } from "@shared/components/ui";
 import { useAlert } from "@shared/components/CustomAlert";
 import {
   promptForAlarmPermissions,
@@ -456,36 +457,13 @@ export default function SupplementSettingsModal({
                       </Text>
                     </View>
                   </View>
-                  <View style={styles.stepper}>
-                    <TouchableOpacity
-                      style={styles.stepperBtn}
-                      hitSlop={6}
-                      onPress={() => setDosesPerDay((n) => Math.max(1, n - 1))}
-                      disabled={dosesPerDay <= 1}
-                      accessibilityRole='button'
-                      accessibilityLabel='Fewer doses per day'
-                    >
-                      <Text style={styles.stepperBtnText}>−</Text>
-                    </TouchableOpacity>
-                    <Text
-                      style={styles.stepperValue}
-                      accessibilityLabel={`${dosesPerDay} doses per day`}
-                    >
-                      {dosesPerDay}
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.stepperBtn}
-                      hitSlop={6}
-                      onPress={() =>
-                        setDosesPerDay((n) => Math.min(MAX_DOSES_PER_DAY, n + 1))
-                      }
-                      disabled={dosesPerDay >= MAX_DOSES_PER_DAY}
-                      accessibilityRole='button'
-                      accessibilityLabel='More doses per day'
-                    >
-                      <Text style={styles.stepperBtnText}>+</Text>
-                    </TouchableOpacity>
-                  </View>
+                  <Stepper
+                    label='doses per day'
+                    value={dosesPerDay}
+                    onChange={setDosesPerDay}
+                    min={1}
+                    max={MAX_DOSES_PER_DAY}
+                  />
                 </View>
 
                 {dosesPerDay > 1 && (
@@ -737,25 +715,6 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.textMuted,
     },
 
-    stepper: { flexDirection: "row", alignItems: "center", gap: 10 },
-    stepperBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.inputBackground,
-      borderWidth: 1,
-      borderColor: colors.inputBorder,
-    },
-    stepperBtnText: { fontSize: 20, fontWeight: "700", color: colors.accent },
-    stepperValue: {
-      minWidth: 22,
-      textAlign: "center",
-      fontSize: 18,
-      fontWeight: "700",
-      color: colors.textPrimary,
-    },
 
     notifRow: {
       flexDirection: "row",
