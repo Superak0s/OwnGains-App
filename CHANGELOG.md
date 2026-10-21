@@ -22,6 +22,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 - Usage analytics (when you opt in) are sent again. Release builds were missing the Firebase configuration.
 - Supplement alarms play your alarm tone again. With a custom tone from your music files they only vibrated.
+- Adding an exercise or changing its sets while offline saves the change once. After a restart the exercise showed up twice, or the sets changed by double the amount.
 
 ### Internal
 

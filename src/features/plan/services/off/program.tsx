@@ -1,4 +1,4 @@
-import type { SavedProgram, ExercisePayload, MachinePatch } from "../../types"
+import type { SavedProgram } from "../../types"
 import type { WorkoutData } from "@shared/types"
 import {
   saveToStorage,
@@ -61,147 +61,19 @@ export const programApi = {
     }
   },
 
-  renameExercise: async (
-    dayNumber: number,
-    split: string,
-    exerciseIndex: number,
-    newName: string,
-    newPrimaryMuscles?: string[],
-    newSecondaryMuscles?: string[],
-    newExerciseId?: string | null,
-  ): Promise<unknown> => {
-    try {
-      const program = await loadProgram()
-      if (!program) throw new Error("No saved program")
+  // The caller has already saved the edit to this device's program, so
+  // applying it again here would store it twice.
+  renameExercise: async (): Promise<unknown> => ({ success: true }),
 
-      const days = program.days
-      const day = days.find((d) => d.dayNumber === dayNumber)
-      if (!day) throw new Error(`Day ${dayNumber} not found`)
+  updateExerciseMachines: async (): Promise<unknown> => ({ success: true }),
 
-      const splitData = day.split?.[split]
-      const exercise = splitData?.exercises?.[exerciseIndex]
-      if (!exercise) throw new Error(`Exercise ${exerciseIndex} not found`)
+  addExercise: async (): Promise<unknown> => ({ success: true }),
 
-      exercise.name = newName
-      if (newExerciseId !== undefined) exercise.exerciseId = newExerciseId
-      if (newPrimaryMuscles !== undefined)
-        exercise.primaryMuscles = newPrimaryMuscles
-      if (newSecondaryMuscles !== undefined)
-        exercise.secondaryMuscles = newSecondaryMuscles
-
-      await saveProgram(program)
-      return { success: true, program }
-    } catch (error) {
-      console.warn(
-        "programApi.renameExercise (offline) failed:",
-        error,
-      )
-      reportFailure("renameExercise", error)
-      throw error
-    }
-  },
-
-  updateExerciseMachines: async (
-    dayNumber: number,
-    split: string,
-    exerciseIndex: number,
-    patch: MachinePatch,
-  ): Promise<unknown> => {
-    try {
-      const program = await loadProgram()
-      if (!program) throw new Error("No saved program")
-
-      const exercise = program.days.find((d) => d.dayNumber === dayNumber)
-        ?.split?.[split]?.exercises?.[exerciseIndex]
-      if (!exercise) throw new Error(`Exercise ${exerciseIndex} not found`)
-
-      Object.assign(exercise, patch)
-      if (patch.selectedMachine === null) delete exercise.selectedMachine
-      if (patch.defaultMachine === null) delete exercise.defaultMachine
-      await saveProgram(program)
-      return { success: true, program }
-    } catch (error) {
-      console.warn(
-        "programApi.updateExerciseMachines (offline) failed:",
-        error,
-      )
-      reportFailure("updateExerciseMachines", error)
-      throw error
-    }
-  },
+  patchExerciseSets: async (): Promise<unknown> => ({ success: true }),
 
   // Offline there is no second device and no trainer, so the device's own
   // stored day is the only pointer there is.
   getCurrentDay: async (): Promise<number | null> => null,
 
   setCurrentDay: async (): Promise<unknown> => undefined,
-
-  addExercise: async (
-    dayNumber: number,
-    split: string,
-    exercise: ExercisePayload,
-  ): Promise<unknown> => {
-    try {
-      const program = await loadProgram()
-      if (!program) throw new Error("No saved program")
-
-      const days = program.days
-      const day = days.find((d) => d.dayNumber === dayNumber)
-      if (!day) throw new Error(`Day ${dayNumber} not found`)
-
-      const splitData = day.split?.[split]
-      if (!splitData) throw new Error(`Split ${split} not found`)
-      if (!splitData.exercises) splitData.exercises = []
-      splitData.exercises.push(exercise)
-
-      await saveProgram(program)
-      return { success: true, program }
-    } catch (error) {
-      console.warn(
-        "programApi.addExercise (offline) failed:",
-        error,
-      )
-      reportFailure("addExercise", error)
-      throw error
-    }
-  },
-
-  patchExerciseSets: async (
-    dayNumber: number,
-    split: string,
-    exerciseIndex: number,
-    additionalSets: number,
-  ): Promise<unknown> => {
-    try {
-      const program = await loadProgram()
-      if (!program) throw new Error("No saved program")
-
-      const days = program.days
-      const day = days.find((d) => d.dayNumber === dayNumber)
-      if (!day) throw new Error(`Day ${dayNumber} not found`)
-
-      const splitData = day.split?.[split]
-      const exercise = splitData?.exercises?.[exerciseIndex]
-      if (!exercise) throw new Error(`Exercise ${exerciseIndex} not found`)
-
-      // Clamped and mirrored onto totalSets to match the online path. Without
-      // it the day's total drifts out of step with the sum of its exercises.
-      const previous = exercise.sets
-      exercise.sets = Math.max(1, previous + additionalSets)
-      if (splitData) {
-        splitData.totalSets =
-          (splitData.totalSets ?? previous) + (exercise.sets - previous)
-      }
-
-      await saveProgram(program)
-      return { success: true, program }
-    } catch (error) {
-      console.warn(
-        "programApi.patchExerciseSets (offline) failed:",
-        error,
-      )
-      reportFailure("patchExerciseSets", error)
-      throw error
-    }
-  },
 }

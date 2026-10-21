@@ -3,4 +3,4 @@
 • Snoozed alarms show when they ring again, with a Cancel button
 • Shorter tutorial that points trainers to Trainer Mode first
 • The Messages button on Friends sits next to the tabs, and Android navigation buttons stay visible in Messages
-• Fixed: supplement alarms play a sound again instead of only vibrating, and usage analytics (when you opt in) are sent again
+• Fixed: alarms play a sound again, opt-in analytics are sent again, and offline plan edits no longer save twice
