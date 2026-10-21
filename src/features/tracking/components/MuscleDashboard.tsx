@@ -43,7 +43,7 @@ import {
   TINT,
   radius,
   space,
-} from "../ui";
+} from "@shared/components/ui";
 import { NOTE_MAX_LENGTH } from "@shared/limits";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;

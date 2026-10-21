@@ -140,7 +140,7 @@ import {
   MeasurementLogModal,
   WeightLogModal,
 } from "./components/BodyLogModals";
-import { Button, IconButton, Note, Placeholder, Row, SectionLabel } from "./ui";
+import { Button, IconButton, Note, Placeholder, Row, SectionLabel } from "@shared/components/ui";
 import {
   captureException,
   metric,

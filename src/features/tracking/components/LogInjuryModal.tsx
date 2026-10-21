@@ -12,7 +12,7 @@ import ModalSheet from "@shared/components/ModalSheet";
 import { IntensityPicker } from "@shared/components/IntensityPicker";
 import { getSeverityColor } from "@utils/severityColor";
 import makeStyles from "../styles";
-import { Bar, Chip, Metric, radius, space } from "../ui";
+import { Bar, Chip, Metric, radius, space } from "@shared/components/ui";
 import { captureException, metric } from "@shared/services/crashReporting";
 import { NOTE_MAX_LENGTH } from "@shared/limits";
 

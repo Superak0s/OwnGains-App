@@ -8,7 +8,7 @@ import { IntensityPicker } from "@shared/components/IntensityPicker";
 import { getSeverityColor } from "@utils/severityColor";
 import { buildLocalISOForDate } from "../utils";
 import makeStyles from "../styles";
-import { Bar, Metric, Note, radius, space } from "../ui";
+import { Bar, Metric, Note, radius, space } from "@shared/components/ui";
 import { captureException, metric } from "@shared/services/crashReporting";
 import { NOTE_MAX_LENGTH } from "@shared/limits";
 

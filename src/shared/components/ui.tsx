@@ -292,6 +292,8 @@ interface ChipProps {
   readonly sub?: string;
   readonly disabled?: boolean;
   readonly onLongPress?: () => void;
+  readonly accessibilityLabel?: string;
+  readonly accessibilityRole?: "button" | "radio" | "switch";
 }
 
 export function Chip({
@@ -302,14 +304,20 @@ export function Chip({
   sub,
   disabled,
   onLongPress,
+  accessibilityLabel,
+  accessibilityRole = "button",
 }: ChipProps): React.ReactElement {
   const { ui, colors } = useUi();
   const base = tone ?? colors.accent;
   return (
     <TouchableOpacity
-      accessibilityRole="button"
-      accessibilityLabel={sub ? `${label}, ${sub}` : label}
-      accessibilityState={{ selected, disabled: !!disabled }}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel ?? (sub ? `${label}, ${sub}` : label)}
+      accessibilityState={
+        accessibilityRole === "button"
+          ? { selected, disabled: !!disabled }
+          : { checked: selected, disabled: !!disabled }
+      }
       disabled={disabled}
       onPress={onPress}
       onLongPress={onLongPress}

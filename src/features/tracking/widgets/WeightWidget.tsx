@@ -15,7 +15,7 @@ import {
   ShowMoreList,
   space,
   useUi,
-} from "../ui";
+} from "@shared/components/ui";
 import { monthLabel, signedTrend } from "../utils";
 
 interface WeightRenderCtx {

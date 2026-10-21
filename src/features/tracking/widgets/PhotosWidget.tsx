@@ -4,7 +4,7 @@ import {
   PhotosGalleryWidget,
   PhotosComparisonWidget,
 } from "../tabs/PhotosTab";
-import { Note } from "../ui";
+import { Note } from "@shared/components/ui";
 
 export function renderPhotosWidget(type: string): React.ReactNode {
   switch (type) {

@@ -2336,7 +2336,8 @@ Note: ${existing.note}`;
           <MuscleBrowseChips
             value={browseMuscle}
             onChange={setBrowseMuscle}
-            styles={styles}
+            style={styles.inputGroup}
+            labelStyle={styles.inputLabel}
           />
           {browseMuscle ? (
             <SuggestionList
@@ -2716,7 +2717,8 @@ Note: ${existing.note}`;
           <MuscleBrowseChips
             value={browseMuscle}
             onChange={setBrowseMuscle}
-            styles={styles}
+            style={styles.inputGroup}
+            labelStyle={styles.inputLabel}
           />
           {browseMuscle ? (
             <SuggestionList
@@ -3495,24 +3497,6 @@ export const makeStyles = (colors: ThemeColors) => {
       color: colors.accent,
       marginTop: 8,
     },
-    chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-    chip: {
-      minWidth: 44,
-      minHeight: 44,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: 10,
-      borderRadius: 8,
-      borderWidth: 2,
-      borderColor: colors.surfaceBorder,
-      backgroundColor: colors.background,
-    },
-    chipActive: {
-      backgroundColor: colors.accent,
-      borderColor: colors.accent,
-    },
-    chipText: { fontSize: 16, fontWeight: "600", color: colors.textPrimary },
-    chipTextActive: { color: colors.textOnAccent },
     progressionPrompt: {
       flexDirection: "row",
       alignItems: "center",

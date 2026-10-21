@@ -77,7 +77,7 @@ src/
                       # analytics, healthConnect, homescreen, settings and tutorial have no services/
   data/              # bundled exercise database (exercises.json/.ts)
   shared/
-    components/       # CustomAlert, ModalSheet, ProgressChart, UniversalCalendar, widgets/
+    components/       # CustomAlert, ModalSheet, ProgressChart, UniversalCalendar, ui (Button, Chip, Placeholder…), widgets/
     context/           # AuthContext, WorkoutContext, ThemeContext, TabBarContext, JointSessionContext
     context/hooks/      # useJointSession, useProgramOperations, useRealtimeSocket, useServerSync,
                          # useSessionOperations, useSyncManager, useTwoFingerPull, useWidgets

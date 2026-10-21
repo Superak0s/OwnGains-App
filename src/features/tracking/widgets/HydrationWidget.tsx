@@ -22,7 +22,7 @@ import {
   Row,
   ShowMoreList,
   space,
-} from "../ui";
+} from "@shared/components/ui";
 
 interface HydrationRenderCtx {
   entries: HydrationEntry[];

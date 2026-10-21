@@ -13,7 +13,7 @@ import type {
   MeasurementLogResult,
 } from "../hooks/useMeasurementsTab";
 import { isValidTime, maskTimeInput, toFeetInches } from "../utils";
-import { Chip, ErrorMarginStepper, space } from "../ui";
+import { Chip, ErrorMarginStepper, space } from "@shared/components/ui";
 
 interface SheetProps {
   readonly visible: boolean;

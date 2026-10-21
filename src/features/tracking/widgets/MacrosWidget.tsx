@@ -20,7 +20,7 @@ import {
   Row,
   ShowMoreList,
   space,
-} from "../ui";
+} from "@shared/components/ui";
 
 interface MacrosRenderCtx {
   entries: MacrosEntryWithFields[];

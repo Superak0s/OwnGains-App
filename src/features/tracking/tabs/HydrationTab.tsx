@@ -31,7 +31,7 @@ import {
   Row,
   radius,
   space,
-} from "../ui";
+} from "@shared/components/ui";
 import { NOTE_MAX_LENGTH } from "@shared/limits";
 
 export type HydrationWidgetType =

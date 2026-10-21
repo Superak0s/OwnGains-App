@@ -4,6 +4,7 @@ import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import ModalSheet from "@shared/components/ModalSheet";
+import { Chip } from "@shared/components/ui";
 import TimeWheel from "@shared/components/TimeWheel";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import { TrainerLoggedBadge } from "@shared/components/TrainerLoggedBadge";
@@ -469,17 +470,14 @@ function ScheduleForm({
   };
 
   const chip = (label: string, selected: boolean, onPress: () => void, a11y = label) => (
-    <TouchableOpacity
+    <Chip
       key={label}
-      style={[styles.chip, selected && styles.chipSelected]}
+      label={label}
+      selected={selected}
       onPress={onPress}
       disabled={readOnly}
-      accessibilityRole='button'
-      accessibilityState={{ selected }}
       accessibilityLabel={a11y}
-    >
-      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
-    </TouchableOpacity>
+    />
   );
 
   let removeLabel = "Delete";
@@ -795,16 +793,6 @@ const makeStyles = (colors: ThemeColors) =>
       fontSize: 15,
     },
     chips: { flexDirection: "row", gap: 8 },
-    chip: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
-    },
-    chipSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
-    chipText: { fontSize: 13, color: colors.textPrimary },
-    chipTextSelected: { color: colors.textOnAccent, fontWeight: "700" },
     switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 16 },
     switchLabel: { fontSize: 15, color: colors.textPrimary },
     removeButton: { marginTop: 20, borderColor: colors.error, flex: 0 },

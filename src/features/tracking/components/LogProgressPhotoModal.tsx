@@ -13,7 +13,7 @@ import {
 import ModalSheet from "@shared/components/ModalSheet";
 import { captureException } from "@shared/services/crashReporting";
 import makeStyles from "../styles";
-import { Button, Chip, radius, space } from "../ui";
+import { Button, Chip, radius, space } from "@shared/components/ui";
 import { NOTE_MAX_LENGTH } from "@shared/limits";
 
 interface LogProgressPhotoModalProps {

@@ -8,7 +8,7 @@ import { toDefaultWidgets } from "@shared/types";
 import { useTrackingApis } from "../TrackingApisContext";
 import { buildLocalISOForDate } from "../utils";
 import makeTrackingStyles from "../styles";
-import { Button, IconButton, Note, Row, radius, space } from "../ui";
+import { Button, IconButton, Note, Row, radius, space } from "@shared/components/ui";
 import { NOTE_MAX_LENGTH } from "@shared/limits";
 import { userFacingError } from "@shared/services/apiError";
 

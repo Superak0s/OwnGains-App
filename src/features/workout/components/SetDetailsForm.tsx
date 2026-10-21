@@ -12,6 +12,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import type { ThemeColors } from "@shared/context/ThemeContext";
+import { Chip, useUi } from "@shared/components/ui";
 import { formatDate, parseDecimal } from "@utils/format";
 import { trackFeature } from "@shared/services/crashReporting";
 import { estimateOneRepMax } from "@utils/oneRepMax";
@@ -90,6 +91,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
   onDelete,
   draftStartedRef,
 }: SetDetailsFormProps): React.JSX.Element {
+  const { ui } = useUi();
   const [weight, setWeight] = useState(initial.weight);
   const [reps, setReps] = useState(initial.reps);
   const [setNote, setSetNote] = useState(initial.note);
@@ -272,27 +274,18 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Effort (optional)</Text>
-          <View style={styles.chipRow} accessibilityRole='radiogroup'>
+          <View style={ui.chipRow} accessibilityRole='radiogroup'>
             {RIR_SCALE.map((value) => {
               const selected = rir === value;
               return (
-                <TouchableOpacity
+                <Chip
                   key={value}
-                  style={[styles.chip, selected && styles.chipActive]}
+                  label={String(value)}
+                  selected={selected}
                   accessibilityRole='radio'
                   accessibilityLabel={`${value} ${value === 1 ? "rep" : "reps"} in reserve`}
-                  accessibilityState={{ checked: selected }}
                   onPress={() => setRir(selected ? null : value)}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      selected && styles.chipTextActive,
-                    ]}
-                  >
-                    {value}
-                  </Text>
-                </TouchableOpacity>
+                />
               );
             })}
           </View>

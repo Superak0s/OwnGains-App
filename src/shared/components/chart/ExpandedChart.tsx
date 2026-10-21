@@ -20,6 +20,7 @@ import { captureRef } from "react-native-view-shot";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { captureException } from "@shared/services/crashReporting";
 import { showToast } from "@shared/components/toast";
+import { Button, Chip } from "@shared/components/ui";
 import { formatDate } from "@utils/format";
 import {
   DESTINATION_TEXT,
@@ -165,19 +166,9 @@ export default function ExpandedChart({
     onPick: (value: T) => void,
     label: (value: T) => string = (v) => v,
   ) => (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
       {options.map((option) => (
-        <TouchableOpacity
-          key={option}
-          style={[styles.chip, option === current && styles.chipActive]}
-          onPress={() => onPick(option)}
-          accessibilityRole='button'
-          accessibilityState={{ selected: option === current }}
-        >
-          <Text style={[styles.chipText, option === current && styles.chipTextActive]}>
-            {label(option)}
-          </Text>
-        </TouchableOpacity>
+        <Chip key={option} label={label(option)} selected={option === current} onPress={() => onPick(option)} />
       ))}
     </ScrollView>
   );
@@ -210,14 +201,7 @@ export default function ExpandedChart({
   );
 
   const toggle = (label: string, value: boolean, key: keyof ChartSettings) => (
-    <TouchableOpacity
-      style={[styles.chip, value && styles.chipActive]}
-      onPress={() => update({ [key]: !value })}
-      accessibilityRole='switch'
-      accessibilityState={{ checked: value }}
-    >
-      <Text style={[styles.chipText, value && styles.chipTextActive]}>{label}</Text>
-    </TouchableOpacity>
+    <Chip label={label} selected={value} onPress={() => update({ [key]: !value })} accessibilityRole='switch' />
   );
 
   const field = (
@@ -326,16 +310,15 @@ export default function ExpandedChart({
                 {formatDate(selectedPoint.date)}: {fmt(selectedPoint.value)}
               </Text>
               {onPointPress && !model.projected && (
-                <TouchableOpacity
-                  style={styles.chip}
+                <Button
+                  label='Open'
+                  variant='quiet'
+                  size='sm'
                   onPress={() => {
                     onClose();
                     onPointPress(selectedPoint);
                   }}
-                  accessibilityRole='button'
-                >
-                  <Text style={styles.chipText}>Open</Text>
-                </TouchableOpacity>
+                />
               )}
             </View>
           )}
@@ -427,22 +410,17 @@ export default function ExpandedChart({
           )}
 
           <View style={styles.wrapRow}>
-            <TouchableOpacity style={styles.chip} onPress={() => exportFile("png")} accessibilityRole='button'>
-              <Text style={styles.chipText}>Save image</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.chip} onPress={() => exportFile("csv")} accessibilityRole='button'>
-              <Text style={styles.chipText}>Export CSV</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.chip}
+            <Button label='Save image' variant='quiet' size='sm' onPress={() => exportFile("png")} />
+            <Button label='Export CSV' variant='quiet' size='sm' onPress={() => exportFile("csv")} />
+            <Button
+              label='Reset'
+              variant='quiet'
+              size='sm'
               onPress={() => {
                 reset();
                 setZoom(1);
               }}
-              accessibilityRole='button'
-            >
-              <Text style={styles.chipText}>Reset</Text>
-            </TouchableOpacity>
+            />
           </View>
         </ScrollView>
       </GestureHandlerRootView>
@@ -487,20 +465,8 @@ const makeStyles = (colors: ThemeColors) =>
       marginBottom: 8,
     },
     row: { flexDirection: "row", alignItems: "center", marginTop: 6 },
-    wrapRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 10 },
-    chip: {
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 16,
-      marginRight: 8,
-      marginBottom: 8,
-      backgroundColor: colors.surfaceElevated,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
-    },
-    chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-    chipText: { color: colors.textPrimary },
-    chipTextActive: { color: colors.textOnAccent },
+    wrapRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
+    chipRow: { gap: 8 },
     label: { flex: 1, color: colors.textPrimary },
     stepButton: {
       width: 36,

@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 import type { ThemeColors } from "@shared/context/ThemeContext";
-import { radius, space } from "./ui";
+import { radius, space } from "@shared/components/ui";
 import { SCREEN_PADDING } from "@shared/layout";
 
 const makeStyles = (colors: ThemeColors) =>

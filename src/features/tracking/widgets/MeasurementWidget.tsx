@@ -16,7 +16,7 @@ import {
   SectionLabel,
   space,
   useUi,
-} from "../ui";
+} from "@shared/components/ui";
 
 interface MeasurementRenderCtx {
   history: MeasurementEntry[];

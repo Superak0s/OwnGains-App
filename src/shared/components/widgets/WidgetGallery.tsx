@@ -7,12 +7,11 @@ import {
   TextInput,
   ScrollView,
   StyleSheet,
-  type StyleProp,
-  type ViewStyle,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTheme } from "@shared/context/ThemeContext"
 import { useAlert } from "@shared/components/CustomAlert"
+import { Chip } from "@shared/components/ui"
 import type { ThemeColors } from "@shared/context/ThemeContext"
 import type { WidgetDefinition } from "@shared/types"
 
@@ -120,8 +119,6 @@ export default function WidgetGallery<T extends string>({
     labels: string[],
     selected: string | null,
     onSelect: (label: string | null) => void,
-    chipStyle: StyleProp<ViewStyle>,
-    chipActiveStyle: StyleProp<ViewStyle>,
   ) =>
     labels.length > 1 ? (
       <ScrollView
@@ -132,22 +129,13 @@ export default function WidgetGallery<T extends string>({
         accessibilityRole='radiogroup'
       >
         {[null, ...labels].map((label) => (
-          <TouchableOpacity
+          <Chip
             key={label ?? "all"}
+            label={label ?? "All"}
+            selected={selected === label}
             onPress={() => onSelect(label)}
-            style={[chipStyle, selected === label && chipActiveStyle]}
             accessibilityRole='radio'
-            accessibilityState={{ selected: selected === label }}
-          >
-            <Text
-              style={[
-                styles.chipText,
-                selected === label && styles.chipTextActive,
-              ]}
-            >
-              {label ?? "All"}
-            </Text>
-          </TouchableOpacity>
+          />
         ))}
       </ScrollView>
     ) : null
@@ -214,21 +202,9 @@ export default function WidgetGallery<T extends string>({
             autoCorrect={false}
           />
 
-          {renderFilterRow(
-            sourceLabels,
-            source,
-            selectSource,
-            styles.chip,
-            styles.chipActive,
-          )}
+          {renderFilterRow(sourceLabels, source, selectSource)}
 
-          {renderFilterRow(
-            subLabels,
-            subSource,
-            setSubSource,
-            styles.subChip,
-            styles.subChipActive,
-          )}
+          {renderFilterRow(subLabels, subSource, setSubSource)}
 
           <ScrollView
             contentContainerStyle={styles.grid}
@@ -388,38 +364,6 @@ const makeStyles = (colors: ThemeColors) =>
       paddingHorizontal: 16,
       gap: 8,
       alignItems: "center",
-    },
-    chip: {
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: colors.inputBorder,
-      backgroundColor: colors.inputBackground,
-    },
-    chipActive: {
-      backgroundColor: colors.accent,
-      borderColor: colors.accent,
-    },
-    chipText: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: colors.textSecondary,
-    },
-    chipTextActive: {
-      color: colors.textOnAccent,
-    },
-    subChip: {
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: colors.inputBorder,
-      backgroundColor: colors.surface,
-    },
-    subChipActive: {
-      backgroundColor: colors.accent,
-      borderColor: colors.accent,
     },
     grid: {
       paddingHorizontal: 16,

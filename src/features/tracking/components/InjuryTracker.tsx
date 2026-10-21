@@ -10,7 +10,7 @@ import {
   MUSCLE_GROUP_LABELS,
 } from "../types/muscleRecovery";
 import { getSeverityColor, SEVERITY_STOPS } from "@utils/severityColor";
-import { Bar, Button, Chip, Placeholder, TINT, radius, space } from "../ui";
+import { Bar, Button, Chip, Placeholder, TINT, radius, space } from "@shared/components/ui";
 import { captureException, metric } from "@shared/services/crashReporting";
 import { INJURY_TYPES } from "./LogInjuryModal";
 

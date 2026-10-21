@@ -16,7 +16,7 @@ import {
   Placeholder,
   Row,
   ShowMoreList,
-} from "../ui";
+} from "@shared/components/ui";
 
 interface SorenessRenderCtx {
   entries: SorenessEntry[];

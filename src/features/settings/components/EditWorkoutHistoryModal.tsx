@@ -52,6 +52,7 @@ import {
   exercisesForMuscle,
   muscleDisplayName,
 } from "@features/workout/utils";
+import { MuscleBrowseChips } from "@features/workout/components/ExerciseMuscleFields";
 
 const BROWSE_PAGE_SIZE = 3;
 
@@ -786,8 +787,8 @@ export default function EditWorkoutHistoryModal({
     [browseMuscle],
   );
 
-  const toggleBrowseMuscle = (muscle: string) => {
-    setBrowseMuscle((prev) => (prev === muscle ? null : muscle));
+  const selectBrowseMuscle = (muscle: string | null) => {
+    setBrowseMuscle(muscle);
     setBrowseVisible(BROWSE_PAGE_SIZE);
   };
 
@@ -1258,36 +1259,11 @@ export default function EditWorkoutHistoryModal({
             onSelect={(name) => handleSuggestionPress(name, "name")}
           />
         )}
-        <Text style={styles.fieldLabel}>Browse by muscle</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.chipRow}
-          accessibilityRole="radiogroup"
-          accessibilityLabel="Browse by muscle"
-        >
-          {BROWSE_MUSCLES.map((muscle) => {
-            const selected = browseMuscle === muscle;
-            const label = muscleDisplayName(muscle);
-            return (
-              <TouchableOpacity
-                key={muscle}
-                style={[styles.chip, selected && styles.chipActive]}
-                accessibilityRole="radio"
-                accessibilityLabel={`${label} exercises`}
-                accessibilityState={{ checked: selected }}
-                onPress={() => toggleBrowseMuscle(muscle)}
-              >
-                <Text
-                  style={[styles.chipText, selected && styles.chipTextActive]}
-                >
-                  {label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        <MuscleBrowseChips
+          value={browseMuscle}
+          onChange={selectBrowseMuscle}
+          labelStyle={styles.fieldLabel}
+        />
         {browseMuscle && (
           <SuggestionsBox
             title={`${muscleDisplayName(browseMuscle)} exercises:`}
@@ -1466,21 +1442,6 @@ const makeStyles = (colors: ThemeColors) =>
       justifyContent: "center",
     },
     retryButtonText: { fontSize: 16, fontWeight: "600", color: colors.accent },
-    chipRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
-    chip: {
-      minWidth: 44,
-      minHeight: 44,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: 10,
-      borderRadius: 10,
-      borderWidth: 2,
-      borderColor: colors.surfaceBorder,
-      backgroundColor: colors.background,
-    },
-    chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-    chipText: { fontSize: 16, fontWeight: "600", color: colors.textPrimary },
-    chipTextActive: { color: colors.textOnAccent },
     modeRow: {
       flexDirection: "row",
       gap: 8,

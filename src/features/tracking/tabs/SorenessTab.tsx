@@ -15,7 +15,7 @@ import { DOMSHeatmap } from "../components/DOMSHeatmap";
 import { InjuryTracker } from "../components/InjuryTracker";
 import { LogInjuryModal } from "../components/LogInjuryModal";
 import { MuscleDashboard } from "../components/MuscleDashboard";
-import { Button, Chip, Note, radius, space } from "../ui";
+import { Button, Chip, Note, radius, space } from "@shared/components/ui";
 
 export type SorenessWidgetType =
   | "soreness_log"

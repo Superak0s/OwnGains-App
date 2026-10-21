@@ -17,6 +17,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Android's navigation buttons stay visible while Messages is open, so you can go back or leave without swiping them up first.
 - Reminder times are picked on scroll wheels for hours and minutes, in supplement reminders and when you schedule a workout for yourself or a client. Supplement reminders no longer have the Morning, Noon, Evening and Night shortcuts.
 - The tutorial is much shorter. It opens by telling trainers to turn on Trainer Mode, skips what the app already makes obvious, and keeps only the gestures, settings and trainer tools that are easy to miss.
+- Selection chips in the set form, workout scheduling, chart settings, the widget gallery and What's New match the ones in Tracking.
 
 ### Fixed
 
@@ -36,6 +37,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The `release` skill hands over a prompt-free `release.sh` command and describes the automatic Play upload.
 - Deduplicated code across `src/`: one `PasswordField` for login and signup, one save-then-sync path for the four program edit operations, trainer banner styles reused by the joint-session banner, one performance card in the set form, one deps type for the tracking tab hooks, one password confirm sheet for unlinking Google and clearing data, shared header styles for onboarding and privacy consent, one file picker for both workout service twins, the shared week start and date key helpers in place of the trainer and sync copies, one 24-hour time formatter, one set dedupe rule for exercise history and the training summary, one injury type list, one calendar day count for tracking, messages and the trainer roster, one decimal input parser, and one copy each of `DAY_MS`, `startOfToday`, `compareVersions`, the recovery time label and the exercise name fallback.
 - The app config test declares its jest globals, so `npm run lint` passes again.
+- Moved the tracking UI primitives (`Button`, `Chip`, `Placeholder` and the rest) to `src/shared/components/ui.tsx`, listed in `CLAUDE.md`, and every hand-rolled selection chip uses the shared `Chip`.
 
 ## [1.0.0] - 2026-10-20
 

@@ -12,7 +12,7 @@ import { useTrackingApis } from "../TrackingApisContext";
 import { DOMSStats, MUSCLE_GROUP_LABELS } from "../types/muscleRecovery";
 import ProgressChart from "@shared/components/ProgressChart";
 import { getSeverityColor } from "@utils/severityColor";
-import { Bar, Metric, Placeholder, SectionLabel, space } from "../ui";
+import { Bar, Metric, Placeholder, SectionLabel, space } from "@shared/components/ui";
 import { captureException, metric } from "@shared/services/crashReporting";
 import { recoveryTimeLabel } from "../utils";
 

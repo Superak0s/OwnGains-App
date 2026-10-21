@@ -4,7 +4,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { aggregateRecord, readRecords } from "react-native-health-connect";
 import ProgressChart from "@shared/components/ProgressChart";
 import { useAuth } from "@shared/context/AuthContext";
-import { Metric, Placeholder } from "@features/tracking/ui";
+import { Metric, Placeholder } from "@shared/components/ui";
 import { toTrendPoints } from "@features/tracking/utils";
 import { startOfToday } from "@utils/format";
 import type { ChartPoint } from "@shared/components/ProgressChart";

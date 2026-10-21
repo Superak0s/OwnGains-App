@@ -1,5 +1,14 @@
 import React from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
+} from "react-native";
+import { Chip, useUi } from "@shared/components/ui";
 import { muscleLabel, parseMuscleList } from "@utils/exerciseDb";
 import { BROWSE_MUSCLES, muscleDisplayName } from "../utils";
 import { MuscleInput } from "./MuscleInput";
@@ -10,41 +19,39 @@ type Styles = ReturnType<typeof makeStyles>;
 type MuscleBrowseChipsProps = {
   readonly value: string | null;
   readonly onChange: (muscle: string | null) => void;
-  readonly styles: Styles;
+  readonly style?: StyleProp<ViewStyle>;
+  readonly labelStyle: StyleProp<TextStyle>;
 };
 
 export function MuscleBrowseChips({
   value,
   onChange,
-  styles,
+  style,
+  labelStyle,
 }: MuscleBrowseChipsProps): React.JSX.Element {
+  const { ui } = useUi();
   return (
-    <View style={styles.inputGroup}>
-      <Text style={styles.inputLabel}>Browse by muscle</Text>
+    <View style={style}>
+      <Text style={labelStyle}>Browse by muscle</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         keyboardShouldPersistTaps='handled'
-        contentContainerStyle={styles.chipRow}
+        contentContainerStyle={ui.chipRow}
+        accessibilityRole='radiogroup'
       >
         {BROWSE_MUSCLES.map((muscle) => {
           const selected = value === muscle;
           const label = muscleDisplayName(muscle);
           return (
-            <TouchableOpacity
+            <Chip
               key={muscle}
-              style={[styles.chip, selected && styles.chipActive]}
+              label={label}
+              selected={selected}
               accessibilityRole='radio'
               accessibilityLabel={`${label} exercises`}
-              accessibilityState={{ selected }}
               onPress={() => onChange(selected ? null : muscle)}
-            >
-              <Text
-                style={[styles.chipText, selected && styles.chipTextActive]}
-              >
-                {label}
-              </Text>
-            </TouchableOpacity>
+            />
           );
         })}
       </ScrollView>

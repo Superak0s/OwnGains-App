@@ -15,7 +15,7 @@ import {
 } from "../utils";
 import { toDateString } from "@utils/format";
 import type { MenstrualEntry } from "../services/types";
-import { Button, Metric, Note, Placeholder, Row, space, useUi } from "../ui";
+import { Button, Metric, Note, Placeholder, Row, space, useUi } from "@shared/components/ui";
 
 interface MenstrualRenderCtx {
   entries: MenstrualEntry[];

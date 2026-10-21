@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import ModalSheet from "@shared/components/ModalSheet";
+import { Chip } from "@shared/components/ui";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import changelogMarkdown from "../../../../CHANGELOG.md";
 import {
@@ -87,18 +88,14 @@ export default function ChangelogSheet({ visible, onClose, currentVersion, annou
           const selected = category === c;
           const label = c ?? "All";
           return (
-            <TouchableOpacity
+            <Chip
               key={label}
-              style={[styles.chip, selected && styles.chipSelected]}
+              label={label}
+              selected={selected}
               onPress={() => setCategory(c)}
               accessibilityRole="radio"
               accessibilityLabel={`Show ${label === "All" ? "all changes" : label.toLowerCase() + " changes"}`}
-              accessibilityState={{ checked: selected }}
-            >
-              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                {label}
-              </Text>
-            </TouchableOpacity>
+            />
           );
         })}
       </View>
@@ -284,18 +281,6 @@ const makeStyles = (colors: ThemeColors) =>
     },
     badgeText: { fontSize: 12, fontWeight: "700", color: colors.accent },
     chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 14 },
-    chip: {
-      minHeight: 44,
-      justifyContent: "center",
-      paddingHorizontal: 14,
-      borderRadius: 22,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
-      backgroundColor: colors.background,
-    },
-    chipSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
-    chipText: { fontSize: 14, fontWeight: "600", color: colors.textPrimary },
-    chipTextSelected: { color: colors.textOnAccent },
     section: { marginTop: 12 },
     categoryTitle: {
       fontSize: 13,

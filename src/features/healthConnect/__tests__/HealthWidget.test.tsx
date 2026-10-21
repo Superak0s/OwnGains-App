@@ -23,7 +23,7 @@ jest.mock("@shared/components/ProgressChart", () => ({
   default: ({ points }: { points: { value: number }[] }) =>
     `chart:${points.map((p) => p.value).join(",")}`,
 }));
-jest.mock("@features/tracking/ui", () => ({
+jest.mock("@shared/components/ui", () => ({
   Metric: ({ value }: { value: string }) => `metric:${value}`,
   Placeholder: ({ text }: { text: string }) => `placeholder:${text}`,
 }));

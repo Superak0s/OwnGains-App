@@ -38,7 +38,7 @@ import {
   SectionLabel,
   radius,
   space,
-} from "../ui";
+} from "@shared/components/ui";
 import { userFacingError } from "@shared/services/apiError";
 
 export type PhotosWidgetType =

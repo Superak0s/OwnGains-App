@@ -20,7 +20,7 @@ import {
   SectionLabel,
   radius,
   space,
-} from "../ui";
+} from "@shared/components/ui";
 
 type PendingUpdate = {
   intensity: number;
