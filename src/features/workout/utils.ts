@@ -223,7 +223,7 @@ type HistoryWorkoutData = {
   }>;
 };
 
-type PerformanceEntry = {
+export type PerformanceEntry = {
   date: Date;
   weight: number;
   reps: number;

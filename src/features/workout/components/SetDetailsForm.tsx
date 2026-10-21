@@ -7,6 +7,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
 } from "react-native";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import { formatDate } from "@utils/format";
@@ -22,6 +25,7 @@ import {
   pickBestPerformanceSummary,
   repsInReserveLabel,
   validateWeightInput,
+  type PerformanceEntry,
   type ProgressionSuggestion,
 } from "../utils";
 import type { makeStyles } from "../WorkoutScreen";
@@ -222,92 +226,22 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
             <Text style={styles.performanceSectionTitle}>
               Performance History
             </Text>
-            <View style={styles.performanceCard}>
-              <View style={styles.performanceCardHeader}>
-                <Text style={styles.performanceCardTitle}>Last Time</Text>
-                <Text style={styles.performanceCardDate}>
-                  {formatDate(performanceHistory.last.date)}
-                </Text>
-              </View>
-              <View style={styles.performanceStats}>
-                <View style={styles.performanceStat}>
-                  {/* History is stored in kg, display in chosen unit */}
-                  <Text style={styles.performanceStatValue}>
-                    {kgToDisplay(performanceHistory.last.weight, weightUnit)}
-                    {weightUnit}
-                  </Text>
-                  <Text style={styles.performanceStatLabel}>Weight</Text>
-                </View>
-                <View style={styles.performanceStat}>
-                  <Text style={styles.performanceStatValue}>
-                    {performanceHistory.last.reps}
-                  </Text>
-                  <Text style={styles.performanceStatLabel}>Reps</Text>
-                </View>
-                <View style={styles.performanceStat}>
-                  <Text style={styles.performanceStatValue}>
-                    {kgToDisplay(
-                      performanceHistory.last.oneRepMax,
-                      weightUnit,
-                    )}
-                    {weightUnit}
-                  </Text>
-                  <Text style={styles.performanceStatLabel}>Est. 1RM</Text>
-                </View>
-              </View>
-            </View>
-            <View
-              style={[styles.performanceCard, styles.bestPerformanceCard]}
-            >
-              <View style={styles.performanceCardHeader}>
-                <Text style={styles.performanceCardTitle}>
-                  Best Performance
-                </Text>
-                <Text style={styles.performanceCardDate}>
-                  {formatDate(performanceHistory.best.date)}
-                </Text>
-              </View>
-              <View style={styles.performanceStats}>
-                <View style={styles.performanceStat}>
-                  <Text
-                    style={[
-                      styles.performanceStatValue,
-                      styles.bestStatValue,
-                    ]}
-                  >
-                    {kgToDisplay(performanceHistory.best.weight, weightUnit)}
-                    {weightUnit}
-                  </Text>
-                  <Text style={styles.performanceStatLabel}>Weight</Text>
-                </View>
-                <View style={styles.performanceStat}>
-                  <Text
-                    style={[
-                      styles.performanceStatValue,
-                      styles.bestStatValue,
-                    ]}
-                  >
-                    {performanceHistory.best.reps}
-                  </Text>
-                  <Text style={styles.performanceStatLabel}>Reps</Text>
-                </View>
-                <View style={styles.performanceStat}>
-                  <Text
-                    style={[
-                      styles.performanceStatValue,
-                      styles.bestStatValue,
-                    ]}
-                  >
-                    {kgToDisplay(
-                      performanceHistory.best.oneRepMax,
-                      weightUnit,
-                    )}
-                    {weightUnit}
-                  </Text>
-                  <Text style={styles.performanceStatLabel}>Est. 1RM</Text>
-                </View>
-              </View>
-            </View>
+            <PerformanceCard
+              title='Last Time'
+              entry={performanceHistory.last}
+              weightUnit={weightUnit}
+              styles={styles}
+              cardStyle={styles.performanceCard}
+              valueStyle={styles.performanceStatValue}
+            />
+            <PerformanceCard
+              title='Best Performance'
+              entry={performanceHistory.best}
+              weightUnit={weightUnit}
+              styles={styles}
+              cardStyle={[styles.performanceCard, styles.bestPerformanceCard]}
+              valueStyle={[styles.performanceStatValue, styles.bestStatValue]}
+            />
             <Text style={styles.performanceTotalAttempts}>
               Total attempts: {performanceHistory.totalAttempts}
             </Text>
@@ -463,3 +397,41 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
     </View>
   );
 });
+
+function PerformanceCard({
+  title,
+  entry,
+  weightUnit,
+  styles,
+  cardStyle,
+  valueStyle,
+}: {
+  readonly title: string;
+  readonly entry: PerformanceEntry;
+  readonly weightUnit: WeightUnit;
+  readonly styles: ReturnType<typeof makeStyles>;
+  readonly cardStyle: StyleProp<ViewStyle>;
+  readonly valueStyle: StyleProp<TextStyle>;
+}): React.JSX.Element {
+  const stats: [string, string | number][] = [
+    ["Weight", `${kgToDisplay(entry.weight, weightUnit)}${weightUnit}`],
+    ["Reps", entry.reps],
+    ["Est. 1RM", `${kgToDisplay(entry.oneRepMax, weightUnit)}${weightUnit}`],
+  ];
+  return (
+    <View style={cardStyle}>
+      <View style={styles.performanceCardHeader}>
+        <Text style={styles.performanceCardTitle}>{title}</Text>
+        <Text style={styles.performanceCardDate}>{formatDate(entry.date)}</Text>
+      </View>
+      <View style={styles.performanceStats}>
+        {stats.map(([label, value]) => (
+          <View key={label} style={styles.performanceStat}>
+            <Text style={valueStyle}>{value}</Text>
+            <Text style={styles.performanceStatLabel}>{label}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
