@@ -1,3 +1,4 @@
+import * as DocumentPicker from "expo-document-picker";
 import {
   ApiError,
   fetchIdempotent,
@@ -79,6 +80,23 @@ function required<T>(value: T | undefined, message: string, status: number): T {
   return value;
 }
 
+/** Opens the system file picker for a spreadsheet plan, null when cancelled. */
+export const pickWorkoutFile = async (): Promise<string | null> => {
+  const result = await DocumentPicker.getDocumentAsync({
+    type: [
+      "application/vnd.oasis.opendocument.spreadsheet",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-excel",
+      "application/octet-stream",
+      "*/*",
+    ],
+    copyToCacheDirectory: true,
+    multiple: false,
+  });
+  if (result.canceled) return null;
+  return result.assets?.[0]?.uri ?? null;
+};
+
 export const makeWorkoutApi = (http: HttpFetch) => {
   // The key lets the server recognise a replay whose first attempt it already
   // committed before the response was lost.
@@ -99,22 +117,7 @@ export const makeWorkoutApi = (http: HttpFetch) => {
   };
 
   return {
-    pickWorkoutFile: async (): Promise<string | null> => {
-      const DocumentPicker = await import("expo-document-picker");
-      const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          "application/vnd.oasis.opendocument.spreadsheet",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "application/vnd.ms-excel",
-          "application/octet-stream",
-          "*/*",
-        ],
-        copyToCacheDirectory: true,
-        multiple: false,
-      });
-      if (result.canceled) return null;
-      return result.assets?.[0]?.uri ?? null;
-    },
+    pickWorkoutFile,
 
     startSession: async (
       split: string | null,

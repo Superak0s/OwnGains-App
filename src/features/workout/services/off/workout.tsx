@@ -1,4 +1,3 @@
-import * as DocumentPicker from "expo-document-picker";
 import {
   nextId,
   createRecordStore,
@@ -21,6 +20,7 @@ import type {
   SessionHistoryPage,
   WorkoutAnalytics,
 } from "../on/workout";
+import { pickWorkoutFile } from "../workoutApiFactory";
 
 import { programApi } from "@features/plan/services/index";
 import { computeWorkoutAnalytics } from "./workoutAnalytics";
@@ -119,21 +119,7 @@ function applyRenameToSession(
 }
 
 export const workoutApi = {
-  pickWorkoutFile: async (): Promise<string | null> => {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: [
-        "application/vnd.oasis.opendocument.spreadsheet",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "application/vnd.ms-excel",
-        "application/octet-stream",
-        "*/*",
-      ],
-      copyToCacheDirectory: true,
-      multiple: false,
-    });
-    if (result.canceled) return null;
-    return result.assets?.[0]?.uri ?? null;
-  },
+  pickWorkoutFile,
 
   startSession: async (
     split: string | null,
