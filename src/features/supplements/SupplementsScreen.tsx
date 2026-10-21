@@ -22,6 +22,7 @@ import type {
 import QuickLogSupplement from "./components/QuickLogSupplement";
 import SupplementSettingsModal from "./components/SupplementSettingsModal";
 import ModalSheet from "@shared/components/ModalSheet";
+import { Button, EmptyState } from "@shared/components/ui";
 import { useAlert } from "@shared/components/CustomAlert";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
@@ -559,35 +560,28 @@ export default function SupplementsScreen(): React.JSX.Element {
             />
 
             {loadError && (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>⚠️</Text>
-                <Text style={styles.emptyTitle}>Could not load supplements</Text>
-                <Text style={styles.emptySubtitle}>{loadError}</Text>
-                <TouchableOpacity
-                  style={styles.emptyButton}
-                  onPress={() => void loadSupplements()}
-                >
-                  <Text style={styles.emptyButtonText}>Try again</Text>
-                </TouchableOpacity>
-              </View>
+              <EmptyState
+                icon="⚠️"
+                title="Could not load supplements"
+                text={loadError}
+                style={styles.emptyState}
+              >
+                <Button label="Try again" onPress={() => void loadSupplements()} />
+              </EmptyState>
             )}
 
             {!loadError && supplements.length === 0 && (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>💊</Text>
-                <Text style={styles.emptyTitle}>No supplements yet</Text>
-                <Text style={styles.emptySubtitle}>
-                  Add supplements to track your daily intake and set reminders.
-                </Text>
-                <TouchableOpacity
-                  style={styles.emptyButton}
+              <EmptyState
+                icon="💊"
+                title="No supplements yet"
+                text="Add supplements to track your daily intake and set reminders."
+                style={styles.emptyState}
+              >
+                <Button
+                  label="Add your first supplement"
                   onPress={() => setShowTemplateSheet(true)}
-                >
-                  <Text style={styles.emptyButtonText}>
-                    Add your first supplement
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                />
+              </EmptyState>
             )}
           </>
         }
@@ -1150,25 +1144,7 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.surface,
     },
 
-    emptyState: {
-      alignItems: "center",
-      paddingHorizontal: 40,
-      paddingVertical: 60,
-    },
-    emptyIcon: { fontSize: 64, marginBottom: 16 },
-    emptyTitle: {
-      fontSize: 22,
-      fontWeight: "700",
-      color: colors.textPrimary,
-      marginBottom: 8,
-    },
-    emptySubtitle: {
-      fontSize: 15,
-      color: colors.textMuted,
-      textAlign: "center",
-      lineHeight: 22,
-      marginBottom: 28,
-    },
+    emptyState: { paddingVertical: 60 },
     emptyButton: {
       backgroundColor: colors.accent,
       paddingHorizontal: 24,

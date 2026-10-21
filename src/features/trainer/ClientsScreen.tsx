@@ -14,6 +14,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import ScreenTitle from "@shared/components/ScreenTitle";
 import InboxButton from "@features/messages/InboxButton";
 import { useAlert } from "@shared/components/CustomAlert";
+import { Button, EmptyState } from "@shared/components/ui";
 import { useAuth } from "@shared/context/AuthContext";
 import { useWorkoutPick } from "@shared/context/WorkoutContext";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
@@ -249,13 +250,9 @@ export default function ClientsScreen(): React.JSX.Element {
     body = (
       <>
         {errorBox}
-        <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>No clients yet</Text>
-          <Text style={styles.message}>Send someone a request to start coaching them.</Text>
-          <TouchableOpacity style={styles.emptyButton} onPress={() => setAdding(true)} accessibilityRole="button">
-            <Text style={styles.emptyButtonText}>Add your first client</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState title="No clients yet" text="Send someone a request to start coaching them.">
+          <Button label="Add your first client" onPress={() => setAdding(true)} />
+        </EmptyState>
       </>
     );
   else
@@ -346,20 +343,9 @@ const makeStyles = (colors: ThemeColors) =>
       marginBottom: 8,
     },
     message: { color: colors.textSecondary, fontSize: 14, textAlign: "center", marginTop: 8 },
-    empty: { alignItems: "center", marginTop: 48 },
-    emptyButton: {
-      minHeight: 48,
-      paddingHorizontal: 20,
-      marginTop: 16,
-      justifyContent: "center",
-      borderRadius: 12,
-      backgroundColor: colors.accent,
-    },
-    emptyButtonText: { color: colors.textOnAccent, fontWeight: "600" },
     errorBox: { alignItems: "center", marginBottom: 8 },
     retry: { minHeight: 48, paddingHorizontal: 12, justifyContent: "center" },
     cancelText: { color: colors.error, fontWeight: "600" },
-    emptyTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: "700" },
     sentRow: {
       minHeight: 48,
       flexDirection: "row",

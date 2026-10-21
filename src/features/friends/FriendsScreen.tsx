@@ -36,6 +36,7 @@ import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { SocketSubscriber } from "@shared/context/hooks/useRealtimeSocket";
 import type { WatchTarget } from "@shared/context/hooks/useJointSession";
 import ModalSheet from "@shared/components/ModalSheet";
+import { Button, EmptyState } from "@shared/components/ui";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import ScrollTabBar from "@shared/components/ScrollTabBar";
 import { useAlert } from "@shared/components/CustomAlert";
@@ -263,31 +264,23 @@ const FriendsListWidget = React.memo(function FriendsListWidget({
         <Text style={styles.sectionTitle}>Your Friends ({friends.length})</Text>
       </View>
       {friends.length === 0 && loadFailed && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>Couldn't load your friends</Text>
-          <Text style={styles.emptyText}>
-            Check your connection and try again.
-          </Text>
-          <TouchableOpacity
-            style={styles.emptyButton}
-            onPress={onRetry}
-            accessibilityRole='button'
-          >
-            <Text style={styles.emptyButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState
+          title="Couldn't load your friends"
+          text='Check your connection and try again.'
+          style={styles.emptyState}
+        >
+          <Button label='Retry' onPress={onRetry} />
+        </EmptyState>
       )}
       {friends.length === 0 && !loadFailed && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>👋</Text>
-          <Text style={styles.emptyTitle}>No friends yet</Text>
-          <Text style={styles.emptyText}>
-            Search for users to add friends and share your progress
-          </Text>
-          <TouchableOpacity style={styles.emptyButton} onPress={onFindFriends}>
-            <Text style={styles.emptyButtonText}>Find Friends</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState
+          icon='👋'
+          title='No friends yet'
+          text='Search for users to add friends and share your progress'
+          style={styles.emptyState}
+        >
+          <Button label='Find Friends' onPress={onFindFriends} />
+        </EmptyState>
       )}
       {friends.length > 0 && (
         <ScrollView
@@ -1535,14 +1528,12 @@ export default function FriendsScreen({
                 </View>
               </ScrollView>
             ) : (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>🔒</Text>
-                <Text style={styles.emptyTitle}>Not shared yet</Text>
-                <Text style={styles.emptyText}>
-                  {selectedFriend?.username} hasn't granted you history
-                  access.
-                </Text>
-              </View>
+              <EmptyState
+                icon='🔒'
+                title='Not shared yet'
+                text={`${selectedFriend?.username ?? ""} hasn't granted you history access.`}
+                style={styles.emptyState}
+              />
             ))}
 
           {activeFriendTab === "analytics" &&
@@ -2152,13 +2143,6 @@ export const makeStyles = (colors: ThemeColors) =>
       padding: 40,
       backgroundColor: colors.surface,
       borderRadius: 12,
-    },
-    emptyIcon: { fontSize: 64, marginBottom: 16 },
-    emptyTitle: {
-      fontSize: 20,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      marginBottom: 8,
     },
     emptyText: {
       fontSize: 15,

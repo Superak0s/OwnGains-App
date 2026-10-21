@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { FillBar } from "@shared/components/FillBar";
 import ModalSheet from "@shared/components/ModalSheet";
+import { EmptyState } from "@shared/components/ui";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
@@ -167,11 +168,12 @@ export default function TrainingSummaryTab({
 
   if (error) {
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>⚠️</Text>
-        <Text style={styles.emptyTitle}>Something went wrong</Text>
-        <Text style={styles.emptyText}>{error}</Text>
-      </View>
+      <EmptyState
+        icon="⚠️"
+        title="Something went wrong"
+        text={error}
+        style={styles.emptyContainer}
+      />
     );
   }
 
@@ -386,20 +388,6 @@ const makeStyles = (colors: ThemeColors) =>
       justifyContent: "center",
       alignItems: "center",
       padding: 40,
-    },
-    emptyIcon: { fontSize: 64, marginBottom: 20 },
-    emptyTitle: {
-      fontSize: 24,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      marginBottom: 10,
-      textAlign: "center",
-    },
-    emptyText: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      textAlign: "center",
-      lineHeight: 24,
     },
     loadingText: { marginTop: 12, fontSize: 16, color: colors.textSecondary },
   });

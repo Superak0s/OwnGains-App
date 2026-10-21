@@ -18,6 +18,7 @@ import ProgressChart, {
   type ChartPoint,
 } from "@shared/components/ProgressChart";
 import ModalSheet from "@shared/components/ModalSheet";
+import { EmptyState } from "@shared/components/ui";
 import ScrollTabBar from "@shared/components/ScrollTabBar";
 import TrainingSummaryTab from "./TrainingSummaryTab";
 import {
@@ -476,13 +477,12 @@ export default function ExerciseAnalytics({
     if (!selection) return mutedLine(`${selectPrompt} to see its stats here.`);
     if (!exerciseData?.length) {
       return (
-        <View style={styles.noDataContainer}>
-          <Text style={styles.noDataIcon}>📭</Text>
-          <Text style={styles.noDataTitle}>No Data Yet</Text>
-          <Text style={styles.noDataText}>
-            No completed sets for "{selection}"
-          </Text>
-        </View>
+        <EmptyState
+          icon="📭"
+          title="No Data Yet"
+          text={`No completed sets for "${selection}"`}
+          style={styles.noDataContainer}
+        />
       );
     }
     return (
@@ -1060,21 +1060,23 @@ export default function ExerciseAnalytics({
 
     if (error) {
       return (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>⚠️</Text>
-          <Text style={styles.emptyTitle}>Something went wrong</Text>
-          <Text style={styles.emptyText}>{error}</Text>
-        </View>
+        <EmptyState
+          icon="⚠️"
+          title="Something went wrong"
+          text={error}
+          style={styles.emptyContainer}
+        />
       );
     }
 
     if (!sessions?.length) {
       return (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>📊</Text>
-          <Text style={styles.emptyTitle}>No Data Available</Text>
-          <Text style={styles.emptyText}>No workout sessions found</Text>
-        </View>
+        <EmptyState
+          icon="📊"
+          title="No Data Available"
+          text="No workout sessions found"
+          style={styles.emptyContainer}
+        />
       );
     }
 
@@ -1459,32 +1461,11 @@ const makeStyles = (colors: ThemeColors) =>
       alignItems: "center",
       padding: 40,
     },
-    emptyIcon: { fontSize: 64, marginBottom: 20 },
-    emptyTitle: {
-      fontSize: 24,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      marginBottom: 10,
-      textAlign: "center",
-    },
     emptyText: {
       fontSize: 16,
       color: colors.textSecondary,
       textAlign: "center",
       lineHeight: 24,
-    },
-    noDataIcon: { fontSize: 48, marginBottom: 16 },
-    noDataTitle: {
-      fontSize: 20,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      marginBottom: 8,
-    },
-    noDataText: {
-      fontSize: 15,
-      color: colors.textSecondary,
-      textAlign: "center",
-      lineHeight: 22,
     },
     lastWorkoutCardWidget: { alignItems: "flex-start" },
     lastWorkoutDate: {
@@ -1493,8 +1474,6 @@ const makeStyles = (colors: ThemeColors) =>
       fontWeight: "600",
     },
     noDataContainer: {
-      padding: 40,
-      alignItems: "center",
       backgroundColor: colors.surface,
       borderRadius: 16,
       marginTop: 4,

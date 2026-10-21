@@ -144,6 +144,23 @@ const makeUi = (colors: ThemeColors) =>
 
     note: { fontSize: 13, color: colors.textMuted, paddingVertical: space.sm },
 
+    empty: { alignItems: "center", justifyContent: "center", padding: 40 },
+    emptyIcon: { fontSize: 64, marginBottom: space.lg },
+    emptyTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      textAlign: "center",
+      marginBottom: space.sm,
+    },
+    emptyText: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+    emptyActions: { alignItems: "center", gap: space.md, marginTop: space.xl },
+
     stepper: {
       flexDirection: "row",
       alignItems: "center",
@@ -499,6 +516,33 @@ export function Placeholder({ icon, text, action }: PlaceholderProps): React.Rea
           size="sm"
         />
       ) : null}
+    </View>
+  );
+}
+
+interface EmptyStateProps {
+  readonly icon?: string;
+  readonly title: string;
+  readonly text: string;
+  readonly style?: StyleProp<ViewStyle>;
+  readonly children?: React.ReactNode;
+}
+
+/** A screen- or card-sized empty or error state. Actions go in as children. */
+export function EmptyState({
+  icon,
+  title,
+  text,
+  style,
+  children,
+}: EmptyStateProps): React.ReactElement {
+  const { ui } = useUi();
+  return (
+    <View style={[ui.empty, style]}>
+      {icon ? <Text style={ui.emptyIcon}>{icon}</Text> : null}
+      <Text style={ui.emptyTitle}>{title}</Text>
+      <Text style={ui.emptyText}>{text}</Text>
+      {children ? <View style={ui.emptyActions}>{children}</View> : null}
     </View>
   );
 }

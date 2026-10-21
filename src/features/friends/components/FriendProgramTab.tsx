@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { formatDate } from "@utils/format";
+import { EmptyState } from "@shared/components/ui";
 import {
   ProgramDayHeader,
   ProgramExerciseRow,
@@ -122,13 +123,12 @@ export function FriendProgramTab({
 
   if (!programsFromFriend.length) {
     return (
-      <View style={styles.emptyState}>
-        <Text style={styles.emptyIcon}>🔒</Text>
-        <Text style={styles.emptyTitle}>No program shared</Text>
-        <Text style={styles.emptyText}>
-          {selectedFriend?.username} hasn't shared a program with you.
-        </Text>
-      </View>
+      <EmptyState
+        icon="🔒"
+        title="No program shared"
+        text={`${selectedFriend?.username ?? ""} hasn't shared a program with you.`}
+        style={styles.emptyState}
+      />
     );
   }
 

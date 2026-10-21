@@ -32,6 +32,7 @@ import { useAuth } from "@shared/context/AuthContext";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import ModalSheet from "@shared/components/ModalSheet";
+import { Button, EmptyState } from "@shared/components/ui";
 import { useAlert } from "@shared/components/CustomAlert";
 import {
   promptForAlarmPermissions,
@@ -1849,33 +1850,22 @@ Note: ${existing.note}`;
     return (
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
         {header}
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>{emptyState.icon}</Text>
-          <Text style={styles.emptyTitle}>{emptyState.title}</Text>
-          <Text style={styles.emptyText}>{emptyState.text}</Text>
-          {emptyState.actionTab && (
-            <TouchableOpacity
-              style={styles.emptyAction}
-              accessibilityRole='button'
-              accessibilityLabel={emptyState.actionLabel}
+        <EmptyState
+          icon={emptyState.icon}
+          title={emptyState.title}
+          text={emptyState.text}
+          style={styles.emptyContainer}
+        >
+          {emptyState.actionTab && emptyState.actionLabel && (
+            <Button
+              label={emptyState.actionLabel}
               onPress={() => navigation.navigate(emptyState.actionTab!)}
-            >
-              <Text style={styles.emptyActionText}>
-                {emptyState.actionLabel}
-              </Text>
-            </TouchableOpacity>
+            />
           )}
           {!workoutStartTime && !actAs && (
-            <TouchableOpacity
-              style={styles.emptyAction}
-              accessibilityRole='button'
-              accessibilityLabel='Start empty workout'
-              onPress={startEmptyWorkout}
-            >
-              <Text style={styles.emptyActionText}>Start empty workout</Text>
-            </TouchableOpacity>
+            <Button label='Start empty workout' onPress={startEmptyWorkout} />
           )}
-        </View>
+        </EmptyState>
       </SafeAreaView>
     );
 
@@ -2963,32 +2953,6 @@ export const makeStyles = (colors: ThemeColors) => {
       alignItems: "center",
       padding: 40,
       backgroundColor: colors.background,
-    },
-    emptyIcon: { fontSize: 64, marginBottom: 20 },
-    emptyTitle: {
-      fontSize: 20,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      marginBottom: 10,
-      textAlign: "center",
-    },
-    emptyText: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      textAlign: "center",
-      lineHeight: 24,
-    },
-    emptyAction: {
-      marginTop: 24,
-      backgroundColor: colors.accent,
-      paddingVertical: 14,
-      paddingHorizontal: 32,
-      borderRadius: 12,
-    },
-    emptyActionText: {
-      color: colors.textOnAccent,
-      fontSize: 16,
-      fontWeight: "bold",
     },
     widgetLineMuted: {
       fontSize: 14,

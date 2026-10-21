@@ -3,6 +3,7 @@ import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } fr
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { useAlert } from "@shared/components/CustomAlert";
+import { EmptyState } from "@shared/components/ui";
 import { userFacingError } from "@shared/services/apiError";
 import { friendsApi } from "@features/friends/services";
 import ReportUserSheet from "@features/friends/components/ReportUserSheet";
@@ -141,11 +142,12 @@ export default function MessagesListScreen({
           />
         }
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>💬</Text>
-            <Text style={styles.emptyTitle}>No messages yet</Text>
-            <Text style={styles.emptyText}>Open a friend or client and tap Message to start a conversation.</Text>
-          </View>
+          <EmptyState
+            icon="💬"
+            title="No messages yet"
+            text="Open a friend or client and tap Message to start a conversation."
+            style={styles.empty}
+          />
         }
       />
       <ReportUserSheet
@@ -205,8 +207,5 @@ const makeStyles = (colors: ThemeColors) =>
     badgeText: { color: colors.textOnAccent, fontSize: 12, fontWeight: "700" },
     separator: { height: StyleSheet.hairlineWidth, marginLeft: 82, backgroundColor: colors.separator },
     emptyContainer: { flexGrow: 1 },
-    empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 8 },
-    emptyIcon: { fontSize: 48 },
-    emptyTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: "700" },
-    emptyText: { color: colors.textMuted, fontSize: 14, textAlign: "center" },
+    empty: { flex: 1 },
   });
