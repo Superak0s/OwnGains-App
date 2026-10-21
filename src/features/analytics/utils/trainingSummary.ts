@@ -2,6 +2,7 @@ import type { WorkoutData, SetTiming } from "@shared/types";
 import type { CompletedDays } from "../types";
 import { normalizeExerciseName } from "@utils/exerciseMatching";
 import { parseDate } from "@utils/format";
+import { dedupeHistory } from "./exerciseStats";
 
 export type SummaryPeriod = "quarter" | "month" | "week" | "custom";
 
@@ -173,25 +174,7 @@ export function buildTrainingSetEntries(
           });
         });
 
-  // Same identity/priority rule used for exercise history: a set can appear
-  // in both sessions (server) and completedDays (local) during the sync
-  // window, and server entries are used.
-  const sorted = [...fromSessions, ...fromCompletedDays].sort(
-    (a, b) => a.date.getTime() - b.date.getTime(),
-  );
-  const seen = new Map<string, RawSetEntry>();
-  sorted.forEach((entry) => {
-    const key = `${entry.date.getTime()}-${entry.dayNumber}-${entry.exerciseName}-${entry.setNumber}`;
-    const existing = seen.get(key);
-    if (
-      !existing ||
-      (entry.source === "server" && existing.source === "local")
-    ) {
-      seen.set(key, entry);
-    }
-  });
-
-  return Array.from(seen.values()).map(
+  return dedupeHistory([...fromSessions, ...fromCompletedDays]).map(
     ({
       date,
       exerciseName,

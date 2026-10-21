@@ -34,7 +34,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Moved the time picker to `src/shared/components/TimeWheel.tsx`, with tests.
 - Brought `CLAUDE.md` up to date (messages, schedule and trainer features, `modules/`, app role, supplement alarms, Play forced update, FCM push) and pointed its release section at `release.sh --help`.
 - The `release` skill hands over a prompt-free `release.sh` command and describes the automatic Play upload.
-- Deduplicated code across `src/`: one `PasswordField` for login and signup, one save-then-sync path for the four program edit operations, trainer banner styles reused by the joint-session banner, one performance card in the set form, one deps type for the tracking tab hooks, one password confirm sheet for unlinking Google and clearing data, shared header styles for onboarding and privacy consent, one file picker for both workout service twins, the shared week start and date key helpers in place of the trainer and sync copies, and one 24-hour time formatter.
+- Deduplicated code across `src/`: one `PasswordField` for login and signup, one save-then-sync path for the four program edit operations, trainer banner styles reused by the joint-session banner, one performance card in the set form, one deps type for the tracking tab hooks, one password confirm sheet for unlinking Google and clearing data, shared header styles for onboarding and privacy consent, one file picker for both workout service twins, the shared week start and date key helpers in place of the trainer and sync copies, one 24-hour time formatter, and one set dedupe rule for exercise history and the training summary.
 
 ## [1.0.0] - 2026-10-20
 

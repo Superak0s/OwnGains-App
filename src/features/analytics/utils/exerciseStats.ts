@@ -565,13 +565,16 @@ export function buildExerciseHistory(
 
 /** A set can arrive from both a synced session and the local completedDays
  * record during the sync window, and the server copy is used. */
-export function dedupeHistory(
-  entries: ExerciseHistoryEntry[],
-): ExerciseHistoryEntry[] {
+export function dedupeHistory<
+  T extends Pick<
+    ExerciseHistoryEntry,
+    "date" | "dayNumber" | "exerciseName" | "setNumber" | "source"
+  >,
+>(entries: T[]): T[] {
   const sorted = [...entries].sort(
     (a, b) => a.date.getTime() - b.date.getTime(),
   );
-  const seen = new Map<string, ExerciseHistoryEntry>();
+  const seen = new Map<string, T>();
   sorted.forEach((entry) => {
     const key = `${entry.date.getTime()}-${entry.dayNumber}-${entry.exerciseName}-${entry.setNumber}`;
     const existing = seen.get(key);
