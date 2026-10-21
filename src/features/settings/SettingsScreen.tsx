@@ -57,8 +57,7 @@ import {
 import ThemeEditorModal from "@shared/components/ThemeEditorModal";
 import {
   ChangePasswordModal,
-  UnlinkGoogleModal,
-  ClearDataPasswordModal,
+  PasswordConfirmModal,
   DeleteAccountModal,
   ExportPassphraseModal,
   MIN_EXPORT_PASSPHRASE,
@@ -2796,12 +2795,17 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
         })}
       </ModalSheet>
 
-      <ClearDataPasswordModal
+      <PasswordConfirmModal
         visible={showClearDataModal}
         onClose={() => setShowClearDataModal(false)}
         onSubmit={clearData}
         busy={busyAction === "clearData"}
         styles={styles}
+        title="Clear All Data"
+        description="Enter your password to delete your data on this device and on the server. Your account stays."
+        confirmText="Clear Everything"
+        busyText="Clearing…"
+        inputLabel="Current password to confirm clearing all data"
       />
 
       <DeleteAccountModal
@@ -2814,12 +2818,17 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
         styles={styles}
       />
 
-      <UnlinkGoogleModal
+      <PasswordConfirmModal
         visible={showUnlinkGoogleModal}
         onClose={() => setShowUnlinkGoogleModal(false)}
         onSubmit={(password) => void handleUnlinkGoogle(password)}
         busy={unlinkingGoogle}
         styles={styles}
+        title="Unlink Google"
+        description="You will sign in with your password only. Signing in with Google again later asks for this password to link it back."
+        confirmText="Unlink"
+        busyText="Unlinking…"
+        inputLabel="Current password to confirm unlinking Google"
       />
 
       <ChangePasswordModal

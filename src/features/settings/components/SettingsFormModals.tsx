@@ -229,28 +229,37 @@ export function DeleteAccountModal({
   );
 }
 
-export function UnlinkGoogleModal({
+/** Asks for the current password before an account action. */
+export function PasswordConfirmModal({
   visible,
   onClose,
   onSubmit,
   busy,
   styles,
+  title,
+  description,
+  confirmText,
+  busyText,
+  inputLabel,
 }: SheetProps & {
   readonly onSubmit: (password: string) => void;
+  readonly title: string;
+  readonly description: string;
+  readonly confirmText: string;
+  readonly busyText: string;
+  readonly inputLabel: string;
 }) {
   const [form, field] = useSheetForm(visible, { password: "" });
   return (
     <ModalSheet
       visible={visible}
       onClose={onClose}
-      title="Unlink Google"
+      title={title}
       onConfirm={() => onSubmit(form.password)}
-      confirmText={busy ? "Unlinking…" : "Unlink"}
+      confirmText={busy ? busyText : confirmText}
       confirmDisabled={busy || !form.password}
     >
-      <Text style={styles.modalDescription}>
-        You will sign in with your password only. Signing in with Google again later asks for this password to link it back.
-      </Text>
+      <Text style={styles.modalDescription}>{description}</Text>
       <LabeledInput
         styles={styles}
         label="Current password"
@@ -258,43 +267,7 @@ export function UnlinkGoogleModal({
         onChangeText={field("password")}
         secureTextEntry
         autoCapitalize="none"
-        accessibilityLabel="Current password to confirm unlinking Google"
-      />
-    </ModalSheet>
-  );
-}
-
-export function ClearDataPasswordModal({
-  visible,
-  onClose,
-  onSubmit,
-  busy,
-  styles,
-}: SheetProps & {
-  readonly onSubmit: (password: string) => void;
-}) {
-  const [form, field] = useSheetForm(visible, { password: "" });
-  return (
-    <ModalSheet
-      visible={visible}
-      onClose={onClose}
-      title="Clear All Data"
-      onConfirm={() => onSubmit(form.password)}
-      confirmText={busy ? "Clearing…" : "Clear Everything"}
-      confirmDisabled={busy || !form.password}
-    >
-      <Text style={styles.modalDescription}>
-        Enter your password to delete your data on this device and on the
-        server. Your account stays.
-      </Text>
-      <LabeledInput
-        styles={styles}
-        label="Current password"
-        value={form.password}
-        onChangeText={field("password")}
-        secureTextEntry
-        autoCapitalize="none"
-        accessibilityLabel="Current password to confirm clearing all data"
+        accessibilityLabel={inputLabel}
       />
     </ModalSheet>
   );
