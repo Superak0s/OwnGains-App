@@ -6,6 +6,8 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-22
+
 ### Added
 
 - Snoozing an alarm shows a notification with the time it rings again, and a Cancel button that stops the snoozed alarm.
