@@ -1,7 +1,7 @@
 import type { MenstrualEntry } from "./services/types";
 import type { SorenessEntry, SorenessFollowUp } from "./types/muscleRecovery";
 import type { BodyFatEntryWithFields } from "./types";
-import { toDateString, formatDate, parseDate, daysSinceLocal } from "@utils/format";
+import { toDateString, formatDate, parseDate, daysSinceLocal, parseDecimal } from "@utils/format";
 import type { ChartPoint } from "@shared/components/chart/chartMath";
 
 export function recoveryTimeLabel(days: number): string {
@@ -158,10 +158,8 @@ export function isValidTime(text: string): boolean {
   return Number(match[1]) < 24 && Number(match[2]) < 60;
 }
 
-export function toNumberOrUndefined(value: string): number | undefined {
-  const n = Number.parseFloat(value);
-  return Number.isFinite(n) ? n : undefined;
-}
+export const toNumberOrUndefined = (value: string): number | undefined =>
+  parseDecimal(value) ?? undefined;
 
 export function toFeetInches(cm: number): { feet: number; inches: number } {
   const totalInches = cm / 2.54;

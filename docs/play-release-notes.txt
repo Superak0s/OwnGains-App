@@ -1,0 +1,1 @@
+• Body fat, measurements and macros typed with a decimal comma, like 85,5, keep their decimals instead of being saved as 85.

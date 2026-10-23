@@ -3,7 +3,7 @@ import { useState, useCallback, useMemo } from "react";
 import type { MeasurementEntry } from "../services/types";
 import { useTrackingApis } from "../TrackingApisContext";
 import { createDeleteHandler, withConfirm, describeError } from "../helpers";
-import { isoToLocalDateStr } from "../utils";
+import { isoToLocalDateStr, toNumberOrUndefined } from "../utils";
 import { toDateString } from "@utils/format";
 
 interface UseMeasurementsTabDeps extends TabDeps {
@@ -22,9 +22,6 @@ export interface MeasurementInput {
 
 /** Which of the form's fields were saved, so a partial failure clears only what was saved. */
 export type MeasurementLogResult = "all" | "standard" | "none";
-
-const toOptionalNumber = (value: string) =>
-  value ? Number.parseFloat(value) : undefined;
 
 export function useMeasurementsTab(deps: UseMeasurementsTabDeps) {
   const { bodyMeasurementsApi, customMeasurementsApi } = useTrackingApis();
@@ -73,7 +70,7 @@ export function useMeasurementsTab(deps: UseMeasurementsTabDeps) {
 
     if (!hasStandard && !hasCustom)
       return invalid("Enter at least one measurement or a custom body part");
-    if (customValue.trim() !== "" && Number.isNaN(Number.parseFloat(customValue)))
+    if (customValue.trim() !== "" && toNumberOrUndefined(customValue) === undefined)
       return invalid("Enter a valid value for the custom body part");
     for (const [label, value] of [
       ["waist", waist],
@@ -81,7 +78,7 @@ export function useMeasurementsTab(deps: UseMeasurementsTabDeps) {
       ["right arm", armRight],
       ["chest", chest],
     ] as const)
-      if (value.trim() !== "" && Number.isNaN(Number.parseFloat(value)))
+      if (value.trim() !== "" && toNumberOrUndefined(value) === undefined)
         return invalid(`Enter a valid ${label} value`);
 
     let standardSaved = false;
@@ -89,17 +86,17 @@ export function useMeasurementsTab(deps: UseMeasurementsTabDeps) {
       const recordedAt = selectedLogDate ? buildLocalISOForDate(selectedLogDate, "08:00") : undefined;
       if (hasStandard) {
         await bodyMeasurementsApi.logMeasurement(
-          toOptionalNumber(waist),
-          toOptionalNumber(armLeft),
-          toOptionalNumber(armRight),
-          toOptionalNumber(chest),
+          toNumberOrUndefined(waist),
+          toNumberOrUndefined(armLeft),
+          toNumberOrUndefined(armRight),
+          toNumberOrUndefined(chest),
           recordedAt,
         );
         standardSaved = true;
       }
       if (hasCustom) {
         const type = await ensureCustomMeasurementType(customPart);
-        await customMeasurementsApi.logValue(type.keyName, Number.parseFloat(customValue), recordedAt);
+        await customMeasurementsApi.logValue(type.keyName, toNumberOrUndefined(customValue)!, recordedAt);
       }
       setShowMeasurementModal(false);
       setSelectedLogDate(null);

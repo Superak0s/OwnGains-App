@@ -29,6 +29,7 @@ describe("toNumberOrUndefined", () => {
   it("parses numbers", () => {
     expect(toNumberOrUndefined("12.5")).toBe(12.5);
     expect(toNumberOrUndefined("0")).toBe(0);
+    expect(toNumberOrUndefined("12,5")).toBe(12.5);
   });
 });
 

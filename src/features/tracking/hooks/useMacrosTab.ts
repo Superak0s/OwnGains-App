@@ -5,7 +5,7 @@ import type { MacrosEntry } from "@shared/types";
 import { useTrackingApis } from "../TrackingApisContext";
 import { createDeleteHandler, withConfirm, describeError } from "../helpers";
 import { isoToLocalDateStr, toNumberOrUndefined } from "../utils";
-import { toDateString , generateId } from "@utils/format";
+import { toDateString, generateId, parseDecimal } from "@utils/format";
 
 import { loadFromStorage, saveToStorage, STORAGE_KEYS } from "@shared/services/storage";
 import { captureException } from "@shared/services/crashReporting";
@@ -241,10 +241,10 @@ export function useMacrosTab(deps: UseMacrosTabDeps) {
 
   const updateMacrosGoals = useCallback(async (input: MacrosGoalInput): Promise<boolean> => {
     const goals = {
-      protein: Number.parseFloat(input.protein),
-      carbs: Number.parseFloat(input.carbs),
-      fat: Number.parseFloat(input.fat),
-      calories: Number.parseFloat(input.calories),
+      protein: parseDecimal(input.protein) ?? Number.NaN,
+      carbs: parseDecimal(input.carbs) ?? Number.NaN,
+      fat: parseDecimal(input.fat) ?? Number.NaN,
+      calories: parseDecimal(input.calories) ?? Number.NaN,
     };
     if (Object.values(goals).some((value) => Number.isNaN(value) || value <= 0)) {
       alert("Invalid Input", "Please enter valid goals", [{ text: "OK" }], "error");

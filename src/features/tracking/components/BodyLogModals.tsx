@@ -12,7 +12,7 @@ import type {
   MeasurementInput,
   MeasurementLogResult,
 } from "../hooks/useMeasurementsTab";
-import { isValidTime, maskTimeInput, toFeetInches } from "../utils";
+import { isValidTime, maskTimeInput, toFeetInches, toNumberOrUndefined } from "../utils";
 import { Chip, ErrorMarginStepper, space } from "@shared/components/ui";
 
 interface SheetProps {
@@ -188,8 +188,8 @@ export function MacrosLogModal({
     <K extends keyof MacrosEntryInput>(key: K) =>
     (value: MacrosEntryInput[K]) =>
       setForm((prev) => ({ ...prev, [key]: value }));
-  const calories = Number.parseFloat(form.calories);
-  const protein = Number.parseFloat(form.protein);
+  const calories = toNumberOrUndefined(form.calories) ?? 0;
+  const protein = toNumberOrUndefined(form.protein) ?? 0;
 
   return (
     <ModalSheet

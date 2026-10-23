@@ -8,7 +8,7 @@ import { authService } from "@features/auth/services/index";
 import { isFeatureLocal } from "@shared/services/localOnlyFeatures";
 import { createDeleteHandler, withConfirm, describeError } from "../helpers";
 import { isoToLocalDateStr } from "../utils";
-import { toDateString } from "@utils/format";
+import { parseDecimal, toDateString } from "@utils/format";
 import { log, metric } from "@shared/services/crashReporting";
 
 interface UseBodyFatTabDeps extends TabDeps {
@@ -81,9 +81,9 @@ export function useBodyFatTab(deps: UseBodyFatTabDeps) {
       );
       return false;
     }
-    let waistCm = Number.parseFloat(waist);
-    let neckCm = Number.parseFloat(neck);
-    let hipCm = hip ? Number.parseFloat(hip) : 0;
+    let waistCm = parseDecimal(waist) ?? Number.NaN;
+    let neckCm = parseDecimal(neck) ?? Number.NaN;
+    let hipCm = hip ? (parseDecimal(hip) ?? Number.NaN) : 0;
     if (measurementUnit === "in") {
       waistCm *= 2.54;
       neckCm *= 2.54;

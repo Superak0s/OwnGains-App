@@ -6,6 +6,10 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Fixed
+
+- Body fat, measurement and macro entries typed with a decimal comma, like 85,5, keep their decimals instead of being saved as 85.
+
 ### Internal
 
 - Second dedupe pass: session detail rows, sign-in requests and session storage, median, progress photo pickers, the spreadsheet target range parser.

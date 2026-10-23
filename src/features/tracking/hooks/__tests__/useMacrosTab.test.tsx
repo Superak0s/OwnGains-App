@@ -157,6 +157,18 @@ describe("useMacrosTab saved foods", () => {
   });
 });
 
+describe("useMacrosTab decimal input", () => {
+  it("reads a decimal comma in an entry and in goals", async () => {
+    const controlRef = await mount();
+    await act(async () => {
+      await controlRef.current!.addMacrosEntry(entry({ protein: "12,5", calories: "250,5" }));
+      await controlRef.current!.updateMacrosGoals({ protein: "150,5", carbs: "200", fat: "70", calories: "2000,5" });
+    });
+    expect(logMacros).toHaveBeenLastCalledWith(expect.objectContaining({ protein: 12.5, calories: 250.5 }));
+    expect(macrosTrackingApi.setMacrosGoals).toHaveBeenCalledWith({ protein: 150.5, carbs: 200, fat: 70, calories: 2000.5 });
+  });
+});
+
 describe("useMacrosTab getDailyMacrosStats", () => {
   it("computes totals, error-margin min/max, and goal percentage", async () => {
     const controlRef = await mount();

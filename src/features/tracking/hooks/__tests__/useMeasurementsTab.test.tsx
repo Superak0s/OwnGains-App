@@ -75,6 +75,12 @@ describe("useMeasurementsTab.handleLogMeasurement", () => {
     expect(logMeasurement).not.toHaveBeenCalled();
   });
 
+  it("reads a decimal comma", async () => {
+    expect(await log({ waist: "80,5", customPart: "Calves", customValue: "35,5" })).toBe("all");
+    expect(logMeasurement).toHaveBeenCalledWith(80.5, undefined, undefined, undefined, undefined);
+    expect(logValue).toHaveBeenCalledWith("calves", 35.5, undefined);
+  });
+
   it("logs only the filled standard fields and reloads", async () => {
     expect(await log({ waist: "80", chest: "100" })).toBe("all");
     expect(logMeasurement).toHaveBeenCalledWith(80, undefined, undefined, 100, undefined);

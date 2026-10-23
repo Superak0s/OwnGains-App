@@ -73,6 +73,11 @@ describe("useBodyFatTab.calculateBodyFat", () => {
     expect(sex).toBe("male");
   });
 
+  it("reads a decimal comma", async () => {
+    expect(await calculate({ waist: "85,5", neck: "38,5" })).toBe(true);
+    expect(logBodyFat.mock.calls[0][1]).toEqual({ waist: 85.5, neck: 38.5, hip: 0, unit: "cm" });
+  });
+
   it("requires the hip for the female formula", async () => {
     expect(await calculate({ waist: "70", neck: "32" }, { sex: "female" })).toBe(false);
     expect(logBodyFat).not.toHaveBeenCalled();
