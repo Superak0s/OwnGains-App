@@ -9,6 +9,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 ### Fixed
 
 - Body fat, measurement and macro entries typed with a decimal comma, like 85,5, keep their decimals instead of being saved as 85.
+- A program imported from a spreadsheet without a "Total Sets:" row shows its real set count instead of 0 sets.
 
 ### Internal
 

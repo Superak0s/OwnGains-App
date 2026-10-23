@@ -129,16 +129,22 @@ describe("parseWorkoutFileClient", () => {
     expect(data.days[0].split.GF.exercises).toHaveLength(2);
   });
 
-  it("leaves totalSets alone when the total row cell is blank or non-numeric", async () => {
+  it("sums the exercise sets when the total row is missing, blank or non-numeric", async () => {
     stageSheet([
       ["Day 1"],
       ["Exercise", "Muscle Group", "GF", "BF"],
       ["Bench Press", "Chest", 4, 3],
+      ["Fly", "Chest", 2, 0],
       ["Total Sets:", "", "", "n/a"],
+      ["Day 2"],
+      ["Exercise", "Muscle Group", "GF", "BF"],
+      ["Squat", "Quads", 5, 4],
     ]);
     const data = await parseWorkoutFileClient("file:///plan.xlsx");
-    expect(data.days[0].split.GF.totalSets).toBe(0);
-    expect(data.days[0].split.BF.totalSets).toBe(0);
+    expect(data.days[0].split.GF.totalSets).toBe(6);
+    expect(data.days[0].split.BF.totalSets).toBe(3);
+    expect(data.days[1].split.GF.totalSets).toBe(5);
+    expect(data.days[1].split.BF.totalSets).toBe(4);
   });
 
   it("defaults dayNumber to 0 and muscleGroups to empty for an untitled day", async () => {

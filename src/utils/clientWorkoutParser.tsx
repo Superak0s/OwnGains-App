@@ -341,6 +341,7 @@ function applyExerciseRow(
         sets,
         ...(reps !== undefined && { reps }),
       });
+      day.split[name].totalSets += sets;
     }
   });
 
