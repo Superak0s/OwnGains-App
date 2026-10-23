@@ -41,7 +41,7 @@ function ProgramDayCard({
       />
       {exercises.map((exercise, exIdx) => (
         <ProgramExerciseRow
-          key={exercise.name ?? `exercise-${exIdx}`}
+          key={`${exercise.name ?? ""}-${exIdx}`}
           name={exercise.name ?? `Exercise ${exIdx + 1}`}
           primaryMuscles={exercise.primaryMuscles}
           secondaryMuscles={exercise.secondaryMuscles}

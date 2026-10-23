@@ -1,2 +1,3 @@
 • Body fat, measurements and macros typed with a decimal comma, like 85,5, keep their decimals instead of being saved as 85.
 • Programs imported from a spreadsheet without a "Total Sets:" row show their real set count instead of 0.
+• A friend's shared program no longer drops or repeats rows when a day lists the same exercise twice.
