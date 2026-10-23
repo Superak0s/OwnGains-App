@@ -6,6 +6,10 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Internal
+
+- Second dedupe pass: session detail rows.
+
 ## [1.0.1] - 2026-10-22
 
 ### Added

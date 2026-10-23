@@ -45,6 +45,21 @@ export function SessionDetails({
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { weightUnit } = useWorkoutPick("weightUnit");
   const title = sessionTitle(session);
+  const details: [string, string][] = [
+    [
+      "Date",
+      formatDate(session.startTime ?? "", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+    ],
+    ["Start Time", formatClockTime(session.startTime ?? "")],
+    ...(session.endTime ? [["End Time", formatClockTime(session.endTime)] as [string, string]] : []),
+    ["Duration", formatTime(session.totalDuration ?? 0, "N/A")],
+    ["Sets Completed", `${session.completedSets ?? 0}`],
+  ];
   return (
     <>
       <View style={styles.detailSection}>
@@ -65,41 +80,12 @@ export function SessionDetails({
       </View>
 
       <View style={styles.detailSection}>
-        <View style={styles.detailRow} accessible>
-          <Text style={styles.detailLabel}>Date</Text>
-          <Text style={styles.detailValue}>
-            {formatDate(session.startTime ?? "", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </Text>
-        </View>
-        <View style={styles.detailRow} accessible>
-          <Text style={styles.detailLabel}>Start Time</Text>
-          <Text style={styles.detailValue}>
-            {formatClockTime(session.startTime ?? "")}
-          </Text>
-        </View>
-        {!!session.endTime && (
-          <View style={styles.detailRow} accessible>
-            <Text style={styles.detailLabel}>End Time</Text>
-            <Text style={styles.detailValue}>
-              {formatClockTime(session.endTime)}
-            </Text>
+        {details.map(([label, value]) => (
+          <View key={label} style={styles.detailRow} accessible>
+            <Text style={styles.detailLabel}>{label}</Text>
+            <Text style={styles.detailValue}>{value}</Text>
           </View>
-        )}
-        <View style={styles.detailRow} accessible>
-          <Text style={styles.detailLabel}>Duration</Text>
-          <Text style={styles.detailValue}>
-            {formatTime(session.totalDuration ?? 0, "N/A")}
-          </Text>
-        </View>
-        <View style={styles.detailRow} accessible>
-          <Text style={styles.detailLabel}>Sets Completed</Text>
-          <Text style={styles.detailValue}>{`${session.completedSets ?? 0}`}</Text>
-        </View>
+        ))}
       </View>
 
       {!!session.groupedExercises?.length && (
