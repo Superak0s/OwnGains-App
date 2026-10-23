@@ -26,7 +26,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import ClientPickerSheet from "@features/trainer/components/ClientPickerSheet";
 import { trainerApi, type ClientSummary } from "@features/trainer/services";
 import { weekStart } from "@utils/dayCompletion";
-import { toDateString } from "@utils/format";
+import { parseDecimal, toDateString } from "@utils/format";
 import { getAppRole, onAppRoleChange } from "@shared/services/appRole";
 import {
   getActiveTrainee,
@@ -941,12 +941,9 @@ Your program is untouched. Try again, or pick a different destination.`,
   };
 
   const parsedTargetRange = (): TargetRange | null => {
-    const toNumber = (text: string) =>
-      text.trim() ? Number(text.trim().replace(",", ".")) : Number.NaN;
-    const min = toNumber(targetMinText);
-    const max = toNumber(targetMaxText);
-    if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
-    if (min < 0 || max <= 0 || min > max) return null;
+    const min = parseDecimal(targetMinText);
+    const max = parseDecimal(targetMaxText);
+    if (min === null || max === null || max <= 0 || min > max) return null;
     return { min, max };
   };
 
