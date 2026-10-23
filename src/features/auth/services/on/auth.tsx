@@ -21,15 +21,29 @@ async function persistUser(user: AuthUser): Promise<void> {
   await setStorageItem(USER_KEY, JSON.stringify(user))
 }
 
+async function persistSession(data: AuthResponse): Promise<AuthResponse> {
+  if (data.success && data.token) {
+    await tokenStorage.set(data.token)
+    if (data.refreshToken) await refreshTokenStorage.set(data.refreshToken)
+    await persistUser(data.user)
+  }
+  return data
+}
+
 // Raw fetch rather than apiCall, which would attach the stored bearer token
 // these endpoints must work without.
-async function unauthenticatedCall<T>(path: string, options?: RequestInit): Promise<T> {
+async function unauthenticatedCall<T>(path: string, body: unknown): Promise<T> {
   const url = `${getServerUrl()}${path}`
   assertSecureTransport(url)
   const controller = new AbortController()
   const timeoutHandle = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   try {
-    const response = await fetch(url, { ...options, signal: controller.signal }).catch(
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    }).catch(
       () => {
         throw new ServerUnreachableError()
       },
@@ -47,35 +61,20 @@ export const authService = {
     password: string,
     name: string | null = null,
   ): Promise<AuthResponse> => {
-    const data = await unauthenticatedCall<AuthResponse>("/api/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, email, password, ...(name && { name }) }),
-    })
-
-    if (data.success && data.token) {
-      await tokenStorage.set(data.token)
-      if (data.refreshToken) await refreshTokenStorage.set(data.refreshToken)
-      await persistUser(data.user)
-    }
-
-    return data
+    return persistSession(
+      await unauthenticatedCall<AuthResponse>("/api/auth/signup", {
+        username,
+        email,
+        password,
+        ...(name && { name }),
+      }),
+    )
   },
 
   signin: async (username: string, password: string): Promise<AuthResponse> => {
-    const data = await unauthenticatedCall<AuthResponse>("/api/auth/signin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    })
-
-    if (data.success && data.token) {
-      await tokenStorage.set(data.token)
-      if (data.refreshToken) await refreshTokenStorage.set(data.refreshToken)
-      await persistUser(data.user)
-    }
-
-    return data
+    return persistSession(
+      await unauthenticatedCall<AuthResponse>("/api/auth/signin", { username, password }),
+    )
   },
 
   signInWithGoogle: async (link?: GoogleLink): Promise<AuthResponse> => {
@@ -83,9 +82,8 @@ export const authService = {
     let data: AuthResponse
     try {
       data = await unauthenticatedCall<AuthResponse>("/api/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken, password: link?.password }),
+        idToken,
+        password: link?.password,
       })
     } catch (err) {
       if (err instanceof ApiError && err.code === "GOOGLE_LINK_NEEDS_PASSWORD") {
@@ -94,14 +92,7 @@ export const authService = {
       }
       throw err
     }
-
-    if (data.success && data.token) {
-      await tokenStorage.set(data.token)
-      if (data.refreshToken) await refreshTokenStorage.set(data.refreshToken)
-      await persistUser(data.user)
-    }
-
-    return data
+    return persistSession(data)
   },
 
   getCurrentUser: async (): Promise<AuthUser> => {
@@ -138,11 +129,7 @@ export const authService = {
       const data = await unauthenticatedCall<{
         token?: string
         refreshToken?: string
-      }>("/api/auth/refresh", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: stored }),
-      })
+      }>("/api/auth/refresh", { refreshToken: stored })
 
       const newToken = data.token
       if (!newToken) {
