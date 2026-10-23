@@ -91,7 +91,8 @@ export interface ExerciseRest {
   samples: number
 }
 
-const median = (values: number[]): number => {
+export const median = (values: number[]): number | null => {
+  if (values.length === 0) return null
   const sorted = [...values].sort((a, b) => a - b)
   const mid = Math.floor(sorted.length / 2)
   return sorted.length % 2 === 0
@@ -137,7 +138,7 @@ export const calculateRestByExercise = (
       averageSec: Math.round(
         gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length,
       ),
-      medianSec: Math.round(median(gaps)),
+      medianSec: Math.round(median(gaps)!),
       samples: gaps.length,
     }
   }
@@ -198,7 +199,7 @@ const REST_HISTORY_ALPHA = 0.3
 /** One representative rest across every exercise the user has been measured on. */
 export const pooledRestHistory = (history: RestHistory): number | null => {
   const values = Object.values(history).filter((value) => value > 0)
-  return values.length === 0 ? null : Math.round(median(values))
+  return values.length === 0 ? null : Math.round(median(values)!)
 }
 
 export const mergeRestHistory = (

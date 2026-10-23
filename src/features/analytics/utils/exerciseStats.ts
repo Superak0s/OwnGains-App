@@ -2,7 +2,7 @@ import { estimateOneRepMax } from "@utils/oneRepMax";
 import { RECORD_REP_LIMIT } from "@utils/recordSets";
 import { DAY_MS, parseDate, toDateString } from "@utils/format";
 import type { ChartPoint } from "@shared/components/chart/chartMath";
-import { REST_WINDOW_MAX_SEC, REST_WINDOW_MIN_SEC } from "@utils/session";
+import { median, REST_WINDOW_MAX_SEC, REST_WINDOW_MIN_SEC } from "@utils/session";
 import type {
   FullSessionWithGroups,
   SetTiming,
@@ -88,15 +88,6 @@ const round = (value: number, decimals = 1): number => {
   if (!Number.isFinite(value)) return 0;
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
-};
-
-const median = (values: number[]): number | null => {
-  if (values.length === 0) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid];
 };
 
 const groupBySession = (
