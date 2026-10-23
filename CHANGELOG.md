@@ -8,7 +8,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ### Internal
 
-- Second dedupe pass: session detail rows, sign-in requests and session storage, median.
+- Second dedupe pass: session detail rows, sign-in requests and session storage, median, progress photo pickers.
 
 ## [1.0.1] - 2026-10-22
 

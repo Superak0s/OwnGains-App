@@ -29,6 +29,13 @@ const ANGLE_OPTIONS = [
   { value: "custom" as const, label: "Custom" },
 ];
 
+const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
+  mediaTypes: "images",
+  quality: 0.8,
+  allowsEditing: true,
+  aspect: [3, 4],
+};
+
 export const LogProgressPhotoModal: React.FC<LogProgressPhotoModalProps> = ({
   visible,
   onClose,
@@ -64,6 +71,13 @@ export const LogProgressPhotoModal: React.FC<LogProgressPhotoModalProps> = ({
     }
   }, [visible]);
 
+  const acceptPick = (result: ImagePicker.ImagePickerResult) => {
+    if (!result.canceled && result.assets?.[0]) {
+      setSelectedUri(result.assets[0].uri);
+      setStep("tag");
+    }
+  };
+
   const pickFromCamera = async () => {
     setCameraError(null);
     try {
@@ -76,17 +90,7 @@ export const LogProgressPhotoModal: React.FC<LogProgressPhotoModalProps> = ({
         return;
       }
 
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: "images",
-        quality: 0.8,
-        allowsEditing: true,
-        aspect: [3, 4],
-      });
-
-      if (!result.canceled && result.assets?.[0]) {
-        setSelectedUri(result.assets[0].uri);
-        setStep("tag");
-      }
+      acceptPick(await ImagePicker.launchCameraAsync(PICKER_OPTIONS));
     } catch (error) {
       setCameraError("Couldn't open the camera. Try again.");
       console.error("Camera picker error:", error);
@@ -106,17 +110,7 @@ export const LogProgressPhotoModal: React.FC<LogProgressPhotoModalProps> = ({
         return;
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: "images",
-        quality: 0.8,
-        allowsEditing: true,
-        aspect: [3, 4],
-      });
-
-      if (!result.canceled && result.assets?.[0]) {
-        setSelectedUri(result.assets[0].uri);
-        setStep("tag");
-      }
+      acceptPick(await ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS));
     } catch (error) {
       setCameraError("Couldn't open your photo library. Try again.");
       console.error("Gallery picker error:", error);
