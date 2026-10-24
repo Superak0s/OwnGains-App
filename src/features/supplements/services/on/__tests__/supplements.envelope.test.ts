@@ -3,7 +3,10 @@
 import { supplementsApi } from "../supplements"
 import { apiCall } from "@shared/services/apiClient"
 
-jest.mock("@shared/services/apiClient", () => ({ apiCall: jest.fn() }))
+jest.mock("@shared/services/apiClient", () => ({
+  ...jest.requireActual("@shared/services/apiClient"),
+  apiCall: jest.fn(),
+}))
 
 const apiCallMock = apiCall as jest.Mock
 const summary = { id: 1, name: "Creatine", dosesPerDay: 3, doseIntervalMinutes: 240, dosesToday: 2, lastTakenAt: null }
@@ -27,6 +30,14 @@ describe("supplements online adapter unwraps the envelope", () => {
     })
     expect(await supplementsApi.getLog(1)).toEqual({
       success: true, entries: [], streak: 2, takenToday: true, todayEntry: null,
+    })
+  })
+
+  it("sends the device timezone so the server buckets doses by local day", async () => {
+    apiCallMock.mockResolvedValue({ success: true, data: [] })
+    await supplementsApi.list()
+    expect(apiCallMock.mock.calls[0][1]?.headers).toMatchObject({
+      "X-Time-Zone": Intl.DateTimeFormat().resolvedOptions().timeZone,
     })
   })
 

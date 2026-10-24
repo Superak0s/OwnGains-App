@@ -20,6 +20,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Soreness charts and the heatmap show an entry logged after midnight on the day you logged it.
 - The cycle phase, the days since you last did an exercise and the date on an exported program change at your local midnight, including on daylight saving days.
 - A trainer's client list counts this week's sessions from your local Monday once the server is updated.
+- With a self-hosted server, supplement doses, streaks, soreness days and the cycle day follow your timezone once the server is updated.
 
 ### Internal
 

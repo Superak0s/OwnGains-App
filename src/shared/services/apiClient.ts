@@ -53,6 +53,14 @@ export async function parseApiResponse<T = unknown>(res: Response): Promise<T> {
   return data as T
 }
 
+/**
+ * The device's IANA zone for routes that bucket by day. Sent per call rather than
+ * on every request, so servers only learn the zone where they need it.
+ */
+export const timeZoneHeader = (): { "X-Time-Zone": string } => ({
+  "X-Time-Zone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+})
+
 /** `authenticatedFetch` followed by `parseApiResponse`. */
 export async function apiCall<T = unknown>(
   url: string,

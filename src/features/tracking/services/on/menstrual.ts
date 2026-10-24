@@ -1,4 +1,4 @@
-import { apiCall } from "@shared/services/apiClient";
+import { apiCall, timeZoneHeader } from "@shared/services/apiClient";
 import type { ApiResponse, CycleStats, MenstrualEntry } from "../types";
 
 const DEFAULT_PERIOD_DAYS = 5
@@ -45,7 +45,7 @@ export const menstrualApi = {
     }
     const query = params.toString();
     const path = "/api/tracking/menstrual/stats";
-    return apiCall(query ? `${path}?${query}` : path);
+    return apiCall(query ? `${path}?${query}` : path, { headers: timeZoneHeader() });
   },
 
   deleteMenstrualEntry: async (id: number): Promise<ApiResponse<null>> =>

@@ -1,4 +1,4 @@
-import { apiCall } from "@shared/services/apiClient"
+import { apiCall, timeZoneHeader } from "@shared/services/apiClient"
 import type {
   ApiResponse,
   DOMSStats,
@@ -63,7 +63,7 @@ export const sorenessApi = {
     apiCall(`/api/tracking/soreness?muscle=${encodeURIComponent(muscle)}`),
 
   getStats: async (days: number = 30): Promise<ApiResponse<DOMSStats>> =>
-    apiCall(`/api/tracking/soreness/stats?days=${days}`),
+    apiCall(`/api/tracking/soreness/stats?days=${days}`, { headers: timeZoneHeader() }),
 
   deleteSorenessEntry: async (id: number): Promise<ApiResponse<null>> =>
     apiCall(`/api/tracking/soreness/${id}`, { method: "DELETE" }),
