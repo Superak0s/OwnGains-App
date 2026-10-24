@@ -1,5 +1,6 @@
-• Dates follow your time zone. Workouts, soreness, cycle days, the trainer week and exports change day at local midnight.
+• Workouts, soreness, cycle days and exports change day at your local midnight.
 • Back-dated entries keep their time, and lists keep their order across daylight saving.
-• Decimal commas (85,5) keep their decimals in body fat, measurements and macros.
+• Supplement alarms keep their clock time after a time zone change.
+• Decimal commas (85,5) keep their decimals in body stats and macros.
 • Imported programs without a "Total Sets:" row show the real set count.
-• Friends: shared programs show every row, the split filter resets per friend, and Analytics no longer retries in a loop.
+• Friends: shared programs show every row, and Analytics no longer retries in a loop.

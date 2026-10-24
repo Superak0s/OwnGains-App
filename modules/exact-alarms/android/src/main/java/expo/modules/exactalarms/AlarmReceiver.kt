@@ -19,8 +19,9 @@ class AlarmReceiver : BroadcastReceiver() {
 /** AlarmManager forgets every alarm on reboot. */
 class BootReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
-    if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
-      Alarms.rearmAll(context)
+    when (intent.action) {
+      Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED -> Alarms.rearmAll(context)
+      Intent.ACTION_TIMEZONE_CHANGED -> Alarms.rearmAll(context, zoneChanged = true)
     }
   }
 }

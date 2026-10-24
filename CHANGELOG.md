@@ -21,6 +21,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The cycle phase, the days since you last did an exercise and the date on an exported program change at your local midnight, including on daylight saving days.
 - A trainer's client list counts this week's sessions from your local Monday once the server is updated.
 - With a self-hosted server, supplement doses, streaks, soreness days and the cycle day follow your timezone once the server is updated.
+- Supplement alarms ring at the same clock time after you change timezone, without opening the app first.
 
 ### Internal
 

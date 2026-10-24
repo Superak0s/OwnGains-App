@@ -47,6 +47,8 @@ object Alarms {
     val body: String,
     val channelId: String,
     val snoozeSeconds: Int,
+    val hour: Int? = null,
+    val minute: Int? = null,
   )
 
   private fun prefs(context: Context) =
@@ -60,6 +62,12 @@ object Alarms {
       .put("body", alarm.body)
       .put("channelId", alarm.channelId)
       .put("snoozeSeconds", alarm.snoozeSeconds)
+    // A daily alarm keeps its wall-clock time, so a timezone change can re-arm it
+    // at the same hour and minute in the new zone.
+    if (alarm.daily) {
+      val calendar = Calendar.getInstance().apply { timeInMillis = alarm.at }
+      json.put("hour", calendar.get(Calendar.HOUR_OF_DAY)).put("minute", calendar.get(Calendar.MINUTE))
+    }
     prefs(context).edit().putString(alarm.id, json.toString()).apply()
   }
 
@@ -73,6 +81,8 @@ object Alarms {
       json.getString("body"),
       json.getString("channelId"),
       json.optInt("snoozeSeconds", DEFAULT_SNOOZE_SECONDS),
+      if (json.has("hour")) json.getInt("hour") else null,
+      if (json.has("minute")) json.getInt("minute") else null,
     )
   }
 
@@ -83,6 +93,17 @@ object Alarms {
   private fun nextFuture(at: Long): Long {
     val calendar = Calendar.getInstance().apply { timeInMillis = at }
     do calendar.add(Calendar.DAY_OF_YEAR, 1) while (calendar.timeInMillis <= System.currentTimeMillis())
+    return calendar.timeInMillis
+  }
+
+  private fun nextAt(hour: Int, minute: Int): Long {
+    val calendar = Calendar.getInstance().apply {
+      set(Calendar.HOUR_OF_DAY, hour)
+      set(Calendar.MINUTE, minute)
+      set(Calendar.SECOND, 0)
+      set(Calendar.MILLISECOND, 0)
+    }
+    if (calendar.timeInMillis <= System.currentTimeMillis()) calendar.add(Calendar.DAY_OF_YEAR, 1)
     return calendar.timeInMillis
   }
 
@@ -141,11 +162,14 @@ object Alarms {
     }
   }
 
-  fun rearmAll(context: Context) {
+  /** One-shot and snoozed alarms keep their instant, since an RTC alarm is absolute. */
+  fun rearmAll(context: Context, zoneChanged: Boolean = false) {
     val now = System.currentTimeMillis()
     for (id in prefs(context).all.keys) {
       val alarm = load(context, id) ?: continue
       when {
+        zoneChanged && alarm.daily && alarm.hour != null && alarm.minute != null ->
+          schedule(context, alarm.copy(at = nextAt(alarm.hour, alarm.minute)))
         alarm.at > now -> arm(context, alarm)
         alarm.daily -> schedule(context, alarm.copy(at = nextFuture(alarm.at)))
         else -> remove(context, id)
