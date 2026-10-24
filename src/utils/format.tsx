@@ -47,7 +47,7 @@ export const generateId = (prefix = "local"): string => {
  * locale format: day-level comparisons and streaks across the app depend
  * on this exact format, and a Hermes build without full ICU would change it.
  */
-export const toDateString = (input: Date | string): string => {
+export const toDateString = (input: DateInput): string => {
   const date = parseDate(input)
   // "NaN-NaN-NaN" would never match any day, so a corrupt timestamp would
   // silently zero a streak instead of being visible as bad data.
@@ -85,13 +85,21 @@ export const backdatedToIso = (date: string, time?: string | null): string => {
   return (parsed ?? new Date()).toISOString()
 }
 
+// The server returns MySQL DATETIMEs as zone-less UTC ("2026-09-08 22:45:33"),
+// which `new Date` would read as local time.
+const SERVER_DATETIME = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/
+
 /** Null when the stamp is missing or unparseable. An undated record has no
  * place on a timeline, and `new Date(undefined)` would silently read as now. */
 export const parseDate = (
   value: string | number | Date | null | undefined,
 ): Date | null => {
   if (value === null || value === undefined || value === "") return null
-  const date = new Date(value)
+  const date = new Date(
+    typeof value === "string" && SERVER_DATETIME.test(value)
+      ? `${value.replace(" ", "T")}Z`
+      : value,
+  )
   return Number.isNaN(date.getTime()) ? null : date
 }
 

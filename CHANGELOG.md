@@ -11,6 +11,9 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Body fat, measurement and macro entries typed with a decimal comma, like 85,5, keep their decimals instead of being saved as 85.
 - A program imported from a spreadsheet without a "Total Sets:" row shows its real set count instead of 0 sets.
 - A friend's shared program no longer drops or repeats rows when a day lists the same exercise twice.
+- Workout times from the server follow your own time zone. A friend's late-night workout no longer appears on the previous day in their history, and a live session's start time and timer are no longer hours off.
+- A friend's Analytics tab no longer keeps asking the server again and again when no set data comes back.
+- Switching to another friend's program no longer keeps the split filter picked on the previous friend's, which could show an empty program.
 
 ### Internal
 

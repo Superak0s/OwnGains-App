@@ -66,7 +66,7 @@ import { friendsApi, sharingApi } from "./services";
 import ReportUserSheet from "./components/ReportUserSheet";
 import { MIN_USER_SEARCH_LENGTH, programPayload } from "./utils";
 import { formatTime } from "@utils/timeEstimation";
-import { formatDate, toDateString } from "@utils/format";
+import { formatClockTime, formatDate, toDateString } from "@utils/format";
 import { dayLabel } from "@utils/dayCarryOver";
 import {
   buildFriendQrPayload,
@@ -536,8 +536,8 @@ export default function FriendsScreen({
   );
   const [showSessionDetails, setShowSessionDetails] = useState<boolean>(false);
   const [friendSessionsWithTimings, setFriendSessionsWithTimings] = useState<
-    SessionRecord[]
-  >([]);
+    SessionRecord[] | null
+  >(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState<boolean>(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
@@ -1202,11 +1202,11 @@ export default function FriendsScreen({
       setActiveFriendTab(sharesHistory ? "history" : "actions");
       if (!sharesHistory) {
         setFriendSessionHistory([]);
-        setFriendSessionsWithTimings([]);
+        setFriendSessionsWithTimings(null);
         return;
       }
       setLoadingFriendSessions(true);
-      setFriendSessionsWithTimings([]);
+      setFriendSessionsWithTimings(null);
       try {
         const sessions = await sharingApi.getFriendSessions(friend.id, 60);
         if (seq !== friendLoadSeqRef.current) return;
@@ -1248,7 +1248,7 @@ export default function FriendsScreen({
       activeFriendTab === "analytics" &&
       selectedFriend &&
       friendSessionHistory.length > 0 &&
-      friendSessionsWithTimings.length === 0 &&
+      friendSessionsWithTimings === null &&
       !loadingAnalytics
     )
       loadFriendAnalytics(selectedFriend, friendSessionHistory);
@@ -1256,14 +1256,14 @@ export default function FriendsScreen({
     activeFriendTab,
     selectedFriend,
     friendSessionHistory,
-    friendSessionsWithTimings.length,
+    friendSessionsWithTimings,
     loadingAnalytics,
   ]);
 
   const getSessionsForDate = (date: Date): SessionRecord[] => {
     const t = toDateString(date);
     return friendSessionHistory.filter(
-      (s) => String(s.startTime).replace("T", " ").split(" ")[0] === t,
+      (s) => s.startTime != null && toDateString(s.startTime) === t,
     );
   };
   const hasSessionOnDate = (date: Date): boolean =>
@@ -1293,14 +1293,6 @@ export default function FriendsScreen({
     }
   };
 
-  const formatSessionTime = (s: string | number | undefined): string => {
-    const p = String(s).replace("T", " ").split(" ")[1] || "";
-    const [h, m] = p.split(":");
-    const hr = Number.parseInt(h);
-    if (!Number.isFinite(hr)) return "—";
-    return `${hr % 12 || 12}:${m || "00"} ${hr >= 12 ? "PM" : "AM"}`;
-  };
-
   const closeSessionDetails = (): void => {
     setShowSessionDetails(false);
     setSelectedSession(null);
@@ -1311,8 +1303,9 @@ export default function FriendsScreen({
     setShowFriendDetailModal(false);
     setSelectedFriend(null);
     setFriendSessionHistory([]);
-    setFriendSessionsWithTimings([]);
+    setFriendSessionsWithTimings(null);
     setSelectedDate(null);
+    setSelectedProgram(null);
   };
 
   const handleLockedFriendTab = (tabKey: string): void => {
@@ -1549,7 +1542,7 @@ export default function FriendsScreen({
               <View style={{ flex: 1 }}>
                 <ExerciseAnalytics
                   sessions={
-                    friendSessionsWithTimings as Parameters<
+                    (friendSessionsWithTimings ?? []) as Parameters<
                       typeof ExerciseAnalytics
                     >[0]["sessions"]
                   }
@@ -1651,7 +1644,7 @@ export default function FriendsScreen({
                 </Text>
                 <View style={styles.sessionListMeta}>
                   <Text style={styles.sessionListTime}>
-                    {`⏱️ ${formatSessionTime(session.startTime)}`}
+                    {`⏱️ ${formatClockTime(session.startTime ?? "")}`}
                   </Text>
                   {!!session.totalDuration && (
                     <Text style={styles.sessionListDuration}>

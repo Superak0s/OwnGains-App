@@ -53,6 +53,7 @@ jest.mock("@features/friends/services", () => ({
     getFriendSessionStatuses: jest.fn(),
     getFriendSessions: jest.fn(),
     getFriendSessionDetails: jest.fn(),
+    getFriendSessionsWithTimings: jest.fn(),
   },
 }))
 
@@ -62,7 +63,7 @@ jest.mock("@features/trainer/services", () => ({
 }))
 
 import React from "react"
-import { fireEvent, screen, waitFor } from "@testing-library/react-native"
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native"
 import { renderWithProviders } from "test-utils/renderWithProviders"
 import { friend, friendWithNoSharedData } from "test-utils/fixtures"
 import { friendsApi, sharingApi } from "@features/friends/services"
@@ -251,5 +252,52 @@ describe("removing a friend", () => {
     await fireEvent.press(await screen.findByText("Remove"))
 
     await waitFor(() => expect(friends.removeFriend).toHaveBeenCalledWith(friend.id))
+  })
+})
+
+describe("friend analytics", () => {
+  it("asks for set timings once when the request fails", async () => {
+    sharing.getFriendSessions.mockResolvedValue([friendWithNoSharedData.emptySession])
+    sharing.getFriendSessionsWithTimings.mockRejectedValue(new Error("Network request failed"))
+    await mount({ friends: [friend], received: [historyFromBuddy, { ...historyFromBuddy, id: 2, permissionType: "analytics" }] })
+
+    await openBuddy()
+    await waitFor(() => expect(sharing.getFriendSessions).toHaveBeenCalled())
+    await fireEvent.press(await screen.findByRole("tab", { name: "Analytics" }))
+
+    await waitFor(() => expect(sharing.getFriendSessionsWithTimings).toHaveBeenCalled())
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)))
+    expect(sharing.getFriendSessionsWithTimings).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("friend programs", () => {
+  const pal = { id: 8, username: "pal", createdAt: "2026-01-01T00:00:00.000Z" }
+  const programFrom = (from: { id: string | number; username: string }, exercise: string, setsBySplit: Record<string, number>) => ({
+    id: Number(from.id) + 100,
+    fromUserId: from.id,
+    fromUsername: from.username,
+    permissionType: "program",
+    hasPayload: true,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    payload: {
+      programData: { name: "P", totalDays: 1, days: [{ dayNumber: 1, dayTitle: "Day 1", exercises: [{ name: exercise, setsBySplit }] }] },
+    },
+  })
+
+  it("does not carry one friend's split filter over to the next friend's program", async () => {
+    await mount({
+      friends: [friend, pal],
+      received: [programFrom(friend, "Squat", { A: 3, B: 2 }), programFrom(pal, "Row", { X: 3 })],
+    })
+
+    await openBuddy()
+    await fireEvent.press(await screen.findByRole("tab", { name: "Program" }))
+    await fireEvent.press((await screen.findAllByText("B"))[0])
+    await fireEvent.press(screen.getByText("← Back"))
+    await fireEvent.press(await screen.findByText("pal"))
+    await fireEvent.press(await screen.findByRole("tab", { name: "Program" }))
+
+    expect(await screen.findByText("Row")).toBeTruthy()
   })
 })

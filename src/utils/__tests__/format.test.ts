@@ -1,4 +1,4 @@
-import { daysSinceLocal, parseDecimal, toDateString, toTimeString } from "../format";
+import { daysSinceLocal, parseDate, parseDecimal, toDateString, toTimeString } from "../format";
 
 // A decimal-pad keyboard emits the device locale's separator, and parseFloat("12,5")
 // returns 12 with no error, logging a 12.5 kg set as 12.
@@ -49,5 +49,17 @@ describe("toTimeString", () => {
   it("uses a 24-hour clock", () => {
     expect(toTimeString(new Date(2026, 0, 1, 21, 5))).toBe("21:05");
     expect(toTimeString(new Date(2026, 0, 1, 0, 0))).toBe("00:00");
+  });
+});
+
+// The server sends MySQL DATETIMEs as zone-less UTC. Read as local time, a
+// friend's 00:30 workout in Athens showed on the previous day.
+describe("parseDate", () => {
+  it("reads a zone-less server datetime as UTC", () => {
+    expect(parseDate("2026-10-01 22:30:00")?.toISOString()).toBe("2026-10-01T22:30:00.000Z");
+  });
+
+  it("keeps a local ISO stamp local", () => {
+    expect(parseDate("2026-10-01T22:30:00")?.getHours()).toBe(22);
   });
 });

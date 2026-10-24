@@ -15,7 +15,7 @@ import { sharingApi } from "../services";
 import { mergeLiveSet } from "../utils";
 import { normalizeExerciseName } from "@utils/exerciseMatching";
 import { MuscleTags } from "@shared/components/MuscleTags";
-import { formatClockTime } from "@utils/format";
+import { formatClockTime, parseDate } from "@utils/format";
 import { dayLabel } from "@utils/dayCarryOver";
 import { sessionTitle } from "@shared/components/SessionDetails";
 import { formatTime } from "@utils/timeEstimation";
@@ -91,9 +91,8 @@ function entryFromLoggedSets(
 }
 
 function elapsedFromStart(raw?: string): number {
-  if (!raw) return 0;
-  const start = new Date(raw.replace(" ", "T")).getTime();
-  return Math.floor((Date.now() - start) / 1000);
+  const start = parseDate(raw)?.getTime();
+  return start === undefined ? 0 : Math.floor((Date.now() - start) / 1000);
 }
 
 function LiveDot() {
@@ -582,7 +581,7 @@ export default function LiveSessionTab({
 
         {liveData?.startTime ? (
           <Text style={st.startedAt}>
-            Started at {formatClockTime(liveData.startTime.replace(" ", "T"))}
+            Started at {formatClockTime(liveData.startTime)}
           </Text>
         ) : null}
 

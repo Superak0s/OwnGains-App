@@ -1,3 +1,5 @@
-• Body fat, measurements and macros typed with a decimal comma, like 85,5, keep their decimals instead of being saved as 85.
-• Programs imported from a spreadsheet without a "Total Sets:" row show their real set count instead of 0.
-• A friend's shared program no longer drops or repeats rows when a day lists the same exercise twice.
+â€¢ Workout times from the server follow your time zone, so late-night workouts show on the right day.
+â€¢ Body fat, measurements and macros typed with a decimal comma, like 85,5, keep their decimals.
+â€¢ Programs imported from a spreadsheet without a "Total Sets:" row show their real set count.
+â€¢ A friend's shared program shows every row, and its split filter resets when you switch friends.
+â€¢ A friend's Analytics tab no longer retries in a loop when no set data comes back.
