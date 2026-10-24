@@ -16,6 +16,7 @@ export const sorenessApi = {
   }: LogSorenessParams): Promise<ApiResponse<SorenessEntry>> =>
     apiCall(`/api/tracking/soreness`, {
       method: "POST",
+      headers: timeZoneHeader(),
       body: JSON.stringify({
         muscleGroup,
         intensity: Math.round(intensity),

@@ -1,4 +1,4 @@
-import type { SavedProgram } from "../../types"
+import type { SavedProgram, ProgramSnapshot } from "../../types"
 import type { WorkoutData } from "@shared/types"
 import {
   saveToStorage,
@@ -76,4 +76,11 @@ export const programApi = {
   getCurrentDay: async (): Promise<number | null> => null,
 
   setCurrentDay: async (): Promise<unknown> => undefined,
+
+  // No trainer offline, so nothing to undo.
+  listSnapshots: async (): Promise<ProgramSnapshot[]> => [],
+
+  restoreSnapshot: async (): Promise<SavedProgram | null> => loadProgram(),
+
+  dismissSnapshot: async (): Promise<unknown> => ({ success: true }),
 }

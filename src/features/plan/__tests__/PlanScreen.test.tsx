@@ -16,7 +16,11 @@ jest.mock("@shared/context/ThemeContext", () => require("test-utils/renderWithPr
 jest.mock("@shared/context/AuthContext", () => require("test-utils/renderWithProviders").authModule)
 jest.mock("@react-navigation/native", () => require("test-utils/renderWithProviders").navigationModule)
 jest.mock("@features/plan/services/index", () => ({
-  programApi: { saveProgram: jest.fn(async () => ({ success: true })), fetchSavedProgram: jest.fn() },
+  programApi: {
+    saveProgram: jest.fn(async () => ({ success: true })),
+    fetchSavedProgram: jest.fn(),
+    listSnapshots: jest.fn(async () => []),
+  },
 }))
 jest.mock("@features/workout/services/index", () => ({
   workoutApi: { pickWorkoutFile: jest.fn() },

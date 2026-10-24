@@ -12,6 +12,15 @@ export type MachinePatch = Pick<
   defaultMachine?: string | null
 }
 
+/** One entry of `GET /api/program/snapshots`: a trainer's upload the trainee can undo. */
+export interface ProgramSnapshot {
+  id: number
+  createdAt: string
+  expiresAt: string
+  daysRemoved: number[]
+  trainer: { uuid: string; username: string; displayName: string | null } | null
+}
+
 export interface WdDay {
   dayNumber?: number;
   dayTitle?: string;

@@ -1,6 +1,11 @@
 import { parseApiResponse } from "@shared/services/apiClient"
 import type { HttpFetch } from "@shared/services/authenticatedFetch"
-import type { SavedProgram, ExercisePayload, MachinePatch } from "../types"
+import type {
+  SavedProgram,
+  ExercisePayload,
+  MachinePatch,
+  ProgramSnapshot,
+} from "../types"
 import type { WorkoutData } from "@shared/types"
 import { log, metric } from "@shared/services/crashReporting"
 
@@ -11,15 +16,47 @@ export const makeProgramApi = (http: HttpFetch) => {
   ): Promise<T> => parseApiResponse<T>(await http(url, options))
 
   return {
-    saveProgram: async (program: WorkoutData): Promise<unknown> =>
+    // A trainer's save that removes a day answers 409 TRAINER_CONFIRM_REQUIRED
+    // until it is resent with confirmRemoveDays.
+    saveProgram: async (
+      program: WorkoutData,
+      opts: { confirmRemoveDays?: boolean } = {},
+    ): Promise<unknown> =>
       call(`/api/program/upload`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           weeklyPlan: program,
           originalFilename: "template-update",
+          ...(opts.confirmRemoveDays && { confirmRemoveDays: true }),
         }),
       }),
+
+    /**
+     * The trainee's undo points for a trainer's program replacements, kept 7 days.
+     * Empty on failure, so a server without the route stays quiet.
+     */
+    listSnapshots: async (): Promise<ProgramSnapshot[]> => {
+      try {
+        const data = await call<{ snapshots?: ProgramSnapshot[] }>(
+          `/api/program/snapshots`,
+        )
+        return data?.snapshots ?? []
+      } catch (error) {
+        if ((error as Error).message === "SESSION_EXPIRED") throw error
+        return []
+      }
+    },
+
+    /** Puts the snapshot back and answers with the restored program. */
+    restoreSnapshot: async (id: number): Promise<SavedProgram | null> =>
+      call(`/api/program/snapshots/${id}/restore`, {
+        method: "POST",
+        headers: { "Idempotency-Key": `program-restore-${id}` },
+      }),
+
+    dismissSnapshot: async (id: number): Promise<unknown> =>
+      call(`/api/program/snapshots/${id}`, { method: "DELETE" }),
 
     /**
      * Fetch the user's saved program from the server.

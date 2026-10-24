@@ -41,6 +41,9 @@ export function messageForCode(
       return "You're sharing with too many friends. Stop sharing with someone first."
     case "TOO_MANY_PENDING_REQUESTS":
       return "You have too many pending friend requests. Wait for some to be answered, or cancel a few."
+    // Only reaches an alert once the trainer has said no to removing the days.
+    case "TRAINER_CONFIRM_REQUIRED":
+      return "Nothing was saved. Your client's plan is unchanged."
     default:
       return null
   }

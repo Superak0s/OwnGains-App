@@ -23,8 +23,10 @@ import { restoreAppRole } from "@shared/services/appRole";
 import {
   toTrainerEvent,
   onTrainerEvent,
+  onProgramEvent,
   restoreActiveTrainee,
   type TrainerEvent,
+  type ProgramEvent,
 } from "@shared/services/trainerEvents";
 import type { WorkoutAnalytics } from "@features/workout/services/on/workout";
 import type {
@@ -438,6 +440,8 @@ export const WorkoutProvider = ({
   const handleSocketMessage = useCallback((msg: WebSocketMessage) => {
     const trainerEvent = toTrainerEvent(msg);
     if (trainerEvent) onTrainerEvent.trigger(trainerEvent);
+    if (msg.type === "program_replaced" || msg.type === "program_restored")
+      onProgramEvent.trigger(msg as ProgramEvent);
     jointSessionMessageHandlerRef.current?.(msg);
   }, []);
 
@@ -1496,6 +1500,21 @@ export const WorkoutProvider = ({
       if (syncTimer) clearTimeout(syncTimer);
     };
   }, [userId, actAs]);
+
+  // The trainee pulls a trainer's new plan. A trainer editing that trainee
+  // reloads after an undo, so the next save doesn't write over it.
+  useEffect(() => {
+    if (!userId) return;
+    return onProgramEvent.subscribe((e) => {
+      if (!actAs && e.type === "program_replaced")
+        void serverSyncRef.current.syncFromServer();
+      if (actAs && e.type === "program_restored" && e.traineeId === actAs.userId)
+        void api.programApi
+          .fetchSavedProgram()
+          .then((saved) => saved && saveWorkoutData(saved))
+          .catch(reportAndReturn(undefined, { stage: "traineeProgramReload" }));
+    });
+  }, [userId, actAs, api, saveWorkoutData]);
 
   useEffect(() => {
     if (!actAs || !currentSessionId) return;

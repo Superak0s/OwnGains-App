@@ -28,6 +28,11 @@ export async function ensureMessagesChannel(Notifications: NotificationsModule):
     importance: Notifications.AndroidImportance.HIGH,
     showBadge: true,
   });
+  // The server's "Your plan was changed" push after a trainer saves over the plan.
+  await Notifications.setNotificationChannelAsync("trainer", {
+    name: "Trainer changes",
+    importance: Notifications.AndroidImportance.DEFAULT,
+  });
   channelReady = true;
 }
 

@@ -166,6 +166,13 @@ describe("read responses are mapped to the app's shape", () => {
     expect(lastCall().headers?.["X-Time-Zone"]).toBe(zone)
   })
 
+  it("sends the device timezone with a soreness log, which stores the day in that zone", async () => {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    mockFetch.mockResolvedValue(respond(200, { success: true, data: {} }))
+    await sorenessApi.logSoreness({ muscleGroup: "quads", intensity: 5, loggedAt: "2026-10-01T08:00:00.000Z" })
+    expect(lastCall().headers?.["X-Time-Zone"]).toBe(zone)
+  })
+
   it("sends the cycle settings override only when given", async () => {
     await menstrualApi.getCycleStats()
     expect(lastCall().url).toBe("/api/tracking/menstrual/stats")

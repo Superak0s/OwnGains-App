@@ -40,6 +40,17 @@ export const toTrainerEvent = (msg: unknown): TrainerEvent | null => {
 
 export const onTrainerEvent = createEmitter<TrainerEvent>()
 
+/**
+ * `program_replaced` reaches the trainee when a trainer saves over their plan,
+ * `program_restored` reaches that trainer when the trainee undoes it.
+ */
+export interface ProgramEvent {
+  type: "program_replaced" | "program_restored"
+  traineeId?: string
+}
+
+export const onProgramEvent = createEmitter<ProgramEvent>()
+
 export interface TraineeOption {
   userId: string
   username: string

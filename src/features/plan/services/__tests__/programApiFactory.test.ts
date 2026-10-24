@@ -41,4 +41,40 @@ describe("makeProgramApi", () => {
       newName: "Incline Press",
     });
   });
+
+  it("sends confirmRemoveDays only when asked", async () => {
+    const http = jest.fn<Promise<Response>, Parameters<HttpFetch>>(async () =>
+      jsonResponse({ success: true }),
+    );
+    const api = makeProgramApi(http);
+    const program = { days: [], split: [], totalDays: 0 };
+
+    await api.saveProgram(program);
+    await api.saveProgram(program, { confirmRemoveDays: true });
+
+    const bodies = http.mock.calls.map(([, o]) => JSON.parse(o?.body as string));
+    expect(bodies[0].confirmRemoveDays).toBeUndefined();
+    expect(bodies[1].confirmRemoveDays).toBe(true);
+  });
+
+  it("lists no snapshots when the server lacks the route", async () => {
+    const http = jest.fn(async () => jsonResponse({ error: "Not found" }, 404));
+
+    expect(await makeProgramApi(http).listSnapshots()).toEqual([]);
+  });
+
+  it("restores a snapshot with an idempotency key", async () => {
+    const http = jest.fn<Promise<Response>, Parameters<HttpFetch>>(async () =>
+      jsonResponse({ success: true, days: [] }),
+    );
+
+    await makeProgramApi(http).restoreSnapshot(7);
+
+    const [url, options] = http.mock.calls[0];
+    expect(url).toBe("/api/program/snapshots/7/restore");
+    expect(options?.method).toBe("POST");
+    expect((options?.headers as Record<string, string>)["Idempotency-Key"]).toBe(
+      "program-restore-7",
+    );
+  });
 });

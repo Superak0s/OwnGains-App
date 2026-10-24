@@ -38,6 +38,7 @@ import { useAlert } from "@shared/components/CustomAlert";
 import { matchProgram, applyResolution } from "./utils/matchProgram";
 import type { UnresolvedExercise } from "./utils/matchProgram";
 import MatchReviewModal from "./components/MatchReviewModal";
+import { ProgramUndoBanner } from "./components/ProgramUndoBanner";
 import { workoutApi } from "@features/workout/services/index";
 import {
   log,
@@ -99,7 +100,7 @@ import {
 } from "./utils/splitDraft";
 import { zeroRepExercises } from "./utils/zeroRepExercises";
 import { STORAGE_KEYS } from "@shared/services/storage";
-import { userFacingError } from "@shared/services/apiError";
+import { userFacingError, ApiError } from "@shared/services/apiError";
 import { markProgramDirty } from "@shared/services/programDirty";
 import { tutorialAnchor } from "@features/tutorial/anchors";
 import { SCREEN_PADDING } from "@shared/layout";
@@ -182,12 +183,38 @@ function PlanScreenBody({
   );
   const { alert, AlertComponent } = useAlert();
 
+  // A trainer's save that removes days needs a second, explicit yes.
+  const confirmRemoveDays = useCallback(
+    (err: ApiError): Promise<boolean> => {
+      const days = (err.details as { daysRemoved?: number[] } | undefined)
+        ?.daysRemoved;
+      return new Promise((resolve) =>
+        alert(
+          "Remove days?",
+          `This removes day ${days?.join(", ") ?? "?"} from ${actAs?.username ?? "your client"}'s plan. They can undo it for 7 days.`,
+          [
+            { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+            { text: "Remove", style: "destructive", onPress: () => resolve(true) },
+          ],
+          "warning",
+        ),
+      );
+    },
+    [alert, actAs],
+  );
+
   // A client's program has no offline copy to push later, so a refused save
   // puts their server copy back and fails instead of reporting "on this device".
   const syncProgram = useCallback(
     async (op: string, program: WorkoutData): Promise<boolean> => {
       try {
-        await programApi.saveProgram(program);
+        try {
+          await programApi.saveProgram(program);
+        } catch (err) {
+          if (!(err instanceof ApiError && err.code === "TRAINER_CONFIRM_REQUIRED")) throw err;
+          if (!(await confirmRemoveDays(err))) throw err;
+          await programApi.saveProgram(program, { confirmRemoveDays: true });
+        }
         return true;
       } catch (err) {
         if (actAs) {
@@ -203,7 +230,7 @@ function PlanScreenBody({
         return false;
       }
     },
-    [programApi, actAs, saveWorkoutData, userId],
+    [programApi, actAs, saveWorkoutData, userId, confirmRemoveDays],
   );
 
   const warnSaveFailed = useCallback(
@@ -1453,6 +1480,14 @@ Your program is untouched. Try again, or pick a different destination.`,
                 <WidgetEditHeader
                   editMode={widgetBoard.editMode}
                   onDone={() => widgetBoard.setEditMode(false)}
+                />
+              )}
+
+              {!actAs && (
+                <ProgramUndoBanner
+                  programApi={programApi}
+                  alert={alert}
+                  onRestored={saveWorkoutData}
                 />
               )}
 
