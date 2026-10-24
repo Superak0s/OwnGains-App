@@ -298,16 +298,9 @@ export const workoutApi = {
     // Same window the server applies, so the numbers don't jump when the same
     // user goes offline.
     const cutoff = Date.now() - days * 86_400_000;
-    // Sort keys are local-offset ISO strings, so the SQL bound is widened by a
-    // day and the exact cutoff is applied below.
-    const sessions = await sessionsStore.getSince(
-      new Date(cutoff - 86_400_000).toISOString(),
-    );
+    const sessions = await sessionsStore.getSince(new Date(cutoff).toISOString());
     const filtered = sessions.filter(
-      (s) =>
-        (!split || s.split === split) &&
-        (!dayNumber || s.dayNumber === dayNumber) &&
-        new Date(s.startTime ?? 0).getTime() >= cutoff,
+      (s) => (!split || s.split === split) && (!dayNumber || s.dayNumber === dayNumber),
     );
 
     return computeWorkoutAnalytics(filtered);

@@ -1,5 +1,6 @@
 import * as SQLite from "expo-sqlite";
 import { runMigrations, type Migration } from "./storageMigrations";
+import { sortableStamp } from "@utils/format";
 
 const db = SQLite.openDatabaseSync("asyncStorage.db");
 
@@ -28,10 +29,32 @@ const readDb = SQLite.openDatabaseSync("asyncStorage.db", {
   useNewConnection: true,
 });
 
+// Converts only the part before "|", so a pending-sync key keeps its id suffix.
+const normalizedSortKey = (key: string): string =>
+  key.replace(/^[^|]*/, sortableStamp);
+
 // Schema version 1 is the baseline: the tables above, created on first open.
 // Versions 2 to 9 rewrote pre-1.0 data that release builds already migrated.
 // Their no-op slots keep the next migration at version 10 on every install.
-const MIGRATIONS: readonly Migration[] = Array.from({ length: 9 }, () => () => {});
+const MIGRATIONS: readonly Migration[] = [
+  ...Array.from({ length: 9 }, () => () => {}),
+  // Sort keys were written with the device's UTC offset, which misorders rows
+  // across a DST change and against UTC keys from the server.
+  () => {
+    const rows = db.getAllSync<{ collection: string; id: string; sort_key: string }>(
+      "SELECT collection, id, sort_key FROM kv_records",
+    );
+    for (const row of rows) {
+      const key = normalizedSortKey(row.sort_key);
+      if (key !== row.sort_key)
+        db.runSync("UPDATE kv_records SET sort_key = ? WHERE collection = ? AND id = ?", [
+          key,
+          row.collection,
+          row.id,
+        ]);
+    }
+  },
+];
 
 runMigrations(db, MIGRATIONS);
 
@@ -249,7 +272,7 @@ export const importAll = (
     try {
       const recordRows = Object.entries(snapshot.records ?? {}).flatMap(
         ([collection, rows]) =>
-          rows.map((row) => [collection, row.id, row.sortKey, row.value]),
+          rows.map((row) => [collection, row.id, normalizedSortKey(row.sortKey), row.value]),
       );
       await inExclusiveTransaction(async (txn) => {
         if (mode === "replace") {
@@ -352,10 +375,11 @@ export const listRecordsBefore = (
 ): Promise<string[]> =>
   serializeRead(async () => {
     const order = " ORDER BY sort_key DESC, id DESC LIMIT ?";
+    const cursorKey = before && normalizedSortKey(before.sortKey);
     const rows = before
       ? await readDb.getAllAsync<{ value: string }>(
           `SELECT value FROM kv_records WHERE collection = ? AND (sort_key < ? OR (sort_key = ? AND id < ?))${order}`,
-          [collection, before.sortKey, before.sortKey, before.id, limit],
+          [collection, cursorKey, cursorKey, before.id, limit],
         )
       : await readDb.getAllAsync<{ value: string }>(
           `SELECT value FROM kv_records WHERE collection = ?${order}`,
@@ -395,7 +419,7 @@ export const putRecord = (
   value: string,
 ): Promise<void> =>
   serializeRecordWrite(async () => {
-    db.runSync(upsertRecordSql, [collection, id, sortKey, value]);
+    db.runSync(upsertRecordSql, [collection, id, normalizedSortKey(sortKey), value]);
   });
 
 interface RecordWrite {
@@ -415,7 +439,7 @@ const upsertsOf = (
   records: RecordWrite[],
 ): BatchStatement => ({
   sql: upsertRecordSql,
-  rows: records.map((r) => [collection, r.id, r.sortKey, r.value]),
+  rows: records.map((r) => [collection, r.id, normalizedSortKey(r.sortKey), r.value]),
 });
 
 /** Upserts and deletes in one transaction, so a crash can't apply half. */

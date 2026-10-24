@@ -137,6 +137,14 @@ describe("createRecordStore", () => {
     expect(await store.getOne(99)).toBeNull()
   })
 
+  it("compares getSince bounds as instants across UTC offsets", async () => {
+    const store = makeStore()
+    await store.put(entry(1, "2026-10-23T08:00:00.000+03:00"))
+    await store.put(entry(2, "2026-10-23T05:30:00.000Z"))
+
+    expect((await store.getSince("2026-10-23T05:15:00.000Z")).map((e) => e.id)).toEqual([2])
+  })
+
   it("overwrites a record with the same id", async () => {
     const store = makeStore()
     await store.put(entry(1, "2024-01-01", "first"))

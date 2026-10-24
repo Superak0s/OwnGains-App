@@ -18,7 +18,7 @@ import {
   clearCollection,
   renameCollection,
 } from "./sqliteStorage"
-import { toDateString } from "@utils/format"
+import { sortableStamp, toDateString } from "@utils/format"
 
 export async function readJSON<T>(
   key: string,
@@ -169,7 +169,8 @@ export function createRecordStore<T>(
     async getSince(sinceSortKey) {
       await ensureMigrated()
       const rows = await read()
-      return rows.filter((record) => sortKeyOf(record) >= sinceSortKey)
+      const since = sortableStamp(sinceSortKey)
+      return rows.filter((record) => sortableStamp(sortKeyOf(record)) >= since)
     },
     async getWhere(where, limit) {
       await ensureMigrated()

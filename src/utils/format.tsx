@@ -122,6 +122,17 @@ export const parseDate = (
 }
 
 /**
+ * A timestamp sort key as UTC ISO, so keys written with different offsets order
+ * by instant. A value that is not a dated stamp is returned unchanged.
+ *
+ * @remarks The date prefix guard matters because V8 parses strings like "5" as dates.
+ */
+export const sortableStamp = (value: string): string => {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(value)) return value
+  return parseDate(value)?.toISOString() ?? value
+}
+
+/**
  * Parses decimal-pad input, or returns null when it is not a plain non-negative number.
  *
  * @remarks The keyboard emits the device locale's decimal separator, which is "," across

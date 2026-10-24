@@ -1,4 +1,4 @@
-import { daysSinceLocal, normalizeServerDates, parseDate, parseDecimal, toDateString, toTimeString } from "../format";
+import { daysSinceLocal, normalizeServerDates, parseDate, parseDecimal, sortableStamp, toDateString, toTimeString } from "../format";
 
 // A decimal-pad keyboard emits the device locale's separator, and parseFloat("12,5")
 // returns 12 with no error, logging a 12.5 kg set as 12.
@@ -81,5 +81,16 @@ describe("normalizeServerDates", () => {
       f: 5,
       g: null,
     });
+  });
+});
+
+describe("sortableStamp", () => {
+  it("puts every timestamp form on UTC", () => {
+    expect(sortableStamp("2026-10-25T03:50:00.000+03:00")).toBe("2026-10-25T00:50:00.000Z");
+    expect(sortableStamp("2026-10-23 07:00:00")).toBe("2026-10-23T07:00:00.000Z");
+    expect(sortableStamp("2026-10-23T08:00:00")).toBe(new Date(2026, 9, 23, 8).toISOString());
+    expect(sortableStamp("2026-10-23T05:00:00.000Z")).toBe("2026-10-23T05:00:00.000Z");
+    expect(sortableStamp("2026-10-23")).toBe("2026-10-23T00:00:00.000Z");
+    for (const v of ["", "5", "sync_abc"]) expect(sortableStamp(v)).toBe(v);
   });
 });

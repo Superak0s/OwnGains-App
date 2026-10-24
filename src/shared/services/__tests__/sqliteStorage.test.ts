@@ -13,12 +13,14 @@ const deferred = <T,>(): Deferred<T> => {
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-function loadStorage() {
+type RecordRow = { collection: string; id: string; sort_key: string };
+
+function loadStorage(records: RecordRow[] = []) {
   const main = {
     execSync: jest.fn(),
     runSync: jest.fn(),
     getFirstSync: jest.fn((): unknown => ({ user_version: 1 })),
-    getAllSync: jest.fn(() => []),
+    getAllSync: jest.fn((): unknown[] => records),
     withTransactionSync: jest.fn((task: () => void) => task()),
     withExclusiveTransactionAsync: jest.fn(
       async (task: (txn: unknown) => Promise<void>) => task(txn),
@@ -45,9 +47,12 @@ function loadStorage() {
   jest.isolateModules(() => {
     storage = require("../sqliteStorage");
   });
+  const migrationCalls = [...main.runSync.mock.calls];
   jest.clearAllMocks();
-  return { storage, main, read, txn };
+  return { storage, main, read, txn, migrationCalls };
 }
+
+import { getLocalISOString } from "@utils/session";
 
 afterEach(() => {
   jest.dontMock("expo-sqlite");
@@ -167,5 +172,49 @@ describe("sqliteStorage record batches", () => {
     await storage.applyRecordChanges("q", [], []);
 
     expect(main.withTransactionSync).not.toHaveBeenCalled();
+  });
+});
+
+describe("sqliteStorage sort keys", () => {
+  it("stores a pending-sync key in UTC, so a DST fall-back keeps replay order", async () => {
+    const { storage, main } = loadStorage();
+    // Athens: the set is 03:50+03:00, the later endSession 03:05+02:00.
+    const set = `${getLocalISOString(new Date("2026-10-25T00:50:00Z"))}|sync_a`;
+    const end = `${getLocalISOString(new Date("2026-10-25T01:05:00Z"))}|sync_b`;
+    await storage.putRecord("pending", "a", set, "{}");
+    await storage.putRecord("pending", "b", end, "{}");
+
+    expect(main.runSync.mock.calls.map((call) => (call[1] as unknown[])[2])).toEqual([
+      "2026-10-25T00:50:00.000Z|sync_a",
+      "2026-10-25T01:05:00.000Z|sync_b",
+    ]);
+  });
+
+  it("pages from a UTC cursor", async () => {
+    const { storage, read } = loadStorage();
+    await storage.listRecordsBefore("sessions", { sortKey: "2026-10-23 07:00:00", id: "x" }, 10);
+
+    expect(read.getAllAsync.mock.calls[0]).toEqual([
+      expect.any(String),
+      ["sessions", "2026-10-23T07:00:00.000Z", "2026-10-23T07:00:00.000Z", "x", 10],
+    ]);
+  });
+
+  it("migration 10 rewrites legacy sort keys and leaves UTC and empty ones alone", () => {
+    const { migrationCalls } = loadStorage([
+      { collection: "workout_sessions", id: "1", sort_key: "2026-10-23 07:00:00" },
+      { collection: "pending", id: "2", sort_key: "2026-10-25T03:50:00.000+03:00|sync_a" },
+      { collection: "body_weight", id: "3", sort_key: "2026-10-23T05:00:00.000Z" },
+      { collection: "workout_sessions", id: "4", sort_key: "" },
+    ]);
+
+    expect(
+      migrationCalls
+        .filter(([sql]) => String(sql).startsWith("UPDATE kv_records"))
+        .map(([, params]) => params),
+    ).toEqual([
+      ["2026-10-23T07:00:00.000Z", "workout_sessions", "1"],
+      ["2026-10-25T00:50:00.000Z|sync_a", "pending", "2"],
+    ]);
   });
 });

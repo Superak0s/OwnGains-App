@@ -5,7 +5,7 @@ import {
   isLocalSessionId,
   isSessionGone,
 } from "@utils/session";
-import { generateId } from "@utils/format";
+import { generateId, sortableStamp } from "@utils/format";
 import { metric, log, captureException, startTrace } from "@shared/services/crashReporting";
 import { ApiError } from "@shared/services/apiError";
 import { IDEMPOTENCY_KEY_IN_FLIGHT } from "@shared/services/apiClient";
@@ -599,7 +599,9 @@ export const useSyncManager = ({
             ...live(failedSyncs),
             ...live(workingSyncs.slice(index)),
             ...extras,
-          ].sort((a, b) => a.timestamp.localeCompare(b.timestamp)),
+          ].sort((a, b) =>
+            sortableStamp(a.timestamp).localeCompare(sortableStamp(b.timestamp)),
+          ),
         );
       };
 
