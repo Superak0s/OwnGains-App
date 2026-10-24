@@ -84,6 +84,13 @@ describe("settings", () => {
 });
 
 describe("getCycleStats", () => {
+  it("counts cycle days from local midnight", async () => {
+    await menstrualApi.logMenstrualCycle(new Date(2026, 9, 20, 9, 0).toISOString());
+    jest.useFakeTimers().setSystemTime(new Date(2026, 9, 23, 8, 30));
+    const { data } = await menstrualApi.getCycleStats();
+    expect(data!.currentPhase).toMatchObject({ phase: "menstruation", daysInPhase: 2 });
+  });
+
   it("reports nothing at all with no history", async () => {
     const { data } = await menstrualApi.getCycleStats();
     expect(data).toEqual({

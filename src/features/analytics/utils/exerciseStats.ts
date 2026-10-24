@@ -1,6 +1,6 @@
 import { estimateOneRepMax } from "@utils/oneRepMax";
 import { RECORD_REP_LIMIT } from "@utils/recordSets";
-import { DAY_MS, parseDate, toDateString } from "@utils/format";
+import { DAY_MS, daysSinceLocal, parseDate, toDateString } from "@utils/format";
 import type { ChartPoint } from "@shared/components/chart/chartMath";
 import { median, REST_WINDOW_MAX_SEC, REST_WINDOW_MIN_SEC } from "@utils/session";
 import type {
@@ -325,7 +325,7 @@ export function computeExerciseInsights(
     workingSetCount: working.length,
     sessionsPerWeek: round(sessions.length / spanWeeks),
     medianDaysBetween: gapsDays.length ? round(median(gapsDays)!) : null,
-    daysSinceLast: Math.floor((Date.now() - startOfDayMs(lastDate)) / DAY_MS),
+    daysSinceLast: daysSinceLocal(lastDate),
     avgRestSec: rests.length ? Math.round(mean(rests)) : null,
     medianRestSec: rests.length ? Math.round(median(rests)!) : null,
     restPerformance: compareRestBuckets(sessions),

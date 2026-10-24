@@ -1,4 +1,4 @@
-• Times follow your time zone. Late-night workouts and soreness count on the right day, entries logged for an earlier day keep their time, and lists keep their order across daylight saving.
+• Times follow your time zone. Workouts, soreness, cycle days and exports change day at your local midnight, back-dated entries keep their time, and lists keep their order across daylight saving.
 • Decimal commas, like 85,5, keep their decimals in body fat, measurements and macros.
 • Spreadsheet programs without a "Total Sets:" row show the real set count.
 • Friends: shared programs show every row, the split filter resets per friend, and Analytics no longer retries in a loop.

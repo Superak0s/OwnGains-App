@@ -66,6 +66,14 @@ describe("columnName", () => {
 });
 
 describe("buildProgramXlsxBase64", () => {
+  it("dates the export by the local day", () => {
+    jest.useFakeTimers().setSystemTime(new Date(2026, 9, 23, 1, 30));
+    const wb = read();
+    jest.useRealTimers();
+    const texts = Object.values(wb.Sheets["Main Program"]).map((c) => String((c as XLSX.CellObject).v));
+    expect(texts.join(" ")).toContain("Exported from OwnGains on 2026-10-23");
+  });
+
   it("lays the program out one exercise per row with a sets column per split", () => {
     const wb = read();
     expect(wb.SheetNames).toEqual([

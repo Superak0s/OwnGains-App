@@ -121,6 +121,15 @@ describe("computeExerciseInsights", () => {
     expect(insights.workingSetCount).toBe(1)
   })
 
+  it("counts days since the last session from local midnight across a DST change", () => {
+    jest.useFakeTimers().setSystemTime(new Date(2026, 2, 30, 0, 30))
+    const insights = computeExerciseInsights([
+      entry({ date: new Date(2026, 2, 29, 10, 0), weight: 100, reps: 5 }),
+    ])
+    jest.useRealTimers()
+    expect(insights.daysSinceLast).toBe(1)
+  })
+
   it("tracks a rising 1RM as positive weekly progress", () => {
     const insights = computeExerciseInsights([
       entry({ date: daysAgo(21), weight: 100, reps: 5 }),

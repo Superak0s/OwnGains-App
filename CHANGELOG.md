@@ -18,6 +18,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Workout history pages no longer skip or repeat sessions, and tracking lists and pending offline changes stay in time order, including across a daylight saving change.
 - Entries logged for an earlier day (weight, water, measurements, soreness and cycle) keep the time you picked, and the newest weigh-in counts as your current weight.
 - Soreness charts and the heatmap show an entry logged after midnight on the day you logged it.
+- The cycle phase, the days since you last did an exercise and the date on an exported program change at your local midnight, including on daylight saving days.
 
 ### Internal
 

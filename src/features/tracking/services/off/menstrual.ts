@@ -5,6 +5,7 @@ import {
   nextLocalId,
 } from "@shared/services/offlineHelpers";
 import { getCyclePhaseInfo } from "@features/tracking/utils";
+import { daysSinceLocal, parseDate } from "@utils/format";
 import type {
   ApiResponse,
   MenstrualEntry,
@@ -42,13 +43,13 @@ export function createMenstrualApi(user?: string) {
     settings: MenstrualSettings,
   ): CyclePhase | null {
     if (!lastEntry) return null;
-    const start = new Date(lastEntry.cycleStart).getTime();
-    const now = Date.now();
-    const daysSinceStart = Math.floor((now - start) / (24 * 60 * 60 * 1000));
+    const start = parseDate(lastEntry.cycleStart);
+    if (!start) return null;
+    const daysSinceStart = daysSinceLocal(start);
 
     const { periodDays, cycleLengthDays } = settings;
     const info = getCyclePhaseInfo(daysSinceStart, periodDays, cycleLengthDays);
-    const cycleStart = start - (info.dayOfCycle - 1) * 24 * 60 * 60 * 1000;
+    const cycleStart = start.getTime() - (info.dayOfCycle - 1) * 24 * 60 * 60 * 1000;
     const phaseEndDay = {
       Menstrual: info.periodEnd,
       Follicular: info.ovulationStart,

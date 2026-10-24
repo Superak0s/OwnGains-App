@@ -1,6 +1,7 @@
 import type { ExerciseWithSets, WorkoutData, WorkoutDay } from "@shared/types";
 import { getExercises } from "@utils/exerciseDb";
 import { musclesOf } from "./muscleFrequency";
+import { toDateString } from "@utils/format";
 
 export interface TargetRange {
   min: number;
@@ -278,7 +279,7 @@ const buildProgramGrid = (
   });
   put(grid, 2, 0, {
     value:
-      `Exported from OwnGains on ${new Date().toISOString().slice(0, 10)}. ` +
+      `Exported from OwnGains on ${toDateString(new Date())}. ` +
       "Primary/Secondary Muscles auto-populate from the Exercise DB sheet based on the Exercise name. " +
       "Change the exercise (use the dropdown) and muscles update automatically. " +
       "Weekly set targets are set on the Muscle Points sheets: change the default Target Min / Target Max there, " +
