@@ -27,6 +27,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 - Second dedupe pass: session detail rows, sign-in requests and session storage, median, progress photo pickers, the spreadsheet target range parser.
 - Jest runs in the Europe/Athens timezone unless TZ is set.
+- The offline soreness trend test uses local times, so it passes in any timezone.
 
 ## [1.0.1] - 2026-10-22
 

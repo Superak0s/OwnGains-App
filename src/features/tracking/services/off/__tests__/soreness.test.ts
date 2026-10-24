@@ -194,10 +194,10 @@ describe("getStats", () => {
   });
 
   it("builds a per-day severity trend and a per-muscle heatmap inside the window", async () => {
-    jest.useFakeTimers().setSystemTime(new Date("2024-01-10T10:00:00.000Z"));
-    await log("Chest", 6, "2024-01-08T10:00:00.000Z");
-    await log("Back", 8, "2024-01-08T12:00:00.000Z");
-    await log("Legs", 4, "2024-01-09T10:00:00.000Z");
+    jest.useFakeTimers().setSystemTime(new Date(2024, 0, 10, 10));
+    await log("Chest", 6, new Date(2024, 0, 8, 10).toISOString());
+    await log("Back", 8, new Date(2024, 0, 8, 12).toISOString());
+    await log("Legs", 4, new Date(2024, 0, 9, 10).toISOString());
 
     const { data } = await sorenessApi.getStats(30);
     expect(data!.severityTrend).toEqual([
