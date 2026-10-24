@@ -11,7 +11,6 @@ import { TrackingViewProvider } from "@features/tracking/TrackingApisContext";
 import ClientPickerSheet from "./components/ClientPickerSheet";
 import { trainerApi, type ClientSummary } from "./services";
 import { weekStart } from "@utils/dayCompletion";
-import { toDateString } from "@utils/format";
 import { clientTrackingApis } from "./utils/trackingView";
 
 /** A client's Progress, switched from a searchable sheet opened by tapping the title. */
@@ -26,7 +25,7 @@ export default function TrainerAnalyticsScreen(): React.JSX.Element {
     useCallback(() => {
       let active = true;
       trainerApi
-        .getClients(toDateString(weekStart()))
+        .getClients(weekStart())
         .then((roster) => {
           if (active) setClients(roster);
         })

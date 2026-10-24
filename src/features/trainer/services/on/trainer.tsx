@@ -1,4 +1,5 @@
 import { ApiError, apiCall } from "@shared/services/apiClient"
+import { toDateString } from "@utils/format"
 import {
   TrainerRequestConflictError,
   type ClientSummary,
@@ -18,9 +19,15 @@ const listRequests = async (url: string): Promise<TrainerRequest[]> => {
 }
 
 export const trainerApi = {
-  getClients: async (weekStart: string): Promise<ClientSummary[]> => {
+  getClients: async (weekStart: Date): Promise<ClientSummary[]> => {
+    // weekStart is the local day for servers that predate weekStartAt, which
+    // carries the local Monday's real instant.
+    const query = new URLSearchParams({
+      weekStart: toDateString(weekStart),
+      weekStartAt: weekStart.toISOString(),
+    })
     const res = await apiCall<Enveloped<{ clients: ClientSummary[] }>>(
-      `/api/trainer/clients?${new URLSearchParams({ weekStart }).toString()}`,
+      `/api/trainer/clients?${query.toString()}`,
     )
     return res.data?.clients ?? []
   },

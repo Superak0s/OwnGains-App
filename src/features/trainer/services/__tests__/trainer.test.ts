@@ -31,7 +31,7 @@ beforeEach(() => {
 
 describe("trainer calls match the server contract", () => {
   const cases: Array<[string, () => Promise<unknown>, string, string, unknown]> = [
-    ["the client roster for a week", () => trainerOn.getClients("2026-10-12"), "GET", "/api/trainer/clients?weekStart=2026-10-12", undefined],
+    ["the client roster for a week", () => trainerOn.getClients(new Date(2026, 9, 12)), "GET", `/api/trainer/clients?${new URLSearchParams({ weekStart: "2026-10-12", weekStartAt: new Date(2026, 9, 12).toISOString() })}`, undefined],
     ["a request by username", () => trainerOn.sendRequest({ username: "maria" }, false), "POST", "/api/trainer/requests", { toUsername: "maria", includeTracking: false }],
     ["a request by user id", () => trainerOn.sendRequest({ userId: "42" }, true), "POST", "/api/trainer/requests", { toUserId: "42", includeTracking: true }],
     ["accepting a request", () => trainerOn.acceptRequest("9", false), "POST", "/api/trainer/requests/9/accept", { includeTracking: false }],
@@ -48,7 +48,7 @@ describe("trainer calls match the server contract", () => {
   it("returns the clients from the data envelope", async () => {
     const client = { userId: "7", username: "maria", lastWorkoutAt: null, sessionsThisWeek: 0, activeProgramDayCount: 3 }
     mockFetch.mockResolvedValue(respond(200, { success: true, data: { clients: [client] } }))
-    await expect(trainerOn.getClients("2026-10-12")).resolves.toEqual([client])
+    await expect(trainerOn.getClients(new Date(2026, 9, 12))).resolves.toEqual([client])
   })
 })
 
@@ -60,7 +60,7 @@ describe("trainer errors", () => {
 
   it("never reaches the network in offline mode", async () => {
     ;(isServerless as jest.Mock).mockResolvedValue(true)
-    await expect(trainerApi.getClients("2026-10-12")).rejects.toThrow(OFFLINE_UNAVAILABLE_MESSAGE)
+    await expect(trainerApi.getClients(new Date(2026, 9, 12))).rejects.toThrow(OFFLINE_UNAVAILABLE_MESSAGE)
     expect(mockFetch).not.toHaveBeenCalled()
   })
 })

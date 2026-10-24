@@ -76,7 +76,7 @@ it("splits clients into needs attention and on track, and lists sent requests", 
   expect(screen.getByText("Last workout yesterday · 2 of 3 this week")).toBeTruthy()
   expect(screen.getByText("alex")).toBeTruthy()
   expect(screen.getByText("Sent 2 days ago")).toBeTruthy()
-  expect(trainer.getClients).toHaveBeenCalledWith("2026-10-12")
+  expect(trainer.getClients).toHaveBeenCalledWith(new Date(2026, 9, 12))
 })
 
 it("shows the empty state when there are no clients", async () => {

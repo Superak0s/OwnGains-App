@@ -26,7 +26,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import ClientPickerSheet from "@features/trainer/components/ClientPickerSheet";
 import { trainerApi, type ClientSummary } from "@features/trainer/services";
 import { weekStart } from "@utils/dayCompletion";
-import { parseDecimal, toDateString } from "@utils/format";
+import { parseDecimal } from "@utils/format";
 import { getAppRole, onAppRoleChange } from "@shared/services/appRole";
 import {
   getActiveTrainee,
@@ -1711,7 +1711,7 @@ export default function PlanScreen({
       if (!isTrainer) return;
       let active = true;
       trainerApi
-        .getClients(toDateString(weekStart()))
+        .getClients(weekStart())
         .then((roster) => {
           if (active) setClients(roster);
         })
