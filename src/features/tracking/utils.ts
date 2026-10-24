@@ -1,7 +1,7 @@
 import type { MenstrualEntry } from "./services/types";
 import type { SorenessEntry, SorenessFollowUp } from "./types/muscleRecovery";
 import type { BodyFatEntryWithFields } from "./types";
-import { toDateString, formatDate, parseDate, daysSinceLocal, parseDecimal } from "@utils/format";
+import { backdatedToIso, toDateString, formatDate, parseDate, daysSinceLocal, parseDecimal } from "@utils/format";
 import type { ChartPoint } from "@shared/components/chart/chartMath";
 
 export function recoveryTimeLabel(days: number): string {
@@ -59,8 +59,7 @@ export function signedTrend(
 }
 
 export function buildLocalISOForDate(date: Date, timeStr = "09:00"): string {
-  const dateStr = toDateString(date);
-  return `${dateStr}T${timeStr}:00`;
+  return backdatedToIso(toDateString(date), timeStr);
 }
 
 const MONTHS_TO_PREDICT = 12;

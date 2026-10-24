@@ -1,5 +1,4 @@
-• Times follow your time zone: late-night workouts count toward the right day and week, and history, tracking lists and offline changes stay in order across daylight saving.
+• Times follow your time zone. Late-night workouts count on the right day and week, entries logged for an earlier day keep their time, and lists keep their order across daylight saving.
 • Decimal commas, like 85,5, keep their decimals in body fat, measurements and macros.
-• Spreadsheet programs without a "Total Sets:" row show their real set count.
-• A friend's shared program shows every row, and its split filter resets when you switch friends.
-• Friend Analytics no longer retries in a loop.
+• Spreadsheet programs without a "Total Sets:" row show the real set count.
+• Friends: shared programs show every row, the split filter resets per friend, and Analytics no longer retries in a loop.

@@ -76,10 +76,10 @@ describe("formatDateLabel", () => {
 });
 
 describe("buildLocalISOForDate", () => {
-  it("defaults to 09:00 local and accepts an explicit time", () => {
+  it("returns the local 09:00 default or an explicit time as a UTC instant", () => {
     const date = new Date(2026, 7, 25, 22, 30);
-    expect(buildLocalISOForDate(date)).toBe("2026-08-25T09:00:00");
-    expect(buildLocalISOForDate(date, "17:45")).toBe("2026-08-25T17:45:00");
+    expect(buildLocalISOForDate(date)).toBe(new Date(2026, 7, 25, 9, 0).toISOString());
+    expect(buildLocalISOForDate(date, "17:45")).toBe(new Date(2026, 7, 25, 17, 45).toISOString());
   });
 });
 

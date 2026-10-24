@@ -16,6 +16,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Switching to another friend's program no longer keeps the split filter picked on the previous friend's, which could show an empty program.
 - Workouts started near midnight count toward the right day and week, and tracking calendars mark entries on the day they happened.
 - Workout history pages no longer skip or repeat sessions, and tracking lists and pending offline changes stay in time order, including across a daylight saving change.
+- Entries logged for an earlier day (weight, water, measurements, soreness and cycle) keep the time you picked, and the newest weigh-in counts as your current weight.
 
 ### Internal
 
