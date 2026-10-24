@@ -29,6 +29,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ### Internal
 
+- Expo SDK 58 (React Native 0.88, React 19.3, Jest 30, Sentry 8), React Native Firebase 27 and react-native-zeroconf 0.17, which ships its own types and needs a release-build keep rule for its JNI classes. Android compileSdk is 37 (targetSdk stays 36), and native modules build with CMake 3.31.6 so Windows builds handle long paths. Refs use the new `*Instance` types and `react-test-renderer` is a direct dev dependency. `app.json` drops the deprecated `assetBundlePatterns` key.
 - Request-shape tests cover the trainer confirm flag and the program snapshot calls.
 - Second dedupe pass: session detail rows, sign-in requests and session storage, median, progress photo pickers, the spreadsheet target range parser.
 - Jest runs in the Europe/Athens timezone unless TZ is set.

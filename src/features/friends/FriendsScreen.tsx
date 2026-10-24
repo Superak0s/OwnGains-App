@@ -19,6 +19,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   TextInput,
+  type TextInputInstance,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -493,7 +494,7 @@ export default function FriendsScreen({
   const [sentRequests, setSentRequests] = useState<SentFriendRequest[]>([]);
   const [trainerRequests, setTrainerRequests] = useState<TrainerRequest[]>([]);
 
-  const searchInputRef = useRef<TextInput>(null);
+  const searchInputRef = useRef<TextInputInstance>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searching, setSearching] = useState<boolean>(false);

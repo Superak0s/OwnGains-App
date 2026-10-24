@@ -10,6 +10,7 @@ import {
   type StyleProp,
   type TextStyle,
   type ViewStyle,
+  type TextInputInstance,
 } from "react-native";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import { Chip, useUi } from "@shared/components/ui";
@@ -97,7 +98,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
   const [setNote, setSetNote] = useState(initial.note);
   const [isWarmupSet, setIsWarmupSet] = useState(initial.isWarmup);
   const [rir, setRir] = useState(initial.rir);
-  const repsRef = useRef<TextInput>(null);
+  const repsRef = useRef<TextInputInstance>(null);
 
   useEffect(() => {
     draftStartedRef.current = weight.trim() !== "" || reps.trim() !== "";

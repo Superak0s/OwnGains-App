@@ -36,6 +36,7 @@ import {
   AppState,
   Dimensions,
   type AppStateStatus,
+  type ScrollViewInstance,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -288,7 +289,7 @@ const CustomTabBar = ({
 }: CustomTabBarProps) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;

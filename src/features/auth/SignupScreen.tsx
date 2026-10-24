@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  type TextInputInstance,
 } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -105,12 +106,12 @@ export default function SignupScreen({
   const { alert, AlertComponent } = useAlert();
 
   const isMountedRef = useRef<boolean>(true);
-  const usernameRef = useRef<TextInput>(null);
-  const emailRef = useRef<TextInput>(null);
-  const nameRef = useRef<TextInput>(null);
-  const passwordRef = useRef<TextInput>(null);
-  const confirmRef = useRef<TextInput>(null);
-  const fieldRefs: Record<FieldName, React.RefObject<TextInput | null>> = {
+  const usernameRef = useRef<TextInputInstance>(null);
+  const emailRef = useRef<TextInputInstance>(null);
+  const nameRef = useRef<TextInputInstance>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
+  const confirmRef = useRef<TextInputInstance>(null);
+  const fieldRefs: Record<FieldName, React.RefObject<TextInputInstance | null>> = {
     username: usernameRef,
     email: emailRef,
     password: passwordRef,

@@ -8,11 +8,12 @@ import {
   type StyleProp,
   type TextInputProps,
   type ViewStyle,
+  type TextInputInstance,
 } from "react-native";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 
 type Props = Omit<TextInputProps, "style" | "secureTextEntry"> & {
-  readonly ref?: Ref<TextInput>;
+  readonly ref?: Ref<TextInputInstance>;
   readonly style?: StyleProp<ViewStyle>;
   /** What the show/hide button reveals, read out as "Show <toggleLabel>". */
   readonly toggleLabel: string;

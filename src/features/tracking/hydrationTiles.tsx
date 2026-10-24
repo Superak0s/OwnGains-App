@@ -61,7 +61,7 @@ if (Platform.OS === "android") {
   AppRegistry.registerHeadlessTask(TASK_NAME, () => logFromTile);
 }
 
-const isLogWaterUrl = (url: string | null): boolean =>
+const isLogWaterUrl = (url: string | null | undefined): boolean =>
   url?.startsWith(LOG_WATER_URL) ?? false;
 
 /** Opens the log water sheet when the "Log water" tile launches the app. */
@@ -70,7 +70,7 @@ export function HydrationTileModal() {
   const navigation = useNavigation();
 
   useEffect(() => {
-    const openFromTile = (url: string | null) => {
+    const openFromTile = (url: string | null | undefined) => {
       if (!isLogWaterUrl(url)) return;
       (navigation.navigate as unknown as (name: string, params: object) => void)("Main", {
         screen: "Tracking",

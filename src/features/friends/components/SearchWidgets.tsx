@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, type TextInputInstance } from "react-native";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import type {
   Friend,
@@ -27,7 +27,7 @@ interface SearchUsersWidgetProps {
   readonly sendingRequestTo: number | string | null;
   readonly onMoreActions: (user: UserRef) => void;
   readonly onScanQr: () => void;
-  readonly inputRef?: React.Ref<TextInput>;
+  readonly inputRef?: React.Ref<TextInputInstance>;
 }
 
 type SearchUserResultRowProps = Omit<

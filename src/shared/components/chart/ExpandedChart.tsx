@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
   useWindowDimensions,
+  type ViewInstance,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -90,7 +91,7 @@ export default function ExpandedChart({
   const [zoom, setZoom] = useState(1);
   const [selected, setSelected] = useState<number | null>(null);
   const pinchStart = useRef(1);
-  const chartRef = useRef<View>(null);
+  const chartRef = useRef<ViewInstance>(null);
 
   const model = useMemo(() => chartModel(points, settings), [points, settings]);
   const stats = chartStats(model.visible);

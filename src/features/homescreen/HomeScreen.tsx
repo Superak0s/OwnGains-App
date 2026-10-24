@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   ScrollView,
   RefreshControl,
+  type ScrollViewInstance,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useWorkoutPick } from "@shared/context/WorkoutContext";
@@ -618,7 +619,7 @@ export default function HomeScreen(): React.JSX.Element {
     }, [widgets]),
   );
 
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   // A widget added at the end of the board is otherwise below the fold, and
   // DOMS follow-up is hidden until one is due, so the add looked like a no-op.
   const [justAdded, setJustAdded] = useState<HomeWidgetType | null>(null);

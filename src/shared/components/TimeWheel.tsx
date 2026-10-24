@@ -7,6 +7,7 @@ import {
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  type ScrollViewInstance,
 } from "react-native";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 
@@ -86,7 +87,7 @@ function WheelColumn({
   readonly disabled: boolean;
   readonly styles: ReturnType<typeof makeStyles>;
 }): React.JSX.Element {
-  const ref = useRef<ScrollView>(null);
+  const ref = useRef<ScrollViewInstance>(null);
   const settle = (e: NativeSyntheticEvent<NativeScrollEvent>) =>
     pick(items[settledIndex(e.nativeEvent.contentOffset.y, items.length)]);
   const step = (delta: number) =>

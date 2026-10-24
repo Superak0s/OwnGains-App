@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  type TextInputInstance,
 } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -95,7 +96,7 @@ export default function LoginScreen({
   const { alert, AlertComponent } = useAlert();
   const isOnline = appMode === "online";
   const copy = MODE_COPY[isOnline ? "online" : "offline"];
-  const passwordRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
 
   // The server has no mail sender, so an emailed reset link cannot be offered.
   // The operator resets passwords with the `owngains passwd` CLI.

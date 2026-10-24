@@ -48,6 +48,7 @@
       "./plugins/withAndroidNetworkSecurity.js",
       "./plugins/withAbiSplits.js",
       "./plugins/withHealthConnectRationale.js",
+      "./plugins/withCMakeVersion.js",
       "expo-sqlite",
       "expo-image",
       [
@@ -62,10 +63,10 @@
           "android": {
             "enableProguardInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
-            "compileSdkVersion": 36,
+            "compileSdkVersion": 37,
             "targetSdkVersion": 36,
             "minSdkVersion": 26,
-            "extraProguardRules": "-keep class com.balthazargronon.RCTZeroconf.** { *; }\n-keep class expo.modules.sqlite.** { *; }\n-keep class com.horcrux.svg.** { *; }\n-keep class expo.modules.** { *; }\n-keep class io.sentry.** { *; }\n-keepattributes LineNumberTable,SourceFile\n-keepclassmembers class * { @expo.modules.core.interfaces.ExpoProp *; }\n-keep class dev.matinzd.healthconnect.** { *; }"
+            "extraProguardRules": "-keep class com.balthazargronon.RCTZeroconf.** { *; }\n-keep class com.github.druk.dnssd.** { *; }\n-keep class expo.modules.sqlite.** { *; }\n-keep class com.horcrux.svg.** { *; }\n-keep class expo.modules.** { *; }\n-keep class io.sentry.** { *; }\n-keepattributes LineNumberTable,SourceFile\n-keepclassmembers class * { @expo.modules.core.interfaces.ExpoProp *; }\n-keep class dev.matinzd.healthconnect.** { *; }"
           }
         }
       ],
@@ -82,9 +83,6 @@
       "expo-asset"
     ],
     "userInterfaceStyle": "automatic",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
     "android": {
       "versionCode": 18,
       "allowBackup": false,

@@ -8,6 +8,7 @@ import {
   View,
   type AccessibilityRole,
   type AccessibilityState,
+  type ViewInstance,
 } from "react-native";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 
@@ -29,7 +30,7 @@ interface SettingsRowProps {
   readonly accessibilityLabel?: string;
   readonly accessibilityRole?: AccessibilityRole;
   readonly accessibilityState?: AccessibilityState;
-  readonly anchorRef?: React.Ref<View>;
+  readonly anchorRef?: React.Ref<ViewInstance>;
 }
 
 export function SettingsRow({

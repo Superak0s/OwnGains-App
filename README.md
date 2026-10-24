@@ -161,7 +161,7 @@ The web copies of the legal text are generated from the in-app screens: [privacy
 
 ### Stack
 
-- **React Native 0.86.3** + **React 19.2.3** on **Expo ~57** (New Architecture, Hermes), written in **TypeScript ~6.0**.
+- **React Native 0.88.0** + **React 19.3.0** on **Expo ~58** (New Architecture, Hermes), written in **TypeScript ~6.0**.
 - **Navigation:** React Navigation v7 (native-stack + a custom animated, collapsible bottom tab bar).
 - **State:** React Context (no Redux): `AuthContext`, `WorkoutContext`, `ThemeContext`, `TabBarContext`, `JointSessionContext`, plus custom hooks under `src/shared/context/hooks`.
 - **Local storage:** **`expo-sqlite`** (WAL mode) behind `src/shared/services/sqliteStorage.tsx`, a key/value + record store. Plus `expo-file-system` for photos and `expo-secure-store` for auth tokens.
@@ -191,7 +191,7 @@ The web copies of the legal text are generated from the in-app screens: [privacy
 - **Widget system** (`src/shared/context/hooks/useWidgets.tsx`): a shared placement/drag engine. Each screen defines its own registry, defaults, and storage key. A two-finger pull opens the gallery (a dev-only button does the same on emulators, which can't produce the gesture).
 - **Storage migrations** (`src/shared/services/storageMigrations.ts`): versioned, append-only rewrites of persisted data, run once each against SQLite's `user_version`, each in its own transaction.
 - **Backup** (`src/utils/deviceBackup.ts` + `src/utils/exportEncryption.ts`): exports the whole SQLite store plus base64 progress photos to one passphrase-encrypted file, and re-points photo URIs on restore so images still load after a reinstall.
-- **Expo config plugins** (applied during prebuild): `withGradleTuning` (JVM tuning), `withDebugAppIdSuffix` (debug build installs side by side with the release build), `withAndroidNetworkSecurity` (cleartext to a self-hosted LAN server), `withAbiSplits` (one release APK per CPU architecture instead of one universal APK. The AAB is unaffected), `withHealthConnectRationale` (Health Connect's permission screen opens the privacy policy, as Play review requires).
+- **Expo config plugins** (applied during prebuild): `withGradleTuning` (JVM tuning), `withDebugAppIdSuffix` (debug build installs side by side with the release build), `withAndroidNetworkSecurity` (cleartext to a self-hosted LAN server), `withAbiSplits` (one release APK per CPU architecture instead of one universal APK. The AAB is unaffected), `withHealthConnectRationale` (Health Connect's permission screen opens the privacy policy, as Play review requires), `withCMakeVersion` (native modules build with CMake 3.31.6, whose ninja handles Windows paths over 248 characters).
 - **Local native modules** (`modules/`): `exact-alarms` checks Android's exact-alarm and display-over-other-apps permissions and opens their settings pages, and schedules, re-arms and rings supplement alarms, showing them in `AlarmActivity` over the lock screen. `autofill` asks Android to offer saving the login after sign-in. `hydration-tiles` provides the Quick Settings water tiles.
 - **Update check** (`src/shared/services/githubUpdate.ts`): GitHub release builds check the latest GitHub release once a day and offer the download.
 - **Forced update** (`src/shared/services/playUpdate.ts`): Play builds run Play's in-app immediate update flow only when the app version is below `minAppVersion` from `/healthz` (server env `MIN_APP_VERSION`), checked at launch and each time the app returns to the foreground. Offline mode is never forced.
