@@ -45,6 +45,7 @@ import {
   space,
 } from "@shared/components/ui";
 import { NOTE_MAX_LENGTH } from "@shared/limits";
+import { fromDateString } from "@utils/format";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const PHOTO_SIZE = (SCREEN_WIDTH - 32 - space.md) / 2;
@@ -436,7 +437,7 @@ export const MuscleDashboard: React.FC<MuscleDashboardProps> = ({
                   chartWidth={SCREEN_WIDTH - 64}
                   chartId='muscle_severity'
                   points={recentTrend.map((point) => ({
-                    date: new Date(point.date),
+                    date: fromDateString(point.date),
                     value: point.averageIntensity,
                     color: getSeverityColor(point.averageIntensity, 3),
                   }))}

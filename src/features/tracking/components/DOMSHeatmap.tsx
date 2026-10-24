@@ -15,6 +15,7 @@ import { getSeverityColor } from "@utils/severityColor";
 import { Bar, Metric, Placeholder, SectionLabel, space } from "@shared/components/ui";
 import { captureException, metric } from "@shared/services/crashReporting";
 import { recoveryTimeLabel } from "../utils";
+import { fromDateString } from "@utils/format";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -147,7 +148,7 @@ export const DOMSHeatmap: React.FC<DOMSHeatmapProps> = ({ onSelectMuscle }) => {
           chartWidth={SCREEN_WIDTH - 96}
           chartId='soreness_severity'
           points={recentTrend.map((point) => ({
-            date: new Date(point.date),
+            date: fromDateString(point.date),
             value: point.averageIntensity,
             color: getSeverityColor(point.averageIntensity, 3),
           }))}

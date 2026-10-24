@@ -1,4 +1,5 @@
 import { createRecordStore, nextLocalId } from "@shared/services/offlineHelpers"
+import { toDateString } from "@utils/format"
 import type {
   ApiResponse,
   DOMSStats,
@@ -152,7 +153,7 @@ export function createSorenessApi(user?: string) {
       const intensitiesByDate: Record<string, number[]> = {}
       for (const e of recent) {
         heatmapData[e.muscleGroup] = (heatmapData[e.muscleGroup] ?? 0) + 1
-        const date = e.loggedAt.slice(0, 10)
+        const date = toDateString(e.loggedAt)
         intensitiesByDate[date] ??= []
         intensitiesByDate[date].push(e.intensity)
       }

@@ -17,6 +17,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Workouts started near midnight count toward the right day and week, and tracking calendars mark entries on the day they happened.
 - Workout history pages no longer skip or repeat sessions, and tracking lists and pending offline changes stay in time order, including across a daylight saving change.
 - Entries logged for an earlier day (weight, water, measurements, soreness and cycle) keep the time you picked, and the newest weigh-in counts as your current weight.
+- Soreness charts and the heatmap show an entry logged after midnight on the day you logged it.
 
 ### Internal
 

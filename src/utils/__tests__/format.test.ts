@@ -1,4 +1,4 @@
-import { daysSinceLocal, normalizeServerDates, parseDate, parseDecimal, sortableStamp, toDateString, toTimeString } from "../format";
+import { daysSinceLocal, fromDateString, normalizeServerDates, parseDate, parseDecimal, sortableStamp, toDateString, toTimeString } from "../format";
 
 // A decimal-pad keyboard emits the device locale's separator, and parseFloat("12,5")
 // returns 12 with no error, logging a 12.5 kg set as 12.
@@ -92,5 +92,12 @@ describe("sortableStamp", () => {
     expect(sortableStamp("2026-10-23T05:00:00.000Z")).toBe("2026-10-23T05:00:00.000Z");
     expect(sortableStamp("2026-10-23")).toBe("2026-10-23T00:00:00.000Z");
     for (const v of ["", "5", "sync_abc"]) expect(sortableStamp(v)).toBe(v);
+  });
+});
+
+describe("fromDateString", () => {
+  it("is local midnight", () => {
+    const d = fromDateString("2026-10-23");
+    expect([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()]).toEqual([2026, 9, 23, 0]);
   });
 });

@@ -56,6 +56,12 @@ export const toDateString = (input: DateInput): string => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
+/** Local midnight of a `YYYY-MM-DD` day. `new Date("YYYY-MM-DD")` would be UTC midnight. */
+export const fromDateString = (day: string): Date => {
+  const [year, month, date] = day.split("-").map(Number)
+  return new Date(year, month - 1, date)
+}
+
 export function startOfToday(): Date {
   const date = new Date()
   date.setHours(0, 0, 0, 0)

@@ -219,3 +219,14 @@ describe("getStats", () => {
     jest.useRealTimers();
   });
 });
+
+describe("getStats", () => {
+  it("keys an after-midnight entry by its local day in the severity trend", async () => {
+    jest.useFakeTimers().setSystemTime(new Date(2026, 9, 23, 12));
+    await log("Chest", 6, new Date(2026, 9, 23, 1, 30).toISOString());
+
+    const { data } = await sorenessApi.getStats(30);
+    expect(data!.severityTrend.map((p) => p.date)).toEqual(["2026-10-23"]);
+    jest.useRealTimers();
+  });
+});
