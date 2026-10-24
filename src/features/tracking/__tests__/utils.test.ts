@@ -18,6 +18,7 @@ import {
   maskTimeInput,
   toNumberOrUndefined,
 } from "../utils";
+import { toDateString } from "@utils/format";
 import type { MenstrualEntry } from "../services/types";
 import { describeError } from "../helpers";
 
@@ -41,6 +42,12 @@ describe("isoToLocalDateStr", () => {
   it("reads a timestamp in local time", () => {
     const local = new Date(2026, 7, 25, 13, 0);
     expect(isoToLocalDateStr(local.toISOString())).toBe("2026-08-25");
+  });
+
+  it("reads a zone-less server datetime as UTC", () => {
+    expect(isoToLocalDateStr("2026-10-22 23:30:00")).toBe(
+      toDateString(new Date(Date.UTC(2026, 9, 22, 23, 30))),
+    );
   });
 
   it("is empty for a missing or unparseable value", () => {

@@ -11,6 +11,7 @@ import {
 } from "../../services/appMode"
 import { metric, log, captureException } from "../../services/crashReporting"
 import { accessTokenExpiresAt } from "../../services/jwt"
+import { normalizeServerDates } from "@utils/format"
 
 const BASE_RETRY_MS = 1_000
 const MAX_RETRY_MS = 30_000
@@ -247,7 +248,7 @@ export function useRealtimeSocket({
 
     ws.onmessage = (event: WebSocketMessageEvent) => {
       try {
-        const msg = JSON.parse(event.data as string) as WebSocketMessage
+        const msg = normalizeServerDates(JSON.parse(event.data as string)) as WebSocketMessage
         if (msg.type === "auth.refreshed" && pendingRefreshRef.current) {
           serverTokenRef.current = pendingRefreshRef.current
           pendingRefreshRef.current = null

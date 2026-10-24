@@ -1,4 +1,4 @@
-import { daysSinceLocal, parseDate, parseDecimal, toDateString, toTimeString } from "../format";
+import { daysSinceLocal, normalizeServerDates, parseDate, parseDecimal, toDateString, toTimeString } from "../format";
 
 // A decimal-pad keyboard emits the device locale's separator, and parseFloat("12,5")
 // returns 12 with no error, logging a 12.5 kg set as 12.
@@ -61,5 +61,25 @@ describe("parseDate", () => {
 
   it("keeps a local ISO stamp local", () => {
     expect(parseDate("2026-10-01T22:30:00")?.getHours()).toBe(22);
+  });
+});
+
+describe("normalizeServerDates", () => {
+  it("rewrites only whole zone-less server datetimes", () => {
+    expect(
+      normalizeServerDates({
+        a: "2026-10-22 23:30:00",
+        b: ["2026-10-22 23:30:00.123"],
+        c: { d: "2026-10-25", e: "Leg day 2026-10-22 23:30:00" },
+        f: 5,
+        g: null,
+      }),
+    ).toEqual({
+      a: "2026-10-22T23:30:00Z",
+      b: ["2026-10-22T23:30:00.123Z"],
+      c: { d: "2026-10-25", e: "Leg day 2026-10-22 23:30:00" },
+      f: 5,
+      g: null,
+    });
   });
 });

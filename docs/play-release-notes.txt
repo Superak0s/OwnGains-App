@@ -1,5 +1,5 @@
-• Workout times from the server follow your time zone, so late-night workouts show on the right day.
-• Body fat, measurements and macros typed with a decimal comma, like 85,5, keep their decimals.
-• Programs imported from a spreadsheet without a "Total Sets:" row show their real set count.
+• Times follow your time zone: late-night workouts count toward the right day and week, and tracking calendars mark entries on the right day.
+• Decimal commas, like 85,5, keep their decimals in body fat, measurements and macros.
+• Spreadsheet programs without a "Total Sets:" row show their real set count.
 • A friend's shared program shows every row, and its split filter resets when you switch friends.
-• A friend's Analytics tab no longer retries in a loop when no set data comes back.
+• A friend's Analytics tab no longer retries in a loop.

@@ -89,6 +89,24 @@ export const backdatedToIso = (date: string, time?: string | null): string => {
 // which `new Date` would read as local time.
 const SERVER_DATETIME = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/
 
+/**
+ * A copy of server JSON with every zone-less server datetime rewritten as UTC ISO,
+ * so readers that call `new Date` directly get the right instant.
+ *
+ * @remarks Only a string that is wholly a datetime is rewritten, so free text that
+ * merely contains one is kept as typed.
+ */
+export const normalizeServerDates = (value: unknown): unknown => {
+  if (typeof value === "string")
+    return SERVER_DATETIME.test(value) ? `${value.replace(" ", "T")}Z` : value
+  if (Array.isArray(value)) return value.map(normalizeServerDates)
+  if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype)
+    return Object.fromEntries(
+      Object.entries(value).map(([key, v]) => [key, normalizeServerDates(v)]),
+    )
+  return value
+}
+
 /** Null when the stamp is missing or unparseable. An undated record has no
  * place on a timeline, and `new Date(undefined)` would silently read as now. */
 export const parseDate = (

@@ -4,6 +4,7 @@ import {
   type HttpFetch,
 } from "./authenticatedFetch"
 import { ApiError, messageForCode } from "./apiError"
+import { normalizeServerDates } from "@utils/format"
 
 export { ApiError }
 
@@ -26,7 +27,7 @@ export const isCredentialRejection = (error: unknown): boolean =>
 export async function parseApiResponse<T = unknown>(res: Response): Promise<T> {
   let data: unknown
   try {
-    data = await res.json()
+    data = normalizeServerDates(await res.json())
   } catch {
     throw new ApiError(`Invalid JSON response (status ${res.status})`, res.status)
   }

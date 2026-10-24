@@ -14,10 +14,12 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Workout times from the server follow your own time zone. A friend's late-night workout no longer appears on the previous day in their history, and a live session's start time and timer are no longer hours off.
 - A friend's Analytics tab no longer keeps asking the server again and again when no set data comes back.
 - Switching to another friend's program no longer keeps the split filter picked on the previous friend's, which could show an empty program.
+- Workouts started near midnight count toward the right day and week, and tracking calendars mark entries on the day they happened.
 
 ### Internal
 
 - Second dedupe pass: session detail rows, sign-in requests and session storage, median, progress photo pickers, the spreadsheet target range parser.
+- Jest runs in the Europe/Athens timezone unless TZ is set.
 
 ## [1.0.1] - 2026-10-22
 

@@ -14,9 +14,8 @@ export function recoveryTimeLabel(days: number): string {
 export function isoToLocalDateStr(isoStr: string | null | undefined): string {
   if (!isoStr) return "";
   if (/^\d{4}-\d{2}-\d{2}$/.test(isoStr)) return isoStr;
-  const d = new Date(isoStr);
-  if (Number.isNaN(d.getTime())) return "";
-  return toDateString(d);
+  const day = toDateString(isoStr);
+  return day === "—" ? "" : day;
 }
 
 export function formatDateLabel(isoStr: string | null | undefined): string {

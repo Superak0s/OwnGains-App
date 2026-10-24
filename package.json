@@ -25,6 +25,7 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "globalSetup": "<rootDir>/jest.globalSetup.js",
     "testTimeout": 20000,
     "collectCoverage": true,
     "coverageDirectory": "coverage",
