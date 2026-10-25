@@ -15,6 +15,7 @@ npx jest src/utils/__tests__/exerciseMatching.test.ts   # run a single test file
 npm run typecheck                # tsc --noEmit
 npm run lint                     # eslint (flat config; exhaustive-deps warnings are a known backlog)
 npm run lint:a11y                # fails on icon-only controls with no accessibilityLabel
+npx expo install --fix -- --legacy-peer-deps   # align deps after an Expo SDK bump
 npm run build:android:aab        # Play Store bundle
 npm run sonar:scan               # needs SONAR_TOKEN
 npm run build:privacy-policy     # regenerate docs/privacy-policy.html
@@ -149,6 +150,10 @@ Checked into the repo under `.claude/` and `.mcp.json`, so it applies to every s
 - Markdown is gitignored by default (`*.md` in `.gitignore`), with only `README.md`, `CHANGELOG.md`, `CLAUDE.md`, `TODO.md`, `docs/**`, `.claude/**` and `.github/**` allowed back. Write working notes (audits, fix lists, plans) as `.md` anywhere else and git ignores them. A new doc that belongs in the repo needs a `!` line in `.gitignore`. Already-tracked files such as `audit/*.md` are unaffected.
 - `.github/instructions/sonarqube_mcp.instructions.md` applies to `src/**` and dictates SonarQube MCP usage (toggle automatic analysis off at task start, `analyze_file_list` at the end, re-enable after).
 - SonarQube: `npm run sonar:scan` (needs `SONAR_TOKEN`, targets `http://192.168.10.12:8999`).
+- Native Android builds need CMake 3.31.6 in the Android SDK (`sdkmanager --install "cmake/3.31.6"`). `plugins/withCMakeVersion.js` pins it because the default 3.22.1 ninja fails on Windows long paths. CMake 4 rejects expo-sqlite's `cmake_minimum_required`, and a `subst` drive breaks codegen ("different roots").
+- Held-back majors: TypeScript stays on 6 (typescript-eslint doesn't support 7), ESLint on 9 (10 breaks `eslint-plugin-react`'s `display-name`), and `expo-iap` on 5.x (6 changes purchase delivery in the billing path).
+- Working-copy files are CRLF (`core.autocrlf`). Scripted edits must keep `
+` or the whole file shows as changed.
 
 ## Off-limits
 

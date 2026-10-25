@@ -218,7 +218,7 @@ Home · Workout · Plan · Progress (Analytics) · Track (Hydration / Weight / P
 
 ## Development
 
-Requires Node 22 and Python 3 (used by `lint:a11y` and the audit scripts). Copy `.env.example` to `.env` to set `EXPO_PUBLIC_SENTRY_DSN` (crash reports. Dev builds send nothing unless `EXPO_PUBLIC_SENTRY_FORCE_ENABLE=true`) and `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (the Web OAuth client ID that the official server also sets as `GOOGLE_WEB_CLIENT_ID`. Without it the Google button stays hidden).
+Requires Node 22 and Python 3 (used by `lint:a11y` and the audit scripts). Native Android builds also need CMake 3.31.6 in the Android SDK (`sdkmanager --install "cmake/3.31.6"`). Copy `.env.example` to `.env` to set `EXPO_PUBLIC_SENTRY_DSN` (crash reports. Dev builds send nothing unless `EXPO_PUBLIC_SENTRY_FORCE_ENABLE=true`) and `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (the Web OAuth client ID that the official server also sets as `GOOGLE_WEB_CLIENT_ID`. Without it the Google button stays hidden).
 
 ```bash
 npm install --legacy-peer-deps   # required: peer deps are not resolvable otherwise
