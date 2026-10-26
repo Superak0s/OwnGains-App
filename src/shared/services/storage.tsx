@@ -135,6 +135,8 @@ export const STORAGE_KEYS = {
   MENSTRUAL_PREFS: "tracking_menstrual_prefs",
   FRIENDS_TAB_WIDGETS: "friendsScreen_friendsWidgets",
   REQUESTS_TAB_WIDGETS: "friendsScreen_requestsWidgets",
+  TRAINER_CLIENTS_WIDGETS: "trainerScreen_clientsWidgets",
+  TRAINER_CLIENT_PAGE_WIDGETS: "trainerScreen_clientPageWidgets",
   UNDERTRAINED_DISPLAY_MODE: "undertrainedDisplayMode",
   UNDERTRAINED_CALCULATION_MODE: "undertrainedCalculationMode",
   PR_CELEBRATION: "prCelebration",

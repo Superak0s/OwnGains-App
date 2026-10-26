@@ -24,7 +24,15 @@ import { formatDate, toDateString } from "@utils/format";
 import { EMPTY_WORKOUT_TITLE } from "@features/workout/utils";
 import type { ClientSummary } from "../types";
 import type { CustomWorkout, DayChoice } from "../utils/sessionStart";
-import { sessionOrigin } from "../utils/roster";
+import { sessionOrigin, weeklyTarget } from "../utils/roster";
+import { STORAGE_KEYS } from "@shared/services/storage";
+import type { WidgetInstance } from "@shared/types";
+import { useWidgets, useWidgetBoard } from "@shared/context/hooks/useWidgets";
+import WidgetsPanel from "@shared/components/widgets/WidgetsPanel";
+import WidgetGallery from "@shared/components/widgets/WidgetGallery";
+import WidgetEditButton from "@shared/components/widgets/WidgetEditButton";
+import { WidgetEditHeader } from "@shared/components/widgets/WidgetBoardChrome";
+import { CLIENT_PAGE_WIDGET_REGISTRY, DEFAULT_CLIENT_PAGE_WIDGETS, type ClientPageWidgetType } from "../widgets";
 import { clientStatusLine } from "./ClientRow";
 import { getDeviceKey, safetyCode } from "../utils/trackingCrypto";
 
@@ -71,6 +79,14 @@ export default function ClientPage({
   const [ownCode, setOwnCode] = useState<string | null>(null);
   const [granted, setGranted] = useState<PermissionType[] | null>(null);
   const clientIdRef = useRef<string | null>(null);
+  const board = useWidgets<ClientPageWidgetType>(trainerId || null, {
+    registry: CLIENT_PAGE_WIDGET_REGISTRY,
+    defaults: DEFAULT_CLIENT_PAGE_WIDGETS,
+    storageKey: STORAGE_KEYS.TRAINER_CLIENT_PAGE_WIDGETS,
+  });
+  const widgetBoard = useWidgetBoard(board.addWidget, { onError, pullEnabled: false });
+  const { setEditMode } = widgetBoard;
+  useEffect(() => setEditMode(false), [client, setEditMode]);
   clientIdRef.current = client?.userId ?? null;
 
   useEffect(() => {
@@ -157,6 +173,111 @@ export default function ClientPage({
     setSelectedDate(onDay.length > 1 ? toDateString(date) : null);
   };
   const isGranted = (type: PermissionType) => granted?.includes(type) ?? false;
+
+  const target = weeklyTarget(client.activeProgramDayCount);
+
+  const renderWidget = (w: WidgetInstance<ClientPageWidgetType>): React.ReactNode => {
+    switch (w.type) {
+      case "progress":
+        return target === null ? (
+          <Text style={styles.line}>{`${client.sessionsThisWeek} sessions this week. No active program, so no target.`}</Text>
+        ) : (
+          <View accessible accessibilityLabel={`${client.sessionsThisWeek} of ${target} sessions this week`}>
+            <Text style={styles.bigNumber}>{`${client.sessionsThisWeek} / ${target}`}</Text>
+            <View style={styles.bar}>
+              <View style={[styles.barFill, { width: `${Math.min(100, (client.sessionsThisWeek / target) * 100)}%` }]} />
+            </View>
+          </View>
+        );
+      case "client_week":
+        return <ScheduleWidget client={client} />;
+      case "recent_sessions":
+        return (
+          <>
+            {sessions === null && <ActivityIndicator color={colors.accent} accessibilityLabel="Loading sessions" />}
+            {sessions?.length === 0 && <Text style={styles.line}>No sessions yet</Text>}
+            {sessions !== null && sessions.length > 0 && (
+              <UniversalCalendar
+                hasDataOnDate={(date) => sessionsOn(toDateString(date)).length > 0}
+                onDatePress={onDatePress}
+                legendText="Workout day"
+              />
+            )}
+            {selectedDate !== null && sessionsOn(selectedDate).map((s) => {
+              const tag = sessionOrigin(s, trainerId) === "with_you" ? "with you" : "on their own";
+              const title = sessionTitle(s) || dayLabel(s.dayNumber);
+              return (
+                <TouchableOpacity
+                  key={String(s.id)}
+                  style={styles.session}
+                  onPress={() => void openSession(s)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${title}, ${tag}. Open details`}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.sessionTitle}>{title}</Text>
+                    {s.startTime !== undefined && (
+                      <Text style={styles.line}>{formatDate(new Date(s.startTime))}</Text>
+                    )}
+                  </View>
+                  <Text style={styles.tag}>{tag}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </>
+        );
+      case "permissions":
+        return (
+  granted === null ? (
+            <ActivityIndicator color={colors.accent} accessibilityLabel="Loading permissions" />
+          ) : (
+            PERMISSION_GROUPS.map(({ label, types }) => (
+              <React.Fragment key={label}>
+                <Text style={styles.groupLabel}>{label}</Text>
+                {PERMISSION_TYPES.filter((p) => types.includes(p.type)).map(({ type, icon, title, receivedTitle }) => (
+                  <View
+                    key={type}
+                    accessible
+                    accessibilityLabel={`${receivedTitle ?? title}, ${isGranted(type) ? "granted" : "not granted"}`}
+                  >
+                    <PermissionRow
+                      icon={icon}
+                      title={receivedTitle ?? title}
+                      description={
+                        isGranted(type)
+                          ? `${client.username} has granted you this.`
+                          : `${client.username} hasn't granted you this.`
+                      }
+                      granted={isGranted(type)}
+                      readOnly
+                    />
+                  </View>
+                ))}
+              </React.Fragment>
+            ))
+          )
+        );
+      case "tracking":
+        return (
+  !client.hasTrackingAccess ? (
+            <TouchableOpacity
+              style={styles.session}
+              onPress={() => onAskTracking(client)}
+              accessibilityRole="button"
+              accessibilityLabel={`Ask ${client.username} for Tracking Access`}
+            >
+              <Text style={styles.link}>Ask for Tracking Access</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.line}>
+              {ownCode
+                ? `Safety code ${ownCode}. ${client.username} sees it under your Tracking Access in Friends. If it matches, only this phone can read their data. Their tracking is in the Track tab.`
+                : "Their tracking is in the Track tab."}
+            </Text>
+          )
+        );
+    }
+  };
 
   return (
     <>
@@ -303,86 +424,23 @@ export default function ClientPage({
           </View>
         )}
 
-        <Text style={styles.section}>Schedule</Text>
-        <ScheduleWidget client={client} />
-
-        <Text style={styles.section}>Recent sessions</Text>
-        {sessions === null && <ActivityIndicator color={colors.accent} accessibilityLabel="Loading sessions" />}
-        {sessions?.length === 0 && <Text style={styles.line}>No sessions yet</Text>}
-        {sessions !== null && sessions.length > 0 && (
-          <UniversalCalendar
-            hasDataOnDate={(date) => sessionsOn(toDateString(date)).length > 0}
-            onDatePress={onDatePress}
-            legendText="Workout day"
+        <WidgetEditHeader editMode={widgetBoard.editMode} onDone={() => widgetBoard.setEditMode(false)} />
+        <WidgetsPanel
+          widgets={board.widgets}
+          editMode={widgetBoard.editMode}
+          onCycleSize={board.cycleWidgetSize}
+          onRemove={board.removeWidget}
+          onReorder={board.reorderWidgets}
+          onCustomize={board.customizeWidget}
+          renderContent={renderWidget}
+          registry={CLIENT_PAGE_WIDGET_REGISTRY}
+        />
+        {board.isLoaded && (
+          <WidgetEditButton
+            onPress={widgetBoard.openGallery}
+            editMode={widgetBoard.editMode}
+            onDone={() => widgetBoard.setEditMode(false)}
           />
-        )}
-        {selectedDate !== null && sessionsOn(selectedDate).map((s) => {
-          const tag = sessionOrigin(s, trainerId) === "with_you" ? "with you" : "on their own";
-          const title = sessionTitle(s) || dayLabel(s.dayNumber);
-          return (
-            <TouchableOpacity
-              key={String(s.id)}
-              style={styles.session}
-              onPress={() => void openSession(s)}
-              accessibilityRole="button"
-              accessibilityLabel={`${title}, ${tag}. Open details`}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={styles.sessionTitle}>{title}</Text>
-                {s.startTime !== undefined && (
-                  <Text style={styles.line}>{formatDate(new Date(s.startTime))}</Text>
-                )}
-              </View>
-              <Text style={styles.tag}>{tag}</Text>
-            </TouchableOpacity>
-          );
-        })}
-
-        <Text style={styles.section}>Permissions</Text>
-        {granted === null ? (
-          <ActivityIndicator color={colors.accent} accessibilityLabel="Loading permissions" />
-        ) : (
-          PERMISSION_GROUPS.map(({ label, types }) => (
-            <React.Fragment key={label}>
-              <Text style={styles.groupLabel}>{label}</Text>
-              {PERMISSION_TYPES.filter((p) => types.includes(p.type)).map(({ type, icon, title, receivedTitle }) => (
-                <View
-                  key={type}
-                  accessible
-                  accessibilityLabel={`${receivedTitle ?? title}, ${isGranted(type) ? "granted" : "not granted"}`}
-                >
-                  <PermissionRow
-                    icon={icon}
-                    title={receivedTitle ?? title}
-                    description={
-                      isGranted(type)
-                        ? `${client.username} has granted you this.`
-                        : `${client.username} hasn't granted you this.`
-                    }
-                    granted={isGranted(type)}
-                    readOnly
-                  />
-                </View>
-              ))}
-            </React.Fragment>
-          ))
-        )}
-
-        {!client.hasTrackingAccess ? (
-          <TouchableOpacity
-            style={styles.session}
-            onPress={() => onAskTracking(client)}
-            accessibilityRole="button"
-            accessibilityLabel={`Ask ${client.username} for Tracking Access`}
-          >
-            <Text style={styles.link}>Ask for Tracking Access</Text>
-          </TouchableOpacity>
-        ) : (
-          ownCode && (
-            <Text style={[styles.line, styles.legend]}>
-              {`Safety code ${ownCode}. ${client.username} sees it under your Tracking Access in Friends. If it matches, only this phone can read their data. Their tracking is in the Track tab.`}
-            </Text>
-          )
         )}
 
         <TouchableOpacity
@@ -394,6 +452,15 @@ export default function ClientPage({
           <Text style={styles.removeText}>Remove client</Text>
         </TouchableOpacity>
       </ModalSheet>
+      <WidgetGallery
+        visible={widgetBoard.galleryVisible}
+        onClose={widgetBoard.closeGallery}
+        availableWidgets={board.availableToAdd}
+        onAddWidget={widgetBoard.add}
+        hasPlacedWidgets={board.widgets.length > 0}
+        onEditWidgets={widgetBoard.editWidgets}
+        onRestoreDefaults={board.resetToDefaults}
+      />
       <SessionDetailsSheet
         session={selected}
         visible={selected !== null}
@@ -458,14 +525,9 @@ const makeStyles = (colors: ThemeColors) =>
     pickerBack: { minHeight: 48, justifyContent: "center", backgroundColor: colors.accentLight },
     chevron: { color: colors.accent, fontSize: 22, fontWeight: "600" },
     secondaryText: { color: colors.accent, fontWeight: "600" },
-    section: {
-      color: colors.textPrimary,
-      fontSize: 15,
-      fontWeight: "700",
-      marginTop: 12,
-      marginBottom: 8,
-    },
-    legend: { marginTop: 6 },
+    bigNumber: { color: colors.textPrimary, fontSize: 28, fontWeight: "700" },
+    bar: { height: 8, borderRadius: 4, marginTop: 8, overflow: "hidden", backgroundColor: colors.badgeBackground },
+    barFill: { height: 8, backgroundColor: colors.accent },
     link: { color: colors.accent, fontWeight: "600" },
     groupLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: "600", marginTop: 6, marginBottom: 8 },
     remove: { minHeight: 48, alignItems: "center", justifyContent: "center", marginTop: 24 },

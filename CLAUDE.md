@@ -109,7 +109,7 @@ modules/              # local Android-only Expo modules (Kotlin), autolinked: au
 
 ### Widget system
 
-Each screen (Home, Analytics, Workout, Plan, Friends, and each Tracking sub-tab) has an independent, per-user widget board driven by `useWidgets.tsx`: a registry of available widgets, defaults, and a persisted layout. Widgets are reorderable/resizable/removable via a two-finger pull gesture or the "Edit Widgets" panel. Fifteen boards in total, each with its own `STORAGE_KEYS.*_WIDGETS`.
+Each screen (Home, Analytics, Workout, Plan, Friends, each Tracking sub-tab, and the trainer Clients screen and client page) has an independent, per-user widget board driven by `useWidgets.tsx`: a registry of available widgets, defaults, and a persisted layout. Widgets are reorderable/resizable/removable via a two-finger pull gesture or the "Edit Widgets" panel. Seventeen boards in total, each with its own `STORAGE_KEYS.*_WIDGETS`.
 
 The layout is persisted per user, so the code on disk is only half the state. `useWidgets` drops any stored instance whose `type` is no longer in the registry, which means **renaming a widget type silently deletes that widget from every existing user's board**, while every test passes and the diff looks correct. A rename needs a migration that rewrites the stored `type`. No test enforces registry/defaults agreement. Run the `widget-board-reviewer` agent after touching a registry or `useWidgets`.
 

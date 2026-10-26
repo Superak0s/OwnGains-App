@@ -22,7 +22,13 @@ import { userFacingError } from "@shared/services/apiError";
 import { captureException, trackFeature } from "@shared/services/crashReporting";
 import { getActiveTrainee, queueTraineeStart, setActiveTrainee } from "@shared/services/trainerEvents";
 import { SCREEN_PADDING } from "@shared/layout";
-import type { RootStackParamList } from "@shared/types";
+import type { RootStackParamList, WidgetInstance } from "@shared/types";
+import { STORAGE_KEYS } from "@shared/services/storage";
+import { useWidgets, useWidgetBoard } from "@shared/context/hooks/useWidgets";
+import WidgetsPanel from "@shared/components/widgets/WidgetsPanel";
+import WidgetGallery from "@shared/components/widgets/WidgetGallery";
+import WidgetEditButton from "@shared/components/widgets/WidgetEditButton";
+import { WidgetEditHeader, WidgetPullHint } from "@shared/components/widgets/WidgetBoardChrome";
 import { sharingApi } from "@features/friends/services";
 import { programPayload, programSplits } from "@features/friends/utils";
 import {
@@ -38,6 +44,7 @@ import ClientRow, { daysAgoText } from "./components/ClientRow";
 import ClientPage from "./components/ClientPage";
 import AddClientSheet from "./components/AddClientSheet";
 import { purgeTrackingCopies, syncTrackingInbox } from "./utils/trackingInbox";
+import { CLIENTS_WIDGET_REGISTRY, DEFAULT_CLIENTS_WIDGETS, type ClientsWidgetType } from "./widgets";
 
 const STALE_AFTER_MS = 60_000;
 
@@ -59,6 +66,15 @@ export default function ClientsScreen(): React.JSX.Element {
   const [adding, setAdding] = useState(false);
   const lastLoadRef = useRef(0);
   const sendingRef = useRef(false);
+
+  const board = useWidgets<ClientsWidgetType>(user?.id == null ? null : String(user.id), {
+    registry: CLIENTS_WIDGET_REGISTRY,
+    defaults: DEFAULT_CLIENTS_WIDGETS,
+    storageKey: STORAGE_KEYS.TRAINER_CLIENTS_WIDGETS,
+  });
+  const widgetBoard = useWidgetBoard(board.addWidget, {
+    onError: (message) => alert("Can't add widget", message, [{ text: "OK" }], "info"),
+  });
 
   const alertError = useCallback(
     (message: string) => alert("Error", message, [{ text: "OK" }], "error"),
@@ -254,16 +270,45 @@ export default function ClientsScreen(): React.JSX.Element {
         </EmptyState>
       </>
     );
-  else
+  else {
+    const emptyLine = (text: string) => <Text style={styles.emptyLine}>{text}</Text>;
+    const renderWidget = (w: WidgetInstance<ClientsWidgetType>) => {
+      switch (w.type) {
+        case "attention_list":
+          return attention.length > 0 ? attention.map(renderRow) : emptyLine("Everyone is on track.");
+        case "on_track_list":
+          return onTrack.length > 0 ? onTrack.map(renderRow) : emptyLine("No one is on track yet this week.");
+        case "sent_requests":
+          return sent.length > 0 ? sent.map(renderSent) : emptyLine("No requests waiting.");
+      }
+    };
     body = (
       <>
         {errorBox}
-        {attention.length > 0 && <Text style={styles.section}>Needs attention</Text>}
-        {attention.map(renderRow)}
-        {onTrack.length > 0 && <Text style={styles.section}>On track</Text>}
-        {onTrack.map(renderRow)}
-        {sent.length > 0 && <Text style={styles.section}>Requests sent</Text>}
-        {sent.map((r) => (
+        <WidgetEditHeader editMode={widgetBoard.editMode} onDone={() => widgetBoard.setEditMode(false)} />
+        <WidgetsPanel
+          widgets={board.widgets}
+          editMode={widgetBoard.editMode}
+          onCycleSize={board.cycleWidgetSize}
+          onRemove={board.removeWidget}
+          onReorder={board.reorderWidgets}
+          onCustomize={board.customizeWidget}
+          renderContent={renderWidget}
+          registry={CLIENTS_WIDGET_REGISTRY}
+        />
+        {board.isLoaded && (
+          <WidgetEditButton
+            onPress={widgetBoard.openGallery}
+            editMode={widgetBoard.editMode}
+            onDone={() => widgetBoard.setEditMode(false)}
+          />
+        )}
+      </>
+    );
+  }
+
+  function renderSent(r: TrainerRequest) {
+    return (
           <View key={r.id} style={styles.sentRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.sentName}>{r.toUsername}</Text>
@@ -278,14 +323,15 @@ export default function ClientsScreen(): React.JSX.Element {
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
-        ))}
-      </>
     );
+  }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={styles.container} edges={["top"]} {...widgetBoard.panHandlers}>
+      {widgetBoard.isPulling && <WidgetPullHint armed={widgetBoard.pullArmed} />}
       <ScrollView
         contentContainerStyle={SCREEN_PADDING}
+        scrollEnabled={!widgetBoard.isPulling}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}
       >
         <View style={styles.titleRow}>
@@ -322,6 +368,15 @@ export default function ClientsScreen(): React.JSX.Element {
         onPick={(u) => void sendRequest({ userId: String(u.id), username: u.username }, false)}
         takenIds={takenIds}
       />
+      <WidgetGallery
+        visible={widgetBoard.galleryVisible}
+        onClose={widgetBoard.closeGallery}
+        availableWidgets={board.availableToAdd}
+        onAddWidget={widgetBoard.add}
+        hasPlacedWidgets={board.widgets.length > 0}
+        onEditWidgets={widgetBoard.editWidgets}
+        onRestoreDefaults={board.resetToDefaults}
+      />
       {AlertComponent}
     </SafeAreaView>
   );
@@ -333,14 +388,7 @@ const makeStyles = (colors: ThemeColors) =>
     titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
     addButton: { minHeight: 48, paddingHorizontal: 12, justifyContent: "center" },
     addText: { color: colors.accent, fontWeight: "600", fontSize: 15 },
-    section: {
-      color: colors.textSecondary,
-      fontSize: 13,
-      fontWeight: "700",
-      textTransform: "uppercase",
-      marginTop: 16,
-      marginBottom: 8,
-    },
+    emptyLine: { color: colors.textMuted, fontSize: 13 },
     message: { color: colors.textSecondary, fontSize: 14, textAlign: "center", marginTop: 8 },
     errorBox: { alignItems: "center", marginBottom: 8 },
     retry: { minHeight: 48, paddingHorizontal: 12, justifyContent: "center" },

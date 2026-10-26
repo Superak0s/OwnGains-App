@@ -110,13 +110,15 @@ Every tracking sub-tab is its own widget board: the calendar, the "today" card, 
 
 ### 🧩 Widget boards everywhere
 
-Every screen has a customizable widget board. Add, remove, resize, and reorder widgets with a two-finger downward pull or the "Edit Widgets" panel, tap Done to leave edit mode, and restore the default layout from the widget gallery. In edit mode, Customize gives a placed widget its own name, emoji icon and subtitle (leave a field empty for the default). Each screen has an independent, per-user layout, fifteen boards in total:
+Every screen has a customizable widget board. Add, remove, resize, and reorder widgets with a two-finger downward pull or the "Edit Widgets" panel, tap Done to leave edit mode, and restore the default layout from the widget gallery. In edit mode, Customize gives a placed widget its own name, emoji icon and subtitle (leave a field empty for the default). Each screen has an independent, per-user layout, seventeen boards in total:
 
 - **Home:** next workout, weekly progress, workout history calendar, streak, morning recovery check, **plus any widget from any other board**, so the home screen can borrow your weight trend, weekly volume, or friends list.
 - **Progress:** exercise/muscle selector, workout history, weekly sets, exercises in a muscle group, estimated 1RM, personal records, progress rate, rep range split, training frequency, rest & fatigue, plus weight progress, reps progress, all set data and last workout from the gallery
 - **Workout:** day, total sets, progress, session stats
 - **Plan:** build your plan, your splits, schedule, weekly volume, program
 - **Friends:** find friends and your friends on one tab, pending and sent requests on the other
+- **Clients (trainer mode):** needs attention, on track, requests sent
+- **Client page (trainer mode):** this week's progress against the target, schedule, recent sessions, permissions, tracking
 - **Tracking:** each sub-tab (Hydration, Weight, Photos, Macros, Body Fat, Measurements, Recovery, Cycle, and Health on Android) has its own board
 
 ### 🎨 Make it yours

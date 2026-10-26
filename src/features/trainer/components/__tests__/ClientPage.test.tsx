@@ -3,6 +3,7 @@ jest.mock("@shared/services/sqliteStorage", () => require("test-utils/memorySqli
 jest.mock("@shared/context/ThemeContext", () => require("test-utils/renderWithProviders").themeModule)
 jest.mock("@features/analytics/components/ExerciseAnalytics", () => () => null)
 jest.mock("@features/schedule/ScheduleWidget", () => () => null)
+jest.mock("@shared/components/widgets/WidgetEditButton", () => () => null)
 // The real calendar only renders the current month, so this stand-in exposes one button for the session date.
 jest.mock("@shared/components/UniversalCalendar", () => {
   const { Pressable, Text } = require("react-native")
@@ -196,4 +197,13 @@ it("lists which permissions the client has granted, and asks for Tracking Access
   expect(screen.getByLabelText("Tracking Access, not granted")).toBeTruthy()
   await fireEvent.press(screen.getByRole("button", { name: "Ask anna for Tracking Access" }))
   expect(props.onAskTracking).toHaveBeenCalledWith(c)
+})
+
+it("shows the week's sessions against the client's target on the progress widget", async () => {
+  sharing.getFriendSessions.mockResolvedValue([])
+  await render(
+    wrap(<ClientPage {...props} client={{ ...client("1", "anna"), sessionsThisWeek: 2, activeProgramDayCount: 3 }} />),
+  )
+
+  expect(await screen.findByLabelText("2 of 3 sessions this week")).toBeTruthy()
 })
