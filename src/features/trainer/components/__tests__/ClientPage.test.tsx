@@ -207,3 +207,11 @@ it("shows the week's sessions against the client's target on the progress widget
 
   expect(await screen.findByLabelText("2 of 3 sessions this week")).toBeTruthy()
 })
+
+it("closes the client page with the close button only, with no Cancel or Save footer", async () => {
+  sharing.getFriendSessions.mockResolvedValue([])
+  await render(wrap(<ClientPage {...props} client={client("1", "anna")} />))
+
+  expect(screen.queryByText("Save")).toBeNull()
+  expect(screen.queryByText("Cancel")).toBeNull()
+})

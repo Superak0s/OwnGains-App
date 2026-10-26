@@ -287,6 +287,8 @@ export default function ClientPage({
         title={client.username}
         fullHeight
         scrollable
+        showCancelButton={false}
+        showConfirmButton={false}
       >
         <View style={styles.header}>
           <Avatar name={client.username} size={48} style={styles.avatar} textStyle={styles.initial} />
@@ -460,6 +462,7 @@ export default function ClientPage({
         hasPlacedWidgets={board.widgets.length > 0}
         onEditWidgets={widgetBoard.editWidgets}
         onRestoreDefaults={board.resetToDefaults}
+        pullHint={false}
       />
       <SessionDetailsSheet
         session={selected}

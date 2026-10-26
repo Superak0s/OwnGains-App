@@ -1,6 +1,6 @@
 # TODO
 
-Last updated: 2026-10-19
+Last updated: 2026-10-26
 
 ## In progress
 
@@ -38,15 +38,6 @@ Supplement history should be better with more data.
 ## Roadmap
 
 Grouped by when each item should start. Earlier groups come first, and a later group can depend on an earlier one.
-
-### Short term
-
-- **Fix theme switching.** Themes still have gaps that will hide problems in every later change. Audit each screen in light and dark mode, move hardcoded colors onto the theme tokens in `ThemeContext`, and check contrast on widget boards and charts. Done when no visible color ignores the active theme.
-
-### Near term
-
-- **Let users pick widget names, icons and other details.** Today a widget's title and icon are fixed in code. Users should be able to rename a widget and choose its icon (and anything else that makes sense, such as a short subtitle) from a picker, per placed widget. The choice is stored with the layout, so it survives updates, and the defaults stay as they are for anyone who doesn't change anything. Keep the stored widget `type` unchanged, since that is the key `useWidgets` matches on.
-- **Turn the trainer mode screens into widgets.** The Clients, client page and trainer Track views are fixed screens today. Split them into widgets (client list, attention list, a client's week, recent sessions, progress, tracking) so trainers can arrange them on their own boards the same way as the personal screens. This needs its own widget boards and storage keys, and it follows the same rules as the other boards: register each widget and its default, and never rename a type without a migration.
 
 ### Medium term
 

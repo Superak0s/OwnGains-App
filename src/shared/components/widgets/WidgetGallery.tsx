@@ -34,6 +34,8 @@ interface WidgetGalleryProps<T extends string> {
   readonly subSources?: Record<string, string>
   /** Shows a confirmed "Restore default widgets" action when given. */
   readonly onRestoreDefaults?: () => void
+  /** False on boards that turn the two-finger pull off, so the hint isn't offered there. Defaults to true. */
+  readonly pullHint?: boolean
 }
 
 export default function WidgetGallery<T extends string>({
@@ -46,6 +48,7 @@ export default function WidgetGallery<T extends string>({
   sources,
   subSources,
   onRestoreDefaults,
+  pullHint = true,
 }: WidgetGalleryProps<T>): React.JSX.Element {
   const { colors } = useTheme()
   const { alert, AlertComponent } = useAlert()
@@ -166,9 +169,11 @@ export default function WidgetGallery<T extends string>({
               <Text style={styles.title} accessibilityRole='header'>
                 Add a Widget
               </Text>
-              <Text style={styles.subtitle}>
-                Pull down with two fingers to open this anytime
-              </Text>
+              {pullHint && (
+                <Text style={styles.subtitle}>
+                  Pull down with two fingers to open this anytime
+                </Text>
+              )}
             </View>
             <View style={styles.headerActions}>
               {hasPlacedWidgets && (
@@ -227,7 +232,7 @@ export default function WidgetGallery<T extends string>({
                   activeOpacity={0.8}
                   onPress={() => onAddWidget(def.type)}
                   accessibilityRole='button'
-                  accessibilityLabel={`Add ${def.title} widget`}
+                  accessibilityLabel={def.title ? `Add ${def.title} widget` : `Add widget: ${def.description}`}
                   accessibilityHint={def.description}
                 >
                   {!!def.icon && <Text style={styles.cardIcon}>{def.icon}</Text>}

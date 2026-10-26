@@ -20,6 +20,8 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ### Fixed
 
+- A trainer's client page no longer shows Cancel and Save buttons that did nothing. Close it with the ✕.
+- Screen readers name widgets without a title in the widget gallery (such as the weight widgets) by their description instead of reading "Add undefined widget".
 - Turning on Trainer Mode offers the trainer tour only the first time, not on every switch. You can replay it from Settings → About → Tutorial.
 - Body fat, measurement and macro entries typed with a decimal comma, like 85,5, keep their decimals instead of being saved as 85.
 - A program imported from a spreadsheet without a "Total Sets:" row shows its real set count instead of 0 sets.
