@@ -581,6 +581,7 @@ export default function HomeScreen(): React.JSX.Element {
     addWidget,
     removeWidget,
     cycleWidgetSize,
+    customizeWidget,
     reorderWidgets,
     resetToDefaults,
   } = useWidgets<HomeWidgetType>(userId ?? null, {
@@ -1109,6 +1110,7 @@ export default function HomeScreen(): React.JSX.Element {
             onCycleSize={cycleWidgetSize}
             onRemove={removeWidget}
             onReorder={reorderWidgets}
+            onCustomize={customizeWidget}
             renderContent={renderWidgetContent}
             registry={HOME_WIDGET_REGISTRY}
             getCardBackgroundColor={(w) =>

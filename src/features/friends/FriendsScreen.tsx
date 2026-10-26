@@ -1861,6 +1861,7 @@ export default function FriendsScreen({
                 onCycleSize={activeBoard.cycleWidgetSize}
                 onRemove={activeBoard.removeWidget}
                 onReorder={activeBoard.reorderWidgets}
+                onCustomize={activeBoard.customizeWidget}
                 renderContent={renderWidgetContent}
                 registry={activeRegistry}
               />

@@ -270,6 +270,7 @@ function PlanScreenBody({
     addWidget,
     removeWidget,
     cycleWidgetSize,
+    customizeWidget,
     reorderWidgets: reorderPlacedWidgets,
   } = useWidgets<PlanWidgetType>(userId ?? null, {
     registry: PLAN_WIDGET_REGISTRY,
@@ -1532,6 +1533,7 @@ Your program is untouched. Try again, or pick a different destination.`,
                   onCycleSize={cycleWidgetSize}
                   onRemove={removeWidget}
                   onReorder={reorderWidgets}
+                  onCustomize={customizeWidget}
                   renderContent={renderWidgetContent}
                   registry={PLAN_WIDGET_REGISTRY}
                 />

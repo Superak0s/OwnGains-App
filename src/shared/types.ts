@@ -334,7 +334,13 @@ export interface WidgetInstance<T extends string = string> {
   type: T;
   size: WidgetSize;
   order: number;
+  /** User-chosen header text and icon. Absent means the registry default. */
+  title?: string;
+  icon?: string;
+  subtitle?: string;
 }
+
+export type WidgetDetails = Pick<WidgetInstance, "title" | "icon" | "subtitle">;
 
 /**
  * A screen's starting board: the widget types it opens with, in order, each at

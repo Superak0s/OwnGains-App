@@ -121,6 +121,25 @@ describe("useWidgets", () => {
     expect(showToast).toHaveBeenCalled();
   });
 
+  it("stores a widget's custom details trimmed and keeps its type, and a blank field falls back", async () => {
+    const board = await mount([inst("1", "a", 0), inst("2", "c", 1)]);
+    await act(async () => {
+      await board.current!.customizeWidget("1", { title: "  Legs  ", icon: "🦵", subtitle: " " });
+    });
+    expect(board.current!.widgets[0]).toEqual({ ...inst("1", "a", 0), title: "Legs", icon: "🦵" });
+    expect(board.current!.widgets[1]).toEqual(inst("2", "c", 1));
+
+    await act(async () => {
+      await board.current!.customizeWidget("1", { title: "" });
+    });
+    expect(JSON.parse(JSON.stringify(save.mock.lastCall[1][0]))).toEqual(inst("1", "a", 0));
+  });
+
+  it("keeps stored custom details on load", async () => {
+    const board = await mount([{ ...inst("1", "a", 0), title: "Mine", subtitle: "sub" }]);
+    expect(board.current!.widgets[0]).toMatchObject({ type: "a", title: "Mine", subtitle: "sub" });
+  });
+
   it("restores the board's defaults after the layout was changed", async () => {
     const board = await mount([inst("1", "b", 0, "large"), inst("2", "c", 1)]);
     await act(async () => {

@@ -10,6 +10,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 - When a trainer changes your plan, the Plan tab shows who changed it and lets you undo it for 7 days, once the server is updated. A trainer who removes days from a client's plan is asked to confirm first.
 - A ringing supplement alarm snoozes when you press volume down and turns off when you press the power button, like the Android clock.
+- In edit mode, Customize gives any placed widget its own name, emoji icon and subtitle. Leave a field empty to keep the default.
 
 ### Changed
 
@@ -41,6 +42,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Release builds let R8 shrink Expo modules, Sentry and react-native-svg (they include their own keep rules), drop the unused animated-GIF decoder, include native debug symbols in the AAB for Play vitals, and use `enableMinifyInReleaseBuilds` in place of the deprecated ProGuard option.
 - Expo SDK 58 (React Native 0.88, React 19.3, Jest 30, Sentry 8), React Native Firebase 27 and react-native-zeroconf 0.17, which ships its own types and needs a release-build keep rule for its JNI classes. Android compileSdk is 37 (targetSdk stays 36), and native modules build with CMake 3.31.6 so Windows builds handle long paths. Refs use the new `*Instance` types and `react-test-renderer` is a direct dev dependency. `app.json` drops the deprecated `assetBundlePatterns` key. Native builds need CMake 3.31.6 installed in the Android SDK, now noted in the README and CLAUDE.md.
 - Request-shape tests cover the trainer confirm flag and the program snapshot calls.
+- Tests cover saving and showing custom widget details.
 - `release.sh` checks the branch, `origin/main` and `gh auth` before building, takes the versionCode above Play's highest, runs `act` alongside the local checks, keeps `node_modules` in the WSL mirror across syncs and Ctrl+C (and with `--no-prebuild` also `android/` and `.expo/`), pins the GitHub release to the built commit and prints a retry command if it fails, compares xlsx against the latest SheetJS release, saves each run to `release/*.log` with step timings, and rejects `debug apk`. CI runs shellcheck on it.
 - `release.sh` lists what the release commit will include before asking for its message, and a "Keep version" release adds a new commit instead of amending and force-pushing the last one.
 - Second dedupe pass: session detail rows, sign-in requests and session storage, median, progress photo pickers, the spreadsheet target range parser.

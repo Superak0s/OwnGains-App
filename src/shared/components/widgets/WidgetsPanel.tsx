@@ -1,12 +1,14 @@
-import React, { useMemo } from "react"
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native"
+import React, { useMemo, useState } from "react"
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native"
 import { useTheme } from "@shared/context/ThemeContext"
 import { useAlert } from "@shared/components/CustomAlert"
+import ModalSheet from "@shared/components/ModalSheet"
 import { WidgetSizeContext } from "./widgetSize"
 import { moveWidget, type MoveDirection } from "./moveWidget"
 import type { ThemeColors } from "@shared/context/ThemeContext"
 import type {
   WidgetDefinition,
+  WidgetDetails,
   WidgetInstance,
   WidgetSize,
 } from "@shared/types"
@@ -17,6 +19,8 @@ interface WidgetsPanelProps<T extends string> {
   readonly onCycleSize: (id: string) => void
   readonly onRemove: (id: string) => void
   readonly onReorder: (orderedIds: string[]) => void
+  /** Saves a placed widget's own name, icon and subtitle. Without it the Customize button is hidden. */
+  readonly onCustomize?: (id: string, details: WidgetDetails) => void
   readonly renderContent: (instance: WidgetInstance<T>) => React.ReactNode
   /** Per-screen widget-kind registry (icon, title, sizes, ...). */
   readonly registry: Record<T, WidgetDefinition<T>>
@@ -82,6 +86,7 @@ export default function WidgetsPanel<T extends string>({
   onCycleSize,
   onRemove,
   onReorder,
+  onCustomize,
   renderContent,
   registry,
   getCardBackgroundColor,
@@ -94,12 +99,31 @@ export default function WidgetsPanel<T extends string>({
   const { colors } = useTheme()
   const styles = useMemo(() => makeStyles(colors), [colors])
   const { alert, AlertComponent } = useAlert()
+  const [customizing, setCustomizing] = useState<WidgetInstance<T> | null>(null)
+  const [draft, setDraft] = useState<WidgetDetails>({})
 
   if (widgets.length === 0) return null
 
+  const openCustomize = (instance: WidgetInstance<T>) => {
+    setDraft({ title: instance.title, icon: instance.icon, subtitle: instance.subtitle })
+    setCustomizing(instance)
+  }
+
+  const saveCustomize = () => {
+    if (customizing) onCustomize?.(customizing.id, draft)
+    setCustomizing(null)
+  }
+
+  const customizingDef = customizing ? registry[customizing.type] : undefined
+  const draftFields: { key: keyof WidgetDetails; label: string; placeholder?: string; maxLength: number }[] = [
+    { key: "title", label: "Name", placeholder: customizingDef?.title, maxLength: 40 },
+    { key: "icon", label: "Icon (emoji)", placeholder: customizingDef?.icon, maxLength: 8 },
+    { key: "subtitle", label: "Subtitle", placeholder: "None", maxLength: 60 },
+  ]
+
   const confirmRemove = (instance: WidgetInstance<T>) => {
     alert(
-      `Remove ${registry[instance.type]?.title ?? "this widget"}?`,
+      `Remove ${instance.title ?? registry[instance.type]?.title ?? "this widget"}?`,
       "You can add it back any time from the widget gallery.",
       [
         { text: "Keep", style: "cancel" },
@@ -138,7 +162,9 @@ export default function WidgetsPanel<T extends string>({
           : null
         const styleOverride = getCardStyleOverride?.(instance)
 
-        const title = def.title || "widget"
+        const headerTitle = instance.title ?? def.title
+        const headerIcon = instance.icon ?? def.icon
+        const title = headerTitle || "widget"
         const moveRows =
           instance.size === "small" ? SMALL_MOVE_ROWS : FULL_MOVE_ROWS
         const sizes = def.availableSizes
@@ -148,23 +174,28 @@ export default function WidgetsPanel<T extends string>({
         const inner = (
           <>
             <View style={styles.widgetHeader}>
-              {def.icon && (
+              {headerIcon && (
                 <Text
                   style={[styles.widgetIcon, headerTextStyle]}
                 >
-                  {def.icon}
+                  {headerIcon}
                 </Text>
               )}
-              {def.title && (
+              {headerTitle && (
                 <Text
                   style={[styles.widgetTitle, headerTextStyle]}
                   numberOfLines={1}
                   accessibilityRole='header'
                 >
-                  {def.title}
+                  {headerTitle}
                 </Text>
               )}
             </View>
+            {instance.subtitle && (
+              <Text style={[styles.widgetSubtitle, headerTextStyle]} numberOfLines={2}>
+                {instance.subtitle}
+              </Text>
+            )}
             {editMode && (
               <View style={styles.editControls}>
                 <View style={styles.editRow}>
@@ -178,6 +209,19 @@ export default function WidgetsPanel<T extends string>({
                     >
                       <Text style={[styles.sizeButtonText, headerTextStyle]}>
                         {SIZE_LABEL[instance.size]}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {onCustomize && (
+                    <TouchableOpacity
+                      onPress={() => openCustomize(instance)}
+                      style={[styles.sizeButton, controlBorderStyle]}
+                      accessibilityRole='button'
+                      accessibilityLabel={`Customize ${title}`}
+                      accessibilityHint='Changes its name, icon and subtitle'
+                    >
+                      <Text style={[styles.sizeButtonText, headerTextStyle]}>
+                        Customize
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -249,6 +293,37 @@ export default function WidgetsPanel<T extends string>({
       })}
       {footer}
       {AlertComponent}
+      <ModalSheet
+        visible={customizing !== null}
+        onClose={() => setCustomizing(null)}
+        title='Customize widget'
+        subtitle='Leave a field empty to use the default.'
+        confirmText='Save'
+        onConfirm={saveCustomize}
+        dirty={draftFields.some(({ key }) => (draft[key] ?? "") !== (customizing?.[key] ?? ""))}
+      >
+        {draftFields.map(({ key, label, placeholder, maxLength }) => (
+          <View key={key} style={styles.field}>
+            <Text style={styles.fieldLabel}>{label}</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={draft[key] ?? ""}
+              onChangeText={(text) => setDraft((d) => ({ ...d, [key]: text }))}
+              placeholder={placeholder}
+              placeholderTextColor={colors.textMuted}
+              maxLength={maxLength}
+              accessibilityLabel={label}
+            />
+          </View>
+        ))}
+        <TouchableOpacity
+          onPress={() => setDraft({})}
+          style={styles.resetButton}
+          accessibilityRole='button'
+        >
+          <Text style={styles.resetButtonText}>Use defaults</Text>
+        </TouchableOpacity>
+      </ModalSheet>
     </View>
   )
 }
@@ -291,6 +366,41 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.textSecondary,
       flexShrink: 1,
     },
+    widgetSubtitle: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: -4,
+      marginBottom: 8,
+    },
+    field: {
+      marginBottom: 12,
+    },
+    fieldLabel: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      marginBottom: 6,
+    },
+    fieldInput: {
+      backgroundColor: colors.inputBackground,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      fontSize: 14,
+      color: colors.textPrimary,
+    },
+    resetButton: {
+      minHeight: 44,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    resetButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.accent,
+    },
     headerSpacer: {
       flex: 1,
     },
@@ -300,6 +410,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     editRow: {
       flexDirection: "row",
+      flexWrap: "wrap",
       justifyContent: "center",
       alignItems: "center",
       gap: 8,

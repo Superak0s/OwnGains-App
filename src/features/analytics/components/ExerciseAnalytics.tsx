@@ -218,6 +218,7 @@ export default function ExerciseAnalytics({
     addWidget,
     removeWidget,
     cycleWidgetSize,
+    customizeWidget,
     reorderWidgets,
   } = useWidgets<AnalyticsWidgetType>(userId == null ? null : String(userId), {
     registry: ANALYTICS_WIDGET_REGISTRY,
@@ -1095,6 +1096,7 @@ export default function ExerciseAnalytics({
           onCycleSize={cycleWidgetSize}
           onRemove={removeWidget}
           onReorder={reorderWidgets}
+          onCustomize={customizeWidget}
           renderContent={renderWidgetContent}
           registry={ANALYTICS_WIDGET_REGISTRY}
         />

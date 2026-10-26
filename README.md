@@ -110,7 +110,7 @@ Every tracking sub-tab is its own widget board: the calendar, the "today" card, 
 
 ### 🧩 Widget boards everywhere
 
-Every screen has a customizable widget board. Add, remove, resize, and reorder widgets with a two-finger downward pull or the "Edit Widgets" panel, tap Done to leave edit mode, and restore the default layout from the widget gallery. Each screen has an independent, per-user layout, fifteen boards in total:
+Every screen has a customizable widget board. Add, remove, resize, and reorder widgets with a two-finger downward pull or the "Edit Widgets" panel, tap Done to leave edit mode, and restore the default layout from the widget gallery. In edit mode, Customize gives a placed widget its own name, emoji icon and subtitle (leave a field empty for the default). Each screen has an independent, per-user layout, fifteen boards in total:
 
 - **Home:** next workout, weekly progress, workout history calendar, streak, morning recovery check, **plus any widget from any other board**, so the home screen can borrow your weight trend, weekly volume, or friends list.
 - **Progress:** exercise/muscle selector, workout history, weekly sets, exercises in a muscle group, estimated 1RM, personal records, progress rate, rep range split, training frequency, rest & fatigue, plus weight progress, reps progress, all set data and last workout from the gallery

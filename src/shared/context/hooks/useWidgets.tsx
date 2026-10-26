@@ -7,6 +7,7 @@ import { generateId } from "@utils/format"
 import type {
   WidgetInstance,
   WidgetDefinition,
+  WidgetDetails,
 } from "@shared/types"
 import { captureException, metric, trackFeature } from "@shared/services/crashReporting"
 import { showToast } from "@shared/components/toast"
@@ -144,10 +145,11 @@ export function useWidgets<T extends string>(
       if (!def) return { success: false, error: "Unknown widget type" }
 
       const current = widgetsRef.current
-      if (current.some((w) => w.type === type)) {
+      const placed = current.find((w) => w.type === type)
+      if (placed) {
         return {
           success: false,
-          error: `${def.title} is already on this board`,
+          error: `${placed.title ?? def.title} is already on this board`,
         }
       }
 
@@ -209,6 +211,22 @@ export function useWidgets<T extends string>(
     [persist, storageKey],
   )
 
+  // A blank field is saved as undefined (dropped from the JSON), so clearing it
+  // brings back the registry default and later changes to that default apply.
+  const customizeWidget = useCallback(
+    async (id: string, details: WidgetDetails) => {
+      const clean = (v?: string) => v?.trim() || undefined
+      const next = widgetsRef.current.map((w) =>
+        w.id === id
+          ? { ...w, title: clean(details.title), icon: clean(details.icon), subtitle: clean(details.subtitle) }
+          : w,
+      )
+      await persist(next)
+      trackFeature("widgets", "customize", { board: storageKey })
+    },
+    [persist, storageKey],
+  )
+
   const resetToDefaults = useCallback(async () => {
     await persist(defaultsRef.current)
     trackFeature("widgets", "reset", { board: storageKey })
@@ -231,6 +249,7 @@ export function useWidgets<T extends string>(
     removeWidget,
     cycleWidgetSize,
     reorderWidgets,
+    customizeWidget,
     resetToDefaults,
   }
 }

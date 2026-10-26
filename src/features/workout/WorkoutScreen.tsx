@@ -457,6 +457,7 @@ function WorkoutScreenBody({
     addWidget,
     removeWidget,
     cycleWidgetSize,
+    customizeWidget,
     reorderWidgets,
   } = useWidgets<WorkoutWidgetType>(targetUserId, {
     registry: WORKOUT_WIDGET_REGISTRY,
@@ -2120,6 +2121,7 @@ Note: ${existing.note}`;
             onCycleSize={cycleWidgetSize}
             onRemove={removeWidget}
             onReorder={reorderWidgets}
+            onCustomize={customizeWidget}
             renderContent={renderWidgetContent}
             registry={WORKOUT_WIDGET_REGISTRY}
             getCardBackgroundColor={() => dayOverviewTint}
