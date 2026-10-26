@@ -335,7 +335,7 @@ const makeStyles = (colors: ThemeColors) =>
       fontWeight: "600",
       color: colors.textSecondary,
     },
-    periodChipTextActive: { color: colors.surface },
+    periodChipTextActive: { color: colors.textOnAccent },
     muscleRow: {
       flexDirection: "row",
       alignItems: "center",

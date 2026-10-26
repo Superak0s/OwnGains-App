@@ -38,6 +38,10 @@ jobs:
 
       - run: npx tsc --noEmit
 
+      # The act image release.sh runs this job in has no shellcheck.
+      - if: ${{ !env.ACT }}
+        run: shellcheck -S warning scripts/release.sh
+
       # Compared against a copy, not git, because release.sh runs this job under
       # act on a tree with uncommitted changes.
       - name: Legal pages match the in-app screens

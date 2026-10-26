@@ -13,6 +13,7 @@ import {
   useIAP,
   type Purchase,
 } from "expo-iap";
+import { isRecoverableError } from "expo-iap/build/utils/errorMapping";
 import ModalSheet from "@shared/components/ModalSheet";
 import { showToast } from "@shared/components/toast";
 import { captureException, metric } from "@shared/services/crashReporting";
@@ -26,13 +27,13 @@ interface Props {
   readonly onClose: () => void;
 }
 
-const consume = async (purchase: Purchase): Promise<void> => {
-  try {
-    await finishTransaction({ purchase, isConsumable: true });
-  } catch (error) {
-    captureException(error, { stage: "tipJarConsume" });
-  }
+// Play being unreachable or having no tip products is what the "not available" note covers, not a bug.
+const reportStoreError = (stage: string) => (error: unknown): void => {
+  if (!isRecoverableError(error)) captureException(error, { stage });
 };
+
+const consume = (purchase: Purchase): Promise<void> =>
+  finishTransaction({ purchase, isConsumable: true }).catch(reportStoreError("tipJarConsume"));
 
 function TipOptions({ styles }: { readonly styles: Styles }) {
   const [buying, setBuying] = useState<string | null>(null);
@@ -61,12 +62,11 @@ function TipOptions({ styles }: { readonly styles: Styles }) {
 
   useEffect(() => {
     if (!connected) return;
-    void fetchProducts({ skus: [...TIP_PRODUCT_IDS], type: "in-app" });
+    fetchProducts({ skus: [...TIP_PRODUCT_IDS], type: "in-app" })
+      .catch(reportStoreError("tipJarProducts"));
     getAvailablePurchases()
       .then((purchases) => Promise.all(tipsToConsume(purchases).map(consume)))
-      .catch((error: unknown) =>
-        captureException(error, { stage: "tipJarRestore" }),
-      );
+      .catch(reportStoreError("tipJarRestore"));
   }, [connected, fetchProducts]);
 
   useEffect(() => {

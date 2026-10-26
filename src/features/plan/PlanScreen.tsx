@@ -157,10 +157,12 @@ function PlanScreenBody({
   embedWidget,
   title = "Plan",
   onTitlePress,
+  hideSchedule = false,
 }: {
   readonly embedWidget?: PlanWidgetType;
   readonly title?: string;
   readonly onTitlePress?: () => void;
+  readonly hideSchedule?: boolean;
 }): React.JSX.Element {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -262,18 +264,27 @@ function PlanScreenBody({
   }
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
   const {
-    widgets,
+    widgets: placedWidgets,
     isLoaded: widgetsLoaded,
-    availableToAdd,
+    availableToAdd: addableWidgets,
     addWidget,
     removeWidget,
     cycleWidgetSize,
-    reorderWidgets,
+    reorderWidgets: reorderPlacedWidgets,
   } = useWidgets<PlanWidgetType>(userId ?? null, {
     registry: PLAN_WIDGET_REGISTRY,
     defaults: DEFAULT_PLAN_WIDGETS,
     storageKey: STORAGE_KEYS.PLAN_WIDGETS,
   });
+  const isShown = (type: PlanWidgetType) => !hideSchedule || type !== "schedule";
+  const widgets = placedWidgets.filter((w) => isShown(w.type));
+  const availableToAdd = addableWidgets.filter((d) => isShown(d.type));
+  // Hidden widgets stay in the stored layout so they come back in trainer mode.
+  const reorderWidgets = (ids: string[]) =>
+    reorderPlacedWidgets([
+      ...ids,
+      ...placedWidgets.filter((w) => !isShown(w.type)).map((w) => w.id),
+    ]);
 
   const [contentReady, setContentReady] = useState(false);
 
@@ -1757,7 +1768,8 @@ export default function PlanScreen({
     }, [isTrainer]),
   );
 
-  if (!isTrainer) return <PlanScreenBody embedWidget={embedWidget} />;
+  if (!isTrainer)
+    return <PlanScreenBody embedWidget={embedWidget} hideSchedule={!embedWidget} />;
 
   const openPicker = () => setPicking(true);
   const choose = (id: string | null) => {

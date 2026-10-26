@@ -3,6 +3,7 @@
 //   play-upload.js <aab> <track>[,<track>...]
 //   play-upload.js --check
 // --check opens and discards an edit, so a missing Play Console permission fails before a build.
+// It prints the highest versionCode Play has, so a release never reuses one uploaded from another machine.
 const fs = require("node:fs");
 const path = require("node:path");
 const { API, pkg, accessToken, call } = require("./play-auth");
@@ -27,7 +28,9 @@ async function main() {
   const editPath = `${app}/edits/${edit.id}`;
 
   if (checkOnly) {
+    const { bundles = [] } = await call(`${API}${editPath}/bundles`, { method: "GET", headers: auth });
     await call(`${API}${editPath}`, { method: "DELETE", headers: auth });
+    console.log(Math.max(0, ...bundles.map((b) => b.versionCode)));
     return;
   }
 

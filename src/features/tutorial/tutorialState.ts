@@ -9,6 +9,7 @@ export interface TutorialState {
   firstRunDone: boolean;
   firstRunMode: AppMode | null;
   onlineTourOffered: boolean;
+  trainerTourOffered: boolean;
 }
 
 // No `_user_` suffix on purpose: clearUserData and account, server or mode
@@ -31,6 +32,7 @@ export function parseTutorialState(raw: string | null): TutorialState {
     firstRunMode:
       o.firstRunMode === "online" || o.firstRunMode === "offline" ? o.firstRunMode : null,
     onlineTourOffered: o.onlineTourOffered === true,
+    trainerTourOffered: o.trainerTourOffered === true,
   };
 }
 
@@ -66,6 +68,9 @@ export const markFirstRunDone = (mode: AppMode) =>
 
 export const markOnlineTourOffered = () =>
   updateTutorialState((s) => ({ ...s, onlineTourOffered: true }));
+
+export const markTrainerTourOffered = () =>
+  updateTutorialState((s) => ({ ...s, trainerTourOffered: true }));
 
 export function gateAction(
   s: TutorialState,

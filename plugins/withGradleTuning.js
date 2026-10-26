@@ -20,6 +20,8 @@ const FORCED_PROPERTIES = {
   "kotlin.daemon.jvm.options": `-Xmx${kotlinHeapGb}g`,
   "android.enableR8.fullMode": "true",
   "android.r8.optimizedResourceShrinking": "true",
+  // No bundled GIFs, so Fresco's animated-GIF decoder is dead weight.
+  "expo.gif.enabled": "false",
   // x86_64 is emulator-only weight. Dropping armeabi-v7a excludes every 32-bit
   // device, so only release.sh narrows it: arm64-v8a for the APKs unless
   // `--32bit` is passed, and never for the AAB.

@@ -14,11 +14,12 @@ import {
   useTheme,
   type AppTheme,
   type ThemeColors,
+  BUILT_IN_THEME_IDS,
   LIGHT_COLORS,
   DARK_COLORS,
   isDarkColor,
   isValidHex,
-  toRgbHex,
+  withAlpha,
   darken,
   contrastRatio,
 } from "../context/ThemeContext"
@@ -113,8 +114,6 @@ const COLOR_ROWS: ColorRow[] = [
   { key: "separator", label: "Separator", description: "Divider lines" },
 ]
 
-const BUILT_IN_IDS = new Set(["system", "light", "dark"])
-
 const HEX_HINT = "Use #rgb, #rrggbb or #rrggbbaa"
 
 // Body text has to clear WCAG AA against both the page and card backgrounds.
@@ -124,15 +123,6 @@ const safeHex = (value: string, fallback: string) =>
   isValidHex(value) ? value : fallback
 
 const withHash = (text: string) => (text.startsWith("#") ? text : `#${text}`)
-
-function withAlpha(hex: string, alpha: number): string {
-  const rgb = toRgbHex(hex)
-  if (!rgb) return hex
-  const a = Math.round(alpha * 255)
-    .toString(16)
-    .padStart(2, "0")
-  return `${rgb}${a}`
-}
 
 // Semantic colours are taken from whichever built-in preset matches the
 // background's lightness. The light set on a dark background renders status
@@ -196,7 +186,7 @@ function ThemeCard({
 }) {
   const { colors: ui } = useTheme()
   const c = theme.colors
-  const isBuiltIn = BUILT_IN_IDS.has(theme.id)
+  const isBuiltIn = BUILT_IN_THEME_IDS.has(theme.id)
 
   return (
     <View
@@ -550,8 +540,8 @@ export default function ThemeEditorModal({
     },
   ]
 
-  const builtInThemes = allThemes.filter((t) => BUILT_IN_IDS.has(t.id))
-  const customThemes = allThemes.filter((t) => !BUILT_IN_IDS.has(t.id))
+  const builtInThemes = allThemes.filter((t) => BUILT_IN_THEME_IDS.has(t.id))
+  const customThemes = allThemes.filter((t) => !BUILT_IN_THEME_IDS.has(t.id))
 
   const resetCreate = () => {
     setThemeName("")
@@ -925,6 +915,7 @@ export default function ThemeEditorModal({
                       style={[
                         s.quickSwatch,
                         {
+                          borderColor: colors.surfaceBorder,
                           backgroundColor: safeHex(
                             val,
                             colors.inputBackground,
@@ -1135,7 +1126,6 @@ const s = StyleSheet.create({
     height: 28,
     borderRadius: 7,
     borderWidth: 1,
-    borderColor: "#00000020",
   },
   quickColorLabel: { flex: 1, fontSize: 13, fontWeight: "600" },
   quickColorInput: {

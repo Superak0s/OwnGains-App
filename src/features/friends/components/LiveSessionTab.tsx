@@ -21,6 +21,7 @@ import { sessionTitle } from "@shared/components/SessionDetails";
 import { formatTime } from "@utils/timeEstimation";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
+import { withAlpha } from "@utils/color";
 import type { SetTiming } from "@shared/types";
 import type {
   Friend,
@@ -182,16 +183,16 @@ const makeBblStyles = (colors: ThemeColors) =>
       padding: 4,
     },
     bubbleDone: { backgroundColor: colors.accent, borderColor: colors.accent },
-    bubbleWarmup: { backgroundColor: "#fb923c", borderColor: "#ea580c" },
+    bubbleWarmup: { backgroundColor: colors.warning, borderColor: colors.warning },
     num: {
       fontSize: 18,
       fontWeight: "bold",
       color: colors.textMuted,
       marginBottom: 2,
     },
-    numDone: { color: colors.surface },
+    numDone: { color: colors.textOnAccent },
     details: { alignItems: "center" },
-    detailText: { fontSize: 10, color: colors.surface, fontWeight: "500" },
+    detailText: { fontSize: 10, color: colors.textOnAccent, fontWeight: "500" },
     check: {
       position: "absolute",
       top: -4,
@@ -203,7 +204,7 @@ const makeBblStyles = (colors: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    checkText: { color: colors.surface, fontSize: 12, fontWeight: "bold" },
+    checkText: { color: colors.textOnAccent, fontSize: 12, fontWeight: "bold" },
   });
 
 interface ExerciseCardProps {
@@ -679,7 +680,7 @@ const makeStStyles = (colors: ThemeColors) =>
       paddingVertical: 12,
       borderRadius: 12,
     },
-    btnText: { color: colors.surface, fontWeight: "700", fontSize: 15 },
+    btnText: { color: colors.textOnAccent, fontWeight: "700", fontSize: 15 },
     scroll: { flex: 1, backgroundColor: colors.background },
     scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 48 },
     headerCard: {
@@ -701,7 +702,7 @@ const makeStStyles = (colors: ThemeColors) =>
       letterSpacing: 1.2,
     },
     liveUsername: {
-      color: "rgba(255,255,255,0.7)",
+      color: withAlpha(colors.textOnAccent, 0.7),
       fontSize: 12,
       fontWeight: "500",
     },
@@ -714,21 +715,21 @@ const makeStStyles = (colors: ThemeColors) =>
     dayNumber: {
       fontSize: 30,
       fontWeight: "bold",
-      color: colors.surface,
+      color: colors.textOnAccent,
       marginBottom: 4,
     },
-    dayTitle: { fontSize: 14, color: "rgba(255,255,255,0.85)", lineHeight: 20 },
+    dayTitle: { fontSize: 14, color: withAlpha(colors.textOnAccent, 0.85), lineHeight: 20 },
     setsInfo: { alignItems: "flex-end" },
     setsLabel: {
       fontSize: 12,
-      color: "rgba(255,255,255,0.7)",
+      color: withAlpha(colors.textOnAccent, 0.7),
       marginBottom: 2,
     },
-    setsValue: { fontSize: 36, fontWeight: "bold", color: colors.surface },
+    setsValue: { fontSize: 36, fontWeight: "bold", color: colors.textOnAccent },
     progressContainer: { marginBottom: 10 },
     progressBar: {
       height: 8,
-      backgroundColor: "rgba(255,255,255,0.3)",
+      backgroundColor: withAlpha(colors.textOnAccent, 0.3),
       borderRadius: 4,
       overflow: "hidden",
       marginBottom: 8,
@@ -743,16 +744,16 @@ const makeStStyles = (colors: ThemeColors) =>
       justifyContent: "space-between",
       alignItems: "center",
     },
-    progressText: { fontSize: 13, color: "rgba(255,255,255,0.9)" },
+    progressText: { fontSize: 13, color: withAlpha(colors.textOnAccent, 0.9) },
     startedAt: {
       fontSize: 12,
-      color: "rgba(255,255,255,0.6)",
+      color: withAlpha(colors.textOnAccent, 0.6),
       marginBottom: 14,
     },
     statsRow: {
       flexDirection: "row",
       justifyContent: "space-around",
-      backgroundColor: "rgba(255,255,255,0.15)",
+      backgroundColor: withAlpha(colors.textOnAccent, 0.15),
       borderRadius: 10,
       paddingVertical: 12,
       marginBottom: 14,
@@ -760,27 +761,27 @@ const makeStStyles = (colors: ThemeColors) =>
     stat: { alignItems: "center" },
     statLabel: {
       fontSize: 11,
-      color: "rgba(255,255,255,0.8)",
+      color: withAlpha(colors.textOnAccent, 0.8),
       marginBottom: 4,
     },
-    statValue: { fontSize: 18, fontWeight: "bold", color: colors.surface },
+    statValue: { fontSize: 18, fontWeight: "bold", color: colors.textOnAccent },
     muscleRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     muscleTag: {
-      backgroundColor: "rgba(255,255,255,0.2)",
+      backgroundColor: withAlpha(colors.textOnAccent, 0.2),
       paddingHorizontal: 12,
       paddingVertical: 5,
       borderRadius: 14,
     },
-    muscleTagText: { color: colors.surface, fontSize: 12, fontWeight: "600" },
+    muscleTagText: { color: colors.textOnAccent, fontSize: 12, fontWeight: "600" },
     noPlanNotice: {
       marginTop: 14,
-      backgroundColor: "rgba(255,255,255,0.15)",
+      backgroundColor: withAlpha(colors.textOnAccent, 0.15),
       borderRadius: 10,
       padding: 10,
     },
     noPlanText: {
       fontSize: 12,
-      color: "rgba(255,255,255,0.85)",
+      color: withAlpha(colors.textOnAccent, 0.85),
       textAlign: "center",
       lineHeight: 18,
     },

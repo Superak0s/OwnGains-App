@@ -18,7 +18,7 @@ beforeEach(() => resetMemorySqlite());
 
 describe("parseTutorialState", () => {
   it("falls back to a fresh state for missing or malformed data", () => {
-    const fresh = { completed: [], firstRunDone: false, firstRunMode: null, onlineTourOffered: false };
+    const fresh = { completed: [], firstRunDone: false, firstRunMode: null, onlineTourOffered: false, trainerTourOffered: false };
     expect(parseTutorialState(null)).toEqual(fresh);
     expect(parseTutorialState("{nope")).toEqual(fresh);
     expect(parseTutorialState(JSON.stringify({ role: "admin", completed: [1, "home"], firstRunDone: "yes" })))

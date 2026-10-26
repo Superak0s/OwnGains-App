@@ -199,7 +199,6 @@ export function BannerDemo({ variant, onComplete }: PracticeProps & { readonly v
   const { colors } = useTheme();
   const s = usePracticeStyles();
   const [phase, setPhase] = useState(0);
-  const [tab, setTab] = useState<"me" | "trainees">("trainees");
   const [day, setDay] = useState(1);
   const finish = () => {
     setPhase(2);
@@ -250,15 +249,7 @@ export function BannerDemo({ variant, onComplete }: PracticeProps & { readonly v
   const banner = makeTrainerBannerStyles(colors);
   return (
     <View style={s.demo}>
-      <View style={s.segment}>
-        {(["me", "trainees"] as const).map((t) => (
-          <TouchableOpacity key={t} style={[s.segmentBtn, tab === t && s.segmentActive]} onPress={() => setTab(t)} accessibilityRole="tab" accessibilityLabel={t === "me" ? "Me" : "Trainees"} accessibilityState={{ selected: tab === t }}>
-            <Text style={s.secondaryText}>{t === "me" ? "Me" : "Trainees"}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      {tab === "me" && <Text style={s.result}>Your own workout, untouched while you coach.</Text>}
-      {tab === "trainees" && phase < 2 && (
+      {phase < 2 && (
         <View style={banner.container}>
           <Text style={banner.label} numberOfLines={1}>
             🧑‍🏫 Logging for <Text style={banner.name}>{DEMO_FRIEND}</Text>

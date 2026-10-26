@@ -130,6 +130,16 @@ describe("TipJarSheet", () => {
     expect(captureException).toHaveBeenCalled();
   });
 
+  it("does not report Play being unreachable or having no tip products", async () => {
+    mockIap.fetchProducts.mockRejectedValueOnce(Object.assign(new Error("Failed to query product"), { code: "query-product" }));
+    (getAvailablePurchases as jest.Mock).mockRejectedValueOnce(
+      Object.assign(new Error("Store service is not connected"), { code: "service-disconnected" }),
+    );
+    await render(<TipJarSheet visible onClose={jest.fn()} />);
+    await act(async () => {});
+    expect(captureException).not.toHaveBeenCalled();
+  });
+
   it("does not connect to Play while the sheet is closed", async () => {
     await render(<TipJarSheet visible={false} onClose={jest.fn()} />);
     expect(mockIap.fetchProducts).not.toHaveBeenCalled();

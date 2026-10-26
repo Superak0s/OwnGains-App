@@ -1,6 +1,5 @@
 • Undo a trainer's change to your plan for 7 days. Trainers confirm before removing days.
-• Workouts, soreness, cycle days and exports change day at your local midnight.
-• Back-dated entries keep their time, and lists keep their order across daylight saving.
-• Supplement alarms keep their clock time after a time zone change.
+• Plan and Workout drop the Schedule widget and Me/Trainees tabs outside trainer mode.
+• Days change at your local midnight, back-dated entries keep their time, and alarms keep their clock time after a time zone change.
+• Text and buttons follow your theme everywhere, including custom themes.
 • Decimal commas (85,5) keep their decimals in body stats and macros.
-• Friends: shared programs show every row, and Analytics no longer retries in a loop.

@@ -23,6 +23,16 @@ function channels(hex: string): [number, number, number] | null {
   return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff]
 }
 
+/** Eight-digit hex of the color at the given 0 to 1 opacity. Non-hex input is returned unchanged. */
+export function withAlpha(hex: string, alpha: number): string {
+  const rgb = toRgbHex(hex)
+  if (!rgb) return hex
+  const a = Math.round(alpha * 255)
+    .toString(16)
+    .padStart(2, "0")
+  return `${rgb}${a}`
+}
+
 export function darken(hex: string, amount = 0.2): string {
   const rgb = channels(hex)
   if (!rgb) return hex

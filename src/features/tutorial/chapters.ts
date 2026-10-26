@@ -100,7 +100,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     spot("Tracking", "scrollTabs", "Each sub-tab tracks one thing. Edit tabs lets you reorder or hide them.", "At the top of Track, each sub-tab tracks one thing. Edit tabs reorders or hides them."),
   ]),
   supplements: chapter("supplements", "💊", "Supplements", [
-    card("⏰", "Dose reminders", "Set reminders per supplement as a notification or a full-screen alarm. On phones that delay notifications, OwnGains tells you once which battery settings to change."),
+    card("⏰", "Dose reminders", "Set reminders per supplement as a notification or a full-screen alarm. Volume down snoozes a ringing alarm and power turns it off. On phones that delay notifications, OwnGains tells you once which battery settings to change."),
   ]),
   friends: chapter("friends", "👥", "Friends", [
     card("🔒", "Locked tabs", "A friend's locked tab means they haven't given you access yet. Tap it to see what they'd need to allow. Tap Message on a friend to chat."),
@@ -127,7 +127,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     card("🔒", "Tracking Access", "Tracking Access sends you a client's weight, measurements, nutrition, injuries and photos, encrypted so only your phone can read them. In Track, tap the Tracking title and pick a client. Check the safety code matches theirs."),
   ], true),
   trainerSession: chapter("trainerSession", "🏋️", "Trainer: running a session", [
-    practice("Open a client and tap Start session. Me and Trainees switch between your workout and theirs, and the bar shows who you're logging for.", { type: "banner", variant: "trainerSession" }),
+    practice("Open a client and tap Start session. The bar shows who you're logging for.", { type: "banner", variant: "trainerSession" }),
     card("📤", "Programs", "Send program on a client's page shares the splits you tick. Edit program opens theirs in Programs. You can't delete their logged sets or touch their account."),
   ], true),
   trainerFollow: chapter("trainerFollow", "📈", "Trainer: following clients", [

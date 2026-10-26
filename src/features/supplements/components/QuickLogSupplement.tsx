@@ -297,5 +297,5 @@ const makeStyles = (colors: ThemeColors) =>
       shadowRadius: 8,
       elevation: 6,
     },
-    logButtonText: { fontSize: 16, fontWeight: "700", color: colors.surface },
+    logButtonText: { fontSize: 16, fontWeight: "700", color: colors.textOnAccent },
   });

@@ -13,6 +13,7 @@ import {
   markChapterCompleted,
   markFirstRunDone,
   markOnlineTourOffered,
+  markTrainerTourOffered,
   readTutorialState,
 } from "./tutorialState";
 import TutorialIntro from "./TutorialIntro";
@@ -198,8 +199,10 @@ export function TutorialProvider({
   }, [alert, start]);
 
   const offerTrainerTour = useCallback(() => {
-    const { completed } = readTutorialState();
-    if (TRAINER_TOUR.every((id) => completed.includes(id))) return;
+    const { completed, trainerTourOffered } = readTutorialState();
+    if (trainerTourOffered || TRAINER_TOUR.every((id) => completed.includes(id))) return;
+    // Offered once, like the online tour. Settings → About → Tutorial replays it.
+    void markTrainerTourOffered();
     alert(
       "Trainer Mode is on",
       "Take a quick tour of getting clients, running their sessions and following their progress?",

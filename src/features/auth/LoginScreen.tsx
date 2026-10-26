@@ -442,7 +442,7 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
                 accessibilityState={{ disabled: isLoading, busy: isLoading }}
               >
                 {isLoading ? (
-                  <ActivityIndicator color={colors.surface} />
+                  <ActivityIndicator color={colors.textOnAccent} />
                 ) : (
                   <Text style={styles.loginButtonText}>
                     {copy.submitLabel}
@@ -674,7 +674,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     loginButtonDisabled: { opacity: 0.6 },
     loginButtonText: {
-      color: colors.surface,
+      color: colors.textOnAccent,
       fontSize: 18,
       fontWeight: "bold",
     },

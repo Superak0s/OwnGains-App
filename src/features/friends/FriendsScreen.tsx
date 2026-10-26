@@ -1514,7 +1514,7 @@ export default function FriendsScreen({
                           hasDataOnDate={hasSessionOnDate}
                           onDatePress={handleDatePress}
                           initialView='month'
-                          dotColor='#10b981'
+                          dotColor={colors.success}
                           legendText='Workout day'
                         />
                       </>
@@ -2124,7 +2124,7 @@ export const makeStyles = (colors: ThemeColors) =>
       paddingVertical: 8,
       borderRadius: 8,
     },
-    addButtonText: { color: colors.surface, fontWeight: "600", fontSize: 13 },
+    addButtonText: { color: colors.textOnAccent, fontWeight: "600", fontSize: 13 },
     respondButton: {
       backgroundColor: colors.accentLight,
       paddingHorizontal: 14,
@@ -2154,7 +2154,7 @@ export const makeStyles = (colors: ThemeColors) =>
       paddingVertical: 12,
       borderRadius: 12,
     },
-    emptyButtonText: { color: colors.surface, fontWeight: "600", fontSize: 15 },
+    emptyButtonText: { color: colors.textOnAccent, fontWeight: "600", fontSize: 15 },
     emptyStateSmall: {
       alignItems: "center",
       padding: 24,

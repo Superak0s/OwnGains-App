@@ -520,7 +520,7 @@ export default function SupplementSettingsModal({
                       false: colors.surfaceBorder,
                       true: colors.accent,
                     }}
-                    thumbColor='#fff'
+                    thumbColor={timeBasedEnabled ? colors.textOnAccent : colors.textMuted}
                   />
                 </View>
 
@@ -607,7 +607,7 @@ export default function SupplementSettingsModal({
                 disabled={saving}
               >
                 {saving ? (
-                  <ActivityIndicator color='#fff' />
+                  <ActivityIndicator color={colors.textOnAccent} />
                 ) : (
                   <Text style={styles.saveBtnText}>✓ Save Settings</Text>
                 )}
@@ -800,6 +800,6 @@ const makeStyles = (colors: ThemeColors) =>
     saveBtnText: {
       fontSize: 18,
       fontWeight: "700",
-      color: colors.surface,
+      color: colors.textOnAccent,
     },
   });

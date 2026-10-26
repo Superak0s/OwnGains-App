@@ -173,11 +173,7 @@ const recordResponse = (
   route: string,
   durationMs: number,
 ): void => {
-  const status = response.status
-  trackBreadcrumb("api", `${method} ${route}`, { status, durationMs })
-  if (!response.ok) {
-    log.warn("api.http_error", { method, route, status, durationMs })
-  }
+  trackBreadcrumb("api", `${method} ${route}`, { status: response.status, durationMs })
 }
 
 const refreshOutcome = async (token: string | null): Promise<SessionRefreshResult> => {

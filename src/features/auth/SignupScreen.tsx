@@ -427,7 +427,7 @@ export default function SignupScreen({
                 }}
               >
                 {isLoading ? (
-                  <ActivityIndicator color={colors.surface} />
+                  <ActivityIndicator color={colors.textOnAccent} />
                 ) : (
                   <Text style={styles.signupButtonText}>Create Account</Text>
                 )}
@@ -552,7 +552,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     signupButtonDisabled: { opacity: 0.6 },
     signupButtonText: {
-      color: colors.surface,
+      color: colors.textOnAccent,
       fontSize: 18,
       fontWeight: "bold",
     },

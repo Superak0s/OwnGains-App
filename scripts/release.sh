@@ -28,7 +28,7 @@ if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
 else
     B='' DIM='' RED='' GRN='' YEL='' CYN='' R=''
 fi
-step() { printf '\n%s==> [%s] %s%s\n' "$B$CYN" "$1" "$2" "$R"; }
+step() { printf '\n%s==> [%s] %s %s(%dm%02ds)%s\n' "$B$CYN" "$1" "$2" "$DIM" $((SECONDS / 60)) $((SECONDS % 60)) "$R"; }
 ok()   { printf '%s  OK  %s%s\n' "$GRN" "$*" "$R"; }
 info() { printf '%s  ..  %s%s\n' "$DIM" "$*" "$R"; }
 warn() { printf '%s  !!  %s%s\n' "$YEL" "$*" "$R"; }
@@ -83,8 +83,10 @@ ${B}Other${R}
   -h, --help          Show this help
 
 ${DIM}Steps: [1] WSL sync, [2] version + changelog, [3] verify + prebuild,
-[4] build, [5] git commit/push, [6] GitHub release. A failed or Ctrl+C'd build
-reverts the bump. Ctrl+C also deletes the WSL mirror.${R}
+[4] APK, [5] AAB, [6] Play upload, [7] git commit/push, [8] GitHub release.
+A failed or Ctrl+C'd build reverts the bump. Ctrl+C also deletes the WSL mirror
+except node_modules.
+Each run's output is saved to release/release-<timestamp>.log.${R}
 EOF
 }
 
@@ -132,7 +134,7 @@ done
 
 if [ "$DEBUG_ONLY" = true ]; then
     if [ -n "$BUMP_ARG$COMMIT_MSG" ] || [ "$SKIP_PUSH" = true ] || [ "$SKIP_TESTS" = true ] || [ "$BUMP_CODE" = false ] \
-        || [ "$WANT_AAB" = true ] || [ "$ALLOW_NO_SOURCEMAPS" = true ] \
+        || [ "$WANT_APK" = true ] || [ "$WANT_AAB" = true ] || [ "$ALLOW_NO_SOURCEMAPS" = true ] \
         || [ "$SKIP_RELEASE" = true ] || [ ${#GH_RELEASE_FLAGS[@]} -gt 0 ] || [ -n "$PLAY_TRACK_ARG" ] || [ "$SKIP_PLAY" = true ]; then
         die "debug only takes --no-prebuild and --32bit. The rest apply to releases."
     fi
@@ -168,6 +170,19 @@ if [ -n "$PLAY_TRACK_ARG" ] && [ "$BUILD_AAB" = false ]; then
     die "--play=TRACK uploads the AAB, so it can't be combined with apk."
 fi
 
+# Checked before the build, so a push or release that can't succeed doesn't cost one.
+if [ "$DEBUG_ONLY" = false ] && [ "$SKIP_PUSH" = false ]; then
+    branch="$(git -C "$SRC" rev-parse --abbrev-ref HEAD)"
+    [ "$branch" = main ] || die "releases are pushed to main, but $branch is checked out."
+    git -C "$SRC" fetch -q origin main || die "git fetch origin main failed."
+    git -C "$SRC" merge-base --is-ancestor origin/main HEAD \
+        || die "origin/main has commits this checkout doesn't. Pull first, the push would be rejected."
+fi
+if [ "$DEBUG_ONLY" = false ] && [ "$SKIP_RELEASE" = false ]; then
+    command -v gh >/dev/null || die "gh is not installed. Install the GitHub CLI or pass --no-release."
+    gh auth status >/dev/null 2>&1 || die "gh is not logged in. Run gh auth login, or pass --no-release."
+fi
+
 yn() { [ "$1" = true ] && printf '%syes%s' "$GRN" "$R" || printf '%sno%s' "$YEL" "$R"; }
 # nvm is usually loaded from ~/.bashrc, which returns early in non-interactive shells.
 if ! command -v node >/dev/null && [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]; then
@@ -178,6 +193,11 @@ command -v node >/dev/null || die "node not found on PATH ($ENV_NAME). Install N
 if [ -z "${ANDROID_HOME:-}${ANDROID_SDK_ROOT:-}" ] && [ ! -f android/local.properties ]; then
     die "Android SDK not found ($ENV_NAME). Export ANDROID_HOME (e.g. in ~/.profile or ~/.bashrc)."
 fi
+
+mkdir -p "$SRC/release"
+LOG_FILE="$SRC/release/release-$(date +%Y%m%d-%H%M%S).log"
+# tee ignores Ctrl+C so the cleanup trap's output still reaches the terminal and the log.
+exec > >(trap '' INT; exec tee -a "$LOG_FILE") 2>&1
 
 printf '%s=== OwnGains App Release ===%s\n' "$B$CYN" "$R"
 printf '  Environment   %s\n' "$ENV_NAME"
@@ -194,7 +214,7 @@ printf '  Prebuild      %s\n' "$([ "$DO_CLEAN" = true ] && echo clean || echo in
 printf '  ABIs          %s\n' "$([ "$SKIP_32BIT" = true ] && echo arm64-v8a || echo 'arm64-v8a + armeabi-v7a')"
 
 # BACKUP_DIR is set from the version bump until the build succeeds. Any exit in
-# that window restores it. Ctrl+C also deletes the WSL mirror.
+# that window restores it. Ctrl+C also deletes the WSL mirror except node_modules.
 ABORTED=false
 BACKUP_DIR=""
 APK_OUTS=()
@@ -202,6 +222,7 @@ AAB_OUT=""
 cleanup() {
     local rc=$?
     set +e
+    # shellcheck disable=SC2046 # one PID per word
     [ "$ABORTED" = true ] && kill $(jobs -p) 2>/dev/null
     [ -f "${DISTRIBUTION_FILE:-}" ] && set_kofi_url null
     if [ -n "$BACKUP_DIR" ]; then
@@ -213,7 +234,8 @@ cleanup() {
         rm -rf "$BACKUP_DIR"
     fi
     if [ "$ABORTED" = true ] && [ "$BUILD" != "$SRC" ]; then
-        cd "$SRC" && rm -rf "$BUILD" && info "Deleted mirror $BUILD"
+        cd "$SRC" && find "$BUILD" -mindepth 1 -maxdepth 1 ! -name node_modules -exec rm -rf {} + \
+            && info "Deleted mirror $BUILD (node_modules kept)"
     fi
 }
 trap cleanup EXIT
@@ -221,8 +243,12 @@ trap 'echo ""; ABORTED=true; err "Aborted."; exit 130' INT TERM
 
 # [1/6] Mirror to the native filesystem (WSL only)
 if [ "$BUILD" != "$SRC" ]; then
-    step 1/6 "Syncing project to $BUILD"
-    rm -rf "$BUILD"
+    step 1/8 "Syncing project to $BUILD"
+    # Wiped rather than left to rsync --delete, so no file from an earlier sync remains.
+    # node_modules is kept for npm install to update, and with --no-prebuild so are android/ and .expo/.
+    keep=(-name node_modules)
+    [ "$DO_CLEAN" = false ] && keep+=(-o -name android -o -name .expo)
+    [ -d "$BUILD" ] && find "$BUILD" -mindepth 1 -maxdepth 1 ! \( "${keep[@]}" \) -exec rm -rf {} +
     rsync -a --delete \
       --exclude='node_modules' \
       --exclude='/android' \
@@ -237,7 +263,7 @@ if [ "$BUILD" != "$SRC" ]; then
       "$SRC/" "$BUILD/"
     ok "Sync complete"
 else
-    step 1/6 "Building in place, no sync needed"
+    step 1/8 "Building in place, no sync needed"
 fi
 
 cd "$BUILD"
@@ -352,9 +378,9 @@ if [ "$BUILD_AAB" = true ] && [ "$SKIP_PLAY" = false ]; then
     esac
     if [ "$PLAY_UPLOAD" = true ]; then
         export PLAY_SERVICE_ACCOUNT
-        node scripts/play-upload.js --check \
+        PLAY_MAX_CODE="$(node scripts/play-upload.js --check)" \
             || die "The Play service account has no access to this app. Grant it release permissions in Play Console (Users and permissions), or pass --no-play."
-        ok "Google Play upload to the $PLAY_TRACK track (permission verified)"
+        ok "Google Play upload to the $PLAY_TRACK track (permission verified, highest versionCode on Play: $PLAY_MAX_CODE)"
     elif [ -n "$PLAY_TRACK_ARG" ]; then
         die "--play=$PLAY_TRACK_ARG, but $play_skip."
     else
@@ -394,7 +420,7 @@ check_keystore() {
 check_keystore
 
 # [2/6] Version bump
-step 2/6 "Version"
+step 2/8 "Version"
 
 CURRENT_VERSION=$(node -p "require('./package.json').version")
 IFS='.' read -r CUR_MAJOR CUR_MINOR CUR_PATCH <<< "$CURRENT_VERSION"
@@ -436,8 +462,14 @@ fi
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 TAG="v${NEW_VERSION}-${TIMESTAMP}"
 
+# [7/8] runs 'git add .', so everything listed here goes into the release commit.
+if [ "$SKIP_PUSH" = false ]; then
+    info "The release commit will include these changes, plus the version bump:"
+    git -C "$SRC" status --short
+fi
+
 # Asked up front so the rest of the run is unattended.
-# Keeping the version amends the existing commit, so no message is needed.
+# Keeping the version commits as "Re-release", so no message is needed.
 # Skipped entirely with --no-push since nothing will be committed.
 if [ "$KEEP_VERSION" = false ] && [ "$SKIP_PUSH" = false ]; then
     [ -n "$COMMIT_MSG" ] || read -rp "${B}Commit message${R} (Enter for 'Release v$NEW_VERSION'): " COMMIT_MSG
@@ -448,7 +480,7 @@ fi
 BACKUP_DIR="$(mktemp -d)"
 cp "$SRC/package.json" "$SRC/app.json" "$SRC/CHANGELOG.md" "$BACKUP_DIR/"
 
-NEW_VERSION="$NEW_VERSION" BUMP_CODE="$BUMP_CODE" node -e '
+NEW_VERSION="$NEW_VERSION" BUMP_CODE="$BUMP_CODE" PLAY_MAX_CODE="${PLAY_MAX_CODE:-0}" node -e '
 const fs = require("fs");
 const v = process.env.NEW_VERSION;
 const pkg = JSON.parse(fs.readFileSync("./package.json", "utf8"));
@@ -459,7 +491,7 @@ app.expo.version = v;
 // Play rejects an upload whose versionCode is not above the last one, and
 // prebuild --clean regenerates build.gradle from this value.
 if (process.env.BUMP_CODE === "true") {
-    app.expo.android.versionCode = (app.expo.android.versionCode || 0) + 1;
+    app.expo.android.versionCode = Math.max(app.expo.android.versionCode || 0, Number(process.env.PLAY_MAX_CODE)) + 1;
 }
 fs.writeFileSync("./app.json", JSON.stringify(app, null, 2) + "\n");
 '
@@ -512,8 +544,8 @@ PY
     esac
 }
 
-# [3/6] Install dependencies, verify, prebuild
-step 3/6 "Install, verify, prebuild"
+# [3/8] Install dependencies, verify, prebuild
+step 3/8 "Install, verify, prebuild"
 
 info "npm install"
 npm install --legacy-peer-deps
@@ -536,6 +568,12 @@ run_check typecheck npx tsc --noEmit
 if [ "$SKIP_TESTS" = false ]; then
     run_check test npm test -- --silent
 fi
+# The GitHub workflow itself (npm ci from the lockfile, then the same checks on
+# Linux), so the push doesn't turn up a CI failure the local run missed. act
+# copies the source tree, uncommitted changes included, minus .gitignore.
+if [ "$RUN_ACT" = true ]; then
+    run_check ci-act bash -c 'cd "$1" && exec act push -j check --rm --pull=false -P ubuntu-latest=catthehacker/ubuntu:act-latest' _ "$SRC"
+fi
 VERIFY_FAILED=false
 for name in "${!VERIFY_PIDS[@]}"; do
     if wait "${VERIFY_PIDS[$name]}"; then
@@ -551,19 +589,15 @@ if [ "$VERIFY_FAILED" = true ]; then
     false
 fi
 
-# The GitHub workflow itself (npm ci from the lockfile, then the same checks on
-# Linux), so the push doesn't turn up a CI failure the local run missed. act
-# copies the source tree, uncommitted changes included, minus .gitignore.
-if [ "$RUN_ACT" = true ]; then
-    info "CI workflow under act"
-    (cd "$SRC" && act push -j check --rm --pull=false -P ubuntu-latest=catthehacker/ubuntu:act-latest)
-    ok "CI (act)"
-fi
-
 # xlsx is pinned to a SheetJS CDN tarball rather than the npm registry, so
 # `npm audit` never sees it and a published security fix goes unnoticed.
-# SheetJS publishes no version endpoint, so this prompts a look rather than checking.
-warn "xlsx is pinned to $(grep -o 'xlsx-[0-9.]*' "$BUILD/package.json" | head -1), invisible to 'npm audit'. Check https://cdn.sheetjs.com/ for a newer release."
+XLSX_PINNED="$(grep -o 'xlsx-[0-9.]*[0-9]' "$BUILD/package.json" | head -1)"
+XLSX_LATEST="xlsx-$(curl -sfL --max-time 10 https://cdn.sheetjs.com/xlsx-latest/package/package.json | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version' 2>/dev/null || true)"
+if [ "$XLSX_LATEST" = xlsx- ]; then
+    warn "Could not reach the SheetJS CDN. xlsx is pinned to $XLSX_PINNED, check https://cdn.sheetjs.com/ for a newer release."
+elif [ "$XLSX_LATEST" != "$XLSX_PINNED" ]; then
+    warn "xlsx is pinned to $XLSX_PINNED but SheetJS has published $XLSX_LATEST, which 'npm audit' can't flag."
+fi
 
 maybe_skip_prebuild
 if [ "$DO_CLEAN" = true ]; then
@@ -579,21 +613,20 @@ save_prebuild_stamp
 # release wiring (it matches `signingConfig signingConfigs.debug`) skips, shipping a debug-signed build.
 sed -i 's/signingConfig = signingConfigs\.debug/signingConfig signingConfigs.debug/' "$BUILD/android/app/build.gradle"
 
-# [4/6] Build the APK via local-expo-build
+# [4/8] Build the APK via local-expo-build
 # local-expo-build handles: signing config injection, keystore restore after
 # `expo prebuild --clean` wipes android/, and the gradlew assembleRelease call.
-# --no-prebuild : prebuild already ran in [3/6]. Letting it run again with
+# --no-prebuild : prebuild already ran in [3/8]. Letting it run again with
 #                 --clean wipes android/ and forces a from-scratch native build
 # --no-clean    : otherwise it still prompts whether to clean, even with --no-prebuild
-# --no-bump     : version bump already handled in [2/6]
+# --no-bump     : version bump already handled in [2/8]
 # --no-sync     : skip pushing versionCode to EAS (we don't use EAS)
 #
 # One-time setup required before this works (not part of the script):
 #   cd "$BUILD" && npx local-expo-build keystore import /path/to/your.jks
 OUT_DIR="$SRC/release"
-mkdir -p "$OUT_DIR"
 if [ "$BUILD_APK" = true ]; then
-    step 4/6 "Building release APK"
+    step 4/8 "Building release APK"
     set_kofi_url "\"$KOFI_URL\""
     # Stale per-ABI APKs survive an incremental prebuild and would be released as this version.
     rm -f "$BUILD"/android/app/build/outputs/apk/release/*.apk
@@ -631,7 +664,7 @@ else
 fi
 
 if [ "$BUILD_AAB" = true ]; then
-    step 4/6 "Building release AAB"
+    step 5/8 "Building release AAB"
     npx local-expo-build build android --aab --no-sync --no-bump --no-prebuild --no-clean
     AAB_SRC="$BUILD/android/app/build/outputs/bundle/release/app-release.aab"
     [ -f "$AAB_SRC" ] || die "no AAB found at $AAB_SRC"
@@ -664,7 +697,7 @@ BACKUP_DIR=""
 # Not fatal: the build is good, so the release goes on and a failed upload is retried by hand.
 PLAY_UPLOADED=false
 if [ "$PLAY_UPLOAD" = true ]; then
-    step 4/6 "Uploading AAB to Google Play ($PLAY_TRACK)"
+    step 6/8 "Uploading AAB to Google Play ($PLAY_TRACK)"
     play_aab="$AAB_OUT"
     command -v cygpath >/dev/null && play_aab="$(cygpath -w "$play_aab")"
     if node scripts/play-upload.js "$play_aab" "$PLAY_TRACK"; then
@@ -678,24 +711,24 @@ if [ "$PLAY_UPLOAD" = true ]; then
     fi
 fi
 
-# [5/6] Push source to GitHub
+# [7/8] Push source to GitHub
 # Runs only after a successful build, so a bumped-but-broken version never
 # lands as a pushed commit. Skipped entirely with --no-push: source tree is
 # left as-is (including the local, uncommitted version bump).
-# gh in [6/6] needs the git repo too, and the WSL mirror has no .git.
+# gh in [8/8] needs the git repo too, and the WSL mirror has no .git.
 cd "$SRC"
 if [ "$SKIP_PUSH" = true ]; then
-    step 5/6 "Git: skipped (--no-push)"
+    step 7/8 "Git: skipped (--no-push)"
 else
-    step 5/6 "Git commit and push"
+    step 7/8 "Git commit and push"
     git add .
 
     if git diff --cached --quiet; then
         info "Nothing to commit, skipping push"
     elif [ "$KEEP_VERSION" = true ]; then
-        warn "Version unchanged, amending the last commit and force-pushing"
-        git commit --amend --no-edit
-        git push --force-with-lease origin main
+        warn "Version unchanged, committing on top (no amend, so pushed history is never rewritten)"
+        git commit -m "Re-release v$NEW_VERSION"
+        git push origin main
     else
         git commit -m "$COMMIT_MSG"
         git push origin main
@@ -708,15 +741,17 @@ finish() {
     for apk in "${APK_OUTS[@]}"; do printf '  APK             %s\n' "$apk"; done
     [ -n "$AAB_OUT" ] && printf '  Play bundle     %s\n' "$AAB_OUT"
     [ "$PLAY_UPLOADED" = true ] && printf '  Google Play     %s track\n' "$PLAY_TRACK"
+    printf '  Log             %s\n' "$LOG_FILE"
+    printf '  Took            %dm%02ds\n' $((SECONDS / 60)) $((SECONDS % 60))
     exit 0
 }
 
-# [6/6] Push to GitHub Releases
+# [8/8] Push to GitHub Releases
 if [ "$SKIP_RELEASE" = true ]; then
-    step 6/6 "GitHub release: skipped"
+    step 8/8 "GitHub release: skipped"
     finish ""
 fi
-step 6/6 "Creating GitHub release $TAG"
+step 8/8 "Creating GitHub release $TAG"
 
 NOTES_FILE="$(mktemp)"
 if ! node scripts/release-changelog.js notes "$NEW_VERSION" > "$NOTES_FILE" \
@@ -728,9 +763,14 @@ if [ -f docs/release-install.md ]; then
     sed "s/{{VERSION}}/$NEW_VERSION/g" docs/release-install.md >> "$NOTES_FILE"
 fi
 
-gh release create "$TAG" "${APK_OUTS[@]}" \
-    --title "OwnGains v$NEW_VERSION" \
-    --notes-file "$NOTES_FILE" "${GH_RELEASE_FLAGS[@]}"
+# Without --target GitHub tags its default branch HEAD, which lacks the bump if the push didn't happen.
+GH_ARGS=("$TAG" "${APK_OUTS[@]}" --target "$(git rev-parse HEAD)" --title "OwnGains v$NEW_VERSION" \
+    --notes-file "$NOTES_FILE" "${GH_RELEASE_FLAGS[@]}")
+if ! gh release create "${GH_ARGS[@]}"; then
+    err "GitHub release failed. The build and push are done, so retry only the release with:"
+    printf '  gh release create' >&2; printf ' %q' "${GH_ARGS[@]}" >&2; printf '\n' >&2
+    exit 1
+fi
 rm -f "$NOTES_FILE"
 
 finish "$TAG"

@@ -19,6 +19,7 @@ jest.mock("../services/on/messages", () => ({
   },
 }));
 jest.mock("react-native", () => ({ Platform: { OS: "android" } }));
+jest.mock("@shared/services/crashReporting", () => ({ captureUnreported: jest.fn(), reportAndReturn: jest.fn() }));
 const mockStore = new Map<string, unknown>();
 const mockServerUrl = { current: "http://srv" };
 jest.mock("@shared/services/config", () => ({ getServerUrl: () => mockServerUrl.current }));
@@ -28,6 +29,8 @@ jest.mock("@shared/services/storage", () => ({
   removeFromStorage: async (k: string) => mockStore.delete(k),
 }));
 
+import { getApps } from "@react-native-firebase/app";
+import { captureUnreported } from "@shared/services/crashReporting";
 import { messageSender, registerPushToken, serverPushesMessages, unregisterPushToken } from "../push";
 
 const notification = (content: object, trigger: object | null = null) =>
@@ -92,10 +95,18 @@ describe("push token", () => {
     expect(serverPushesMessages()).toBe(false);
   });
 
-  it("falls back to in-app notifications when the build has no Firebase config", async () => {
-    mockNotifications.getDevicePushTokenAsync.mockRejectedValue(new Error("no google-services.json"));
+  it("skips FCM when the build has no Firebase config", async () => {
+    (getApps as jest.Mock).mockReturnValueOnce([]);
+    await registerPushToken();
+    expect(mockNotifications.getDevicePushTokenAsync).not.toHaveBeenCalled();
+    expect(serverPushesMessages()).toBe(false);
+  });
+
+  it("falls back to in-app notifications without reporting when FCM registration fails", async () => {
+    mockNotifications.getDevicePushTokenAsync.mockRejectedValue(new Error("FCM Registration failed!"));
     await registerPushToken();
     expect(mockApi.registerPushToken).not.toHaveBeenCalled();
     expect(serverPushesMessages()).toBe(false);
+    expect(captureUnreported).not.toHaveBeenCalled();
   });
 });

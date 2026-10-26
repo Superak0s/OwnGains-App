@@ -182,7 +182,7 @@ export default function PrivacyConsentScreen({
             value={crashReports}
             onValueChange={setCrashReports}
             trackColor={{ false: colors.surfaceBorder, true: colors.accent }}
-            thumbColor={crashReports ? colors.surface : colors.surfaceElevated}
+            thumbColor={crashReports ? colors.textOnAccent : colors.textMuted}
             accessibilityLabel='Send crash reports'
           />
         </View>
@@ -202,7 +202,7 @@ export default function PrivacyConsentScreen({
             value={telemetry}
             onValueChange={setTelemetry}
             trackColor={{ false: colors.surfaceBorder, true: colors.accent }}
-            thumbColor={telemetry ? colors.surface : colors.surfaceElevated}
+            thumbColor={telemetry ? colors.textOnAccent : colors.textMuted}
             accessibilityLabel='Send usage metrics and diagnostics'
           />
         </View>
@@ -421,7 +421,7 @@ const makeStyles = (colors: ThemeColors) =>
       fontSize: 16,
       fontWeight: "700",
       textAlign: "center",
-      color: colors.surface,
+      color: colors.textOnAccent,
     },
     footnote: {
       fontSize: 12,

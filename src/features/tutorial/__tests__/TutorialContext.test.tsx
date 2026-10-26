@@ -124,14 +124,17 @@ it("does not mark an online-only chapter complete when only the needs-online car
   expect(readTutorialState().completed).not.toContain("friends");
 });
 
-it("offers the trainer tour until its chapters are done", async () => {
+it("offers the trainer tour once, and never once its chapters are done", async () => {
   await mount(false);
   await act(async () => captured.api!.offerTrainerTour());
   const [title, , buttons] = mockAlert.mock.calls[0];
   expect(title).toBe("Trainer Mode is on");
   await act(async () => buttons[1].onPress());
   expect(lastOverlay().chapter.id).toBe("trainerClient");
+  await flush();
   mockAlert.mockClear();
+  await act(async () => captured.api!.offerTrainerTour());
+  expect(mockAlert).not.toHaveBeenCalled();
   kv[TUTORIAL_KEY] = JSON.stringify({ completed: ["trainerClient", "trainerSession", "trainerFollow"] });
   await act(async () => captured.api!.offerTrainerTour());
   expect(mockAlert).not.toHaveBeenCalled();

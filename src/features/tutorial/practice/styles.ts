@@ -70,7 +70,4 @@ const makeStyles = (colors: ThemeColors) =>
       padding: 16,
     },
     mockList: { borderRadius: 12, backgroundColor: colors.surface, padding: 12, gap: 6 },
-    segment: { flexDirection: "row", borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: colors.surfaceBorder },
-    segmentBtn: { flex: 1, padding: 10, alignItems: "center" },
-    segmentActive: { backgroundColor: colors.accent },
   });

@@ -46,7 +46,7 @@ export function LiftTogetherButton({
       {busy ? (
         <ActivityIndicator
           size='small'
-          color='#fff'
+          color={colors.textOnAccent}
           style={{ marginRight: 6 }}
         />
       ) : null}
@@ -67,6 +67,6 @@ export const makeLiftStyles = (colors: ThemeColors) =>
       borderRadius: 10,
     },
     buttonSmall: { paddingHorizontal: 10, paddingVertical: 6 },
-    label: { color: colors.surface, fontWeight: "700", fontSize: 14 },
+    label: { color: colors.textOnAccent, fontWeight: "700", fontSize: 14 },
     labelSmall: { fontSize: 12 },
   });

@@ -149,33 +149,15 @@ afterEach(() => {
 const tabbarCount = (r: ReactTestRenderer): number =>
   JSON.stringify(r.toJSON()).match(/"testID":"tabbar"/g)?.length ?? 0;
 
-it("shows the tabs only while a trainer session is active", async () => {
+it("logs only for yourself in personal mode, even with a trainee left active", async () => {
+  await act(async () => {
+    setActiveTrainee({ userId: "1", username: "ana" });
+  });
   await act(async () => {
     root = create(<WorkoutScreen />);
   });
   expect(tabbarCount(root)).toBe(0);
   expect(mockProviderMounts).toHaveLength(0);
-
-  await act(async () => {
-    setActiveTrainee({ userId: "1", username: "ana" });
-  });
-  // One per body: the trainee tab needs its own way back to "Me".
-  expect(tabbarCount(root)).toBe(2);
-  expect(mockProviderMounts).toEqual(["1"]);
-
-  await act(async () => {
-    setActiveTrainee({ userId: "2", username: "bo" });
-  });
-  expect(mockProviderUnmounts).toEqual(["1"]);
-  expect(mockProviderMounts).toEqual(["1", "2"]);
-
-  await act(async () => {
-    root
-      .root.findByProps({ accessibilityLabel: "Stop trainer session" })
-      .props.onPress();
-  });
-  expect(tabbarCount(root)).toBe(0);
-  expect(mockProviderUnmounts).toEqual(["1", "2"]);
 });
 
 it("hides the tabs in offline mode even with an active session", async () => {

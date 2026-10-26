@@ -22,6 +22,7 @@ export {
   isDarkColor,
   isValidHex,
   toRgbHex,
+  withAlpha,
   darken,
   contrastRatio,
 } from "@utils/color"
@@ -253,6 +254,10 @@ const BUILT_IN_THEMES: AppTheme[] = [
   },
   ...PRESET_THEMES,
 ]
+
+export const BUILT_IN_THEME_IDS: ReadonlySet<string> = new Set(
+  BUILT_IN_THEMES.map((t) => t.id),
+)
 
 interface ThemeContextValue {
   theme: AppTheme

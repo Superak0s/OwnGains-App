@@ -755,7 +755,7 @@ export default function SupplementsScreen(): React.JSX.Element {
             disabled={saving}
           >
             {saving ? (
-              <ActivityIndicator color='#fff' />
+              <ActivityIndicator color={colors.textOnAccent} />
             ) : (
               <Text style={styles.saveBtnText}>Add Supplement</Text>
             )}
@@ -1065,7 +1065,7 @@ const cardStyles = (colors: ThemeColors) =>
       paddingVertical: 7,
       borderRadius: 20,
     },
-    logBtnText: { fontSize: 13, fontWeight: "700", color: colors.surface },
+    logBtnText: { fontSize: 13, fontWeight: "700", color: colors.textOnAccent },
     logBtnWaiting: {
       backgroundColor: colors.inputBackground,
       borderWidth: 1,
@@ -1141,7 +1141,7 @@ const makeStyles = (colors: ThemeColors) =>
     addButtonText: {
       fontSize: 15,
       fontWeight: "700",
-      color: colors.surface,
+      color: colors.textOnAccent,
     },
 
     emptyState: { paddingVertical: 60 },
@@ -1154,7 +1154,7 @@ const makeStyles = (colors: ThemeColors) =>
     emptyButtonText: {
       fontSize: 16,
       fontWeight: "700",
-      color: colors.surface,
+      color: colors.textOnAccent,
     },
 
     sheetTitle: {
@@ -1267,7 +1267,7 @@ const makeStyles = (colors: ThemeColors) =>
     saveBtnText: {
       fontSize: 16,
       fontWeight: "700",
-      color: colors.surface,
+      color: colors.textOnAccent,
     },
 
     historyEmpty: {

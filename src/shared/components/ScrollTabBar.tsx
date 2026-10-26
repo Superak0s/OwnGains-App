@@ -427,7 +427,7 @@ const rowStyles = (colors: ThemeColors) =>
       paddingHorizontal: 14,
       marginBottom: 10,
       gap: 12,
-      shadowColor: "#000",
+      shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 3 },
     },
     handle: {

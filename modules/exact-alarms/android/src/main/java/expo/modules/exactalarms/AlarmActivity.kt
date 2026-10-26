@@ -1,12 +1,15 @@
 package expo.modules.exactalarms
 
 import android.app.NotificationManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.KeyEvent
 import android.view.WindowManager
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -22,6 +25,13 @@ class AlarmActivity : ReactActivity() {
     alarmId?.let { Alarms.dismiss(this, it) }
     finish()
   }
+  // Apps never receive the power key, so the screen turning off stands in for it,
+  // the same way the stock clock dismisses on power.
+  private val screenOff = object : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+      if (!isFinishing) silence.run()
+    }
+  }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
@@ -34,6 +44,8 @@ class AlarmActivity : ReactActivity() {
           WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON,
       )
     }
+    // Otherwise the display timeout would count as a power press and dismiss the alarm.
+    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     super.onCreate(null)
     // Opened by the fallback notification's full-screen intent: the page replaces
     // the notification and takes over the ringing.
@@ -42,6 +54,16 @@ class AlarmActivity : ReactActivity() {
     }
     Alarms.startRinging(applicationContext)
     handler.postDelayed(silence, Alarms.RING_TIMEOUT_MS)
+    registerReceiver(screenOff, IntentFilter(Intent.ACTION_SCREEN_OFF))
+  }
+
+  override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+    if (keyCode != KeyEvent.KEYCODE_VOLUME_DOWN) return super.onKeyDown(keyCode, event)
+    if (event.repeatCount == 0 && !isFinishing) {
+      alarmId?.let { Alarms.snooze(this, it) }
+      finish()
+    }
+    return true
   }
 
   /** A second alarm while one is ringing snoozes the first and shows the new one,
@@ -58,6 +80,7 @@ class AlarmActivity : ReactActivity() {
 
   override fun onDestroy() {
     handler.removeCallbacks(silence)
+    unregisterReceiver(screenOff)
     Alarms.stopRinging()
     super.onDestroy()
   }

@@ -40,7 +40,8 @@ Builds are local only. This project does not use EAS. `scripts/sync-eas-version.
 
 - **Local** (via `local-expo-build`): `npm run build:android:apk` / `:clean` (full prebuild) / `:debug` (debug APK, no prebuild)
 - `scripts/release.sh` is the full release path (version bump → lint/typecheck/test → prebuild → signed APKs + AAB via `local-expo-build` → git push → `gh release create` → Play upload). One script for Windows (Git Bash), WSL and native Linux. `scripts/release.sh --help` lists every flag. What the help leaves out:
-  - Under WSL on a `/mnt/c` path it mirrors the project to `$HOME` first because gradle over 9p is unusably slow.
+  - Under WSL on a `/mnt/c` path it mirrors the project to `$HOME` first because gradle over 9p is unusably slow. Each sync wipes the mirror except `node_modules` (and `android/`/`.expo/` with `--no-prebuild`).
+  - Before building it refuses to run off `main`, behind `origin/main`, or with `gh` logged out, and with Play upload on it sets `versionCode` above the highest one Play already has. Every run is logged to `release/release-<timestamp>.log`.
   - It refuses to run without `SENTRY_AUTH_TOKEN` unless given `--no-sourcemaps`, since crash reports would be unreadable.
   - Before building it stamps `CHANGELOG.md` (`scripts/release-changelog.js`): `[Unreleased]` becomes `[x.y.z] - date` with a fresh empty `[Unreleased]` above, and that section becomes the GitHub release notes.
   - Whenever an AAB is built and `.env` sets `PLAY_SERVICE_ACCOUNT` (the service-account JSON or a path to it), `scripts/play-upload.js` uploads it with `docs/play-release-notes.txt` as its "What's new" text, and empties that file once the upload succeeds. A failed upload only warns and prints the retry command.
@@ -98,6 +99,7 @@ plugins/              # Expo config plugins, all applied during prebuild: withGr
                       # withAbiSplits (one release APK per ABI, ignored for the AAB)
                       # withHealthConnectRationale (Health Connect's rationale screen opens the privacy policy, as Play review requires)
                       # withCMakeVersion (pins CMake 3.31.6 so ninja handles Windows paths over 248 characters)
+                      # withNativeDebugSymbols (native symbol tables in the AAB for Play vitals)
 modules/              # local Android-only Expo modules (Kotlin), autolinked: autofill, exact-alarms (supplement alarms),
                       # hydration-tiles (Quick Settings water tiles). JS loads them with requireOptionalNativeModule,
                       # so they are null in Jest and Expo Go. Changes need a native rebuild.
@@ -152,7 +154,7 @@ Checked into the repo under `.claude/` and `.mcp.json`, so it applies to every s
 - SonarQube: `npm run sonar:scan` (needs `SONAR_TOKEN`, targets `http://192.168.10.12:8999`).
 - Native Android builds need CMake 3.31.6 in the Android SDK (`sdkmanager --install "cmake/3.31.6"`). `plugins/withCMakeVersion.js` pins it because the default 3.22.1 ninja fails on Windows long paths. CMake 4 rejects expo-sqlite's `cmake_minimum_required`, and a `subst` drive breaks codegen ("different roots").
 - Held-back majors: TypeScript stays on 6 (typescript-eslint doesn't support 7), ESLint on 9 (10 breaks `eslint-plugin-react`'s `display-name`), and `expo-iap` on 5.x (6 changes purchase delivery in the billing path).
-- Working-copy files are CRLF (`core.autocrlf`). Scripted edits must keep `
+- Working-copy files are CRLF (`core.autocrlf`). Scripted edits must keep `
 ` or the whole file shows as changed.
 
 ## Off-limits

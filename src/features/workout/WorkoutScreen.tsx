@@ -22,7 +22,6 @@ import { useWorkoutPick, WorkoutProvider } from "@shared/context/WorkoutContext"
 import { useJointSessionContextOptional } from "@shared/context/JointSessionContext";
 import { getAppMode, onAppModeChange } from "@shared/services/appMode";
 import { getAppRole, onAppRoleChange } from "@shared/services/appRole";
-import ScrollTabBar from "@shared/components/ScrollTabBar";
 import {
   getActiveTrainee,
   setActiveTrainee,
@@ -3206,7 +3205,7 @@ export const makeStyles = (colors: ThemeColors) => {
       justifyContent: "center",
     },
     settingCheckboxOn: { backgroundColor: colors.accent },
-    settingCheckboxMark: { color: colors.background, fontWeight: "700" },
+    settingCheckboxMark: { color: colors.textOnAccent, fontWeight: "700" },
     settingLabel: { fontSize: 16, color: colors.textPrimary, flex: 1 },
     muscleGroup: { fontSize: 14, color: colors.textSecondary },
     exerciseProgress: {
@@ -3291,7 +3290,7 @@ export const makeStyles = (colors: ThemeColors) => {
       justifyContent: "center",
     },
     setCheckmarkText: {
-      color: colors.surface,
+      color: colors.textOnAccent,
       fontSize: 12,
       fontWeight: "bold",
     },
@@ -3674,7 +3673,6 @@ export const makeStyles = (colors: ThemeColors) => {
 export default function WorkoutScreen(): React.JSX.Element {
   const { colors } = useTheme();
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
-  const [activeTab, setActiveTab] = useState("me");
   const [trainee, setTrainee] = useState<TraineeOption | null>(() =>
     getActiveTrainee(),
   );
@@ -3686,10 +3684,7 @@ export default function WorkoutScreen(): React.JSX.Element {
 
   useEffect(
     () =>
-      onActiveTraineeChange.subscribe((next) => {
-        setTrainee(next);
-        setActiveTab(next ? "trainees" : "me");
-      }),
+      onActiveTraineeChange.subscribe(setTrainee),
     [],
   );
 
@@ -3697,8 +3692,6 @@ export default function WorkoutScreen(): React.JSX.Element {
   useEffect(() => onAppRoleChange.subscribe(setRole), []);
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-
-  const sessionActive = isOnline === true && trainee !== null;
 
   if (isOnline === true && role === "trainer") {
     if (!trainee) {
@@ -3749,57 +3742,5 @@ export default function WorkoutScreen(): React.JSX.Element {
     );
   }
 
-  // Rendered inside each body's own SafeAreaView, not above them: a second
-  // top-inset wrapper out here doubles the status-bar gap and pins a band of
-  // untinted background the content can never scroll under.
-  const tabBar = sessionActive ? (
-    <View style={{ paddingHorizontal: 15, backgroundColor: colors.background }}>
-      <ScrollTabBar
-        tabs={[
-          { key: "me", label: "Me" },
-          { key: "trainees", label: "Trainees" },
-        ]}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        storageKey='@workout_top_tabs'
-      />
-    </View>
-  ) : null;
-
-  return (
-    <View style={{ flex: 1 }}>
-      <View
-        style={[
-          { flex: 1 },
-          sessionActive && activeTab !== "me" && { display: "none" },
-        ]}
-      >
-        <WorkoutScreenBody
-          header={tabBar}
-          visible={!sessionActive || activeTab === "me"}
-        />
-      </View>
-      {sessionActive && trainee && (
-        <View
-          style={[{ flex: 1 }, activeTab !== "trainees" && { display: "none" }]}
-        >
-          <WorkoutProvider key={trainee.userId} actAs={trainee}>
-            <WorkoutScreenBody
-              visible={activeTab === "trainees"}
-              hidePartnerControls
-              header={
-                <>
-                  {tabBar}
-                  <TrainerSessionBar
-                    username={trainee.username}
-                    onStop={() => setActiveTrainee(null)}
-                  />
-                </>
-              }
-            />
-          </WorkoutProvider>
-        </View>
-      )}
-    </View>
-  );
+  return <WorkoutScreenBody />;
 }

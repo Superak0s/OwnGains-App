@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import { getApps } from "@react-native-firebase/app";
 import type { Notification } from "expo-notifications";
 import { getNotifications, type NotificationsModule } from "@shared/services/notifications";
 import { getServerUrl } from "@shared/services/config";
@@ -45,11 +46,12 @@ export const serverPushesMessages = (): boolean => serverPushes;
  */
 export async function registerPushToken(): Promise<void> {
   const Notifications = await getNotifications();
-  if (!Notifications || Platform.OS !== "android") return;
+  if (!Notifications || Platform.OS !== "android" || getApps().length === 0) return;
   const started = generation;
   try {
     await ensureMessagesChannel(Notifications);
-    const { data } = await Notifications.getDevicePushTokenAsync();
+    // FCM registration fails transiently (no Play services, flaky network) and is retried on the next sign-in.
+    const data = await Notifications.getDevicePushTokenAsync().then(({ data }) => data, () => null);
     if (typeof data !== "string") return;
     const serverUrl = getServerUrl();
     const enabled = await messagesApi.registerPushToken(data);
