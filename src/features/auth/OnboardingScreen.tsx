@@ -123,8 +123,12 @@ export default function OnboardingScreen({
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.logo}>💪</Text>
-        <Text style={styles.title}>OwnGains</Text>
+        <Text style={styles.logo} importantForAccessibility='no' accessible={false}>
+          💪
+        </Text>
+        <Text style={styles.title} accessibilityRole='header'>
+          OwnGains
+        </Text>
         <Text style={styles.tagline}>
           A workout tracker you own. Pick how you want to store your training.
           You can change this later in Settings.
@@ -138,7 +142,7 @@ export default function OnboardingScreen({
             disabled={pending !== null}
             accessibilityRole='button'
             accessibilityLabel={
-              choice.mode === currentMode
+              canCancel && choice.mode === currentMode
                 ? `${choice.title} (currently in use)`
                 : choice.title
             }
@@ -153,7 +157,7 @@ export default function OnboardingScreen({
             <View style={styles.cardTextWrap}>
               <Text style={styles.cardTitle}>
                 {choice.title}
-                {choice.mode === currentMode && (
+                {canCancel && choice.mode === currentMode && (
                   <Text style={styles.currentBadge}>  · in use now</Text>
                 )}
               </Text>
@@ -274,14 +278,17 @@ const makeStyles = (colors: ThemeColors) =>
     cancelText: {
       fontSize: 14,
       textAlign: "center",
-      color: colors.textSecondary,
+      color: colors.accent,
+      fontWeight: "600",
       marginTop: 6,
     },
     policyLink: {
       fontSize: 13,
       textAlign: "center",
       color: colors.accent,
-      marginTop: 14,
+      marginTop: 4,
+      minHeight: 44,
+      textAlignVertical: "center",
       textDecorationLine: "underline",
     },
   });

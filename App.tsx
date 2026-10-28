@@ -72,6 +72,9 @@ import {
 import ClientsScreen from "./src/features/trainer/ClientsScreen";
 import { useTabBar, TabBarProvider } from "./src/shared/context/TabBarContext";
 import { ThemeProvider, useTheme } from "./src/shared/context/ThemeContext";
+import { SkinPreviewProvider } from "./src/shared/context/SkinPreviewContext";
+import SkinPreviewBanner from "./src/features/skins/components/SkinPreviewBanner";
+import { useSkinDeepLink } from "./src/features/skins/hooks/useSkinDeepLink";
 
 // Only the two screens that can be on screen at first paint are imported
 // eagerly. Bottom-tabs lazy-*mounts* the rest, but a static import still makes
@@ -119,6 +122,7 @@ const PrivacyPolicyScreen = lazyScreen(
 const TermsOfServiceScreen = lazyScreen(
   () => import("./src/features/auth/TermsOfServiceScreen"),
 );
+const SkinsScreen = lazyScreen(() => import("./src/features/skins/SkinsScreen"));
 const WorkoutScreen = lazyScreen(
   () => import("./src/features/workout/WorkoutScreen"),
 );
@@ -155,6 +159,7 @@ import { sweepStaleExports } from "./src/utils/writeJsonExport";
 import { useGitHubUpdateCheck } from "./src/shared/services/githubUpdate";
 import { useWhatsNewOnUpdate } from "./src/features/settings/hooks/useWhatsNewOnUpdate";
 import { usePlayForcedUpdate } from "./src/shared/services/playUpdate";
+import { useOtaUpdates } from "./src/shared/services/otaUpdate";
 import { useHealthConnectSync } from "./src/features/healthConnect/importer";
 import { useTrackingShare } from "./src/features/trainer/utils/trackingShare";
 import { HydrationTileModal } from "./src/features/tracking/hydrationTiles";
@@ -534,6 +539,7 @@ function MainTabs() {
   const updateAlert = useGitHubUpdateCheck();
   const whatsNew = useWhatsNewOnUpdate();
   usePlayForcedUpdate();
+  useOtaUpdates();
   const [appMode, setAppMode] = useState(getAppModeSync);
   useEffect(() => onAppModeChange.subscribe(setAppMode), []);
   const [role, setRole] = useState(getAppRole);
@@ -784,7 +790,12 @@ function AppNavigator() {
       </Stack.Screen>
     );
   } else if (isAuthenticated) {
-    screens = <Stack.Screen name='Main' component={MainTabs} />;
+    screens = (
+      <>
+        <Stack.Screen name='Main' component={MainTabs} />
+        <Stack.Screen name='Skins' component={SkinsScreen} />
+      </>
+    );
   } else {
     screens = (
       <>
@@ -808,6 +819,7 @@ function AppNavigator() {
 function ThemedNavigation({ children }: { readonly children: React.ReactNode }) {
   const { colors, isDark } = useTheme();
   const navigationRef = useNavigationContainerRef();
+  useSkinDeepLink(navigationRef);
   const lastScreenRef = useRef<string | undefined>(undefined);
   const recordScreenView = () => {
     const screen = (navigationRef.getCurrentRoute() as { name: string } | undefined)?.name;
@@ -857,17 +869,20 @@ function App() {
       >
         <SafeAreaProvider>
           <ThemeProvider>
-            <AuthProvider>
-              <TabBarProvider>
-                <WorkoutProvider>
-                  <ThemedNavigation>
-                    <ErrorBoundary>
-                      <AppNavigator />
-                    </ErrorBoundary>
-                  </ThemedNavigation>
-                </WorkoutProvider>
-              </TabBarProvider>
-            </AuthProvider>
+            <SkinPreviewProvider>
+              <AuthProvider>
+                <TabBarProvider>
+                  <WorkoutProvider>
+                    <ThemedNavigation>
+                      <ErrorBoundary>
+                        <AppNavigator />
+                        <SkinPreviewBanner />
+                      </ErrorBoundary>
+                    </ThemedNavigation>
+                  </WorkoutProvider>
+                </TabBarProvider>
+              </AuthProvider>
+            </SkinPreviewProvider>
           </ThemeProvider>
         </SafeAreaProvider>
       </ErrorBoundary>

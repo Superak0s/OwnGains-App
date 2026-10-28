@@ -2,14 +2,15 @@ import { useEffect } from "react";
 import { AppState, Platform } from "react-native";
 import SpInAppUpdates, { IAUUpdateKind } from "sp-react-native-in-app-updates";
 import { GITHUB_BUILD } from "@shared/distribution";
-import Constants from "expo-constants";
+import { nativeApplicationVersion } from "expo-application";
 import { apiCall } from "./apiClient";
 import { isServerless } from "./appMode";
 import { compareVersions } from "./serverVersion";
 
 /** Starts an immediate Play update when the server's `minAppVersion` is above `current`. */
 export async function forcePlayUpdate(
-  current = Constants.expoConfig?.version ?? "0.0.0",
+  // The installed build's version. expoConfig comes from the running OTA bundle, which can claim a newer one.
+  current = nativeApplicationVersion ?? "0.0.0",
   updates = new SpInAppUpdates(false),
 ) {
   if (await isServerless()) return;

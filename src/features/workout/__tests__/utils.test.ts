@@ -1,6 +1,7 @@
 import {
   kgToDisplay,
   displayToKg,
+  beatsBest,
   getEmptyStateInfo,
   getDayOverviewTint,
   getDayOverviewTextColor,
@@ -20,6 +21,7 @@ import {
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { PartnerProgress } from "@shared/context/hooks/useJointSession";
 import { isDarkColor } from "@utils/color";
+import { estimateOneRepMax } from "@utils/oneRepMax";
 
 const colors = {
   background: "#ffffff",
@@ -33,13 +35,19 @@ const colors = {
 const darkColors = { ...colors, background: "#16161e" } as ThemeColors;
 
 describe("weight unit conversion", () => {
-  it("renders whole kg without decimals and fractional kg with one", () => {
+  it("keeps fractional plates like 1.25 kg instead of rounding them away", () => {
     expect(kgToDisplay(100, "kg")).toBe("100");
-    expect(kgToDisplay(100.25, "kg")).toBe("100.3");
+    expect(kgToDisplay(100.25, "kg")).toBe("100.25");
+    expect(kgToDisplay(21.25, "kg")).toBe("21.25");
   });
 
   it("converts kg to lbs for display", () => {
-    expect(kgToDisplay(100, "lbs")).toBe("220.5");
+    expect(kgToDisplay(100, "lbs")).toBe("220.46");
+  });
+
+  it("round-trips a lbs entry without drifting", () => {
+    expect(kgToDisplay(displayToKg("225", "lbs"), "lbs")).toBe("225");
+    expect(kgToDisplay(displayToKg("102.5", "kg"), "kg")).toBe("102.5");
   });
 
   it("parses display input back to kg", () => {
@@ -359,6 +367,25 @@ describe("getServerHistoryEntries", () => {
     expect(entries!.map((e) => e.weight).sort()).toEqual([100, 140]);
   });
 
+  it("reports incomplete history when the records fetch fails", async () => {
+    const entries = await getServerHistoryEntries(
+      jest.fn().mockResolvedValue([
+        {
+          id: 2,
+          startTime: "2024-06-01T09:00:00Z",
+          setTimings: [{ exerciseName: "Bench Press", weight: 100, reps: 5 }],
+        },
+      ]),
+      "Bench Press",
+      "Bench Press",
+      [],
+      null,
+      jest.fn().mockResolvedValue(null),
+    );
+
+    expect(entries).toBeNull();
+  });
+
   it("returns empty on no sessions and null on a fetch failure", async () => {
     expect(
       await getServerHistoryEntries(
@@ -411,6 +438,19 @@ describe("pickBestPerformanceSummary", () => {
     expect(result?.last.oneRepMax).toBe(90);
     expect(result?.best.oneRepMax).toBe(120);
     expect(result?.totalAttempts).toBe(3);
+  });
+
+  it("treats the lightest assistance as the best for assisted exercises", () => {
+    const set = (date: string, weight: number, reps: number) => ({
+      ...entry(date, 0),
+      weight,
+      reps,
+    });
+    const result = pickBestPerformanceSummary(
+      [set("2020-01-01", 40, 8), set("2020-02-01", 20, 6), set("2020-03-01", 20, 8)],
+      true,
+    );
+    expect(result?.best).toMatchObject({ weight: 20, reps: 8 });
   });
 });
 
@@ -538,5 +578,16 @@ describe("parseRestDuration", () => {
     expect(parseRestDuration("1:75")).toBeNull();
     expect(parseRestDuration("abc")).toBeNull();
     expect(parseRestDuration("")).toBeNull();
+  });
+});
+
+describe("beatsBest", () => {
+  it("does not count the same lift re-entered in lbs as a new best", () => {
+    const stored = estimateOneRepMax(Math.round(displayToKg("225", "lbs")), 5);
+    expect(beatsBest(estimateOneRepMax(displayToKg("225", "lbs"), 5), stored)).toBe(false);
+  });
+
+  it("counts one more rep as a new best", () => {
+    expect(beatsBest(estimateOneRepMax(100, 6), estimateOneRepMax(100, 5))).toBe(true);
   });
 });

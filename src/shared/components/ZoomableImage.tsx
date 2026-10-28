@@ -19,6 +19,11 @@ function clamp(value: number, limit: number): number {
   return Math.max(-limit, Math.min(limit, value));
 }
 
+function maxOffset(size: number, scale: number): number {
+  "worklet";
+  return (size * (scale - 1)) / 2;
+}
+
 export default function ZoomableImage({ uri, style, headers }: ZoomableImageProps) {
   const containerWidth = useSharedValue(0);
   const containerHeight = useSharedValue(0);
@@ -42,19 +47,21 @@ export default function ZoomableImage({ uri, style, headers }: ZoomableImageProp
   const pinch = Gesture.Pinch()
     .onUpdate((e) => {
       scale.value = Math.max(1, Math.min(5, savedScale.value * e.scale));
+      translateX.value = clamp(translateX.value, maxOffset(containerWidth.value, scale.value));
+      translateY.value = clamp(translateY.value, maxOffset(containerHeight.value, scale.value));
     })
     .onEnd(() => {
       savedScale.value = scale.value;
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
     });
 
   // minPointers(2) keeps single-finger swipes free for a surrounding pager.
   const pan = Gesture.Pan()
     .minPointers(2)
     .onUpdate((e) => {
-      const maxX = (containerWidth.value * (scale.value - 1)) / 2;
-      const maxY = (containerHeight.value * (scale.value - 1)) / 2;
-      translateX.value = clamp(savedTranslateX.value + e.translationX, maxX);
-      translateY.value = clamp(savedTranslateY.value + e.translationY, maxY);
+      translateX.value = clamp(savedTranslateX.value + e.translationX, maxOffset(containerWidth.value, scale.value));
+      translateY.value = clamp(savedTranslateY.value + e.translationY, maxOffset(containerHeight.value, scale.value));
     })
     .onEnd(() => {
       savedTranslateX.value = translateX.value;

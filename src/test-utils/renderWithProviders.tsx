@@ -70,7 +70,7 @@ export const makeWorkout = (overrides: Overrides = {}): Overrides => ({
   startWorkout: resolved("s1"),
   endWorkout: resolved(true),
   saveWeightUnit: resolved(undefined),
-  saveSetDetails: resolved(undefined),
+  saveSetDetails: resolved(true),
   deleteSetDetails: resolved(true),
   clearActiveWorkout: resolved(undefined),
   isSetComplete: jest.fn(() => false),

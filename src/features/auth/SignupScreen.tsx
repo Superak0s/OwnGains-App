@@ -22,13 +22,14 @@ import type { RootStackParamList } from "./types";
 import GoogleSignInButton from "./components/GoogleSignInButton";
 import PasswordField from "./components/PasswordField";
 import { PASSWORD_HINT, passwordPolicyError } from "./utils/passwordPolicy";
+import { isGoogleSignInAvailable } from "./googleSignIn";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 
 type SignupScreenProps = {
   readonly navigation: NativeStackNavigationProp<RootStackParamList, "Signup">;
 };
 
-type FieldName = "username" | "email" | "password" | "confirmPassword";
+type FieldName = "username" | "email" | "password" | "confirmPassword" | "age";
 type FieldErrors = Partial<Record<FieldName, string>>;
 
 const FIELD_ORDER: ReadonlyArray<FieldName> = [
@@ -36,9 +37,12 @@ const FIELD_ORDER: ReadonlyArray<FieldName> = [
   "email",
   "password",
   "confirmPassword",
+  "age",
 ];
 
 const USERNAME_PATTERN = /^\w{3,20}$/;
+const USERNAME_HINT =
+  '3-20 letters, numbers or underscores, at least 3 of them letters, without "demo"';
 // No overlapping character classes -> no catastrophic backtracking.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 
@@ -47,6 +51,7 @@ function collectErrors(values: {
   email: string;
   password: string;
   confirmPassword: string;
+  ageConfirmed: boolean;
 }): FieldErrors {
   // Validate what will actually be sent, not the raw field text: a pasted
   // " bob" is a valid username once trimmed, and rejecting it with "letters,
@@ -79,11 +84,16 @@ function collectErrors(values: {
   else if (password !== confirmPassword)
     errors.confirmPassword = "Passwords do not match";
 
+  if (!values.ageConfirmed)
+    errors.age = "Confirm you are 16 or older and agree to the Terms to continue";
+
   return errors;
 }
 
+// Shown only once the confirmation is as long as the password, so a half-typed
+// confirmation is not flagged as a mistake.
 const mismatchError = (password: string, confirm: string): string | undefined =>
-  password && confirm && password !== confirm
+  password && confirm.length >= password.length && password !== confirm
     ? "Passwords do not match"
     : undefined;
 
@@ -101,6 +111,8 @@ export default function SignupScreen({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [ageConfirmed, setAgeConfirmed] = useState<boolean>(false);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const busy = isLoading || googleBusy;
 
   const { signup } = useAuth();
   const { alert, AlertComponent } = useAlert();
@@ -111,11 +123,12 @@ export default function SignupScreen({
   const nameRef = useRef<TextInputInstance>(null);
   const passwordRef = useRef<TextInputInstance>(null);
   const confirmRef = useRef<TextInputInstance>(null);
-  const fieldRefs: Record<FieldName, React.RefObject<TextInputInstance | null>> = {
+  const fieldRefs: Record<FieldName, React.RefObject<TextInputInstance | null> | null> = {
     username: usernameRef,
     email: emailRef,
     password: passwordRef,
     confirmPassword: confirmRef,
+    age: null,
   };
 
   const clearError = (field: FieldName): void =>
@@ -138,18 +151,19 @@ export default function SignupScreen({
   const isSubmittingRef = useRef<boolean>(false);
 
   const handleSignup = async (): Promise<void> => {
-    if (isSubmittingRef.current || !ageConfirmed) return;
+    if (isSubmittingRef.current || googleBusy) return;
     const found = collectErrors({
       username,
       email,
       password,
       confirmPassword,
+      ageConfirmed,
     });
     setErrors(found);
 
     const firstInvalid = FIELD_ORDER.find((field) => found[field]);
     if (firstInvalid) {
-      fieldRefs[firstInvalid].current?.focus();
+      fieldRefs[firstInvalid]?.current?.focus();
       return;
     }
 
@@ -185,7 +199,7 @@ export default function SignupScreen({
           if (looksLikeAccountClash) usernameRef.current?.focus();
 
           alert(
-            "Signup Failed",
+            "Couldn't create account",
             result.error || "Could not create account. Please try again.",
             [{ text: "OK" }],
             "error",
@@ -228,7 +242,7 @@ export default function SignupScreen({
             <TouchableOpacity
               style={styles.backButton}
               onPress={() => navigation.goBack()}
-              disabled={isLoading}
+              disabled={busy}
               accessibilityRole='button'
               accessibilityLabel='Go back to sign in'
             >
@@ -236,7 +250,13 @@ export default function SignupScreen({
             </TouchableOpacity>
 
             <View style={styles.header}>
-              <Text style={styles.title}>💪 Create Account</Text>
+              <Text
+                style={styles.title}
+                accessibilityRole='header'
+                accessibilityLabel='Create Account'
+              >
+                💪 Create Account
+              </Text>
               <Text style={styles.subtitle}>
                 Join OwnGains to start your fitness journey
               </Text>
@@ -264,7 +284,9 @@ export default function SignupScreen({
                   returnKeyType='next'
                   onSubmitEditing={() => emailRef.current?.focus()}
                   maxLength={20}
-                  editable={!isLoading}
+                  editable={!busy}
+                  accessibilityLabel='Username, required'
+                  accessibilityHint={errors.username ?? USERNAME_HINT}
                 />
                 {errors.username ? (
                   <Text
@@ -274,9 +296,7 @@ export default function SignupScreen({
                     {errors.username}
                   </Text>
                 ) : (
-                  <Text style={styles.inputHint}>
-                    3-20 characters, letters, numbers, and underscores only
-                  </Text>
+                  <Text style={styles.inputHint}>{USERNAME_HINT}</Text>
                 )}
               </View>
 
@@ -302,7 +322,9 @@ export default function SignupScreen({
                   maxLength={254}
                   returnKeyType='next'
                   onSubmitEditing={() => nameRef.current?.focus()}
-                  editable={!isLoading}
+                  editable={!busy}
+                  accessibilityLabel='Email, required'
+                  accessibilityHint={errors.email}
                 />
                 {errors.email && (
                   <Text
@@ -329,7 +351,8 @@ export default function SignupScreen({
                   maxLength={100}
                   returnKeyType='next'
                   onSubmitEditing={() => passwordRef.current?.focus()}
-                  editable={!isLoading}
+                  editable={!busy}
+                  accessibilityLabel='Full name, optional'
                 />
               </View>
 
@@ -352,7 +375,9 @@ export default function SignupScreen({
                   maxLength={128}
                   returnKeyType='next'
                   onSubmitEditing={() => confirmRef.current?.focus()}
-                  editable={!isLoading}
+                  editable={!busy}
+                  accessibilityLabel='Password, required'
+                  accessibilityHint={errors.password ?? PASSWORD_HINT}
                 />
 
                 {errors.password ? (
@@ -385,8 +410,10 @@ export default function SignupScreen({
                   textContentType='newPassword'
                   maxLength={128}
                   returnKeyType='go'
-                  editable={!isLoading}
+                  editable={!busy}
                   onSubmitEditing={() => void handleSignup()}
+                  accessibilityLabel='Confirm password, required'
+                  accessibilityHint={confirmError}
                 />
                 {confirmError && (
                   <Text
@@ -400,29 +427,48 @@ export default function SignupScreen({
 
               <TouchableOpacity
                 style={styles.ageRow}
-                onPress={() => setAgeConfirmed(!ageConfirmed)}
-                disabled={isLoading}
+                onPress={() => {
+                  setAgeConfirmed(!ageConfirmed);
+                  clearError("age");
+                }}
+                disabled={busy}
                 accessibilityRole='checkbox'
                 accessibilityState={{ checked: ageConfirmed }}
                 accessibilityLabel='I am 16 or older and agree to the Terms of Service'
+                accessibilityHint={errors.age}
               >
-                <Text style={styles.ageBox}>{ageConfirmed ? "☑" : "☐"}</Text>
+                <Text style={[styles.ageBox, !!errors.age && styles.ageBoxInvalid]}>
+                  {ageConfirmed ? "☑" : "☐"}
+                </Text>
                 <Text style={styles.ageText}>
                   I am 16 or older and agree to the Terms of Service
                 </Text>
+              </TouchableOpacity>
+              {errors.age && (
+                <Text style={styles.errorText} accessibilityLiveRegion='polite'>
+                  {errors.age}
+                </Text>
+              )}
+              <TouchableOpacity
+                style={styles.termsInlineLink}
+                onPress={() => navigation.navigate("TermsOfService")}
+                accessibilityRole='link'
+                accessibilityLabel='Read the Terms of Service'
+              >
+                <Text style={styles.termsLink}>Read the Terms of Service</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
                   styles.signupButton,
-                  (isLoading || !ageConfirmed) && styles.signupButtonDisabled,
+                  busy && styles.signupButtonDisabled,
                 ]}
                 onPress={() => void handleSignup()}
-                disabled={isLoading || !ageConfirmed}
+                disabled={busy}
                 accessibilityRole='button'
                 accessibilityLabel='Create account'
                 accessibilityState={{
-                  disabled: isLoading || !ageConfirmed,
+                  disabled: busy,
                   busy: isLoading,
                 }}
               >
@@ -433,24 +479,24 @@ export default function SignupScreen({
                 )}
               </TouchableOpacity>
 
-              <GoogleSignInButton
-                disabled={isLoading || !ageConfirmed}
-                onError={(message) =>
-                  alert("Signup Failed", message, [{ text: "OK" }], "error")
-                }
-              />
+              {ageConfirmed ? (
+                <GoogleSignInButton
+                  disabled={isLoading}
+                  onBusyChange={setGoogleBusy}
+                  onError={(message) =>
+                    alert("Couldn't create account", message, [{ text: "OK" }], "error")
+                  }
+                />
+              ) : (
+                isGoogleSignInAvailable() && (
+                  <Text style={styles.googleHint}>
+                    Tick the box above to continue with Google
+                  </Text>
+                )
+              )}
 
-              <Text style={styles.termsText}>Read the</Text>
               <View style={styles.termsLinkRow}>
-                <TouchableOpacity
-                  style={styles.termsLinkButton}
-                  onPress={() => navigation.navigate("TermsOfService")}
-                  accessibilityRole='link'
-                  accessibilityLabel='Read the Terms of Service'
-                >
-                  <Text style={styles.termsLink}>Terms of Service</Text>
-                </TouchableOpacity>
-                <Text style={styles.termsText}> and </Text>
+                <Text style={styles.termsText}>Read the </Text>
                 <TouchableOpacity
                   style={styles.termsLinkButton}
                   onPress={() => navigation.navigate("PrivacyPolicy")}
@@ -466,7 +512,7 @@ export default function SignupScreen({
                 <TouchableOpacity
                   style={styles.loginLinkButton}
                   onPress={() => navigation.navigate("Login")}
-                  disabled={isLoading}
+                  disabled={busy}
                   accessibilityRole='link'
                   accessibilityLabel='Sign in to an existing account'
                 >
@@ -527,10 +573,9 @@ const makeStyles = (colors: ThemeColors) =>
     },
     inputInvalid: { borderColor: colors.error },
     inputHint: {
-      fontSize: 12,
-      color: colors.textMuted,
+      fontSize: 13,
+      color: colors.textSecondary,
       marginTop: 6,
-      fontStyle: "italic",
     },
     errorText: {
       fontSize: 12,
@@ -563,6 +608,19 @@ const makeStyles = (colors: ThemeColors) =>
       marginBottom: 12,
     },
     ageBox: { fontSize: 22, color: colors.accent, marginRight: 10 },
+    ageBoxInvalid: { color: colors.error },
+    termsInlineLink: {
+      minHeight: 44,
+      justifyContent: "center",
+      alignSelf: "flex-start",
+      marginBottom: 4,
+    },
+    googleHint: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      textAlign: "center",
+      marginTop: 16,
+    },
     ageText: { flex: 1, fontSize: 14, color: colors.textPrimary },
     termsText: {
       fontSize: 12,

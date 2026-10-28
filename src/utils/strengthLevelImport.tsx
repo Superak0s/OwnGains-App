@@ -130,7 +130,8 @@ async function importDateGroup(
   dateRows: StrengthLevelRow[],
   result: ImportResult,
 ): Promise<void> {
-  const baseTime = new Date(`${date}T12:00:00.000Z`).getTime()
+  // Local noon: noon UTC is already the next day from UTC+12 onwards.
+  const baseTime = new Date(`${date}T12:00:00`).getTime()
 
   if (Number.isNaN(baseTime)) {
     result.errors.push(`Skipped invalid date: "${date}"`)

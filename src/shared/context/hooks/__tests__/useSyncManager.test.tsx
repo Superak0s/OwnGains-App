@@ -15,6 +15,8 @@ jest.mock("@features/workout/services/index", () => ({
     recordSet: jest.fn(),
     endSession: jest.fn(),
     updateSessionDay: jest.fn(),
+    getSession: jest.fn(),
+    updateSet: jest.fn(),
   },
 }));
 
@@ -22,6 +24,8 @@ const startSession = workoutApi.startSession as jest.Mock;
 const recordSet = workoutApi.recordSet as jest.Mock;
 const endSession = workoutApi.endSession as jest.Mock;
 const updateSessionDay = workoutApi.updateSessionDay as jest.Mock;
+const getSession = workoutApi.getSession as jest.Mock;
+const updateSet = workoutApi.updateSet as jest.Mock;
 
 function makeSync(timestamp: string): PendingSync {
   return {
@@ -701,5 +705,42 @@ describe("useSyncManager replay ordering and durability", () => {
 
     expect(endSession).not.toHaveBeenCalled();
     expect(controlRef.current!.getPendingSyncs()).toHaveLength(2);
+  });
+});
+
+describe("useSyncManager queued set edit", () => {
+  it("patches the server's row instead of appending a second one", async () => {
+    recordSet.mockReset();
+    getSession.mockResolvedValue({
+      setTimings: [{ id: 9, exerciseName: "Bench Press", setIndex: 0 }],
+    });
+    updateSet.mockResolvedValue({});
+    const edit = {
+      type: "recordSet",
+      syncId: "sync-edit",
+      data: {
+        sessionId: "42",
+        exerciseName: "Bench Press",
+        setIndex: 0,
+        startTime: "s",
+        endTime: "e",
+        weight: 110,
+        reps: 5,
+        replacesExisting: true,
+      },
+      timestamp: "t1",
+    } as PendingSync;
+
+    const controlRef: React.MutableRefObject<Control | null> = { current: null };
+    act(() => {
+      create(<Harness initialSyncs={[edit]} controlRef={controlRef} />);
+    });
+    await act(async () => {
+      await controlRef.current!.syncPendingData();
+    });
+
+    expect(recordSet).not.toHaveBeenCalled();
+    expect(updateSet).toHaveBeenCalledWith("42", 9, expect.objectContaining({ weight: 110 }));
+    expect(controlRef.current!.getPendingSyncs()).toHaveLength(0);
   });
 });

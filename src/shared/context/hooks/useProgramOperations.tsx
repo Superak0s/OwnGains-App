@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { programApi as defaultProgramApi } from "@features/plan/services/index";
 import type { ProgramApi } from "@features/plan/services/programApiFactory";
 import {
@@ -100,12 +100,26 @@ export const useProgramOperations = ({
   programApi = defaultProgramApi,
   forTrainee = false,
 }: UseProgramOperationsOptions): UseProgramOperationsReturn => {
+  // A second edit fired before the first re-renders must build on it, not on
+  // the program this render captured.
+  const latestDataRef = useRef(workoutData);
+  useEffect(() => {
+    latestDataRef.current = workoutData;
+  }, [workoutData]);
+
   const serverWriteFailed = useCallback(
-    async (op: string, err: unknown): Promise<void> => {
+    async (
+      op: string,
+      err: unknown,
+      previous: WorkoutData,
+      applied: WorkoutData,
+    ): Promise<void> => {
       if (forTrainee) {
-        if (workoutData) {
-          await saveToStorage(STORAGE_KEYS.WORKOUT_DATA, workoutData, userId);
-          setWorkoutData(workoutData);
+        // A later edit already built on this one, and rolling back would drop it too.
+        if (latestDataRef.current === applied) {
+          latestDataRef.current = previous;
+          await saveToStorage(STORAGE_KEYS.WORKOUT_DATA, previous, userId);
+          setWorkoutData(previous);
         }
         throw err;
       }
@@ -118,7 +132,7 @@ export const useProgramOperations = ({
       // edit up instead of merging the stale copy back over it.
       await markProgramDirty(userId);
     },
-    [forTrainee, workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS],
+    [forTrainee, setWorkoutData, userId, saveToStorage, STORAGE_KEYS],
   );
 
   /**
@@ -133,12 +147,14 @@ export const useProgramOperations = ({
       edit: (day: WorkoutDay) => (() => Promise<unknown>) | undefined,
     ): Promise<void> => {
       try {
-        if (!workoutData?.days) return;
+        const base = latestDataRef.current;
+        if (!base?.days) return;
 
-        const updatedData = structuredClone(workoutData);
+        const updatedData = structuredClone(base);
         const day = updatedData.days.find((d) => d.dayNumber === dayNumber);
         const push = day && edit(day);
         if (!push) return;
+        latestDataRef.current = updatedData;
 
         await saveToStorage(STORAGE_KEYS.WORKOUT_DATA, updatedData, userId);
         setWorkoutData(updatedData);
@@ -146,7 +162,7 @@ export const useProgramOperations = ({
         try {
           await push();
         } catch (err) {
-          await serverWriteFailed(op, err);
+          await serverWriteFailed(op, err, base, updatedData);
         }
       } catch (error) {
         if (forTrainee) throw error;
@@ -155,7 +171,7 @@ export const useProgramOperations = ({
         captureException(error, { op });
       }
     },
-    [workoutData, setWorkoutData, userId, saveToStorage, STORAGE_KEYS, forTrainee, serverWriteFailed],
+    [setWorkoutData, userId, saveToStorage, STORAGE_KEYS, forTrainee, serverWriteFailed],
   );
 
   const updateExerciseName = useCallback<UseProgramOperationsReturn["updateExerciseName"]>(

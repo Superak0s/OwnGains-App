@@ -228,6 +228,44 @@ describe("deviceBackup", () => {
     expect(store.snapshot.records.sessions!.map((r) => r.id)).toEqual(["s2"]);
   });
 
+  it("keeps the user's data when a malformed backup fails to restore", async () => {
+    store.snapshot = { kv: { "@w_user_7": "keep-me" }, records: {} };
+    const backup = {
+      format: "owngains-backup",
+      version: 1,
+      exportedAt: "2026-01-01T00:00:00.000Z",
+      userId: "7",
+      kv: { "@x_user_7": 5, "@y_user_7": "ok" },
+      records: { sessions_user_7: [{ id: "s", sortKey: "1", value: null }] },
+      photos: {},
+    } as unknown as DeviceBackup;
+
+    await restoreDeviceBackup(backup, "replace");
+    expect(store.snapshot.kv).toEqual({ "@y_user_7": "ok" });
+    expect(store.snapshot.records.sessions_user_7).toEqual([]);
+  });
+
+  it("never writes a backup photo outside the photo folder", async () => {
+    const backup: DeviceBackup = {
+      format: "owngains-backup",
+      version: 1,
+      exportedAt: "2026-01-01T00:00:00.000Z",
+      kv: {},
+      records: {},
+      photos: {
+        "../SQLite/owngains.db": "EVIL",
+        "..\\x.db": "EVIL",
+        "..": "EVIL",
+        "ok.jpg": "GOOD",
+      },
+    };
+
+    await restoreDeviceBackup(backup, "merge");
+    const written = Object.keys(files).filter((p) => files[p] === "EVIL");
+    expect(written).toEqual([]);
+    expect(files[`${PHOTOS_DIR}ok.jpg`]).toBe("GOOD");
+  });
+
   it("rejects a file that is not an OwnGains backup", () => {
     expect(isDeviceBackup({ kv: {}, records: {} })).toBe(false);
     expect(isDeviceBackup(null)).toBe(false);

@@ -78,7 +78,11 @@ export function TrainerSessionBar({
 
   return (
     <View style={banner.container}>
-      <Text style={banner.label} numberOfLines={1}>
+      <Text
+        style={banner.label}
+        numberOfLines={1}
+        accessibilityLabel={`Logging for ${username}`}
+      >
         🧑‍🏫 Logging for <Text style={banner.name}>{username}</Text>
       </Text>
       {days.length > 0 && (
@@ -149,6 +153,8 @@ const makeStopStyles = (colors: ThemeColors) =>
       backgroundColor: colors.errorLight,
       paddingHorizontal: 12,
       paddingVertical: 7,
+      minHeight: 48,
+      justifyContent: "center",
       borderRadius: 10,
     },
     stopBtnText: { color: colors.error, fontSize: 13, fontWeight: "600" },
@@ -158,6 +164,8 @@ const makeStopStyles = (colors: ThemeColors) =>
       borderColor: colors.surfaceBorder,
       paddingHorizontal: 12,
       paddingVertical: 7,
+      minHeight: 48,
+      justifyContent: "center",
       borderRadius: 10,
     },
     dayBtnDisabled: { opacity: 0.45 },

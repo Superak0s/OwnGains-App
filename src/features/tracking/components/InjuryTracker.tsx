@@ -10,7 +10,7 @@ import {
   MUSCLE_GROUP_LABELS,
 } from "../types/muscleRecovery";
 import { getSeverityColor, SEVERITY_STOPS } from "@utils/severityColor";
-import { Bar, Button, Chip, Placeholder, TINT, radius, space } from "@shared/components/ui";
+import { Bar, Button, Chip, Placeholder, radius, tint, space } from "@shared/components/ui";
 import { captureException, metric } from "@shared/services/crashReporting";
 import { INJURY_TYPES } from "./LogInjuryModal";
 
@@ -113,7 +113,7 @@ export const InjuryTracker: React.FC<InjuryTrackerProps> = ({
           style={[
             styles.alert,
             {
-              backgroundColor: `${colors.warning}${TINT}`,
+              backgroundColor: tint(colors.warning),
               borderLeftColor: colors.warning,
             },
           ]}
@@ -179,7 +179,7 @@ export const InjuryTracker: React.FC<InjuryTrackerProps> = ({
                   <View
                     style={[
                       styles.badge,
-                      { backgroundColor: `${status.color}${TINT}` },
+                      { backgroundColor: tint(status.color) },
                     ]}
                   >
                     <Text style={[styles.badgeText, { color: status.color }]}>

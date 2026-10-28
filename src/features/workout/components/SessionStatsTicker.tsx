@@ -73,6 +73,12 @@ export const SessionStatsWidget = React.memo(function SessionStatsWidget({
   const overtimeNote = isOvertime
     ? `, over your usual ${lastExercise?.name ?? "session"} rest`
     : "";
+  const reminderNote =
+    restReminderEnabled && restReminderSeconds > 0
+      ? currentRest < restReminderSeconds
+        ? `Reminder in ${formatDuration(restReminderSeconds - currentRest)}`
+        : "Rest reminder reached"
+      : null;
 
   return (
     <View>
@@ -118,7 +124,7 @@ export const SessionStatsWidget = React.memo(function SessionStatsWidget({
         <View
           style={styles.currentRestContainer}
           accessible={true}
-          accessibilityLabel={`Rest since last set ${formatDuration(currentRest)}${overtimeNote}`}
+          accessibilityLabel={`Rest since last set ${formatDuration(currentRest)}${overtimeNote}${reminderNote ? `. ${reminderNote}` : ""}`}
         >
           <Text style={styles.currentRestLabel} numberOfLines={1}>
             {lastExercise
@@ -140,6 +146,14 @@ export const SessionStatsWidget = React.memo(function SessionStatsWidget({
             )}
           </Text>
         </View>
+      )}
+      {currentRest > 0 && reminderNote && (
+        <Text
+          style={[styles.widgetLineMuted, styles.restReminderNote]}
+          importantForAccessibility='no'
+        >
+          {reminderNote}
+        </Text>
       )}
     </View>
   );

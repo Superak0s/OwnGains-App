@@ -22,6 +22,7 @@ import {
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { captureException } from "@shared/services/crashReporting";
 import { useTheme } from "../context/ThemeContext";
 import type { ThemeColors } from "../context/ThemeContext";
 
@@ -97,15 +98,26 @@ export default function ModalSheet({
   const runConfirm = useCallback((fn?: () => void) => {
     if (!fn || isConfirmingRef.current) return;
     isConfirmingRef.current = true;
-    const result = fn() as unknown;
+    const done = () => {
+      isConfirmingRef.current = false;
+      setIsConfirming(false);
+    };
+    const fail = (e: unknown) => {
+      done();
+      captureException(e, { stage: "modalSheetConfirm" });
+    };
+    let result: unknown;
+    try {
+      result = fn();
+    } catch (e) {
+      fail(e);
+      return;
+    }
     if (result && typeof (result as Promise<unknown>).then === "function") {
       setIsConfirming(true);
-      (result as Promise<unknown>).finally(() => {
-        isConfirmingRef.current = false;
-        setIsConfirming(false);
-      });
+      (result as Promise<unknown>).then(done, fail);
     } else {
-      isConfirmingRef.current = false;
+      done();
     }
   }, []);
 

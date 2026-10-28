@@ -74,7 +74,7 @@ describe("LoginScreen", () => {
     await fireEvent.changeText(screen.getByPlaceholderText("Enter username or email"), "tester")
     await fireEvent.press(screen.getByLabelText("Sign in"))
 
-    expect(await screen.findByText("Missing details")).toBeTruthy()
+    expect(await screen.findByText("Enter your password")).toBeTruthy()
     expect(signin).not.toHaveBeenCalled()
   })
 
@@ -125,5 +125,32 @@ describe("LoginScreen", () => {
       expect(signInWithGoogle).toHaveBeenLastCalledWith({ idToken: "goog", password: "pw" })
       expect(await screen.findByText("Incorrect password")).toBeTruthy()
     })
+
+    it("does not start a password sign-in while Google sign-in is still running", async () => {
+      mockOfficial = true
+      const signin = jest.fn()
+      const signInWithGoogle = jest.fn(() => new Promise(() => {}))
+      await renderWithProviders(
+        <LoginScreen
+          navigation={current.navigation as unknown as NativeStackNavigationProp<RootStackParamList, "Login">}
+        />,
+        { auth: { signin, signInWithGoogle } },
+      )
+      await fireEvent.press(screen.getByLabelText("Continue with Google"))
+      await submit()
+
+      expect(signInWithGoogle).toHaveBeenCalled()
+      expect(signin).not.toHaveBeenCalled()
+    })
+  })
+
+  it("shows the server address as saved, scheme included, after a bare host is entered", async () => {
+    await mount(jest.fn())
+    await fireEvent.press(screen.getByLabelText(/^Change server/))
+    await fireEvent.changeText(screen.getByLabelText("Server address"), " gym.example.com ")
+    await fireEvent.press(screen.getByText("Save"))
+
+    expect(await screen.findByLabelText("Change server. Currently https://gym.example.com")).toBeTruthy()
+    await jest.requireActual("@shared/services/config").resetServerUrl()
   })
 })

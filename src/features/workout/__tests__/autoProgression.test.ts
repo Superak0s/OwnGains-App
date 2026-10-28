@@ -1,5 +1,8 @@
 import {
   PROGRESSION_STEP_KG,
+  displayToKg,
+  kgToDisplay,
+  progressionStepKg,
   suggestNextSetLoad,
   targetRepCeiling,
 } from "../utils";
@@ -25,6 +28,15 @@ describe("suggestNextSetLoad", () => {
       direction: "up",
       reason: "Hit 12 reps last set",
     });
+  });
+
+  it("steps a lbs exercise by 5 lbs so the suggestion lands on a plate", () => {
+    const suggestion = suggestNextSetLoad(
+      { weight: displayToKg("175", "lbs"), reps: 12 },
+      "8-12",
+      progressionStepKg("lbs"),
+    );
+    expect(kgToDisplay(suggestion!.weightKg, "lbs")).toBe("180");
   });
 
   it("holds when the rep target was not reached", () => {

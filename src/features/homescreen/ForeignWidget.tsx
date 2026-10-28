@@ -4,7 +4,7 @@
 // widget plus the modals that widget opens.
 
 import React from "react";
-import { Text } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { useTheme } from "@shared/context/ThemeContext";
 import PlanScreen from "@features/plan/PlanScreen";
 import AnalyticsScreen from "@features/analytics/AnalyticsScreen";
@@ -59,17 +59,29 @@ const HOST_BY_TYPE: Record<string, EmbedHost> = Object.fromEntries(
 
 export default function ForeignWidget({
   type,
+  onRemove,
 }: {
   readonly type: string;
+  readonly onRemove: () => void;
 }): React.JSX.Element | null {
   const { colors } = useTheme();
   const Host = HOST_BY_TYPE[type];
   // A widget registered on a board but never wired to a host would otherwise
   // render as a blank card with nothing to act on.
   if (!Host) return (
-    <Text
-      style={{ color: colors.textSecondary, padding: 16 }}
-    >This widget is no longer available. Remove it in Edit Widgets.</Text>
+    <View style={{ alignItems: "center", padding: 8 }}>
+      <Text style={{ color: colors.textSecondary, textAlign: "center" }}>
+        This widget is no longer available.
+      </Text>
+      <TouchableOpacity
+        accessibilityRole='button'
+        accessibilityLabel='Remove this widget'
+        onPress={onRemove}
+        style={{ minHeight: 44, paddingHorizontal: 16, justifyContent: "center" }}
+      >
+        <Text style={{ color: colors.accent, fontWeight: "700" }}>Remove</Text>
+      </TouchableOpacity>
+    </View>
   );
   return <Host embedWidget={type as never} />;
 }

@@ -44,6 +44,7 @@ ${B}Most common${R}
   ${CYN}scripts/release.sh --bump=patch${R}       Same, without the version prompt
   ${CYN}scripts/release.sh debug${R}              Debug APK into release/, nothing else
   ${CYN}scripts/release.sh aab${R}                Play Store bundle only (no GitHub release)
+  ${CYN}scripts/release.sh ota --bump=patch${R}   JS-only fix as an over-the-air update, no store build
   ${CYN}scripts/release.sh --no-push --no-release${R}
                                         Build everything, publish nothing
 
@@ -52,6 +53,13 @@ ${B}What to build${R} ${DIM}(default: APKs and AAB)${R}
   aab                 Play Store AAB only, so no GitHub release
   debug               Debug APK only. No bump, checks, commit or release.
                       Accepts only --no-prebuild and --32bit.
+  ota                 Over-the-air update: version + changelog, checks, then
+                      scripts/publish-ota.js uploads it to OTA_UPLOAD from .env
+                      (user@host:/path/to/UPDATES_DIR), commit and push. No native
+                      build, versionCode, Play upload or GitHub release, so the
+                      GitHub update check keeps pointing at the last APK release.
+                      Refused when the native fingerprint differs from the last
+                      store release's (.ota-runtime-version).
   wsl                 From Git Bash, re-run this inside WSL
 
 ${B}Faster builds${R}
@@ -102,6 +110,7 @@ BUMP_ARG=""
 COMMIT_MSG=""
 SKIP_RELEASE=false
 DEBUG_ONLY=false
+OTA_ONLY=false
 USE_WSL=false
 PLAY_TRACK_ARG=""
 SKIP_PLAY=false
@@ -118,6 +127,7 @@ for arg in "$@"; do
         aab) WANT_AAB=true ;;
         --32bit) SKIP_32BIT=false ;;
         debug) DEBUG_ONLY=true ;;
+        ota) OTA_ONLY=true ;;
         wsl) USE_WSL=true ;;
         --no-sourcemaps) ALLOW_NO_SOURCEMAPS=true ;;
         --bump=*) BUMP_ARG="${arg#*=}" ;;
@@ -139,6 +149,14 @@ if [ "$DEBUG_ONLY" = true ]; then
         die "debug only takes --no-prebuild and --32bit. The rest apply to releases."
     fi
 fi
+if [ "$OTA_ONLY" = true ]; then
+    if [ "$DEBUG_ONLY" = true ] || [ "$WANT_APK" = true ] || [ "$WANT_AAB" = true ] || [ "$DO_CLEAN" = false ] \
+        || [ "$SKIP_32BIT" = false ] || [ "$BUMP_CODE" = false ] || [ "$SKIP_RELEASE" = true ] \
+        || [ ${#GH_RELEASE_FLAGS[@]} -gt 0 ] || [ -n "$PLAY_TRACK_ARG" ] || [ "$SKIP_PLAY" = true ]; then
+        die "ota builds nothing native, so it takes only --bump, --message, --no-push, --no-test and --no-sourcemaps."
+    fi
+    [ -f "$SRC/.ota-runtime-version" ] || die "no .ota-runtime-version. A store release records it, so make one before the first OTA."
+fi
 
 # Checked before any prompt, so a missing act doesn't cost a version choice.
 RUN_ACT=false
@@ -156,7 +174,9 @@ if [ "$USE_WSL" = true ] && [ "$ENV_NAME" = native ]; then
     exit $?
 fi
 
-if [ "$WANT_APK" = "$WANT_AAB" ]; then
+if [ "$OTA_ONLY" = true ]; then
+    BUILD_APK=false; BUILD_AAB=false; BUMP_CODE=false
+elif [ "$WANT_APK" = "$WANT_AAB" ]; then
     BUILD_APK=true; BUILD_AAB=true
 else
     BUILD_APK=$WANT_APK; BUILD_AAB=$WANT_AAB
@@ -190,7 +210,7 @@ if ! command -v node >/dev/null && [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]; then
     . "${NVM_DIR:-$HOME/.nvm}/nvm.sh"
 fi
 command -v node >/dev/null || die "node not found on PATH ($ENV_NAME). Install Node or load nvm first."
-if [ -z "${ANDROID_HOME:-}${ANDROID_SDK_ROOT:-}" ] && [ ! -f android/local.properties ]; then
+if [ "$OTA_ONLY" = false ] && [ -z "${ANDROID_HOME:-}${ANDROID_SDK_ROOT:-}" ] && [ ! -f android/local.properties ]; then
     die "Android SDK not found ($ENV_NAME). Export ANDROID_HOME (e.g. in ~/.profile or ~/.bashrc)."
 fi
 
@@ -205,6 +225,7 @@ if [ "$DEBUG_ONLY" = true ]; then
     printf '  Mode          %sdebug APK only%s\n' "$YEL" "$R"
 else
     what=""; [ "$BUILD_APK" = true ] && what="APK"; [ "$BUILD_AAB" = true ] && what="${what:+$what + }AAB"
+    [ "$OTA_ONLY" = true ] && what="OTA update (play + github channels)"
     printf '  Build         %s\n' "$what"
     printf '  Tests         %s\n' "$(yn "$([ "$SKIP_TESTS" = true ] && echo false || echo true)")"
     printf '  Commit+push   %s\n' "$(yn "$([ "$SKIP_PUSH" = true ] && echo false || echo true)")"
@@ -417,7 +438,11 @@ check_keystore() {
     fi
     ok "Keystore ($file, alias $alias)"
 }
-check_keystore
+if [ "$OTA_ONLY" = true ]; then
+    [ -n "${OTA_UPLOAD:-}" ] || die "OTA_UPLOAD is not set. Add OTA_UPLOAD=user@host:/path/to/UPDATES_DIR to .env."
+else
+    check_keystore
+fi
 
 # [2/6] Version bump
 step 2/8 "Version"
@@ -472,8 +497,9 @@ fi
 # Keeping the version commits as "Re-release", so no message is needed.
 # Skipped entirely with --no-push since nothing will be committed.
 if [ "$KEEP_VERSION" = false ] && [ "$SKIP_PUSH" = false ]; then
-    [ -n "$COMMIT_MSG" ] || read -rp "${B}Commit message${R} (Enter for 'Release v$NEW_VERSION'): " COMMIT_MSG
-    COMMIT_MSG="${COMMIT_MSG:-Release v$NEW_VERSION}"
+    default_msg="Release v$NEW_VERSION"; [ "$OTA_ONLY" = true ] && default_msg="$default_msg (OTA)"
+    [ -n "$COMMIT_MSG" ] || read -rp "${B}Commit message${R} (Enter for '$default_msg'): " COMMIT_MSG
+    COMMIT_MSG="${COMMIT_MSG:-$default_msg}"
 fi
 
 # Restored from copies, not git, since these usually hold uncommitted work.
@@ -599,96 +625,110 @@ elif [ "$XLSX_LATEST" != "$XLSX_PINNED" ]; then
     warn "xlsx is pinned to $XLSX_PINNED but SheetJS has published $XLSX_LATEST, which 'npm audit' can't flag."
 fi
 
-maybe_skip_prebuild
-if [ "$DO_CLEAN" = true ]; then
-    info "Running full clean prebuild"
-    npx expo prebuild --platform android --clean
+if [ "$OTA_ONLY" = true ]; then
+    step 4/8 "Publishing OTA update to $OTA_UPLOAD"
+    ota_args=("--upload=$OTA_UPLOAD")
+    [ "$ALLOW_NO_SOURCEMAPS" = true ] && ota_args+=(--no-sourcemaps)
+    node scripts/publish-ota.js "${ota_args[@]}"
+    # [Unreleased] is stamped now, and the notes must cover only what it holds.
+    : > "$SRC/docs/play-release-notes.txt"
 else
-    info "Running incremental prebuild"
-    npx expo prebuild --platform android
-fi
-save_prebuild_stamp
-
-# Expo's template writes `signingConfig = signingConfigs.debug`, which local-expo-build's
-# release wiring (it matches `signingConfig signingConfigs.debug`) skips, shipping a debug-signed build.
-sed -i 's/signingConfig = signingConfigs\.debug/signingConfig signingConfigs.debug/' "$BUILD/android/app/build.gradle"
-
-# [4/8] Build the APK via local-expo-build
-# local-expo-build handles: signing config injection, keystore restore after
-# `expo prebuild --clean` wipes android/, and the gradlew assembleRelease call.
-# --no-prebuild : prebuild already ran in [3/8]. Letting it run again with
-#                 --clean wipes android/ and forces a from-scratch native build
-# --no-clean    : otherwise it still prompts whether to clean, even with --no-prebuild
-# --no-bump     : version bump already handled in [2/8]
-# --no-sync     : skip pushing versionCode to EAS (we don't use EAS)
-#
-# One-time setup required before this works (not part of the script):
-#   cd "$BUILD" && npx local-expo-build keystore import /path/to/your.jks
-OUT_DIR="$SRC/release"
-if [ "$BUILD_APK" = true ]; then
-    step 4/8 "Building release APK"
-    set_kofi_url "\"$KOFI_URL\""
-    # Stale per-ABI APKs survive an incremental prebuild and would be released as this version.
-    rm -f "$BUILD"/android/app/build/outputs/apk/release/*.apk
-    # ORG_GRADLE_PROJECT_* overrides gradle.properties. The AAB call below doesn't see it.
-    if [ "$SKIP_32BIT" = true ]; then
-        info "arm64-v8a only (pass --32bit for armeabi-v7a too)"
-        ORG_GRADLE_PROJECT_reactNativeArchitectures=arm64-v8a npx local-expo-build build android --apk --no-sync --no-bump --no-prebuild --no-clean
+    maybe_skip_prebuild
+    if [ "$DO_CLEAN" = true ]; then
+        info "Running full clean prebuild"
+        npx expo prebuild --platform android --clean
     else
-        npx local-expo-build build android --apk --no-sync --no-bump --no-prebuild --no-clean
+        info "Running incremental prebuild"
+        npx expo prebuild --platform android
     fi
-    require_release_signed
+    save_prebuild_stamp
 
-    # One APK per ABI (plugins/withAbiSplits.js), so this is a set, not a file.
-    APK_DIR="$BUILD/android/app/build/outputs/apk/release"
-    APK_OUTS=()
-    for apk in "$APK_DIR"/*-release.apk; do
-        [ -f "$apk" ] || continue
-        abi="$(basename "$apk" -release.apk)"
-        abi="${abi#app-}"
-        out="$OUT_DIR/OwnGains-v$NEW_VERSION-$abi.apk"
-        cp "$apk" "$out"
-        ok "$(basename "$out"): $(du -h "$out" | cut -f1)"
-        APK_OUTS+=("$out")
+    # Expo's template writes `signingConfig = signingConfigs.debug`, which local-expo-build's
+    # release wiring (it matches `signingConfig signingConfigs.debug`) skips, shipping a debug-signed build.
+    sed -i 's/signingConfig = signingConfigs\.debug/signingConfig signingConfigs.debug/' "$BUILD/android/app/build.gradle"
+
+    # [4/8] Build the APK via local-expo-build
+    # local-expo-build handles: signing config injection, keystore restore after
+    # `expo prebuild --clean` wipes android/, and the gradlew assembleRelease call.
+    # --no-prebuild : prebuild already ran in [3/8]. Letting it run again with
+    #                 --clean wipes android/ and forces a from-scratch native build
+    # --no-clean    : otherwise it still prompts whether to clean, even with --no-prebuild
+    # --no-bump     : version bump already handled in [2/8]
+    # --no-sync     : skip pushing versionCode to EAS (we don't use EAS)
+    #
+    # One-time setup required before this works (not part of the script):
+    #   cd "$BUILD" && npx local-expo-build keystore import /path/to/your.jks
+    OUT_DIR="$SRC/release"
+    if [ "$BUILD_APK" = true ]; then
+        step 4/8 "Building release APK"
+        set_kofi_url "\"$KOFI_URL\""
+        # Stale per-ABI APKs survive an incremental prebuild and would be released as this version.
+        rm -f "$BUILD"/android/app/build/outputs/apk/release/*.apk
+        # ORG_GRADLE_PROJECT_* overrides gradle.properties. The AAB call below doesn't see it.
+        if [ "$SKIP_32BIT" = true ]; then
+            info "arm64-v8a only (pass --32bit for armeabi-v7a too)"
+            ORG_GRADLE_PROJECT_reactNativeArchitectures=arm64-v8a npx local-expo-build build android --apk --no-sync --no-bump --no-prebuild --no-clean
+        else
+            npx local-expo-build build android --apk --no-sync --no-bump --no-prebuild --no-clean
+        fi
+        require_release_signed
+
+        # One APK per ABI (plugins/withAbiSplits.js), so this is a set, not a file.
+        APK_DIR="$BUILD/android/app/build/outputs/apk/release"
+        APK_OUTS=()
+        for apk in "$APK_DIR"/*-release.apk; do
+            [ -f "$apk" ] || continue
+            abi="$(basename "$apk" -release.apk)"
+            abi="${abi#app-}"
+            out="$OUT_DIR/OwnGains-v$NEW_VERSION-$abi.apk"
+            cp "$apk" "$out"
+            ok "$(basename "$out"): $(du -h "$out" | cut -f1)"
+            APK_OUTS+=("$out")
+        done
+
+        if [ ${#APK_OUTS[@]} -eq 0 ]; then
+            die "no APK found in $APK_DIR"
+        fi
+        if ! bundle_has_kofi "${APK_OUTS[0]}" assets/index.android.bundle; then
+            die "the GitHub APK has no Ko-fi link. It would offer Play tips that can't work outside Play."
+        fi
+        set_kofi_url null
+    else
+        info "aab only, skipping the APK"
+    fi
+
+    if [ "$BUILD_AAB" = true ]; then
+        step 5/8 "Building release AAB"
+        npx local-expo-build build android --aab --no-sync --no-bump --no-prebuild --no-clean
+        AAB_SRC="$BUILD/android/app/build/outputs/bundle/release/app-release.aab"
+        [ -f "$AAB_SRC" ] || die "no AAB found at $AAB_SRC"
+        if aab_is_debug_signed "$AAB_SRC"; then
+            die "the AAB is debug-signed or unsigned. Play would reject it."
+        fi
+        if bundle_has_kofi "$AAB_SRC" base/assets/index.android.bundle; then
+            die "the AAB still contains the Ko-fi link. Play would reject it under the Payments policy."
+        fi
+        # "Keep current version" still bumps versionCode, and Play only accepts
+        # each code once, so the code is what tells two bundles apart.
+        VERSION_CODE=$(node -p 'require("./app.json").expo.android.versionCode')
+        AAB_OUT="$OUT_DIR/OwnGains-v$NEW_VERSION-$VERSION_CODE.aab"
+        cp "$AAB_SRC" "$AAB_OUT"
+        ok "$(basename "$AAB_OUT"): $(du -h "$AAB_OUT" | cut -f1)"
+    else
+        info "apk only, skipping the AAB"
+    fi
+
+    # Old outputs go only once both builds succeeded, so an abort can still restore release/.
+    for old in "$OUT_DIR"/*.apk "$OUT_DIR"/*.aab; do
+        [ -f "$old" ] || continue
+        [[ " ${APK_OUTS[*]} $AAB_OUT " == *" $old "* ]] || { rm -f "$old" && info "Removed old $(basename "$old")"; }
     done
 
-    if [ ${#APK_OUTS[@]} -eq 0 ]; then
-        die "no APK found in $APK_DIR"
-    fi
-    if ! bundle_has_kofi "${APK_OUTS[0]}" assets/index.android.bundle; then
-        die "the GitHub APK has no Ko-fi link. It would offer Play tips that can't work outside Play."
-    fi
-    set_kofi_url null
-else
-    info "aab only, skipping the APK"
+    # publish-ota.js refuses an update whose fingerprint differs, since these installs would ignore it.
+    npx expo-updates runtimeversion:resolve --platform android | head -1 \
+        | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).runtimeVersion' > "$SRC/.ota-runtime-version"
+    ok "Runtime version $(cat "$SRC/.ota-runtime-version") recorded for OTA updates"
 fi
-
-if [ "$BUILD_AAB" = true ]; then
-    step 5/8 "Building release AAB"
-    npx local-expo-build build android --aab --no-sync --no-bump --no-prebuild --no-clean
-    AAB_SRC="$BUILD/android/app/build/outputs/bundle/release/app-release.aab"
-    [ -f "$AAB_SRC" ] || die "no AAB found at $AAB_SRC"
-    if aab_is_debug_signed "$AAB_SRC"; then
-        die "the AAB is debug-signed or unsigned. Play would reject it."
-    fi
-    if bundle_has_kofi "$AAB_SRC" base/assets/index.android.bundle; then
-        die "the AAB still contains the Ko-fi link. Play would reject it under the Payments policy."
-    fi
-    # "Keep current version" still bumps versionCode, and Play only accepts
-    # each code once, so the code is what tells two bundles apart.
-    VERSION_CODE=$(node -p 'require("./app.json").expo.android.versionCode')
-    AAB_OUT="$OUT_DIR/OwnGains-v$NEW_VERSION-$VERSION_CODE.aab"
-    cp "$AAB_SRC" "$AAB_OUT"
-    ok "$(basename "$AAB_OUT"): $(du -h "$AAB_OUT" | cut -f1)"
-else
-    info "apk only, skipping the AAB"
-fi
-
-# Old outputs go only once both builds succeeded, so an abort can still restore release/.
-for old in "$OUT_DIR"/*.apk "$OUT_DIR"/*.aab; do
-    [ -f "$old" ] || continue
-    [[ " ${APK_OUTS[*]} $AAB_OUT " == *" $old "* ]] || { rm -f "$old" && info "Removed old $(basename "$old")"; }
-done
 
 # Past this point a commit or push may exist, so nothing is reverted any more.
 rm -rf "$BACKUP_DIR"
@@ -740,6 +780,7 @@ finish() {
     [ -n "$1" ] && printf '  GitHub release  %s\n' "$1"
     for apk in "${APK_OUTS[@]}"; do printf '  APK             %s\n' "$apk"; done
     [ -n "$AAB_OUT" ] && printf '  Play bundle     %s\n' "$AAB_OUT"
+    [ "$OTA_ONLY" = true ] && printf '  OTA update      %s (runs on the next cold start)\n' "$OTA_UPLOAD"
     [ "$PLAY_UPLOADED" = true ] && printf '  Google Play     %s track\n' "$PLAY_TRACK"
     printf '  Log             %s\n' "$LOG_FILE"
     printf '  Took            %dm%02ds\n' $((SECONDS / 60)) $((SECONDS % 60))

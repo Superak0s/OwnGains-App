@@ -281,3 +281,14 @@ it("keeps health data on-device in a headless run with nothing stored", async ()
   await flush();
   expect(mockApiCall).not.toHaveBeenCalled();
 });
+
+it("announces once when the list first becomes known", async () => {
+  const known = jest.fn();
+  mod.onServerStoredFeaturesKnown(known);
+  mockApiCall.mockResolvedValue({ localOnlyFeatures: [] });
+
+  await mod.refreshLocalOnlyFeatures();
+  await mod.refreshLocalOnlyFeatures();
+
+  expect(known).toHaveBeenCalledTimes(1);
+});

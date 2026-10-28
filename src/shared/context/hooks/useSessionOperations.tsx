@@ -9,8 +9,11 @@ import { generateId } from "../../../utils/format";
 import { weekStart } from "../../../utils/dayCompletion";
 import { CUSTOM_DAY } from "../../../utils/dayCarryOver";
 import { workoutApi as defaultWorkoutApi } from "@features/workout/services/index";
-import type { WorkoutApi } from "@features/workout/services/workoutApiFactory";
-import type { WorkoutData, WorkoutDay, PendingSync } from "../../types";
+import {
+  replaceSet,
+  type WorkoutApi,
+} from "@features/workout/services/workoutApiFactory";
+import type { WorkoutData, WorkoutDay, PendingSync, SetDetail } from "../../types";
 import type { CompletedDays, LockedDays } from "../../../utils/dayCompletion";
 import {
   metric,
@@ -91,6 +94,8 @@ export interface SetDetailsOptions {
   note?: string;
   isWarmup?: boolean;
   rir?: number;
+  /** A deleted set being put back, so it keeps its original times. */
+  restoring?: SetDetail;
 }
 
 export interface CustomStart {
@@ -120,7 +125,7 @@ interface UseSessionOperationsReturn {
     weight: number,
     reps: number,
     details?: SetDetailsOptions,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   deleteSetDetails: (
     dayNumber: number,
     exerciseIndex: number,
@@ -571,8 +576,8 @@ export const useSessionOperations = ({
       weight: number,
       reps: number,
       details: SetDetailsOptions = {},
-    ): Promise<void> => {
-      const { note = "", isWarmup = false, rir } = details;
+    ): Promise<boolean> => {
+      const { note = "", isWarmup = false, rir, restoring } = details;
       let optimisticallyCompleted = false;
       try {
         let sessionId = currentSessionId;
@@ -587,15 +592,26 @@ export const useSessionOperations = ({
         // session, so avoid writing it twice in the same action.
         if (!startingNewSession) await updateLastActivityTime();
 
+        const stored = completedDays[dayNumber]?.[exerciseIndex]?.[setIndex];
+        // A set kept from an earlier session of this day is not a row of this one.
+        const previous =
+          startingNewSession ||
+          !stored ||
+          new Date(stored.completedAt) < new Date(workoutStartTime)
+            ? undefined
+            : stored;
+        const original = previous ?? restoring;
         const now = getLocalISOString();
         const untimedAt =
           untimedSession && !startingNewSession ? workoutStartTime : null;
         const setStartTime =
           untimedAt ??
-          (startingNewSession
-            ? (sessionStartTimeRef.current ?? now)
-            : lastSetEndTime || workoutStartTime || now);
-        const setEndTime = untimedAt ?? now;
+          (original
+            ? (original.startedAt ?? original.completedAt)
+            : startingNewSession
+              ? (sessionStartTimeRef.current ?? now)
+              : lastSetEndTime || workoutStartTime || now);
+        const setEndTime = untimedAt ?? original?.completedAt ?? now;
 
         const day = workoutData?.days?.find((d) => d.dayNumber === dayNumber);
         const exercise =
@@ -613,8 +629,18 @@ export const useSessionOperations = ({
             "Set not saved",
             "Couldn't start a workout session for this day. Reopen the workout and try again.",
           );
-          return;
+          return false;
         }
+
+        // The edit supersedes any queued copy of this set.
+        if (previous)
+          await removePendingSyncs?.(
+            (sync) =>
+              sync.type === "recordSet" &&
+              String(sync.data.sessionId) === String(sessionId) &&
+              sync.data.exerciseName === exerciseName &&
+              sync.data.setIndex === setIndex,
+          );
 
         const newCompleted: CompletedDays = { ...completedDays };
         newCompleted[dayNumber] = { ...newCompleted[dayNumber] };
@@ -626,6 +652,7 @@ export const useSessionOperations = ({
           weight: weight || 0,
           reps: reps || 0,
           completedAt: setEndTime,
+          startedAt: setStartTime,
           note: note || "",
           isWarmup: isWarmup || false,
           rir,
@@ -653,24 +680,26 @@ export const useSessionOperations = ({
         }
 
         let recorded = false;
+        const setParams = {
+          exerciseName,
+          setIndex,
+          startTime: setStartTime,
+          endTime: setEndTime,
+          weight,
+          reps,
+          note,
+          isWarmup,
+          rir,
+          primaryMuscles,
+          secondaryMuscles,
+          machineName,
+        };
         // The server doesn't know a local_ id. The set waits in the queue
         // until the session start replays and remaps it.
         if (!isLocalSessionId(sessionId)) {
           try {
-            await workoutApi.recordSet(sessionId, {
-              exerciseName,
-              setIndex,
-              startTime: setStartTime,
-              endTime: setEndTime,
-              weight,
-              reps,
-              note,
-              isWarmup,
-              rir,
-              primaryMuscles,
-              secondaryMuscles,
-              machineName,
-            });
+            if (previous) await replaceSet(workoutApi, sessionId, setParams);
+            else await workoutApi.recordSet(sessionId, setParams);
             recorded = true;
             console.debug("✓ Set recorded");
             metric.count("workout.set_recorded", 1, {
@@ -697,6 +726,7 @@ export const useSessionOperations = ({
               note: note || "",
               isWarmup: isWarmup || false,
               rir,
+              ...(previous && { replacesExisting: true }),
             },
             timestamp: setEndTime,
           });
@@ -707,8 +737,12 @@ export const useSessionOperations = ({
         }
 
         // Real time even when untimed: the stale-session sweep reads it.
-        await saveToStorage(STORAGE_KEYS.LAST_SET_END_TIME, now, userId);
-        setLastSetEndTime(now);
+        // An edit or restore is not a new set, so it leaves the rest timer alone.
+        if (!original) {
+          await saveToStorage(STORAGE_KEYS.LAST_SET_END_TIME, now, userId);
+          setLastSetEndTime(now);
+        }
+        return true;
       } catch (error) {
         if (isTraineeWriteRefused(error)) {
           if (optimisticallyCompleted) {
@@ -725,7 +759,7 @@ export const useSessionOperations = ({
               ? error.message
               : userFacingError(error, "Could not save that set."),
           );
-          return;
+          return false;
         }
         console.error("Error saving set details:", error);
         captureException(error, { stage: "saveSetDetails" });
@@ -749,6 +783,7 @@ export const useSessionOperations = ({
       userId,
       STORAGE_KEYS,
       workoutApi,
+      removePendingSyncs,
     ],
   );
 

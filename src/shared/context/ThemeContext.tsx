@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   type ReactNode,
 } from "react"
 import { getStorageItem, setStorageItem } from "@shared/services/sqliteStorage"
@@ -261,6 +262,8 @@ export const BUILT_IN_THEME_IDS: ReadonlySet<string> = new Set(
 
 interface ThemeContextValue {
   theme: AppTheme
+  /** The user's own theme, ignoring any skin preview. */
+  savedTheme: AppTheme
   colors: ThemeColors
   isDark: boolean
   /** The stored theme ID (may be "system") */
@@ -268,7 +271,8 @@ interface ThemeContextValue {
   allThemes: AppTheme[]
 
   setTheme: (id: ThemeId) => Promise<void>
-  saveCustomTheme: (theme: AppTheme) => Promise<void>
+  /** With `select`, also makes it the active theme in the same write. */
+  saveCustomTheme: (theme: AppTheme, opts?: { select?: boolean }) => Promise<void>
   deleteCustomTheme: (id: string) => Promise<void>
 
   /** User-set chart color override (null = use theme default) */
@@ -282,6 +286,9 @@ interface ThemeContextValue {
   /** Resolved chart colors (override > theme default) */
   resolvedChartColor: string
   resolvedChartColorDark: string
+
+  /** Shown instead of the active theme without being saved, while a skin is previewed. */
+  setPreviewTheme: (theme: AppTheme | null) => void
 }
 
 
@@ -342,6 +349,7 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
     string | null
   >(null)
   const [loaded, setLoaded] = useState(false)
+  const [previewTheme, setPreviewTheme] = useState<AppTheme | null>(null)
 
   useEffect(() => {
     loadState().then(
@@ -365,7 +373,7 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
     [customThemes],
   )
 
-  const theme = useMemo<AppTheme>(() => {
+  const savedTheme = useMemo<AppTheme>(() => {
     if (activeThemeId === "system") {
       const systemColors = systemScheme === "dark" ? DARK_COLORS : LIGHT_COLORS
       return {
@@ -378,6 +386,7 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
     if (found) return found
     return BUILT_IN_THEMES[1] ?? BUILT_IN_THEMES[0]
   }, [activeThemeId, allThemes, systemScheme])
+  const theme = previewTheme ?? savedTheme
   const colors = theme.colors
   const isDark = isDarkColor(colors.background)
 
@@ -386,17 +395,14 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
 
   // Every writer persists the whole record. Writing only the fields it sets
   // would blank the others (a theme change used to wipe the chart colours).
-  const persist = useCallback(
-    (next: Partial<PersistedState>) =>
-      saveState({
-        activeThemeId,
-        customThemes,
-        chartColorOverride,
-        chartColorDarkOverride,
-        ...next,
-      }),
-    [activeThemeId, customThemes, chartColorOverride, chartColorDarkOverride],
-  )
+  // The record is a ref so back-to-back writes from one render, like saving a
+  // theme and then selecting it, each build on the previous write.
+  const persistedRef = useRef<PersistedState>(DEFAULT_STATE)
+  persistedRef.current = { activeThemeId, customThemes, chartColorOverride, chartColorDarkOverride }
+  const persist = useCallback((next: Partial<PersistedState>) => {
+    persistedRef.current = { ...persistedRef.current, ...next }
+    return saveState(persistedRef.current)
+  }, [])
 
   const applyChartColorOverride = useCallback(
     async (color: string | null, dark: string | null = null) => {
@@ -421,15 +427,17 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
   )
 
   const saveCustomTheme = useCallback(
-    async (newTheme: AppTheme) => {
+    async (newTheme: AppTheme, opts?: { select?: boolean }) => {
+      const { customThemes } = persistedRef.current
       const updated = customThemes.some((t) => t.id === newTheme.id)
         ? customThemes.map((t) => (t.id === newTheme.id ? newTheme : t))
         : [...customThemes, newTheme]
 
       setCustomThemes(updated)
-      await persist({ customThemes: updated })
+      if (opts?.select) setActiveThemeId(newTheme.id)
+      await persist(opts?.select ? { customThemes: updated, activeThemeId: newTheme.id } : { customThemes: updated })
     },
-    [customThemes, persist],
+    [persist],
   )
 
   const deleteCustomTheme = useCallback(
@@ -446,6 +454,7 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
   const value = useMemo<ThemeContextValue>(
     () => ({
       theme,
+      savedTheme,
       colors,
       isDark,
       activeThemeId,
@@ -458,9 +467,11 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
       setChartColorOverride: applyChartColorOverride,
       resolvedChartColor,
       resolvedChartColorDark,
+      setPreviewTheme,
     }),
     [
       theme,
+      savedTheme,
       colors,
       isDark,
       activeThemeId,

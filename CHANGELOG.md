@@ -8,18 +8,61 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ### Added
 
+- Bug fixes install on their own: the app downloads a fix in the background and uses it the next time it starts, without a store update.
 - When a trainer changes your plan, the Plan tab shows who changed it and lets you undo it for 7 days, once the server is updated. A trainer who removes days from a client's plan is asked to confirm first.
 - A ringing supplement alarm snoozes when you press volume down and turns off when you press the power button, like the Android clock.
 - In edit mode, Customize gives any placed widget its own name, emoji icon and subtitle. Leave a field empty to keep the default.
 - In trainer mode, the Clients tab and each client's page are widget boards. Reorder, resize, remove or rename the client lists, a client's schedule, weekly progress, recent sessions, permissions and tracking.
+- Skins: the Skin Marketplace button at the top of Settings (also under Appearance → Skins) lets you browse a marketplace of themes and widget layouts with their downloads, unique downloads and ratings, and load one by ID, link or file. Pick colors, layouts or both, preview the skin across the app, then apply or discard it.
+- Skins: signed in to the official server you can publish your theme and layouts, share the link, update or delete your skins, and rate or report others. Export your current skin to a file without an account.
 
 ### Changed
 
+- Support Development and Give Feedback are large, colorful buttons at the top of Settings again, instead of rows under About.
 - The Plan tab no longer shows the Schedule widget outside trainer mode. You can still place it on Home.
 - The Workout tab no longer shows the Me and Trainees tabs when you log for yourself.
+- Deleting a logged set shows Undo for a few seconds, which puts it back with its original time. With a screen reader on, Undo stays for 20 seconds, and only one Undo bar shows at a time.
+- A day that was completed or auto-completed can be started again from its banner, after a confirmation.
+- Picking a suggestion in Edit Exercise fills in the name, and Save applies it.
+- The sheet behind a long press on ＋ is called Adjust Sets. Remove one set keeps the sheet open until you confirm, and is greyed out on an exercise with one set.
+- The set form shows the kg/lbs switch and the assisted exercise note right under the weight, and the weight field reads "0 for bodyweight" while empty.
+- When your past sessions can't be loaded, the set form says so and offers Retry instead of "No previous data".
+- Start empty workout is a plain text button so it no longer looks like Add exercise. The workout has one Finish workout button, and finishing during a joint session says you'll also leave it.
+- The set form shows what you lifted last time under the weight, asks before closing with unsaved changes, and keeps Save off until a weight is entered (0 for bodyweight). Add Exercise and Edit Exercise also ask before discarding changes.
+- The rest timer shows how long until your rest reminder.
+- The Rest Reminder sheet is redesigned: it shows the chosen duration large, groups duration and type into cards, and picks Notification or Alarm with the same cards as supplement reminders.
+- Tapping a logged set on a finished day shows its details instead of only saying the day is locked.
+- When a trainer is logging for you, the banner has a Stop button that ends their access.
+- The workout screen shows a spinner while it loads, and the trainer's empty screen links to Clients.
+- Partner-completed sets in a joint session carry a 👥 mark, not only a color. Set tiles keep their numbers readable with large system fonts, the trainer bar's buttons are larger, and screen readers skip decorative emoji.
+- The auto-complete notice says your sets are saved and that starting the day again begins a new session.
+- Long-pressing a machine in the machine picker no longer offers to remove it. Use its ✕.
+- Home shows one error with Retry when your workout history can't load, instead of a banner and another in each history widget.
+- On Home, Start, Resume and View Workout are solid buttons that stand out from Change Day, and Trainer Mode is greyed out while offline.
+- Home says why nothing opened when you tap a future day while logging a past workout, a calendar day with no workout, or a day you already finished (which opens view-only).
+- The Home day picker offers to set up a plan when your plan has no days, and a widget that is no longer available has its own Remove button.
+- While one workout loads from the Home calendar, the others in the list are disabled. Home's empty-board buttons have larger touch targets and screen reader labels.
+- Warm-up sets show their number (W3), and set weights shrink less on small tiles.
+- The server address field accepts a bare address like owngains.example.com and adds https:// (http:// for a server on your home network). If the new address can't be reached, one tap goes back to the previous one.
+- Sign in marks a missing username or password next to the field, puts Continue with Google after Sign In, and on the official server Forgot password offers to email support.
+- Create Account lists every username rule, explains an unticked age and terms box instead of greying out the button, and shows "Passwords do not match" only once the confirmation is as long as the password.
+- The privacy choices are Accept all, Crash reports only and Reject all, with Accept all and Reject all styled the same, and Choose individually for the separate switches. The screen says when a box still needs ticking.
+- The privacy policy and terms open with a list of sections you can jump to, and use shorter paragraphs and larger text.
+- A password that is too long now says the limit is 72 characters, fewer with accents or emoji.
+
+### Security
+
+- The app asks the official server for a bug-fix update when it opens, in offline mode too. The request carries no account or personal data, and the app installs only updates signed by the developer.
+- Restoring a backup never writes its photos outside the app's photo folder, so a tampered backup file can't overwrite other app data.
+- The app sends your sign-in token to a skin marketplace only when it is on the same address as your server. Skin downloads are counted with a random identifier for this install, never your account. Deleting your account in the app removes your name from your published skins, ratings and reports, only after your password or Google sign-in is confirmed. The privacy policy and terms describe the marketplace.
+- Changing the server address drops your sign-in first, so your token is never sent to the new address.
+- Signing out after the app was closed for a while still ends the session on the server, instead of leaving it valid until it expires.
 
 ### Fixed
 
+- Restoring a damaged backup no longer erases your data before failing. Unreadable entries are skipped and the rest is restored.
+- Strength Level imports in New Zealand and other far-east time zones are dated on the day in the file, not the day after.
+- A spreadsheet program whose days are named without "Day 1", "Day 2" (like Push, Pull, Legs) keeps every day separate, and a day listed twice is merged into one.
 - A trainer's client page no longer shows Cancel and Save buttons that did nothing. Close it with the ✕.
 - Screen readers name widgets without a title in the widget gallery (such as the weight widgets) by their description instead of reading "Add undefined widget".
 - Turning on Trainer Mode offers the trainer tour only the first time, not on every switch. You can replay it from Settings → About → Tutorial.
@@ -39,13 +82,50 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Supplement alarms ring at the same clock time after you change timezone, without opening the app first.
 - Text and buttons follow the active theme everywhere. The joint session invite banner is readable in light themes, the live session header stays legible in the dark theme, and buttons, spinners, switches, the calendar dots and the exercise analytics warning use your theme's colors, including custom themes.
 - The bundled color themes (Yellow, Red, Green and the rest) are listed as built-in and no longer show a delete button that did nothing.
+- A custom theme you just created is kept after you restart the app instead of disappearing.
+- Friends and Tracking no longer open on a tab you hid, with no tab selected. They switch to your first visible tab.
+- Rearranging tabs while viewing a client's tracking no longer moves or unhides the Health tab in your own Tracking.
+- Tinted buttons, badges and change pills keep their background with a custom theme color written with 3 or 8 hex digits.
+- A zoomed photo comes back to the center when you pinch back out, instead of staying shifted.
+- Changing the hour of a reminder or event saved at an odd minute (like 08:03) saves the minute the picker shows.
+- The "stored on this phone" notice no longer uses up one of its showings when you leave the screen before it appears.
+- A sheet's Save button keeps working after a save fails.
+- An alert button that reopens the same alert, like Retry, works every time you press it.
+- Editing a logged set replaces it in your history instead of counting it twice, also when a trainer logs for you or the server can't be reached. An edit made while the server can't be reached is sent once it can.
+- Undo after deleting a set no longer overwrites a set logged in the same place since, or puts it back into a new workout.
+- A set saved during a joint session is no longer reported as not saved when the update to your partner fails.
+- The set form no longer shows the previous exercise's history while the next one loads.
+- Assisted exercises count the lightest assistance as your best, no longer suggest more assistance as progress, and no longer celebrate a heavier assist as a record.
+- Weights like 1.25 kg plates keep their decimals, switching between kg and lbs no longer drifts the number, and lbs exercises progress in 5 lbs steps.
+- A unit picked right after opening the workout no longer resets the unit of every other exercise.
+- Offline, the workout count and set totals leave out unfinished and demo workouts and count warm-ups, matching the server.
+- A set the app could not save no longer closes the form as if it had been saved.
+- A personal record is no longer celebrated when your past sessions failed to load.
+- Two quick changes to the same exercise (like adding two sets) both apply instead of the second undoing the first.
+- Remove one set no longer deletes the logged data of an exercise's only set.
+- Renaming a machine to a name the exercise already has merges the two instead of listing it twice.
+- Re-entering your best lift in lbs no longer counts as a new personal record.
+- Home reloads your workout history when a workout starts or ends, so the calendar shows a workout in progress with its current sets.
+- The Home streak moves on to the new week when the app stays open past Sunday midnight.
+- Home tells you when changing the day fails instead of closing the picker as if it worked.
+- Pulling to refresh on Home includes workouts logged while offline.
+- Tapping a workout twice quickly on the Home calendar opens it once.
+- After you accept new terms, the consent screen no longer comes back on the next check.
+- If the server says what it stores only after you have signed in, the health consent question appears then instead of on a later launch.
+- Tapping a privacy choice twice quickly saves it once.
+- A password sign-in can't start while Google sign-in is still running.
+- The first setup screen no longer marks a storage choice as "in use now" before you have picked one.
+- Screen readers announce screen titles as headings and read every sign-in and sign-up field by name.
 
 ### Internal
 
+- Crash reporting for marketplace server errors and failed skin exports or applies, and usage events for skin previews, applies, exports and skin links.
+- Debug builds default to the LAN dev marketplace `http://192.168.10.243:5100`.
 - Release builds let R8 shrink Expo modules, Sentry and react-native-svg (they include their own keep rules), drop the unused animated-GIF decoder, include native debug symbols in the AAB for Play vitals, and use `enableMinifyInReleaseBuilds` in place of the deprecated ProGuard option.
 - Expo SDK 58 (React Native 0.88, React 19.3, Jest 30, Sentry 8), React Native Firebase 27 and react-native-zeroconf 0.17, which ships its own types and needs a release-build keep rule for its JNI classes. Android compileSdk is 37 (targetSdk stays 36), and native modules build with CMake 3.31.6 so Windows builds handle long paths. Refs use the new `*Instance` types and `react-test-renderer` is a direct dev dependency. `app.json` drops the deprecated `assetBundlePatterns` key. Native builds need CMake 3.31.6 installed in the Android SDK, now noted in the README and CLAUDE.md.
 - Request-shape tests cover the trainer confirm flag and the program snapshot calls.
 - Tests cover saving and showing custom widget details, and the client page progress widget.
+- Home screen regression tests cover the history reload, streak rollover, day change failure, refresh order and double tap. A failed history load on Home is no longer reported to crash reporting twice.
 - `release.sh` checks the branch, `origin/main` and `gh auth` before building, takes the versionCode above Play's highest, runs `act` alongside the local checks, keeps `node_modules` in the WSL mirror across syncs and Ctrl+C (and with `--no-prebuild` also `android/` and `.expo/`), pins the GitHub release to the built commit and prints a retry command if it fails, compares xlsx against the latest SheetJS release, saves each run to `release/*.log` with step timings, and rejects `debug apk`. CI runs shellcheck on it.
 - `release.sh` lists what the release commit will include before asking for its message, and a "Keep version" release adds a new commit instead of amending and force-pushing the last one.
 - Second dedupe pass: session detail rows, sign-in requests and session storage, median, progress photo pickers, the spreadsheet target range parser.
@@ -55,6 +135,22 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - A request-shape test checks that soreness logs send the device timezone.
 - The README explains how the app handles time and timezones.
 - `withAlpha` moved to `@utils/color`, and a test checks the invite banner text contrast on the light theme.
+- Skins: skin document format, board id map and share-link parsing.
+- Skins: marketplace client that only sends the account token to a marketplace on the same origin as the app's server.
+- Skins: preview a skin's theme and widget layouts across the app before applying or discarding it.
+- Skins: Skins screen to browse the marketplace, import by ID, link, deep link or file, and export to a file.
+- Skins: publish, update and delete your skins, rate and report others.
+- Skins: account deletion anonymizes marketplace data first, legal text, README, tutorial card and CLAUDE.md note on widget renames breaking published skins.
+- Regression tests for theme saving, tab config, tints, the time wheel, sheet confirm, alerts and the local-only notice. Tab config helpers moved to `tabConfig.ts`.
+- Regression tests for set edits and restores, unsaved sets, concurrent program edits, the records fetch, one-set removal, machine renames and lbs rounding.
+- The workout screen marks itself mounted again after a fast refresh, so dev builds keep closing the set form after a save.
+- The README and the day lock tutorial card mention set delete undo and Start again.
+- Offline demo clearing and split deletion take the sessions lock like every other session write.
+- Regression tests for trainer and offline set edits, undo after the slot is reused, joint update failures, assisted bests, kg decimals, lbs steps, early unit picks and offline analytics.
+- The web privacy policy and terms keep the in-app paragraph breaks.
+- Regression tests for server switching, sign-out renewal, consent rechecks, the consent double tap, Google sign-in in progress and the sign-up checks.
+- Review fixes with regression tests: account deletion checks the password through `POST /api/auth/reauth` (specced in `api-requests.md`) before anonymizing marketplace data, a set edit that fails to send is queued as a patch of the server row, a refused trainer edit no longer rolls back a later one, and export and publish use the saved theme during a skin preview.
+- Over-the-air updates: `expo-updates` with the fingerprint runtime and code signing, a `play`/`github` channel split, `npm run publish:ota` to export and sign both, `scripts/release.sh ota` to bump, check, publish and push one (store releases record their fingerprint in `.ota-runtime-version`, and an OTA with a different one is refused), and the update server spec in `api-requests.md`. The Play forced update compares the installed build's version.
 
 ## [1.0.1] - 2026-10-22
 

@@ -56,9 +56,16 @@ export interface LocalOnlyChange {
   nowOnServer: string[]
 }
 
+const featuresKnown = createEmitter()
+
+/** Fires when the server's list goes from unknown to known, for this server. */
+export const onServerStoredFeaturesKnown = featuresKnown.subscribe
+
 const adopt = (features: string[]): void => {
+  const wasUnknown = cached === null
   cached = features
   setTelemetryTag("local_only", features.join(",") || "none")
+  if (wasUnknown) featuresKnown.trigger()
 }
 
 let pendingChange: LocalOnlyChange | null = null

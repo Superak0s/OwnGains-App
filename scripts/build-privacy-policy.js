@@ -52,7 +52,8 @@ ${sections
     const mail = s.email
       ? ` <a href="mailto:${escape(s.email)}">${escape(s.email)}</a>`
       : "";
-    return `<h2>${escape(s.title)}</h2>\n<p>${escape(s.body)}${mail}</p>`;
+    const paragraphs = s.body.split("\n\n").map(escape).join("</p>\n<p>");
+    return `<h2>${escape(s.title)}</h2>\n<p>${paragraphs}${mail}</p>`;
   })
   .join("\n")}
 `;
@@ -105,6 +106,9 @@ limited time:</p>
   one year from filing. After deletion they no longer link to your account. A report
   about you keeps your username and the reporter's optional note.</li>
 </ul>
+<p>Skins you published to the skin marketplace stay public without your name, and your
+ratings and reports there no longer link to you. Deleting in the app does this
+automatically. Otherwise email us to have it done.</p>
 
 <h2>Delete your data but keep the account</h2>
 <ul>

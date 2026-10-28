@@ -61,6 +61,24 @@ describe("SignupScreen", () => {
     await fireEvent.press(screen.getByLabelText("Create account"))
 
     expect(signup).not.toHaveBeenCalled()
+    expect(screen.getByText(/Confirm you are 16 or older/)).toBeTruthy()
+  })
+
+  it("names the title as a heading and every field for screen readers", async () => {
+    await mount(jest.fn())
+    expect(screen.getByRole("header", { name: "Create Account" })).toBeTruthy()
+    for (const label of ["Username, required", "Email, required", "Full name, optional", "Password, required", "Confirm password, required"])
+      expect(screen.getByLabelText(label)).toBeTruthy()
+  })
+
+  it("waits until the confirmation is as long as the password before calling it a mismatch", async () => {
+    await mount(jest.fn())
+    await fireEvent.changeText(screen.getByPlaceholderText("Create a password"), PASSWORD)
+    await fireEvent.changeText(screen.getByPlaceholderText("Re-enter your password"), PASSWORD.slice(0, 3))
+    expect(screen.queryByText("Passwords do not match")).toBeNull()
+
+    await fireEvent.changeText(screen.getByPlaceholderText("Re-enter your password"), `${PASSWORD.slice(0, -1)}x`)
+    expect(screen.getByText("Passwords do not match")).toBeTruthy()
   })
 
   it.each([

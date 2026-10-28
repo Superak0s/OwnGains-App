@@ -1,5 +1,5 @@
 import React from "react"
-import { fireEvent, screen, waitFor } from "@testing-library/react-native"
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native"
 import PrivacyConsentScreen from "@features/auth/PrivacyConsentScreen"
 import { renderWithProviders, current } from "test-utils/renderWithProviders"
 import { user } from "test-utils/fixtures"
@@ -75,7 +75,7 @@ describe("PrivacyConsentScreen", () => {
     expect(recordPrivacyConsent).toHaveBeenCalledWith(String(user.id))
   })
 
-  it("saves Necessary only as crash reports on and usage metrics off", async () => {
+  it("saves Crash reports only as crash reports on and usage metrics off", async () => {
     await mount()
     await press("I am 16 or older and agree to the Terms of Service")
     await press(/storing my health-related data/)
@@ -84,6 +84,21 @@ describe("PrivacyConsentScreen", () => {
     await waitFor(() => expect(onDone).toHaveBeenCalled())
     expect(setCrashReportingEnabled).toHaveBeenCalledWith(true)
     expect(setTelemetryEnabled).toHaveBeenCalledWith(false)
+  })
+
+  it("records consent once when a choice is tapped twice before the screen updates", async () => {
+    await mount()
+    await press("I am 16 or older and agree to the Terms of Service")
+    await press(/storing my health-related data/)
+    // Both taps reach the handler before React re-renders the disabled button.
+    const { onClick } = screen.getByLabelText("Allow crash reports and usage metrics, then continue").props
+    await act(async () => {
+      onClick({ nativeEvent: {} })
+      onClick({ nativeEvent: {} })
+    })
+
+    await waitFor(() => expect(onDone).toHaveBeenCalled())
+    expect(recordConsent).toHaveBeenCalledTimes(1)
   })
 
   it("does not let an online user continue without health consent", async () => {

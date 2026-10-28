@@ -224,6 +224,26 @@ describe("parseWorkoutFileClient (wide format)", () => {
     expect(exercises?.map((e) => e.reps)).toEqual(["8-12", "0", undefined]);
   });
 
+  it("numbers days without a Day N title and merges a repeated title into its day", async () => {
+    stageSheet([
+      ["Day", "Exercise", "Primary Muscles", "Secondary Muscles", "GF"],
+      ["Push", "Bench Press", "[Chest]", "[]", 3],
+      ["Pull", "Row", "[Middle Back]", "[]", 3],
+      ["Day 2", "Squat", "[Quadriceps]", "[]", 3],
+      ["Push", "Dip", "[Chest]", "[]", 2],
+    ]);
+    const data = await parseWorkoutFileClient("file:///wide.xlsx");
+    expect(data.days.map((d) => [d.dayTitle, d.dayNumber])).toEqual([
+      ["Push", 1],
+      ["Pull", 2],
+      ["Day 2", 3],
+    ]);
+    expect(data.days[0].split.GF.exercises.map((e) => e.name)).toEqual([
+      "Bench Press",
+      "Dip",
+    ]);
+  });
+
   it("skips the day/weekly total rows instead of reading their sheet-provided totals", async () => {
     stageSheet(WIDE_ROWS);
     const data = await parseWorkoutFileClient("file:///wide.xlsx");

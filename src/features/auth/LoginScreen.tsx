@@ -24,6 +24,8 @@ import {
   resetServerUrl,
   getDefaultServerUrl,
   validateServerUrl,
+  normalizeServerUrl,
+  isOfficialServer,
   isPrivateHost,
 } from "@shared/services/config";
 import { scanForLanServer } from "@shared/services/lanDiscovery";
@@ -40,9 +42,13 @@ import {
 import type { AppMode } from "@shared/services/appMode";
 import type { RootStackParamList } from "./types";
 import GoogleSignInButton from "./components/GoogleSignInButton";
+import { isGoogleSignInAvailable } from "./googleSignIn";
+import { openEmail } from "./components/LegalScreen";
 import PasswordField from "./components/PasswordField";
 import type { ThemeColors } from "@shared/context/ThemeContext"
 import { captureException, log, metric } from "@shared/services/crashReporting";
+
+const SUPPORT_EMAIL = "kostissuperak0s@gmail.com";
 
 const MODE_COPY = {
   online: {
@@ -91,26 +97,48 @@ export default function LoginScreen({
   const [isDetectingLan, setIsDetectingLan] = useState<boolean>(false);
   const [detectedLanUrl, setDetectedLanUrl] = useState<string | null>(null);
   const [appMode, setAppMode] = useState<AppMode>("online");
+  const [missingField, setMissingField] = useState<"identifier" | "password" | null>(null);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   const { signin } = useAuth();
   const { alert, AlertComponent } = useAlert();
   const isOnline = appMode === "online";
   const copy = MODE_COPY[isOnline ? "online" : "offline"];
+  const identifierRef = useRef<TextInputInstance>(null);
   const passwordRef = useRef<TextInputInstance>(null);
+  const busy = isLoading || googleBusy;
 
   // The server has no mail sender, so an emailed reset link cannot be offered.
   // The operator resets passwords with the `owngains passwd` CLI.
   const showPasswordRecoveryHelp = () => {
-    const howToReset =
-      currentServerUrl === getDefaultServerUrl()
-        ? "Email kostissuperak0s@gmail.com from the address you signed up with, and the password on the official server will be reset for you.\n\n"
-        : "Ask whoever runs " +
-          currentServerUrl +
-          " to reset it for you. They can do that with the `owngains passwd <username> <newpassword>` command on the server. If that server is yours, run the same command on it.\n\n";
+    const offlineNote =
+      "If you would rather not use a server at all, switch to offline mode: your data stays on this device and no password is needed.";
+    if (isOfficialServer()) {
+      alert(
+        "Forgot Password?",
+        `Email ${SUPPORT_EMAIL} from the address you signed up with, and the password on the official server will be reset for you.\n\n${offlineNote}`,
+        [
+          { text: "Close", style: "cancel" },
+          {
+            text: "Email support",
+            onPress: async () => {
+              if (!(await openEmail(SUPPORT_EMAIL)))
+                alert(
+                  "No email app",
+                  `This device has no email app set up. The address is ${SUPPORT_EMAIL}.`,
+                  [{ text: "OK" }],
+                  "info",
+                );
+            },
+          },
+        ],
+        "info",
+      );
+      return;
+    }
     alert(
       "Forgot Password?",
-      howToReset +
-        "If you would rather not use a server at all, switch to offline mode: your data stays on this device and no password is needed.",
+      `Ask whoever runs ${currentServerUrl} to reset it for you.\n\nIf you run this server, reset it with \`owngains passwd <username> <newpassword>\` on the server.\n\n${offlineNote}`,
       [{ text: "OK" }],
       "info",
     );
@@ -134,17 +162,13 @@ export default function LoginScreen({
   const isSubmittingRef = useRef(false);
 
   const handleLogin = async (): Promise<void> => {
-    if (isSubmittingRef.current) return;
-    const needsPassword = isOnline;
-    if (!usernameOrEmail.trim() || (needsPassword && !password)) {
-      alert(
-        "Missing details",
-        needsPassword
-          ? "Please enter your username/email and password"
-          : "Please enter a name for this device profile",
-        [{ text: "OK" }],
-        "warning",
-      );
+    if (isSubmittingRef.current || googleBusy) return;
+    let missing: "identifier" | "password" | null = null;
+    if (!usernameOrEmail.trim()) missing = "identifier";
+    else if (isOnline && !password) missing = "password";
+    setMissingField(missing);
+    if (missing) {
+      (missing === "identifier" ? identifierRef : passwordRef).current?.focus();
       return;
     }
 
@@ -164,7 +188,7 @@ export default function LoginScreen({
 
       if (!result.success) {
         alert(
-          "Login Failed",
+          "Sign-in failed",
           result.error || "Invalid username or password",
           [{ text: "OK" }],
           "error",
@@ -226,7 +250,7 @@ export default function LoginScreen({
   // is a durability trade-off the person picking the server has to know about,
   // so it is confirmed at the moment they pick it, not discovered later.
   const announceServerChange = useCallback(
-    async (message: string): Promise<void> => {
+    async (message: string, previousUrl?: string): Promise<void> => {
       const localOnly = await refreshLocalOnlyFeatures();
       if (localOnly === null) {
         // Null is "the server never answered", not "it stores everything", so
@@ -236,7 +260,12 @@ export default function LoginScreen({
           `${message}
 
 OwnGains could not reach that address, so it could not check what the server stores. Make sure it is running and reachable from this phone before signing in.`,
-          [{ text: "OK" }],
+          previousUrl
+            ? [
+                { text: `Go back to ${previousUrl}`, onPress: () => void setServerUrl(previousUrl) },
+                { text: "Keep it" },
+              ]
+            : [{ text: "OK" }],
           "warning",
         );
         return;
@@ -258,18 +287,22 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
   );
 
   const saveUrl = useCallback(async (url: string): Promise<void> => {
+    const previousUrl = getServerUrl();
     const success = await setServerUrl(url);
     if (success) {
-      setCurrentServerUrl(url);
+      setCurrentServerUrl(getServerUrl());
       setShowServerModal(false);
-      await announceServerChange("Server URL updated successfully!");
+      await announceServerChange(
+        "Server URL updated successfully!",
+        previousUrl === getServerUrl() ? undefined : previousUrl,
+      );
     } else {
       alert("Error", "Failed to save server URL", [{ text: "OK" }], "error");
     }
   }, [alert, announceServerChange]);
 
   const handleSaveServerUrl = useCallback(async (): Promise<void> => {
-    const url = tempServerUrl.trim();
+    const url = normalizeServerUrl(tempServerUrl);
     const validation = validateServerUrl(url);
 
     if (!validation.valid) {
@@ -282,10 +315,12 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
       return;
     }
 
-    if (url.startsWith("http://") && isPrivateHost(new URL(url).hostname)) {
+    const fromDiscovery =
+      detectedLanUrl !== null && url === normalizeServerUrl(detectedLanUrl);
+    if (url.startsWith("http://") && isPrivateHost(new URL(url).hostname) && !fromDiscovery) {
       alert(
-        "Development Server",
-        "You're connecting to a local development server. This should only be used for testing.",
+        "Unencrypted connection",
+        "This server is on your local network and doesn't use encryption. Anyone on this Wi-Fi could see your traffic, including your password.",
         [
           { text: "Cancel", style: "cancel" },
           {
@@ -301,7 +336,7 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
     }
 
     await saveUrl(url);
-  }, [tempServerUrl, saveUrl, alert]);
+  }, [tempServerUrl, detectedLanUrl, saveUrl, alert]);
 
   const handleResetServerUrl = useCallback((): void => {
     const defaultUrl = getDefaultServerUrl();
@@ -348,7 +383,13 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
         >
           <View style={styles.content}>
             <View style={styles.header}>
-              <Text style={styles.title}>💪 OwnGains</Text>
+              <Text
+                style={styles.title}
+                accessibilityRole='header'
+                accessibilityLabel='OwnGains'
+              >
+                💪 OwnGains
+              </Text>
               <Text style={styles.subtitle}>
                 {copy.subtitle}
               </Text>
@@ -358,7 +399,7 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
               <TouchableOpacity
                 style={styles.serverBadge}
                 onPress={handleOpenServerModal}
-                disabled={isLoading}
+                disabled={busy}
                 accessibilityRole='button'
                 accessibilityLabel={`Change server. Currently ${currentServerUrl}`}
               >
@@ -379,23 +420,35 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
                   {copy.identifierLabel}
                 </Text>
                 <TextInput
-                  style={styles.input}
+                  ref={identifierRef}
+                  style={[styles.input, missingField === "identifier" && styles.inputInvalid]}
                   placeholder={copy.identifierPlaceholder}
                   placeholderTextColor={colors.textMuted}
                   value={usernameOrEmail}
-                  onChangeText={setUsernameOrEmail}
+                  onChangeText={(value) => {
+                    setUsernameOrEmail(value);
+                    if (missingField === "identifier") setMissingField(null);
+                  }}
+                  accessibilityLabel={copy.identifierLabel}
                   autoCapitalize={copy.autoCapitalize}
                   autoCorrect={false}
                   keyboardType={copy.keyboardType}
                   autoComplete={copy.autoComplete}
                   textContentType={copy.textContentType}
-                  editable={!isLoading}
+                  editable={!busy}
                   returnKeyType={copy.returnKeyType}
                   onSubmitEditing={() => {
                     if (isOnline) passwordRef.current?.focus();
                     else void handleLogin();
                   }}
                 />
+                {missingField === "identifier" && (
+                  <Text style={styles.errorText} accessibilityLiveRegion='polite'>
+                    {isOnline
+                      ? "Enter your username or email"
+                      : "Enter a name for this device profile"}
+                  </Text>
+                )}
               </View>
 
               {isOnline && (
@@ -404,15 +457,25 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
                 <PasswordField
                   ref={passwordRef}
                   toggleLabel='password'
+                  style={missingField === "password" && styles.inputInvalid}
                   placeholder='Enter your password'
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(value) => {
+                    setPassword(value);
+                    if (missingField === "password") setMissingField(null);
+                  }}
+                  accessibilityLabel='Password'
                   autoComplete='current-password'
                   textContentType='password'
-                  editable={!isLoading}
+                  editable={!busy}
                   returnKeyType='go'
                   onSubmitEditing={handleLogin}
                 />
+                {missingField === "password" && (
+                  <Text style={styles.errorText} accessibilityLiveRegion='polite'>
+                    Enter your password
+                  </Text>
+                )}
               </View>
               )}
 
@@ -420,7 +483,7 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
                 <TouchableOpacity
                   style={styles.forgotPassword}
                   onPress={showPasswordRecoveryHelp}
-                  disabled={isLoading}
+                  disabled={busy}
                   accessibilityRole="button"
                   accessibilityLabel="Forgot password help"
                 >
@@ -433,13 +496,13 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
               <TouchableOpacity
                 style={[
                   styles.loginButton,
-                  isLoading && styles.loginButtonDisabled,
+                  busy && styles.loginButtonDisabled,
                 ]}
                 onPress={handleLogin}
-                disabled={isLoading}
+                disabled={busy}
                 accessibilityRole='button'
                 accessibilityLabel={copy.submitAccessibilityLabel}
-                accessibilityState={{ disabled: isLoading, busy: isLoading }}
+                accessibilityState={{ disabled: busy, busy: isLoading }}
               >
                 {isLoading ? (
                   <ActivityIndicator color={colors.textOnAccent} />
@@ -450,27 +513,31 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
                 )}
               </TouchableOpacity>
 
-              {isOnline && (
-                <GoogleSignInButton
-                  disabled={isLoading}
-                  onError={(message) =>
-                    alert("Login Failed", message, [{ text: "OK" }], "error")
-                  }
-                />
-              )}
-
-              {isOnline && (
+              {isOnline && isGoogleSignInAvailable() && (
                 <>
                   <View style={styles.divider}>
                     <View style={styles.dividerLine} />
                     <Text style={styles.dividerText}>OR</Text>
                     <View style={styles.dividerLine} />
                   </View>
+                  <GoogleSignInButton
+                    disabled={isLoading}
+                    onBusyChange={setGoogleBusy}
+                    onForgotPassword={showPasswordRecoveryHelp}
+                    onError={(message) =>
+                      alert("Sign-in failed", message, [{ text: "OK" }], "error")
+                    }
+                  />
+                </>
+              )}
 
+              {isOnline && (
+                <>
+                  <Text style={styles.signupPrompt}>New to OwnGains?</Text>
                   <TouchableOpacity
                     style={styles.signupButton}
                     onPress={() => navigation.navigate("Signup")}
-                    disabled={isLoading}
+                    disabled={busy}
                     accessibilityRole='button'
                     accessibilityLabel='Create a new account'
                   >
@@ -486,7 +553,7 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
               <TouchableOpacity
                 style={styles.modeSwitchButton}
                 onPress={() => void restartOnboarding()}
-                disabled={isLoading}
+                disabled={busy}
                 accessibilityRole='button'
                 accessibilityLabel='Change how OwnGains stores your data'
               >
@@ -527,20 +594,23 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
           title='Server Configuration'
           onConfirm={handleSaveServerUrl}
           confirmText='Save'
+          dirty={normalizeServerUrl(tempServerUrl) !== currentServerUrl}
         >
           <Text style={styles.modalDescription}>
-            Enter the URL of your OwnGains server (including http:// or
-            https://)
+            Enter the address of your OwnGains server, like owngains.example.com
           </Text>
           <TextInput
             style={styles.modalInput}
             value={tempServerUrl}
             onChangeText={setTempServerUrl}
             keyboardType='url'
-            placeholder='https://api.example.com'
+            placeholder='owngains.example.com'
             placeholderTextColor={colors.textMuted}
             autoCapitalize='none'
             autoCorrect={false}
+            accessibilityLabel='Server address'
+            returnKeyType='done'
+            onSubmitEditing={() => void handleSaveServerUrl()}
           />
           {isDetectingLan && (
             <View style={styles.lanSuggestion}>
@@ -563,7 +633,7 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
           <View style={styles.modalWarning}>
             <Text style={styles.modalWarningIcon}>⚠️</Text>
             <Text style={styles.modalWarningText}>
-              Always use HTTPS for production servers to ensure your data is
+              Use https:// for any server on the internet, so your data is
               encrypted
             </Text>
           </View>
@@ -681,7 +751,8 @@ const makeStyles = (colors: ThemeColors) =>
     divider: {
       flexDirection: "row",
       alignItems: "center",
-      marginVertical: 30,
+      marginTop: 24,
+      marginBottom: 0,
     },
     dividerLine: { flex: 1, height: 1, backgroundColor: colors.surfaceBorder },
     dividerText: {
@@ -689,6 +760,20 @@ const makeStyles = (colors: ThemeColors) =>
       fontSize: 14,
       color: colors.textMuted,
       fontWeight: "600",
+    },
+    inputInvalid: { borderColor: colors.error },
+    errorText: {
+      fontSize: 13,
+      color: colors.error,
+      marginTop: 6,
+      fontWeight: "600",
+    },
+    signupPrompt: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: "center",
+      marginTop: 36,
+      marginBottom: 12,
     },
     signupButton: {
       backgroundColor: colors.surface,

@@ -12,7 +12,7 @@ OwnGains is a fitness tracking app that puts you in control. Build your split, l
 
 **You can use every core part of OwnGains without ever creating an account, connecting to the internet, or trusting anyone else's server.**
 
-Open the app, pick Offline mode in onboarding, and you're in, without an email, password or login screen. A local profile is created for you on the spot. From then on, **everything is stored on your device**: your program, every logged set, body weight, progress photos, macros, measurements, supplements, streaks, and all your analytics. Nothing is uploaded. The only network requests are exercise demonstration photos (switchable off), any crash reports you opt into, and a daily check for a newer version in the APKs from GitHub releases. There is no account to delete, because there was never an account.
+Open the app, pick Offline mode in onboarding, and you're in, without an email, password or login screen. A local profile is created for you on the spot. From then on, **everything is stored on your device**: your program, every logged set, body weight, progress photos, macros, measurements, supplements, streaks, and all your analytics. Nothing is uploaded. The only network requests are exercise demonstration photos (switchable off), any crash reports you opt into, a bug-fix update check against the official server when the app opens, and a daily check for a newer version in the APKs from GitHub releases. There is no account to delete, because there was never an account.
 
 - **No server required, ever.** The full workout tracker, planner, split builder, body tracking, supplements, analytics, themes, and widgets all work with zero infrastructure.
 - **Works in a dead-zone gym.** Concrete basement with no signal is the normal case, not an edge case. The app never waits on a network call to let you log a set.
@@ -42,7 +42,7 @@ Split creation is a core feature. You can start from a template, from a spreadsh
 
 ### 🏋️ Track your workouts
 
-- **Log sets as you lift**: weight, reps, notes, and warm-up flags, set by set. Quick-added sets can be undone, and each exercise remembers its own kg or lb unit.
+- **Log sets as you lift**: weight, reps, notes, and warm-up flags, set by set. Quick-added and deleted sets can be undone, and each exercise remembers its own kg or lb unit.
 - **Log a past workout**: forgot to log, or would rather log later? "Log a past workout" on Home lets you pick the day you trained, then opens a normal workout session that records your sets but no durations, rest or session time.
 - **Reps in reserve**: rate each set's effort as reps left in the tank (sets logged with the old RPE scale are converted automatically).
 - **Auto-progression prompt**: the next set's weight is suggested from your last set's reps and reps in reserve (toggleable).
@@ -51,7 +51,7 @@ Split creation is a core feature. You can start from a template, from a spreadsh
 - **PR celebration & live session stats**: personal records are called out as you hit them, and a running ticker tracks the session.
 - **Add exercises or extra sets on the fly** mid-workout, with the same fuzzy matching so nothing gets duplicated, a muscle browser, and muscles filled in for known exercises.
 - **Empty workouts**: start a workout outside your plan, even with no plan at all, and add exercises as you go. It is saved to your history only.
-- **Day locking & weekly reset**: completed days lock until your week resets, keeping you on schedule (with manual unlock overrides when you need them).
+- **Day locking & weekly reset**: completed days lock until your week resets, keeping you on schedule (start a finished day again from its banner, or unlock days in Settings).
 
 ### 📊 See your progress
 
@@ -125,6 +125,7 @@ Every screen has a customizable widget board. Add, remove, resize, and reorder w
 
 - 7 built-in themes (Light, Dark, Yellow, Red, Green, Blue, Pink), plus automatic light/dark switching.
 - **Create your own custom themes** with a full color editor.
+- **Skins**: share your theme and widget layouts, or load one from the skin marketplace by ID, link or file. Choose colors, layouts or both and preview them across the app before applying. Publishing and rating need an account on the official server. The marketplace is an optional service on OwnGains-Server, and the official one is the default even for self-hosted servers.
 - **Interactive tutorial**: a short tour that opens by pointing trainers to Trainer Mode, then covers only the easy-to-miss parts of each screen with spotlights and practice mini-demos, plus friends, sharing, joint-session and trainer chapters in server mode. Reopen it any time from Settings.
 
 ### 🔧 Settings
@@ -147,7 +148,7 @@ Under **Privacy and Data**: the privacy policy, **Export My Data**, **full devic
 
 ## Privacy
 
-- Offline mode sends none of your data anywhere. There is no account and no telemetry by default. The only requests are exercise photos from GitHub (switchable off), any crash reports you opt into, and the GitHub APK's daily update check.
+- Offline mode sends none of your data anywhere. There is no account and no telemetry by default. The only requests are exercise photos from GitHub (switchable off), any crash reports you opt into, the bug-fix update check, and the GitHub APK's daily update check.
 - Health Connect data is only read, never written, and the steps, heart rate and sleep summaries are kept on your device only.
 - The official server (`owngains.superak0s.com`) is run by the developer on their own hardware in Greece. It stores accounts, workouts, programs and friends, but not tracking or supplement data, which stay on the device.
 - Crash reporting and usage metrics are both opt-in, chosen on first sign-in, changeable in Settings at any time. Crash reports, screen-load traces and diagnostic logs go to the developer's self-hosted [GlitchTip](https://glitchtip.com) instance (`glitchtip.superak0s.com`), not to Sentry's cloud. Usage counts (screens, features, workouts, daily opens) go to Google Analytics for Firebase, with the advertising ID and ad personalization off, and app start and slow-operation timings go to Firebase Performance Monitoring.
@@ -197,6 +198,7 @@ The web copies of the legal text are generated from the in-app screens: [privacy
 - **Local native modules** (`modules/`): `exact-alarms` checks Android's exact-alarm and display-over-other-apps permissions and opens their settings pages, and schedules, re-arms and rings supplement alarms, showing them in `AlarmActivity` over the lock screen. `autofill` asks Android to offer saving the login after sign-in. `hydration-tiles` provides the Quick Settings water tiles.
 - **Update check** (`src/shared/services/githubUpdate.ts`): GitHub release builds check the latest GitHub release once a day and offer the download.
 - **Forced update** (`src/shared/services/playUpdate.ts`): Play builds run Play's in-app immediate update flow only when the app version is below `minAppVersion` from `/healthz` (server env `MIN_APP_VERSION`), checked at launch and each time the app returns to the foreground. Offline mode is never forced.
+- **Over-the-air updates** (`src/shared/services/otaUpdate.ts`): `expo-updates` asks `owngains.superak0s.com/api/updates/manifest` for a newer JS bundle at launch and on foreground, downloads it, and runs it on the next cold start. Updates are code-signed (`certs/certificate.pem`, private key in `secrets/expo-updates/`) and keyed by the native fingerprint, so a build only receives bundles its native code can run. Play builds use the `play` channel and GitHub APKs switch to `github`, because only the GitHub bundle may contain the Ko-fi link. Native changes still need a store release, which `MIN_APP_VERSION` can force.
 
 ### Time and timezones
 
@@ -272,6 +274,8 @@ npm run build:android:aab         # AAB
 
 Signing uses `keystore.properties` plus a secrets file (`~/.owngains-secrets`, or `%USERPROFILE%\.owngains-secrets.bat` on Windows), all gitignored. Without them Gradle silently falls back to the debug key and the APK can't update an installed release. [`docs/release-checklist.md`](docs/release-checklist.md) covers the manual smoke test and Play Console checks.
 
+A JS-only fix doesn't need a store build: `scripts/release.sh ota --bump=patch` bumps the version and stamps the changelog (`versionCode` stays), runs the same checks, then `scripts/publish-ota.js` exports the bundle for both channels, uploads its sourcemaps, signs the manifests and copies them to `OTA_UPLOAD` from `.env` (`user@host:/path/to/UPDATES_DIR`) before the commit and push. It creates no GitHub release, so the GitHub APK's update check keeps pointing at the last APK. Every store release records its native fingerprint in `.ota-runtime-version`, and an OTA whose fingerprint differs is refused, because a change to native code, a plugin, the native parts of `app.json` or the `package.json` scripts means installed builds would ignore it. Delete the newest update folder on the server to roll back.
+
 Release APKs are split per CPU architecture. Most phones want the `arm64-v8a` one. `armeabi-v7a` is for older 32-bit devices.
 
 ## Changelog
@@ -282,7 +286,7 @@ The file is bundled into the app and shown under Settings → About → What's N
 
 ## Support
 
-OwnGains and the official server are built and run by one developer. If the app is useful to you, you can support development on [Ko-fi](https://ko-fi.com/superak0s), or with a one-time tip from Settings → About → Support Development in the Google Play version. The GitHub release APKs link to Ko-fi from the same row.
+OwnGains and the official server are built and run by one developer. If the app is useful to you, you can support development on [Ko-fi](https://ko-fi.com/superak0s), or with a one-time tip from the Support Development button at the top of Settings in the Google Play version. The GitHub release APKs link to Ko-fi from the same button.
 
 ## App identity
 

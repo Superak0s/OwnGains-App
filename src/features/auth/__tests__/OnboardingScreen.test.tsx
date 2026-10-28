@@ -111,3 +111,11 @@ it("offers a way back when there is a session behind it", async () => {
   expect(setOnboardingComplete).toHaveBeenCalledWith(true);
   expect(setAppMode).not.toHaveBeenCalled();
 });
+
+it("marks no choice as in use on first setup, only when switching", async () => {
+  const labels = async () => (await renderScreen()).map((n) => n.props.accessibilityLabel);
+  expect((await labels()).some((l) => /currently in use/.test(l))).toBe(false);
+
+  mockIsAuthenticated = true;
+  expect((await labels()).some((l) => /currently in use/.test(l))).toBe(true);
+});

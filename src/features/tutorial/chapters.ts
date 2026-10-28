@@ -77,7 +77,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
   ]),
   home: chapter("home", "🏠", "Home", [
     spot("Home", "home.changeDay", "Change Day picks which program day you'll train next.", "Once you have a plan, Change Day on the Next Workout card picks the day you'll train next."),
-    card("🔒", "Finished days lock", "A finished day is marked Done and locked, so it can't be changed by accident. Settings → Workout → Unlock Single Day unlocks one. Forgot to log at the gym? Log a past workout on Home."),
+    card("🔒", "Finished days lock", "A finished day is marked Done and locked, so it can't be changed by accident. Tap Start again on its banner to log it again. Forgot to log at the gym? Log a past workout on Home."),
   ]),
   plan: chapter("plan", "📋", "Plan", [
     spot("Plan", "plan.import", "Import file brings in a program from a spreadsheet (.ods, .xlsx or .xls). Accept each matched row so its progress charts connect.", "Build your plan → Import file brings in a program from a spreadsheet."),
@@ -114,6 +114,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
   ], true),
   widgets: chapter("widgets", "🧩", "Widgets", [
     practice("Pull down with two fingers anywhere on a board to open its widget gallery. Every screen has its own board.", { type: "twoFingerPull" }),
+    card("🎨", "Skins", "Settings → Appearance → Skins shares your theme and widget layouts, or loads someone else's by ID, link or file. Preview a skin before you apply it."),
   ]),
   settings: chapter("settings", "⚙️", "Settings", [
     spot("Settings", "settings.tutorial", "Replay any chapter of this tutorial from here.", "Settings → About → Tutorial replays any chapter."),

@@ -20,7 +20,7 @@ describe("passwordPolicyError", () => {
 
   it("limits the UTF-8 length to 72 bytes, not 72 characters", () => {
     expect(passwordPolicyError(`${"a".repeat(71)}1`)).toBeNull();
-    expect(passwordPolicyError(`${"a".repeat(72)}1`)).toMatch(/too long/);
-    expect(passwordPolicyError(`${"é".repeat(36)}1`)).toMatch(/too long/);
+    expect(passwordPolicyError(`${"a".repeat(72)}1`)).toMatch(/at most 72/);
+    expect(passwordPolicyError(`${"é".repeat(36)}1`)).toMatch(/at most 72/);
   });
 });

@@ -2,7 +2,7 @@
 // change, and once per device for each diagnostics prompt version. A switch starts
 // on only if the user turned it on before: a pre-ticked box is not consent under GDPR.
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -83,6 +83,7 @@ export default function PrivacyConsentScreen({
   const canContinue =
     !termsNeeded || (termsAccepted && (healthConsent || !healthRequired));
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [failure, setFailure] = useState<string | null>(null);
   const serverHost = getServerUrl().replace(/^\w+:\/\//, "").replace(/\/.*$/, "");
   const operator =
@@ -98,6 +99,8 @@ export default function PrivacyConsentScreen({
   const confirm = useCallback(async (
     preset?: { crash: boolean; telemetry: boolean },
   ): Promise<void> => {
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setFailure(null);
     if (preset) {
@@ -118,6 +121,7 @@ export default function PrivacyConsentScreen({
     } catch (error) {
       captureException(error, { stage: "savePrivacyConsent" });
       setFailure(userFacingError(error, STORAGE_FAILURE));
+      savingRef.current = false;
       setSaving(false);
     }
   }, [crashReports, telemetry, healthConsent, onDone, userId, termsNeeded, askDiagnostics]);
@@ -147,8 +151,10 @@ export default function PrivacyConsentScreen({
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.logo}>🔒</Text>
-        <Text style={styles.title}>
+        <Text style={styles.logo} importantForAccessibility='no' accessible={false}>
+          🔒
+        </Text>
+        <Text style={styles.title} accessibilityRole='header'>
           {heading}
         </Text>
         {termsChanged && (
@@ -219,17 +225,19 @@ export default function PrivacyConsentScreen({
           <>
             <Text style={styles.cardTitle}>Terms of Service</Text>
             <Text style={styles.cardBody}>
-              I am 16 or older, and I have read and agree to the{" "}
-              <Text
-                style={styles.inlineLink}
-                onPress={() => navigation.navigate("TermsOfService")}
-                accessibilityRole='link'
-              >
-                Terms of Service
-              </Text>
-              .
+              I am 16 or older, and I have read and agree to the Terms of
+              Service.
             </Text>
           </>,
+        )}
+        {termsNeeded && (
+          <TouchableOpacity
+            onPress={() => navigation.navigate("TermsOfService")}
+            accessibilityRole='link'
+            accessibilityLabel='Read the Terms of Service'
+          >
+            <Text style={styles.policyLink}>Read the Terms of Service</Text>
+          </TouchableOpacity>
         )}
 
         {healthRequired &&
@@ -256,15 +264,20 @@ export default function PrivacyConsentScreen({
         )}
 
         {saving && <ActivityIndicator color={colors.accent} />}
+        {!canContinue && (
+          <Text style={styles.footnote}>
+            Tick the {healthRequired ? "boxes" : "box"} above to continue
+          </Text>
+        )}
 
         {askDiagnostics && (
           <>
-            {/* A refusal that is hard to see invalidates consent, so every choice stays a full-size, readable button. */}
+            {/* A refusal that is harder to pick than acceptance invalidates consent, so Accept all and Reject all look the same. */}
             {(
               [
                 [true, true, "Accept all", "Allow crash reports and usage metrics, then continue", null],
-                [true, false, "Necessary only", "Allow crash reports only, then continue", "outline"],
-                [false, false, "Reject all", "Turn off crash reports and usage metrics, then continue", "neutral"],
+                [true, false, "Crash reports only", "Allow crash reports only, then continue", "outline"],
+                [false, false, "Reject all", "Turn off crash reports and usage metrics, then continue", null],
               ] as const
             ).map(([crash, metrics, text, label, variant]) => (
               <TouchableOpacity
@@ -272,7 +285,6 @@ export default function PrivacyConsentScreen({
                 style={[
                   styles.button,
                   variant === "outline" && styles.buttonSecondary,
-                  variant === "neutral" && styles.buttonNeutral,
                   (saving || !canContinue) && styles.buttonDisabled,
                 ]}
                 onPress={() => void confirm({ crash, telemetry: metrics })}
@@ -285,7 +297,6 @@ export default function PrivacyConsentScreen({
                   style={[
                     styles.buttonText,
                     variant === "outline" && styles.buttonSecondaryText,
-                    variant === "neutral" && styles.buttonNeutralText,
                   ]}
                 >
                   {text}
@@ -325,7 +336,7 @@ export default function PrivacyConsentScreen({
             accessibilityRole='button'
             accessibilityLabel='Choose crash reports and usage metrics separately'
           >
-            <Text style={styles.policyLink}>Settings</Text>
+            <Text style={styles.policyLink}>Choose individually</Text>
           </TouchableOpacity>
         )}
 
@@ -383,7 +394,6 @@ const makeStyles = (colors: ThemeColors) =>
     },
     cardTextWrap: { flex: 1, marginRight: 14 },
     checkbox: { fontSize: 24, color: colors.accent, marginRight: 14 },
-    inlineLink: { color: colors.accent, textDecorationLine: "underline" },
     cardTitle: {
       fontSize: 17,
       fontWeight: "700",
@@ -398,12 +408,6 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: 14,
     },
     buttonDisabled: { opacity: 0.6 },
-    buttonNeutral: {
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
-    },
-    buttonNeutralText: { color: colors.textPrimary },
     buttonSecondary: {
       backgroundColor: colors.surface,
       borderWidth: 1,
@@ -434,7 +438,9 @@ const makeStyles = (colors: ThemeColors) =>
       fontSize: 13,
       textAlign: "center",
       color: colors.accent,
-      marginTop: 14,
+      marginTop: 4,
+      minHeight: 44,
+      textAlignVertical: "center",
       textDecorationLine: "underline",
     },
   });

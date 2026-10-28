@@ -1,9 +1,18 @@
 import React, { useEffect, useMemo } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  AccessibilityInfo,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 
 export const UNDO_TIMEOUT_MS = 5000;
+
+/** Long enough to reach the button by swiping with a screen reader. */
+export const UNDO_TIMEOUT_SCREEN_READER_MS = 20000;
 
 interface UndoBarProps {
   readonly message: string;
@@ -21,8 +30,21 @@ export function UndoBar({
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   useEffect(() => {
-    const timer = setTimeout(onTimeout, UNDO_TIMEOUT_MS);
-    return () => clearTimeout(timer);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    void AccessibilityInfo.isScreenReaderEnabled()
+      .catch(() => false)
+      .then((screenReader) => {
+        if (cancelled) return;
+        timer = setTimeout(
+          onTimeout,
+          screenReader ? UNDO_TIMEOUT_SCREEN_READER_MS : UNDO_TIMEOUT_MS,
+        );
+      });
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [onTimeout]);
 
   return (

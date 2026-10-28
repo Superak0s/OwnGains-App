@@ -5,7 +5,8 @@ import { trackFeature } from "./crashReporting"
 
 export { OFFLINE_UNAVAILABLE_MESSAGE }
 
-const countCall = async <R,>(
+/** Runs one service call and counts its outcome under `name`. Uncounted when `name` is undefined. */
+export const countCall = async <R,>(
   name: string | undefined,
   op: string,
   mode: "online" | "offline",

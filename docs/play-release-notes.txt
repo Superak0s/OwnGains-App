@@ -1,6 +1,7 @@
-• Undo a trainer's change to your plan for 7 days. Trainers confirm before removing days.
-• Give any widget its own name, icon and subtitle. Trainers get widget boards for clients.
-• Schedule widget and Me/Trainees tabs only show in trainer mode.
-• Days change at your local midnight. Alarms keep their time across time zones.
-• Text and buttons follow your theme everywhere, including custom themes.
-• Decimal commas (85,5) keep their decimals in body stats and macros.
+• Skins: preview and apply themes and widget layouts from the marketplace, a link or file. Publish your own.
+• Bug fixes now install on their own, without a store update.
+• Undo a trainer's plan change for 7 days, or stop a trainer logging for you.
+• Name any widget and give it an icon.
+• Workout: undo a deleted set, restart a day, last weight, new rest reminder.
+• Clearer Home, sign-in and privacy screens.
+• Fixes: set edits, assisted bests, kg decimals, safer restore.

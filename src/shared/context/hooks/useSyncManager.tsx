@@ -1,6 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { workoutApi as defaultWorkoutApi } from "@features/workout/services/index";
-import type { WorkoutApi } from "@features/workout/services/workoutApiFactory";
+import {
+  replaceSet,
+  type WorkoutApi,
+} from "@features/workout/services/workoutApiFactory";
 import {
   isLocalSessionId,
   isSessionGone,
@@ -344,24 +347,24 @@ export const useSyncManager = ({
             : `Exercise ${sync.data.exerciseIndex}`);
 
         try {
-          await workoutApi.recordSet(
-            sync.data.sessionId,
-            {
-              exerciseName,
-              setIndex: sync.data.setIndex,
-              startTime: sync.data.startTime,
-              endTime: sync.data.endTime,
-              weight,
-              reps,
-              note: sync.data.note,
-              isWarmup: sync.data.isWarmup,
-              rir: sync.data.rir,
-              primaryMuscles: sync.data.primaryMuscles ?? [],
-              secondaryMuscles: sync.data.secondaryMuscles ?? [],
-              machineName: sync.data.machineName,
-            },
-            sync.syncId,
-          );
+          const params = {
+            exerciseName,
+            setIndex: sync.data.setIndex,
+            startTime: sync.data.startTime,
+            endTime: sync.data.endTime,
+            weight,
+            reps,
+            note: sync.data.note,
+            isWarmup: sync.data.isWarmup,
+            rir: sync.data.rir,
+            primaryMuscles: sync.data.primaryMuscles ?? [],
+            secondaryMuscles: sync.data.secondaryMuscles ?? [],
+            machineName: sync.data.machineName,
+          };
+          if (sync.data.replacesExisting)
+            await replaceSet(workoutApi, sync.data.sessionId, params, sync.syncId);
+          else
+            await workoutApi.recordSet(sync.data.sessionId, params, sync.syncId);
           console.info("✓ Synced set record");
           metric.count("sync.op", 1, {
             attributes: { type: "recordSet", outcome: "synced" },

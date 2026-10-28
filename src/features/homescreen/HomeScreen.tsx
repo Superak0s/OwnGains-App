@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   ScrollView,
   RefreshControl,
+  AppState,
   type ScrollViewInstance,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -84,8 +85,7 @@ import {
   MIN_SERVER_VERSION,
   useOutdatedServer,
 } from "@shared/services/serverVersion";
-import { captureException, metric } from "@shared/services/crashReporting";
-import { tutorialAnchor } from "@features/tutorial/anchors";
+import { captureException, metric } from "@shared/services/crashReporting";import { tutorialAnchor } from "@features/tutorial/anchors";
 import { SCREEN_PADDING } from "@shared/layout";
 
 // One year of near-daily training. The weekly streak and the calendar dots
@@ -420,7 +420,7 @@ function SwitchToTrainerWidget({
   const { offerTrainerTour } = useTutorial();
   return (
     <TouchableOpacity
-      style={styles.streakWrap}
+      style={[styles.streakWrap, isOffline && styles.widgetDisabled]}
       disabled={isOffline}
       onPress={() => {
         void setAppRole("trainer");
@@ -574,6 +574,7 @@ export default function HomeScreen(): React.JSX.Element {
   const [loadingSessionId, setLoadingSessionId] = useState<
     string | number | null
   >(null);
+  const sessionLoadingRef = useRef(false);
   const {
     widgets,
     isLoaded: widgetsLoaded,
@@ -677,6 +678,7 @@ export default function HomeScreen(): React.JSX.Element {
 
   const pickPastWorkoutDate = (date: Date): void => {
     if (date <= new Date()) setPastWorkoutDate(date);
+    else showToast("Pick today or an earlier day.");
   };
 
   const pastWorkoutDayDecoration = (date: Date) =>
@@ -738,6 +740,7 @@ export default function HomeScreen(): React.JSX.Element {
             hasSessionOnDate={hasSessionOnDate}
             onDatePress={(date) => {
               if (hasSessionOnDate(date)) setSelectedDate(date);
+              else showToast("No workout logged that day.");
             }}
             styles={styles}
           />
@@ -757,7 +760,12 @@ export default function HomeScreen(): React.JSX.Element {
           />
         );
       default:
-        return <ForeignWidget type={instance.type} />;
+        return (
+          <ForeignWidget
+            type={instance.type}
+            onRemove={() => void removeWidget(instance.id)}
+          />
+        );
     }
   };
 
@@ -776,8 +784,6 @@ export default function HomeScreen(): React.JSX.Element {
         ],
         "warning",
       );
-    } else {
-      captureException(error, { stage: "loadSessionHistory" });
     }
   }
 
@@ -786,6 +792,21 @@ export default function HomeScreen(): React.JSX.Element {
   useEffect(() => {
     historyFetchedAtRef.current = 0;
   }, [userId, currentSessionId]);
+
+  // The streak is relative to the current week, so it has to move on when
+  // the app is left open across midnight.
+  const [today, setToday] = useState(() => new Date());
+  const refreshToday = useCallback(() => {
+    const now = new Date();
+    setToday((prev) => (toDateString(prev) === toDateString(now) ? prev : now));
+  }, []);
+  useFocusEffect(refreshToday);
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") refreshToday();
+    });
+    return () => sub.remove();
+  }, [refreshToday]);
 
   // Logged sessions are listed whatever split is selected.
   // Filtering by split hid real history behind an empty state. The focus
@@ -797,8 +818,8 @@ export default function HomeScreen(): React.JSX.Element {
       if (stale || hasActiveSession()) {
         loadSessionHistory().catch(handleHistoryError);
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- reload on focus and when the signed-in user changes
-    }, [userId]),
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- reload on focus, on a user switch, and when a workout starts or ends
+    }, [userId, hasActiveSession]),
   );
 
   async function loadSessionHistory(): Promise<void> {
@@ -825,10 +846,10 @@ export default function HomeScreen(): React.JSX.Element {
   async function onRefresh(): Promise<void> {
     setRefreshing(true);
     try {
-      const [, synced] = await Promise.all([
-        loadSessionHistory(),
-        syncFromServer(),
-      ]);
+      // Sync first: it replays sessions queued offline, which the history
+      // fetch would otherwise miss.
+      const synced = await syncFromServer();
+      await loadSessionHistory();
       if (!synced) {
         showToast("Couldn't sync with the server. Showing what's on this device.");
       }
@@ -841,6 +862,19 @@ export default function HomeScreen(): React.JSX.Element {
 
   function openDayPicker(): void {
     setShowDayPicker(true);
+  }
+
+  function changeDay(day: number): void {
+    setShowDayPicker(false);
+    saveCurrentDay(day).catch((error: unknown) => {
+      captureException(error, { stage: "homeChangeDay" });
+      alert(
+        "Couldn't Change Day",
+        "Your day wasn't changed. Try again.",
+        [{ text: "OK" }],
+        "error",
+      );
+    });
   }
 
   function handleSelectDay(day: number): void {
@@ -868,10 +902,7 @@ export default function HomeScreen(): React.JSX.Element {
           { text: "Cancel", style: "cancel" },
           {
             text: "Move",
-            onPress: () => {
-              void saveCurrentDay(day);
-              setShowDayPicker(false);
-            },
+            onPress: () => changeDay(day),
           },
         ],
         "warning",
@@ -879,12 +910,17 @@ export default function HomeScreen(): React.JSX.Element {
       return;
     }
 
-    saveCurrentDay(day);
-    setShowDayPicker(false);
+    changeDay(day);
+    if (isDayLocked(day)) {
+      showToast(`Day ${shownNumber} is done this week. Opened view-only.`);
+    }
   }
 
   async function handleSessionPress(session: WorkoutSession): Promise<void> {
-    if (loadingSessionId !== null) return;
+    // A ref, not the state value, so two taps before the next render can't
+    // both get through.
+    if (sessionLoadingRef.current) return;
+    sessionLoadingRef.current = true;
     setLoadingSessionId(session.id);
     try {
       const details = await workoutApi.getSession(session.id);
@@ -912,6 +948,7 @@ export default function HomeScreen(): React.JSX.Element {
         "error",
       );
     } finally {
+      sessionLoadingRef.current = false;
       setLoadingSessionId(null);
     }
   }
@@ -929,8 +966,8 @@ export default function HomeScreen(): React.JSX.Element {
   }, [sessionHistory]);
 
   const weeklyStreak = useMemo(
-    () => computeWeeklyStreak(sessionsByDate.keys()),
-    [sessionsByDate],
+    () => computeWeeklyStreak(sessionsByDate.keys(), today),
+    [sessionsByDate, today],
   );
 
   const getSessionsForDate = useCallback(
@@ -950,6 +987,14 @@ export default function HomeScreen(): React.JSX.Element {
   const retryHistory = () => {
     loadSessionHistory().catch(handleHistoryError);
   };
+  // A history widget shows its own error and Retry, so the banner is only
+  // for when none is on the board or older history is still showing.
+  const showHistoryBanner =
+    historyError &&
+    (sessionHistory.length > 0 ||
+      !widgets.some(
+        (w) => w.type === "workout_streak" || w.type === "workout_calendar",
+      ));
   const [serverNoticeOpen, setServerNoticeOpen] = useState(false);
   const [serverNoticeDismissed, setServerNoticeDismissed] = useState(false);
 
@@ -1034,7 +1079,7 @@ export default function HomeScreen(): React.JSX.Element {
             </View>
           )}
 
-          {historyError && (
+          {showHistoryBanner && (
             <View style={styles.errorBanner} accessibilityLiveRegion='polite'>
               <Text style={styles.errorBannerText}>
                 Couldn't load your workout history. Check your connection and
@@ -1088,6 +1133,7 @@ export default function HomeScreen(): React.JSX.Element {
               <TouchableOpacity
                 style={styles.emptyButton}
                 accessibilityRole='button'
+                accessibilityLabel='Add a widget'
                 onPress={widgetBoard.openGallery}
               >
                 <Text style={styles.emptyButtonText}>+ Add a Widget</Text>
@@ -1095,6 +1141,7 @@ export default function HomeScreen(): React.JSX.Element {
               <TouchableOpacity
                 style={styles.emptySecondaryButton}
                 accessibilityRole='button'
+                accessibilityLabel='Restore default widgets'
                 onPress={() => void resetToDefaults()}
               >
                 <Text style={styles.emptySecondaryButtonText}>
@@ -1145,6 +1192,16 @@ export default function HomeScreen(): React.JSX.Element {
           showConfirmButton={false}
           scrollable
         >
+          {visibleDays.length === 0 && (
+            <SetUpPlanPrompt
+              message='Your plan has no days to pick from yet.'
+              onCreatePlan={() => {
+                setShowDayPicker(false);
+                navigation.navigate("Plan");
+              }}
+              styles={styles}
+            />
+          )}
           {visibleDays.map(({ day, displayNumber }) => (
             <DayOptionRow
               key={day.dayNumber}
@@ -1190,6 +1247,7 @@ export default function HomeScreen(): React.JSX.Element {
                 key={session.id}
                 session={session}
                 loading={loadingSessionId === session.id}
+                disabled={loadingSessionId !== null}
                 onPress={() => handleSessionPress(session)}
                 styles={styles}
               />
@@ -1313,11 +1371,13 @@ function DayOptionRow({
 function SessionListItem({
   session,
   loading,
+  disabled,
   onPress,
   styles,
 }: {
   readonly session: WorkoutSession;
   readonly loading: boolean;
+  readonly disabled: boolean;
   readonly onPress: () => void;
   readonly styles: ReturnType<typeof makeStyles>;
 }): React.JSX.Element {
@@ -1337,8 +1397,8 @@ function SessionListItem({
       ]
         .filter(Boolean)
         .join(", ")}
-      accessibilityState={{ disabled: loading, busy: loading }}
-      disabled={loading}
+      accessibilityState={{ disabled, busy: loading }}
+      disabled={disabled}
       onPress={onPress}
     >
       <View style={styles.sessionListLeft}>
@@ -1458,7 +1518,12 @@ const makeStyles = (colors: ThemeColors) => {
       alignItems: "center",
       paddingVertical: 8,
     },
+    widgetDisabled: {
+      opacity: 0.5,
+    },
     widgetEmptyButton: {
+      minHeight: 44,
+      justifyContent: "center",
       backgroundColor: colors.accent,
       paddingHorizontal: 24,
       paddingVertical: 12,
@@ -1494,6 +1559,8 @@ const makeStyles = (colors: ThemeColors) => {
       marginBottom: 20,
     },
     emptyButton: {
+      minHeight: 44,
+      justifyContent: "center",
       backgroundColor: colors.accent,
       paddingHorizontal: 24,
       paddingVertical: 12,
@@ -1581,12 +1648,12 @@ const makeStyles = (colors: ThemeColors) => {
       flex: 1,
       minHeight: 44,
       justifyContent: "center",
-      backgroundColor: colors.surface,
+      backgroundColor: colors.accent,
       paddingVertical: 9,
       borderRadius: 8,
     },
     goToWorkoutButtonText: {
-      color: colors.accent,
+      color: colors.textOnAccent,
       fontSize: 14,
       fontWeight: "600",
       textAlign: "center",
@@ -1754,7 +1821,6 @@ const makeStyles = (colors: ThemeColors) => {
       fontSize: 12,
       color: colors.success,
       fontWeight: "600",
-      fontStyle: "italic",
     },
     dayOptionRight: {
       marginLeft: 10,
@@ -1796,7 +1862,6 @@ const makeStyles = (colors: ThemeColors) => {
     modalFooterText: {
       fontSize: 13,
       color: colors.textSecondary,
-      fontStyle: "italic",
       textAlign: "center",
     },
     sessionListItem: {

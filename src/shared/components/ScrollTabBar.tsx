@@ -25,6 +25,7 @@ import {
   GestureHandlerRootView,
 } from "react-native-gesture-handler"
 import ModalSheet from "./ModalSheet"
+import { keepUnshown, redirectFromHidden, type TabConfig } from "./tabConfig"
 import { useAlert } from "./CustomAlert"
 import { log, captureException } from "@shared/services/crashReporting"
 import { tutorialAnchor } from "@features/tutorial/anchors"
@@ -32,11 +33,6 @@ import { tutorialAnchor } from "@features/tutorial/anchors"
 interface TabItem {
   key: string
   label: string
-}
-
-interface TabConfig {
-  key: string
-  visible: boolean
 }
 
 interface Props {
@@ -235,11 +231,15 @@ export default function ScrollTabBar({
     tabs.map((t) => ({ key: t.key, visible: true })),
   )
   const [showEditor, setShowEditor] = useState(false)
+  // Saved entries for tabs this bar doesn't show (the client view hides some of
+  // the owner's tabs under the same key), written back so edits here keep them.
+  const savedRef = useRef<TabConfig[]>([])
 
   useEffect(() => {
     ;(async () => {
       const saved = await readJSON<TabConfig[] | null>(storageKey, null)
       if (!saved) return
+      savedRef.current = saved
       const knownKeys = new Set(saved.map((c) => c.key))
       const tabKeys = new Set(tabs.map((t) => t.key))
       setConfig([
@@ -254,7 +254,8 @@ export default function ScrollTabBar({
 
   const persist = useCallback(
     (next: TabConfig[]) => {
-      writeJSON(storageKey, next).catch((e) => {
+      savedRef.current = keepUnshown(savedRef.current, next)
+      writeJSON(storageKey, savedRef.current).catch((e) => {
         log.warn("ScrollTabBar: failed to persist tab config")
         captureException(e, { stage: "persistTabConfig" })
       })
@@ -263,8 +264,8 @@ export default function ScrollTabBar({
   )
 
   // Mirrors state so reorder/toggle can compute the next config without
-  // putting the persist write and the onTabChange call (both side effects)
-  // inside a setState updater, where React may run them twice or mid-render.
+  // putting the persist write (a side effect) inside a setState updater,
+  // where React may run it twice or mid-render.
   const configRef = useRef(config)
   configRef.current = config
 
@@ -285,13 +286,11 @@ export default function ScrollTabBar({
       const next = configRef.current.map((c) =>
         c.key === key ? { ...c, visible: !c.visible } : c,
       )
-      const firstVisible = next.find((c) => c.visible)
-      if (!firstVisible) return
+      if (!next.some((c) => c.visible)) return
       setConfig(next)
       persist(next)
-      if (key === activeTab) onTabChange(firstVisible.key)
     },
-    [activeTab, onTabChange, persist],
+    [persist],
   )
 
   const reset = useCallback(() => {
@@ -313,6 +312,11 @@ export default function ScrollTabBar({
       "warning",
     )
   }, [tabs, persist, alert])
+
+  const redirect = redirectFromHidden(config, activeTab)
+  useEffect(() => {
+    if (redirect) onTabChange(redirect)
+  }, [redirect, onTabChange])
 
   const tabMap = new Map(tabs.map((t) => [t.key, t]))
   const visibleConfig = config.filter((c) => c.visible)

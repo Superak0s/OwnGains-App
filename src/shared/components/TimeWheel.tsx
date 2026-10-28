@@ -55,7 +55,7 @@ export default function TimeWheel({
         label='hours'
         items={HOURS}
         selected={h}
-        pick={(hour) => set(hour, m)}
+        pick={(hour) => set(hour, MINUTES[minuteIndex])}
         disabled={disabled}
         styles={styles}
       />

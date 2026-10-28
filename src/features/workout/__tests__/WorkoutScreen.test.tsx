@@ -77,7 +77,7 @@ describe("mounting with edge-case data", () => {
     await renderWithProviders(<WorkoutScreen />, resumedSession())
 
     expect(await screen.findByRole("button", { name: benchSet1Logged })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Complete workout" })).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Finish workout" })).toBeTruthy()
   })
 })
 
@@ -105,7 +105,7 @@ describe("recording a set", () => {
     await fireEvent.press((await screen.findAllByRole("button", { name: "Set 1, not logged" }))[0])
     await fillSet("", "8")
 
-    expect(await screen.findByText("Weight missing")).toBeTruthy()
+    expect(await screen.findByText("Enter a weight, or 0 for bodyweight.")).toBeTruthy()
     expect(current.workout.saveSetDetails).not.toHaveBeenCalled()
   })
 
@@ -141,6 +141,50 @@ describe("recording a set", () => {
     await waitFor(() => expect(current.workout.deleteSetDetails).toHaveBeenCalledWith(1, 0, 0))
   })
 
+  it("puts a deleted set back with its original times when Undo is pressed", async () => {
+    let deleted = false
+    await renderWithProviders(
+      <WorkoutScreen />,
+      resumedSession({
+        getSetDetails: jest.fn((_d: number, ex: number, set: number) => (ex === 0 && set === 0 && !deleted ? loggedBench : null)),
+        deleteSetDetails: jest.fn(async () => (deleted = true)),
+      }),
+    )
+
+    await press(benchSet1Logged)
+    await press("Delete set")
+    await press("Delete")
+    await press("Undo")
+
+    await waitFor(() =>
+      expect(current.workout.saveSetDetails).toHaveBeenCalledWith(1, 0, 0, 80, 8, expect.objectContaining({ restoring: loggedBench })),
+    )
+  })
+
+  it("doesn't overwrite a set logged in the same slot after the delete", async () => {
+    await renderWithProviders(<WorkoutScreen />, resumedSession())
+
+    await press(benchSet1Logged)
+    await press("Delete set")
+    await press("Delete")
+    await press("Undo")
+
+    expect(current.workout.saveSetDetails).not.toHaveBeenCalled()
+  })
+
+  it("reports a saved set as saved when the joint-session update fails", async () => {
+    await renderWithProviders(<WorkoutScreen />, {
+      ...withProgram(),
+      jointSession: { isInJointSession: true, pushJointProgress: jest.fn(async () => { throw new Error("socket closed") }) },
+    })
+
+    await fireEvent.press((await screen.findAllByRole("button", { name: "Set 1, not logged" }))[0])
+    await fillSet("80", "8")
+
+    await waitFor(() => expect(current.jointSession.pushJointProgress).toHaveBeenCalled())
+    expect(screen.queryByText("Set Not Saved")).toBeNull()
+  })
+
   it("tells the user when a set could not be deleted", async () => {
     await renderWithProviders(<WorkoutScreen />, resumedSession({ deleteSetDetails: jest.fn(async () => false) }))
 
@@ -165,18 +209,18 @@ describe("ending the workout", () => {
   it("ends the session and locks the day after confirmation", async () => {
     await renderWithProviders(<WorkoutScreen />, resumedSession())
 
-    await press("Complete workout")
+    await press("Finish workout")
     expect(await screen.findByText("6 of 6 sets aren't logged. The day will be locked and view-only.")).toBeTruthy()
     await press("Finish & lock")
 
     await waitFor(() => expect(current.workout.endWorkout).toHaveBeenCalledTimes(1))
-    expect(await screen.findByText("Workout Completed!")).toBeTruthy()
+    expect(await screen.findByText("Workout Finished!")).toBeTruthy()
   })
 
   it("doesn't end the session when the confirmation is cancelled", async () => {
     await renderWithProviders(<WorkoutScreen />, resumedSession())
 
-    await press("Complete workout")
+    await press("Finish workout")
     await press("Keep logging")
 
     expect(current.workout.endWorkout).not.toHaveBeenCalled()
@@ -185,11 +229,11 @@ describe("ending the workout", () => {
   it("doesn't claim the day is locked when ending the session failed", async () => {
     await renderWithProviders(<WorkoutScreen />, resumedSession({ endWorkout: jest.fn(async () => false) }))
 
-    await press("Complete workout")
+    await press("Finish workout")
     await press("Finish & lock")
 
     await waitFor(() => expect(current.workout.endWorkout).toHaveBeenCalled())
-    expect(screen.queryByText("Workout Completed!")).toBeNull()
+    expect(screen.queryByText("Workout Finished!")).toBeNull()
   })
 })
 
@@ -307,5 +351,40 @@ describe("session stats layout", () => {
     const styles = makeStyles(LIGHT_COLORS)
     expect(styles.currentRestLabel.flexShrink).toBe(1)
     expect(styles.sessionStat.flexShrink).toBe(1)
+  })
+})
+
+const withExercise = (changes: Record<string, unknown>) => {
+  const edited = structuredClone(program)
+  Object.assign(edited.days[0].split.A.exercises[0], changes)
+  return withProgram({ workoutData: edited, sessionWorkoutData: edited })
+}
+
+describe("removing a set", () => {
+  it("won't remove the only set of an exercise", async () => {
+    await renderWithProviders(<WorkoutScreen />, withExercise({ sets: 1 }))
+
+    fireEvent(screen.getAllByRole("button", { name: "Add a set" })[0], "longPress")
+    const remove = await screen.findByRole("button", { name: "Remove one set" })
+
+    expect(remove).toBeDisabled()
+    fireEvent.press(remove)
+    expect(current.workout.deleteSetDetails).not.toHaveBeenCalled()
+    expect(current.workout.addExtraSetsToExercise).not.toHaveBeenCalled()
+  })
+})
+
+describe("renaming a machine", () => {
+  it("merges it into a machine that already has that name", async () => {
+    await renderWithProviders(<WorkoutScreen />, withExercise({ machines: ["Machine A", "Machine B"] }))
+
+    fireEvent.press((await screen.findAllByRole("button", { name: "Exercise and machine settings" }))[0])
+    await press("Edit Machine B")
+    fireEvent.changeText(await screen.findByLabelText("Machine name"), "Machine A")
+    await press("Save machine")
+
+    await waitFor(() =>
+      expect(current.workout.updateExerciseMachines).toHaveBeenCalledWith(1, "A", 0, expect.objectContaining({ machines: ["Machine A"] })),
+    )
   })
 })

@@ -11,6 +11,7 @@ import { ApiError, ServerUnreachableError } from "@shared/services/apiError"
 import type { AuthResponse, AuthUser, ProfileUpdate } from "../../types"
 import { parseStoredUser } from "../../types"
 import { captureException, log, metric } from "@shared/services/crashReporting"
+import { accessTokenExpiresAt } from "@shared/services/jwt"
 import { getGoogleIdToken, GoogleLinkNeedsPasswordError, type GoogleLink } from "../../googleSignIn"
 
 const USER_KEY = "@user"
@@ -32,11 +33,15 @@ async function persistSession(data: AuthResponse): Promise<AuthResponse> {
 
 // Raw fetch rather than apiCall, which would attach the stored bearer token
 // these endpoints must work without.
-async function unauthenticatedCall<T>(path: string, body: unknown): Promise<T> {
+async function unauthenticatedCall<T>(
+  path: string,
+  body: unknown,
+  timeoutMs = FETCH_TIMEOUT_MS,
+): Promise<T> {
   const url = `${getServerUrl()}${path}`
   assertSecureTransport(url)
   const controller = new AbortController()
-  const timeoutHandle = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const response = await fetch(url, {
       method: "POST",
@@ -52,6 +57,64 @@ async function unauthenticatedCall<T>(path: string, body: unknown): Promise<T> {
   } finally {
     clearTimeout(timeoutHandle)
   }
+}
+
+async function renewTokens(timeoutMs: number): Promise<string | null> {
+  try {
+    // A session without a refresh token can't be renewed: sign in again.
+    const stored = await refreshTokenStorage.get()
+    if (!stored) return null
+
+    const data = await unauthenticatedCall<{
+      token?: string
+      refreshToken?: string
+    }>("/api/auth/refresh", { refreshToken: stored }, timeoutMs)
+
+    const newToken = data.token
+    if (!newToken) {
+      captureException(new Error("Token refresh succeeded without a token"), {
+        stage: "refreshToken",
+      })
+      return null
+    }
+    // Rotation: the presented token is dead server-side, so the replacement
+    // has to land before the new access token is used for anything.
+    if (
+      data.refreshToken &&
+      !(await refreshTokenStorage.set(data.refreshToken))
+    ) {
+      // The old refresh token is already dead server-side, so this device
+      // will be signed out on its next cold start.
+      captureException(new Error("Rotated refresh token was not persisted"), {
+        stage: "refreshTokenPersist",
+      })
+    }
+    await tokenStorage.set(newToken)
+    return newToken
+  } catch (error) {
+    // Only an explicit refusal says anything about the token's validity. An
+    // unreachable or failing server is rethrown rather than treated as one.
+    if (!isCredentialRejection(error)) throw error
+    console.warn("Error refreshing token:", error)
+    metric.count("auth.token_refresh_failed")
+    log.warn("auth.token_refresh_failed")
+    return null
+  }
+}
+
+// The server only accepts a sign-out with a live access token, and
+// authenticatedFetch never refreshes for it, so an expired one would leave the
+// refresh token valid on the server.
+async function revokeRefreshToken(): Promise<void> {
+  if (!(await refreshTokenStorage.get())) return
+  const access = await tokenStorage.get()
+  const expired = !access || (accessTokenExpiresAt(access) ?? Infinity) <= Date.now()
+  if (expired && !(await renewTokens(SIGNOUT_TIMEOUT_MS))) return
+  await apiCall("/api/auth/signout", {
+    method: "POST",
+    body: JSON.stringify({ refreshToken: await refreshTokenStorage.get(), allDevices: false }),
+    timeoutMs: SIGNOUT_TIMEOUT_MS,
+  })
 }
 
 export const authService = {
@@ -120,48 +183,7 @@ export const authService = {
     await persistUser(data.user)
   },
 
-  refreshToken: async (): Promise<string | null> => {
-    try {
-      // A session without a refresh token can't be renewed: sign in again.
-      const stored = await refreshTokenStorage.get()
-      if (!stored) return null
-
-      const data = await unauthenticatedCall<{
-        token?: string
-        refreshToken?: string
-      }>("/api/auth/refresh", { refreshToken: stored })
-
-      const newToken = data.token
-      if (!newToken) {
-        captureException(new Error("Token refresh succeeded without a token"), {
-          stage: "refreshToken",
-        })
-        return null
-      }
-      // Rotation: the presented token is dead server-side, so the replacement
-      // has to land before the new access token is used for anything.
-      if (
-        data.refreshToken &&
-        !(await refreshTokenStorage.set(data.refreshToken))
-      ) {
-        // The old refresh token is already dead server-side, so this device
-        // will be signed out on its next cold start.
-        captureException(new Error("Rotated refresh token was not persisted"), {
-          stage: "refreshTokenPersist",
-        })
-      }
-      await tokenStorage.set(newToken)
-      return newToken
-    } catch (error) {
-      // Only an explicit refusal says anything about the token's validity. An
-      // unreachable or failing server is rethrown rather than treated as one.
-      if (!isCredentialRejection(error)) throw error
-      console.warn("Error refreshing token:", error)
-      metric.count("auth.token_refresh_failed")
-      log.warn("auth.token_refresh_failed")
-      return null
-    }
-  },
+  refreshToken: (): Promise<string | null> => renewTokens(FETCH_TIMEOUT_MS),
 
   // An expired access token is cleared on its first 401, but the refresh token
   // can still restore the session.
@@ -169,21 +191,14 @@ export const authService = {
     !!(await tokenStorage.get()) || !!(await refreshTokenStorage.get()),
 
   logout: async (): Promise<void> => {
-    const stored = await refreshTokenStorage.get()
-    if (stored) {
-      try {
-        await apiCall("/api/auth/signout", {
-          method: "POST",
-          body: JSON.stringify({ refreshToken: stored, allDevices: false }),
-          timeoutMs: SIGNOUT_TIMEOUT_MS,
-        })
-      } catch (error) {
-        // A server that can't be reached must not trap the user in a session
-        // they asked to end, and the token expires on its own.
-        console.warn("Sign-out could not revoke the refresh token:", error)
-        metric.count("auth.signout_revoke_failed")
-        log.warn("auth.signout_revoke_failed")
-      }
+    try {
+      await revokeRefreshToken()
+    } catch (error) {
+      // A server that can't be reached must not trap the user in a session
+      // they asked to end, and the token expires on its own.
+      console.warn("Sign-out could not revoke the refresh token:", error)
+      metric.count("auth.signout_revoke_failed")
+      log.warn("auth.signout_revoke_failed")
     }
     await tokenStorage.clear()
     await removeStorageItem(USER_KEY)
@@ -198,9 +213,22 @@ export const authService = {
     return data.user
   },
 
-  /** A null password proves the account with a fresh Google sign-in instead. */
-  deleteAccount: async (password: string | null): Promise<void> => {
-    const proof = password === null ? { idToken: await getGoogleIdToken() } : { password }
+  /** Checks the proof deleteAccount will send, without changing anything. An older server without the route skips the check. */
+  verifyIdentity: async (password: string | null, idToken?: string): Promise<void> => {
+    try {
+      await apiCall("/api/auth/reauth", {
+        method: "POST",
+        body: JSON.stringify(password === null ? { idToken } : { password }),
+      })
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) return
+      throw error
+    }
+  },
+
+  /** A null password proves the account with a Google ID token, signing in afresh when none is passed. */
+  deleteAccount: async (password: string | null, idToken?: string): Promise<void> => {
+    const proof = password === null ? { idToken: idToken ?? (await getGoogleIdToken()) } : { password }
     await apiCall("/api/auth/account", {
       method: "DELETE",
       body: JSON.stringify(proof),

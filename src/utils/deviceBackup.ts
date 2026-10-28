@@ -86,12 +86,17 @@ const readPhotos = async (
   return { photos, omitted };
 };
 
+const SAFE_PHOTO_NAME = /^(?!\.\.?$)[^/\\]+$/;
+
 const writePhotos = async (photos: Record<string, string>): Promise<void> => {
   if (Object.keys(photos).length === 0) return;
   await FileSystem.makeDirectoryAsync(PHOTOS_DIR, {
     intermediates: true,
   }).catch(() => undefined);
   for (const [name, base64] of Object.entries(photos)) {
+    // Names come from a backup file that may not be the user's own, so one
+    // holding a path separator or ".." could write outside the photo folder.
+    if (!SAFE_PHOTO_NAME.test(name) || typeof base64 !== "string") continue;
     await FileSystem.writeAsStringAsync(`${PHOTOS_DIR}${name}`, base64, {
       encoding: FileSystem.EncodingType.Base64,
     });
@@ -166,7 +171,10 @@ const DEVICE_SCOPED_KEYS = new Set([
 const repointSnapshot = (backup: DeviceBackup): StorageSnapshot => ({
   kv: Object.fromEntries(
     Object.entries(backup.kv ?? {})
-      .filter(([k]) => !DEVICE_SCOPED_KEYS.has(k))
+      .filter(
+        (entry): entry is [string, string] =>
+          !DEVICE_SCOPED_KEYS.has(entry[0]) && typeof entry[1] === "string",
+      )
       .map(([k, v]) => [k, repointPhotoUris(v)]),
   ),
   records: Object.fromEntries(
@@ -178,7 +186,9 @@ const repointSnapshot = (backup: DeviceBackup): StorageSnapshot => ({
       )
       .map(([collection, rows]) => [
         collection,
-        rows.map((row) => ({ ...row, value: repointPhotoUris(row.value) })),
+        rows
+          .filter((row) => typeof row?.value === "string")
+          .map((row) => ({ ...row, value: repointPhotoUris(row.value) })),
       ]),
   ),
 });
@@ -229,13 +239,16 @@ export const restoreDeviceBackup = async (
       "This backup was made by a newer version of OwnGains. Update the app and try again.",
     );
   }
+  // Built before anything is cleared, so a malformed backup fails while the
+  // user's existing data is still in place.
+  const snapshot = repointSnapshot(backup);
   await writePhotos(backup.photos ?? {});
   // A per-user backup replaces only that user's rows, never other profiles'.
   if (mode === "replace" && typeof backup.userId === "string") {
     await clearUserData(backup.userId);
-    await importAll(repointSnapshot(backup), "merge");
+    await importAll(snapshot, "merge");
   } else {
-    await importAll(repointSnapshot(backup), mode);
+    await importAll(snapshot, mode);
   }
   return { photosOmitted: backup.photosOmitted ?? 0 };
 };

@@ -11,6 +11,7 @@ import type {
 } from "@shared/types"
 import { captureException, metric, trackFeature } from "@shared/services/crashReporting"
 import { showToast } from "@shared/components/toast"
+import { useSkinPreview } from "@shared/context/SkinPreviewContext"
 
 function sortByOrder<T extends string>(
   list: WidgetInstance<T>[],
@@ -38,6 +39,9 @@ export function useWidgets<T extends string>(
 ) {
   const [widgets, setWidgets] = useState<WidgetInstance<T>[]>(defaults)
   const [isLoaded, setIsLoaded] = useState<boolean>(false)
+  const { boards: previewBoards, appliedVersion, noteSkipped } = useSkinPreview()
+  const previewList = previewBoards?.[storageKey] as WidgetInstance<T>[] | undefined
+  const previewing = previewList !== undefined
   const isMountedRef = useRef<boolean>(true)
   // Keep a ref mirror of widgets so callbacks that must be stable
   // (e.g. things fired from a gesture handler) always see the latest
@@ -80,7 +84,7 @@ export function useWidgets<T extends string>(
         // Drop instances whose type is no longer in the registry, so a widget
         // removed from the app doesn't linger in an already-saved layout.
         // A size the widget no longer offers falls back to its default.
-        const known = (stored?.filter((w) => w.type in registryRef.current) ?? []).map((w) => {
+        const known = (stored?.filter((w) => Object.hasOwn(registryRef.current, w.type)) ?? []).map((w) => {
           const def = registryRef.current[w.type]
           return def.availableSizes.includes(w.size) ? w : { ...w, size: def.defaultSize }
         })
@@ -104,14 +108,28 @@ export function useWidgets<T extends string>(
     return () => {
       cancelled = true
     }
-  }, [userId, storageKey, enabled])
+  }, [userId, storageKey, enabled, appliedVersion])
+
+  const previewKnown = useMemo(
+    () =>
+      previewList
+        ?.filter((w) => Object.hasOwn(registry, w.type))
+        .map((w) => (registry[w.type].availableSizes.includes(w.size) ? w : { ...w, size: registry[w.type].defaultSize })),
+    [previewList, registry],
+  )
+  useEffect(() => {
+    if (previewList && previewKnown && previewKnown.length < previewList.length) noteSkipped()
+  }, [previewList, previewKnown, noteSkipped])
+  // Matches the loader, which shows the defaults for a layout with nothing known in it.
+  const previewWidgets = previewKnown && (previewKnown.length > 0 ? previewKnown : defaults)
 
   // Applied optimistically so the board feels instant, but a failed write is
   // rolled back. Otherwise the new layout looks saved and silently reverts on
   // the next launch.
   const persist = useCallback(
     async (next: WidgetInstance<T>[]) => {
-      if (!isMountedRef.current) return
+      // A previewed board is read-only: edits would land on the user's saved layout unseen.
+      if (!isMountedRef.current || previewing) return
       const previous = widgetsRef.current
       setWidgets(next)
       widgetsRef.current = next
@@ -136,13 +154,14 @@ export function useWidgets<T extends string>(
         showToast("Couldn't save your layout, change undone")
       }
     },
-    [userId, storageKey],
+    [userId, storageKey, previewing],
   )
 
   const addWidget = useCallback(
     async (type: T): Promise<{ success: boolean; error?: string; title?: string }> => {
       const def = registry[type]
       if (!def) return { success: false, error: "Unknown widget type" }
+      if (previewing) return { success: false, error: "Apply or discard the skin preview first" }
 
       const current = widgetsRef.current
       const placed = current.find((w) => w.type === type)
@@ -164,7 +183,7 @@ export function useWidgets<T extends string>(
       trackFeature("widgets", "add", { board: storageKey, widget: type })
       return { success: true, title: def.title }
     },
-    [persist, registry, storageKey],
+    [persist, registry, storageKey, previewing],
   )
 
   const removeWidget = useCallback(
@@ -232,14 +251,15 @@ export function useWidgets<T extends string>(
     trackFeature("widgets", "reset", { board: storageKey })
   }, [persist, storageKey])
 
+  const shown = previewWidgets ?? widgets
   const availableToAdd: WidgetDefinition<T>[] = useMemo(
     () =>
       (Object.values(registry) as WidgetDefinition<T>[]).filter(
-        (def) => !widgets.some((w) => w.type === def.type),
+        (def) => !shown.some((w) => w.type === def.type),
       ),
-    [registry, widgets],
+    [registry, shown],
   )
-  const sortedWidgets = useMemo(() => sortByOrder(widgets), [widgets])
+  const sortedWidgets = useMemo(() => sortByOrder(shown), [shown])
 
   return {
     widgets: sortedWidgets,

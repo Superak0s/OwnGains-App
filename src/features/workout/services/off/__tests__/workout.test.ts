@@ -20,7 +20,7 @@ describe("computeWorkoutAnalytics", () => {
     });
   });
 
-  it("excludes warmup sets from the set count", () => {
+  it("counts warmup sets like the server does", () => {
     const result = computeWorkoutAnalytics([
       {
         setTimings: [
@@ -29,7 +29,7 @@ describe("computeWorkoutAnalytics", () => {
         ],
       },
     ]);
-    expect(result.totalSetsCompleted).toBe(1);
+    expect(result.totalSetsCompleted).toBe(2);
   });
 
   it("counts sets across every session", () => {

@@ -84,6 +84,14 @@
       "expo-asset"
     ],
     "userInterfaceStyle": "automatic",
+    "runtimeVersion": { "policy": "fingerprint" },
+    "updates": {
+      "url": "https://owngains.superak0s.com/api/updates/manifest",
+      "checkAutomatically": "NEVER",
+      "requestHeaders": { "expo-channel-name": "play" },
+      "codeSigningCertificate": "./certs/certificate.pem",
+      "codeSigningMetadata": { "keyid": "main", "alg": "rsa-v1_5-sha256" }
+    },
     "android": {
       "versionCode": 18,
       "allowBackup": false,

@@ -1,4 +1,5 @@
 import { getDayLabelAndTitle } from "../ProgramDayCardBase"
+import { tint } from "../ui"
 
 // Stepping months off a day-31 anchor used to overflow (Jan 31 -> Mar 3),
 // silently skipping a month.
@@ -21,5 +22,13 @@ describe("getDayLabelAndTitle", () => {
 
   it("passes through a title with no em dash", () => {
     expect(getDayLabelAndTitle({ dayTitle: "Push" }, 0).dayTitle).toBe("Push")
+  })
+})
+
+describe("tint", () => {
+  it("makes a valid faint color from shorthand and alpha hex", () => {
+    expect(tint("#f80")).toBe("#ff88001f")
+    expect(tint("#ff880080")).toBe("#ff88001f")
+    expect(tint("#ff8800")).toBe("#ff88001f")
   })
 })

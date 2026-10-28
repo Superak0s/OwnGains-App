@@ -16,6 +16,7 @@ const endSession = workoutApi.endSession as jest.Mock;
 const HEADER =
   "Date Lifted,Exercise,Weight (kg),Weight (lb),Reps,Bodyweight (kg),Bodyweight (lb),Percentile (%),Warmup";
 
+const localNoon = (date: string) => new Date(`${date}T12:00:00`).toISOString();
 const csv = (...rows: string[]) => [HEADER, ...rows].join("\n");
 
 beforeEach(() => {
@@ -45,8 +46,8 @@ describe("importStrengthLevelCSV", () => {
     });
 
     // Dates are replayed oldest-first.
-    expect(startSession.mock.calls[0][4]).toBe("2026-01-13T12:00:00.000Z");
-    expect(startSession.mock.calls[1][4]).toBe("2026-01-14T12:00:00.000Z");
+    expect(startSession.mock.calls[0][4]).toBe(localNoon("2026-01-13"));
+    expect(startSession.mock.calls[1][4]).toBe(localNoon("2026-01-14"));
     expect(startSession).toHaveBeenCalledWith(
       "Push",
       1,
@@ -86,10 +87,21 @@ describe("importStrengthLevelCSV", () => {
       ["Squat", 1],
       ["Bench Press", 2],
     ]);
-    expect(recordSet.mock.calls[0][1].startTime).toBe("2026-01-13T12:00:00.000Z");
-    expect(recordSet.mock.calls[0][1].endTime).toBe("2026-01-13T12:01:00.000Z");
-    expect(recordSet.mock.calls[1][1].startTime).toBe("2026-01-13T12:01:00.000Z");
-    expect(endSession).toHaveBeenCalledWith(1, "2026-01-13T12:03:00.000Z");
+    const noon = Date.parse(localNoon("2026-01-13"));
+    const at = (minutes: number) => new Date(noon + minutes * 60_000).toISOString();
+    expect(recordSet.mock.calls[0][1].startTime).toBe(at(0));
+    expect(recordSet.mock.calls[0][1].endTime).toBe(at(1));
+    expect(recordSet.mock.calls[1][1].startTime).toBe(at(1));
+    expect(endSession).toHaveBeenCalledWith(1, at(3));
+  });
+
+  it("dates each session at local noon so it stays on the CSV's calendar day", async () => {
+    await importStrengthLevelCSV(
+      csv("2026-01-13,Bench Press,100,220,5,80,176,55,0"),
+      "Push",
+    );
+    const started = new Date(startSession.mock.calls[0][4]);
+    expect([started.getDate(), started.getHours()]).toEqual([13, 12]);
   });
 
   it("reads the warmup flag as 1 or true", async () => {

@@ -173,7 +173,7 @@ interface WorkoutContextValue extends UseProgramOperationsReturn {
     weight: number,
     reps: number,
     details?: SetDetailsOptions,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   deleteSetDetails: (
     dayNumber: number,
     exerciseIndex: number,

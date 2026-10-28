@@ -239,3 +239,37 @@ describe("AuthProvider cold start", () => {
     act(() => root.unmount());
   });
 });
+
+describe("markConsented", () => {
+  it("seats the user the consent write stored, so a recheck sees the new terms", async () => {
+    tokenGetMock.mockResolvedValue(jwtExpiringIn(60 * MINUTE));
+    const captured: { auth?: ReturnType<typeof useAuth> } = {};
+    const Capture = () => {
+      captured.auth = useAuth();
+      return null;
+    };
+    let root: ReturnType<typeof create> | undefined;
+    await act(async () => {
+      root = create(
+        <AuthProvider>
+          <Capture />
+        </AuthProvider>,
+      );
+      await flush();
+    });
+    (authService.getStoredUser as jest.Mock).mockResolvedValueOnce({
+      id: 1,
+      username: "tester",
+      termsVersion: "accepted-now",
+    });
+
+    await act(async () => {
+      captured.auth?.markConsented();
+      await flush();
+    });
+
+    const termsVersion = captured.auth?.user?.termsVersion;
+    act(() => root?.unmount());
+    expect(termsVersion).toBe("accepted-now");
+  });
+});

@@ -1,15 +1,17 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import { Avatar } from "@shared/components/Avatar";
 
 interface TrainerBannerProps {
   readonly trainerUsername: string;
+  readonly onStop?: () => void;
 }
 
 export function TrainerBanner({
   trainerUsername,
+  onStop,
 }: TrainerBannerProps): React.JSX.Element {
   const { colors } = useTheme();
   const styles = makeTrainerBannerStyles(colors);
@@ -28,6 +30,16 @@ export function TrainerBanner({
         {"  "}
         <Text style={styles.status}>is logging this session for you</Text>
       </Text>
+      {onStop && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Stop ${trainerUsername} logging for you`}
+          style={styles.stopButton}
+          onPress={onStop}
+        >
+          <Text style={[styles.name, { color: colors.error }]}>Stop</Text>
+        </Pressable>
+      )}
     </View>
   );
 }

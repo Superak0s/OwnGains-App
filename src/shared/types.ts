@@ -89,6 +89,8 @@ export interface SetDetail {
   weight: number;
   reps: number;
   completedAt: string;
+  /** When the set began, so an edit re-records it with its original duration. */
+  startedAt?: string;
   note: string;
   isWarmup: boolean;
   source?: string;
@@ -257,6 +259,8 @@ interface RecordSetSyncData {
   isWarmup?: boolean;
   rir?: number;
   machineName?: string;
+  /** An edit of a set the server may already have, replayed as a patch of that row. */
+  replacesExisting?: boolean;
 }
 
 interface EndSessionSyncData {
@@ -315,6 +319,7 @@ export type RootStackParamList = {
   Analytics: undefined;
   Supplements: undefined;
   Plan: undefined;
+  Skins: { importRef?: string; marketplace?: string | null } | undefined;
 };
 
 export type WidgetSize = "small" | "medium" | "large";

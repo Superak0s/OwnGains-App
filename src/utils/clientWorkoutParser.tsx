@@ -426,6 +426,7 @@ function parseWideFormat(
   }
 
   const days: WorkoutDay[] = [];
+  const daysByTitle = new Map<string, WorkoutDay>();
   let currentDay: WorkoutDay | null = null;
 
   for (let i = headerRowIndex + 1; i < data.length; i++) {
@@ -433,11 +434,18 @@ function parseWideFormat(
     const dayTitle = cellToString(row[0]).trim();
     if (!dayTitle) continue;
 
-    if (currentDay?.dayTitle !== dayTitle) {
+    currentDay = daysByTitle.get(dayTitle) ?? null;
+    if (!currentDay) {
       const split: Record<string, SplitWorkout> = {};
       for (const name of splits) split[name] = { exercises: [], totalSets: 0 };
+      // Days are looked up by number, so a title without "Day N" (or one
+      // repeating a taken number) gets the next free one instead of colliding.
+      let dayNumber = extractDayNumber(dayTitle);
+      if (dayNumber === 0 || days.some((d) => d.dayNumber === dayNumber)) {
+        dayNumber = Math.max(0, ...days.map((d) => d.dayNumber)) + 1;
+      }
       const newDay: WorkoutDay = {
-        dayNumber: extractDayNumber(dayTitle),
+        dayNumber,
         dayTitle,
         primaryMuscles: [],
         secondaryMuscles: [],
@@ -445,6 +453,7 @@ function parseWideFormat(
         split,
       };
       days.push(newDay);
+      daysByTitle.set(dayTitle, newDay);
       currentDay = newDay;
     }
 

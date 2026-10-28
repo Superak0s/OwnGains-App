@@ -18,8 +18,6 @@ import { formatDate, parseDecimal } from "@utils/format";
 import { trackFeature } from "@shared/services/crashReporting";
 import { estimateOneRepMax } from "@utils/oneRepMax";
 import {
-  KG_TO_LBS,
-  LBS_TO_KG,
   displayToKg,
   kgToDisplay,
   parseReps,
@@ -63,6 +61,9 @@ interface SetDetailsFormProps {
   initial: SetDraft;
   weightUnit: WeightUnit;
   loadingHistory: boolean;
+  /** Past sessions could not be fetched, so "no previous data" would be wrong. */
+  historyFailed: boolean;
+  onRetryHistory: () => void;
   performanceHistory: ReturnType<typeof pickBestPerformanceSummary>;
   progression: ProgressionSuggestion | null;
   onDismissProgression: () => void;
@@ -73,6 +74,8 @@ interface SetDetailsFormProps {
   onDelete?: () => void;
   /** Kept current so the parent can tell whether the user has started typing. */
   draftStartedRef: React.RefObject<boolean>;
+  /** Called when the inputs start or stop differing from `initial`. */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 /** Holds the set inputs in this component so a keystroke re-renders this form, not the workout screen. */
@@ -82,6 +85,8 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
   initial,
   weightUnit,
   loadingHistory,
+  historyFailed,
+  onRetryHistory,
   performanceHistory,
   progression,
   onDismissProgression,
@@ -91,6 +96,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
   onSwitchUnit,
   onDelete,
   draftStartedRef,
+  onDirtyChange,
 }: SetDetailsFormProps): React.JSX.Element {
   const { ui } = useUi();
   const [weight, setWeight] = useState(initial.weight);
@@ -104,26 +110,38 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
     draftStartedRef.current = weight.trim() !== "" || reps.trim() !== "";
   }, [weight, reps, draftStartedRef]);
 
+  const dirty =
+    weight !== initial.weight ||
+    reps !== initial.reps ||
+    setNote !== initial.note ||
+    isWarmupSet !== initial.isWarmup ||
+    rir !== initial.rir;
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+
   const parsedReps = parseReps(reps);
   const hasValidReps = parsedReps !== null;
   const weightError = validateWeightInput(weight, weightUnit);
-  const liveOneRepMax = estimateOneRepMax(
-    displayToKg(weight, weightUnit),
-    parsedReps ?? 0,
-  );
+  // Assistance is not load, so an estimated 1RM from it means nothing.
+  const liveOneRepMax = isAssisted
+    ? 0
+    : estimateOneRepMax(displayToKg(weight, weightUnit), parsedReps ?? 0);
 
   const switchWeightUnit = (unit: WeightUnit) => {
     if (weightUnit === unit) return;
     const current = parseDecimal(weight);
     if (current !== null && current > 0) {
-      setWeight((current * (unit === "kg" ? LBS_TO_KG : KG_TO_LBS)).toFixed(1));
+      setWeight(kgToDisplay(displayToKg(weight, weightUnit), unit));
     }
     onSwitchUnit(unit);
   };
 
   const save = () =>
     onSave({ weight, reps, note: setNote, isWarmup: isWarmupSet, rir });
-  const canSave = !isSavingSet && hasValidReps && !weightError;
+  const hasWeight = weight.trim() !== "";
+  const canSave = !isSavingSet && hasValidReps && hasWeight && !weightError;
+  const last = performanceHistory?.last;
 
   return (
     <View style={styles.setFormBody}>
@@ -134,8 +152,14 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
       >
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>
-            Weight ({weightUnit}), leave 0 for bodyweight
+            Weight ({weightUnit})
           </Text>
+          {last && (
+            <Text style={styles.inputHint}>
+              Last time: {kgToDisplay(last.weight, weightUnit)}
+              {weightUnit} × {last.reps}
+            </Text>
+          )}
           <TextInput
             style={styles.input}
             value={weight}
@@ -145,14 +169,72 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
             returnKeyType='next'
             submitBehavior='submit'
             onSubmitEditing={() => repsRef.current?.focus()}
-            placeholder='0'
+            placeholder='0 for bodyweight'
             placeholderTextColor={colors.textMuted}
             accessibilityLabel={`Weight in ${weightUnit}, leave zero for bodyweight`}
           />
           {weightError && (
             <Text style={styles.inputError}>{weightError}</Text>
           )}
+          {!hasWeight && (
+            <Text style={styles.inputHint}>
+              Enter a weight, or 0 for bodyweight.
+            </Text>
+          )}
         </View>
+        <View style={styles.unitSelectorContainer}>
+          <Text style={styles.unitSelectorLabel}>
+            Weight unit for this exercise
+          </Text>
+          <View style={styles.unitSelectorRow} accessibilityRole='radiogroup'>
+            <TouchableOpacity
+              style={[
+                styles.unitButton,
+                weightUnit === "kg" && styles.unitButtonActive,
+              ]}
+              accessibilityRole='radio'
+              accessibilityLabel='Kilograms'
+              accessibilityState={{ checked: weightUnit === "kg" }}
+              onPress={() => switchWeightUnit("kg")}
+            >
+              <Text
+                style={[
+                  styles.unitButtonText,
+                  weightUnit === "kg" && styles.unitButtonTextActive,
+                ]}
+              >
+                kg
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.unitButton,
+                weightUnit === "lbs" && styles.unitButtonActive,
+              ]}
+              accessibilityRole='radio'
+              accessibilityLabel='Pounds'
+              accessibilityState={{ checked: weightUnit === "lbs" }}
+              onPress={() => switchWeightUnit("lbs")}
+            >
+              <Text
+                style={[
+                  styles.unitButtonText,
+                  weightUnit === "lbs" && styles.unitButtonTextActive,
+                ]}
+              >
+                lbs
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        {isAssisted && (
+          <View style={styles.assistedInfoBox}>
+            <Text style={styles.assistedInfoText}>
+              Assisted exercise: Weight represents assistance from the
+              machine. Lower = harder.
+            </Text>
+          </View>
+        )}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Reps</Text>
           <TextInput
@@ -232,6 +314,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
               title='Last Time'
               entry={performanceHistory.last}
               weightUnit={weightUnit}
+              showOneRepMax={!isAssisted}
               styles={styles}
               cardStyle={styles.performanceCard}
               valueStyle={styles.performanceStatValue}
@@ -240,6 +323,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
               title='Best Performance'
               entry={performanceHistory.best}
               weightUnit={weightUnit}
+              showOneRepMax={!isAssisted}
               styles={styles}
               cardStyle={[styles.performanceCard, styles.bestPerformanceCard]}
               valueStyle={[styles.performanceStatValue, styles.bestStatValue]}
@@ -249,7 +333,24 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
             </Text>
           </View>
         )}
-        {!loadingHistory && !performanceHistory && (
+        {!loadingHistory && historyFailed && (
+          <View style={styles.noHistoryContainer}>
+            <Text style={styles.noHistoryText}>
+              {performanceHistory
+                ? "Showing this week only. Couldn't load older sessions."
+                : "Couldn't load your past sessions"}
+            </Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              accessibilityRole='button'
+              accessibilityLabel='Retry loading history'
+              onPress={onRetryHistory}
+            >
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {!loadingHistory && !historyFailed && !performanceHistory && (
           <View style={styles.noHistoryContainer}>
             <Text style={styles.noHistoryText}>
               No previous data for this exercise
@@ -296,14 +397,6 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
               : repsInReserveLabel(rir)}
           </Text>
         </View>
-        {isAssisted && (
-          <View style={styles.assistedInfoBox}>
-            <Text style={styles.assistedInfoText}>
-              Assisted exercise: Weight represents assistance from the
-              machine. Lower = harder.
-            </Text>
-          </View>
-        )}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Notes (optional)</Text>
           <TextInput
@@ -318,51 +411,6 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
           />
         </View>
 
-        <View style={styles.unitSelectorContainer}>
-          <Text style={styles.unitSelectorLabel}>
-            Weight unit for this exercise
-          </Text>
-          <View style={styles.unitSelectorRow} accessibilityRole='radiogroup'>
-            <TouchableOpacity
-              style={[
-                styles.unitButton,
-                weightUnit === "kg" && styles.unitButtonActive,
-              ]}
-              accessibilityRole='radio'
-              accessibilityLabel='Kilograms'
-              accessibilityState={{ checked: weightUnit === "kg" }}
-              onPress={() => switchWeightUnit("kg")}
-            >
-              <Text
-                style={[
-                  styles.unitButtonText,
-                  weightUnit === "kg" && styles.unitButtonTextActive,
-                ]}
-              >
-                kg
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.unitButton,
-                weightUnit === "lbs" && styles.unitButtonActive,
-              ]}
-              accessibilityRole='radio'
-              accessibilityLabel='Pounds'
-              accessibilityState={{ checked: weightUnit === "lbs" }}
-              onPress={() => switchWeightUnit("lbs")}
-            >
-              <Text
-                style={[
-                  styles.unitButtonText,
-                  weightUnit === "lbs" && styles.unitButtonTextActive,
-                ]}
-              >
-                lbs
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </ScrollView>
       <TouchableOpacity
         style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
@@ -395,6 +443,7 @@ function PerformanceCard({
   title,
   entry,
   weightUnit,
+  showOneRepMax,
   styles,
   cardStyle,
   valueStyle,
@@ -402,6 +451,7 @@ function PerformanceCard({
   readonly title: string;
   readonly entry: PerformanceEntry;
   readonly weightUnit: WeightUnit;
+  readonly showOneRepMax: boolean;
   readonly styles: ReturnType<typeof makeStyles>;
   readonly cardStyle: StyleProp<ViewStyle>;
   readonly valueStyle: StyleProp<TextStyle>;
@@ -409,8 +459,9 @@ function PerformanceCard({
   const stats: [string, string | number][] = [
     ["Weight", `${kgToDisplay(entry.weight, weightUnit)}${weightUnit}`],
     ["Reps", entry.reps],
-    ["Est. 1RM", `${kgToDisplay(entry.oneRepMax, weightUnit)}${weightUnit}`],
   ];
+  if (showOneRepMax)
+    stats.push(["Est. 1RM", `${kgToDisplay(entry.oneRepMax, weightUnit)}${weightUnit}`]);
   return (
     <View style={cardStyle}>
       <View style={styles.performanceCardHeader}>

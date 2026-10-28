@@ -6,6 +6,7 @@ import React, {
   useMemo,
 } from "react";
 import ScreenTitle from "@shared/components/ScreenTitle";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   View,
   Text,
@@ -102,7 +103,7 @@ import {
 import { clearDemoTracking, fillDemoTracking } from "./utils/demoTracking";
 import { doMigrateOffline as runOfflineMigration } from "./utils/offlineMigration";
 import { passwordPolicyError } from "@features/auth/utils/passwordPolicy";
-import { GoogleSignInCancelledError } from "@features/auth/googleSignIn";
+import { getGoogleIdToken, GoogleSignInCancelledError } from "@features/auth/googleSignIn";
 import { KOFI_URL } from "@shared/distribution";
 
 // The same rule the signup screen states for the same field.
@@ -222,6 +223,7 @@ import {
 import type { ImportMode } from "@shared/services/sqliteStorage";
 import type { UndertrainedCalculationMode } from "@features/analytics/utils/trainingSummary";
 import { getServerUrl, onServerUrlChange } from "@shared/services/config";
+import { canAuthenticate, forgetMe } from "@features/skins/services/marketplace";
 import {
   describeLocalOnlyFeatures,
   getLocalOnlyFeatures,
@@ -342,7 +344,7 @@ const ACCOUNT_COPY = {
 };
 
 export default function SettingsScreen(): React.JSX.Element {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { user, logout, updateProfile, refreshUser, unlinkGoogle } = useAuth();
   // Server-granted, so offline profiles are never admin.
@@ -1446,7 +1448,20 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
     }
     setDeletingAccount(true);
     try {
-      await authService.deleteAccount(googleOnly ? null : deleteAccountPassword);
+      // The Google proof comes first, so cancelling it leaves the marketplace untouched.
+      const idToken = googleOnly ? await getGoogleIdToken() : undefined;
+      const proofPassword = googleOnly ? null : deleteAccountPassword;
+      // Before the account goes: afterwards the token no longer proves who published the skins.
+      if (await canAuthenticate()) {
+        await authService.verifyIdentity(proofPassword, idToken);
+        try {
+          await forgetMe();
+        } catch (error) {
+          captureException(error, { stage: "deleteAccount.forgetMe" });
+          showToast("Your marketplace skins could not be anonymized. Email the operator to finish.");
+        }
+      }
+      await authService.deleteAccount(proofPassword, idToken);
     } catch (error) {
       if (error instanceof GoogleSignInCancelledError) {
         setDeletingAccount(false);
@@ -2139,6 +2154,12 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
         onPress={() => void openTabOrder()}
         accessibilityLabel="Reorder the bottom tabs"
       />
+      <SettingsRow
+        label="Skins"
+        description="Browse, import, export and share themes and widget layouts"
+        onPress={() => navigation.navigate("Skins")}
+        accessibilityLabel="Open skins"
+      />
     </SettingsGroup>
   );
 
@@ -2418,34 +2439,6 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
           onPress={() => setShowTutorialMenu(true)}
           accessibilityLabel="Tutorial: replay the whole tour or single chapters"
           anchorRef={tutorialAnchor("settings.tutorial")}
-        />
-        <SettingsRow
-          label="Give Feedback"
-          description="Report a bug or suggest an idea"
-          value="Email ↗"
-          accessibilityRole="link"
-          accessibilityLabel="Give feedback by email"
-          onPress={() =>
-            void Linking.openURL(
-              `mailto:kostissuperak0s@gmail.com?subject=${encodeURIComponent(
-                `OwnGains feedback (v${Constants.expoConfig?.version ?? "?"})`,
-              )}`,
-            ).catch(() =>
-              alert("No email app", "Send your feedback to kostissuperak0s@gmail.com."),
-            )
-          }
-        />
-        <SettingsRow
-          label="Support Development"
-          description="Help keep OwnGains and its official server running"
-          value={SUPPORT_COPY.cta}
-          accessibilityRole={SUPPORT_COPY.role}
-          accessibilityLabel={SUPPORT_COPY.label}
-          onPress={() => {
-            trackFeature("tip", KOFI_URL ? "kofi_open" : "jar_open");
-            if (KOFI_URL) void Linking.openURL(KOFI_URL);
-            else setShowTipJar(true);
-          }}
         />
       </SettingsGroup>
 
@@ -3017,7 +3010,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
     appearance: {
       title: "Appearance",
       icon: "🎨",
-      summary: "Theme and tab order",
+      summary: "Theme, tab order and skins",
       render: renderAppearancePage,
     },
     storage: {
@@ -3061,6 +3054,92 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
   const renderIndex = (): React.JSX.Element => (
     <>
       <ScreenTitle title="Settings" />
+      <View style={styles.section}>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => {
+            trackFeature("tip", KOFI_URL ? "kofi_open" : "jar_open");
+            if (KOFI_URL) void Linking.openURL(KOFI_URL);
+            else setShowTipJar(true);
+          }}
+          accessibilityRole={SUPPORT_COPY.role}
+          accessibilityLabel={SUPPORT_COPY.label}
+        >
+          <LinearGradient
+            colors={isDark ? ["#9d174d", "#9f1239", "#9a3412"] : ["#db2777", "#e11d48", "#ea580c"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.supportButton}
+          >
+            <Text style={styles.supportEmoji} importantForAccessibility="no">❤️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.supportTitle}>Support Development</Text>
+              <Text style={styles.supportSubtitle}>
+                Help keep OwnGains and its official server running
+              </Text>
+            </View>
+            <Text style={[styles.supportCta, isDark && { color: "#9f1239" }]}>
+              {SUPPORT_COPY.cta}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={{ marginTop: 12 }}
+          onPress={() => navigation.navigate("Skins")}
+          accessibilityRole="button"
+          accessibilityLabel="Open the skin marketplace"
+        >
+          <LinearGradient
+            colors={isDark ? ["#047857", "#0f766e", "#155e75"] : ["#10b981", "#14b8a6", "#06b6d4"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.supportButton}
+          >
+            <Text style={styles.supportEmoji} importantForAccessibility="no">🎨</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.supportTitle}>Skin Marketplace</Text>
+              <Text style={styles.supportSubtitle}>
+                Restyle the app in one tap with themes and layouts from other lifters
+              </Text>
+            </View>
+            <Text style={[styles.supportCta, { color: isDark ? "#0f766e" : "#0d9488" }]}>
+              Browse
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={{ marginTop: 12 }}
+          onPress={() =>
+            void Linking.openURL(
+              `mailto:kostissuperak0s@gmail.com?subject=${encodeURIComponent(
+                `OwnGains feedback (v${Constants.expoConfig?.version ?? "?"})`,
+              )}`,
+            ).catch(() =>
+              alert("No email app", "Send your feedback to kostissuperak0s@gmail.com."),
+            )
+          }
+          accessibilityRole="link"
+          accessibilityLabel="Give feedback by email"
+        >
+          <LinearGradient
+            colors={isDark ? ["#1e40af", "#5b21b6", "#6b21a8"] : ["#2563eb", "#7c3aed", "#9333ea"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.supportButton}
+          >
+            <Text style={styles.supportEmoji} importantForAccessibility="no">💬</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.supportTitle}>Give Feedback</Text>
+              <Text style={styles.supportSubtitle}>Report a bug or suggest an idea</Text>
+            </View>
+            <Text style={[styles.supportCta, { color: isDark ? "#5b21b6" : "#7c3aed" }]}>
+              Email ↗
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
       <TouchableOpacity
         activeOpacity={0.7}
         style={styles.profileCard}
@@ -3176,6 +3255,27 @@ const makeStyles = (colors: ThemeColors) =>
     container: { flex: 1, backgroundColor: colors.background },
     contentContainer: SCREEN_PADDING,
     section: { marginBottom: 24 },
+    supportButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      paddingVertical: 20,
+      paddingHorizontal: 18,
+      borderRadius: 18,
+    },
+    supportEmoji: { fontSize: 32 },
+    supportTitle: { fontSize: 19, fontWeight: "800", color: "#fff" },
+    supportSubtitle: { fontSize: 13, color: "#fff", opacity: 0.92, marginTop: 2 },
+    supportCta: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: "#e11d48",
+      backgroundColor: "#fff",
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      borderRadius: 999,
+      overflow: "hidden",
+    },
     progressGroup: { marginBottom: 24 },
     progressErrorCard: { paddingVertical: 16 },
     statGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },

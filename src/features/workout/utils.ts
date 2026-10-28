@@ -15,12 +15,21 @@ import { log, metric } from "@shared/services/crashReporting";
 export const LBS_TO_KG = 0.45359237;
 export const KG_TO_LBS = 2.20462262;
 
-/** Convert a kg value (as stored) to the display unit, rounded to 1 dp. */
+/**
+ * Convert a kg value (as stored) to the display unit, to at most 2 decimals so
+ * a 1.25 kg step survives being prefilled and saved again.
+ */
 export function kgToDisplay(kg: number, unit: "kg" | "lbs"): string {
-  if (unit === "lbs") {
-    return (kg * KG_TO_LBS).toFixed(1);
-  }
-  return kg % 1 === 0 ? String(kg) : kg.toFixed(1);
+  const value = unit === "lbs" ? kg * KG_TO_LBS : kg;
+  return String(Math.round(value * 100) / 100);
+}
+
+/**
+ * Whether `current` is a new best, ignoring the drift a lbs-to-kg round trip
+ * leaves (0.1 lbs of display rounding, scaled up by the 1RM estimate).
+ */
+export function beatsBest(current: number, previousBest: number): boolean {
+  return current > previousBest + 0.1;
 }
 
 /** Heaviest load accepted from the weight input, in kg. */
@@ -366,6 +375,8 @@ export async function getServerHistoryEntries(
       fetchSessionHistory(50, true),
       fetchRecordSessions?.() ?? null,
     ]);
+    // Without the records, a lift below an old best looks like a new one.
+    if (fetchRecordSessions && records === null) return null;
     const sessions = [
       ...(window ?? []),
       ...recordSessionsOutside(window ?? [], records),
@@ -391,7 +402,15 @@ export async function getServerHistoryEntries(
   }
 }
 
-export function pickBestPerformanceSummary(history: PerformanceEntry[]): {
+/**
+ * Last and best non-warm-up entries from before today.
+ *
+ * @param assisted - The weight is machine assistance, so the best is the least of it.
+ */
+export function pickBestPerformanceSummary(
+  history: PerformanceEntry[],
+  assisted = false,
+): {
   last: PerformanceEntry;
   best: PerformanceEntry;
   totalAttempts: number;
@@ -405,14 +424,16 @@ export function pickBestPerformanceSummary(history: PerformanceEntry[]): {
   const last = prev[0];
   // Reps break the tie so bodyweight movements, whose estimated 1RM is always
   // 0, still have a usable best.
-  const best = prev.reduce(
-    (b, c) =>
-      c.oneRepMax > b.oneRepMax ||
-      (c.oneRepMax === b.oneRepMax && c.reps > b.reps)
+  const best = prev.reduce((b, c) => {
+    if (assisted)
+      return c.weight < b.weight || (c.weight === b.weight && c.reps > b.reps)
         ? c
-        : b,
-    prev[0],
-  );
+        : b;
+    return c.oneRepMax > b.oneRepMax ||
+      (c.oneRepMax === b.oneRepMax && c.reps > b.reps)
+      ? c
+      : b;
+  }, prev[0]);
   return { last, best, totalAttempts: prev.length };
 }
 
@@ -437,6 +458,12 @@ export function getPartnerStatusText(
 
 /** Smallest plate pair on a standard barbell, and the step every gym has. */
 export const PROGRESSION_STEP_KG = 2.5;
+
+/** The same step in a lbs gym, where 2.5 kg would land between plates. */
+export const PROGRESSION_STEP_LBS = 5;
+
+export const progressionStepKg = (unit: WeightUnit): number =>
+  unit === "lbs" ? PROGRESSION_STEP_LBS * LBS_TO_KG : PROGRESSION_STEP_KG;
 
 /** Upper bound of a rep target written as "10" or "8-12", null when unusable. */
 export function targetRepCeiling(reps: string | undefined): number | null {

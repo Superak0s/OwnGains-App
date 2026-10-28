@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -12,15 +11,22 @@ import { useAuth } from "@shared/context/AuthContext";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import ModalSheet from "@shared/components/ModalSheet";
 import { isGoogleSignInAvailable } from "../googleSignIn";
+import PasswordField from "./PasswordField";
 
 interface GoogleSignInButtonProps {
   readonly disabled?: boolean;
   readonly onError: (message: string) => void;
+  /** Lets the screen lock its own sign-in button while a Google sign-in is in flight. */
+  readonly onBusyChange?: (busy: boolean) => void;
+  /** Shown as a link in the account-link sheet, which closes before it runs. */
+  readonly onForgotPassword?: () => void;
 }
 
 export default function GoogleSignInButton({
   disabled = false,
   onError,
+  onBusyChange,
+  onForgotPassword,
 }: GoogleSignInButtonProps): React.JSX.Element | null {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -37,6 +43,7 @@ export default function GoogleSignInButton({
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
+    onBusyChange?.(true);
     try {
       const result = await signInWithGoogle(
         link && linkPassword !== undefined ? { idToken: link.idToken, password: linkPassword } : undefined,
@@ -54,6 +61,7 @@ export default function GoogleSignInButton({
     } finally {
       busyRef.current = false;
       setBusy(false);
+      onBusyChange?.(false);
     }
   };
 
@@ -89,19 +97,36 @@ export default function GoogleSignInButton({
             ? `The OwnGains account ${link.username} already uses this email. Enter its password to link your Google account.`
             : "An OwnGains account already uses this email. Enter its password to link your Google account."}
         </Text>
-        <TextInput
-          style={styles.input}
+        <PasswordField
+          toggleLabel="password"
           value={password}
           onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
           autoFocus
+          autoComplete="current-password"
+          textContentType="password"
           placeholder="Password"
-          placeholderTextColor={colors.textMuted}
           accessibilityLabel="Password of the existing OwnGains account"
+          returnKeyType="go"
           onSubmitEditing={() => password && void run(password)}
         />
-        {linkError && <Text style={styles.error}>{linkError}</Text>}
+        {linkError && (
+          <Text style={styles.error} accessibilityLiveRegion="polite">
+            {linkError}
+          </Text>
+        )}
+        {onForgotPassword && (
+          <TouchableOpacity
+            style={styles.forgotButton}
+            onPress={() => {
+              setLink(null);
+              onForgotPassword();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Forgot password help"
+          >
+            <Text style={styles.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
+        )}
       </ModalSheet>
     </>
   );
@@ -131,14 +156,7 @@ const makeStyles = (colors: ThemeColors) =>
     content: { flexDirection: "row", alignItems: "center", gap: 12 },
     buttonText: { color: colors.textPrimary, fontSize: 16, fontWeight: "600" },
     description: { color: colors.textSecondary, fontSize: 14, marginBottom: 12 },
-    input: {
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      padding: 14,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
-      color: colors.textPrimary,
-      fontSize: 16,
-    },
     error: { color: colors.error, fontSize: 14, marginTop: 8 },
+    forgotButton: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
+    forgotText: { color: colors.accent, fontSize: 14, fontWeight: "600" },
   });

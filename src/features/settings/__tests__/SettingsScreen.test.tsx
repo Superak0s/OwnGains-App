@@ -12,6 +12,8 @@ import { ApiError, ServerUnreachableError } from "@shared/services/apiError"
 import { scheduleTestAlarm } from "@shared/services/supplementReminders"
 import * as crashReporting from "@shared/services/crashReporting"
 import { friendsApi } from "@features/friends/services"
+import { canAuthenticate, forgetMe } from "@features/skins/services/marketplace"
+import { getGoogleIdToken, GoogleSignInCancelledError } from "@features/auth/googleSignIn"
 
 jest.mock("@shared/services/sqliteStorage", () => require("test-utils/memorySqlite"))
 jest.mock("@shared/context/AuthContext", () => require("test-utils/renderWithProviders").authModule)
@@ -44,6 +46,7 @@ jest.mock("@features/friends/services", () => ({
 jest.mock("@features/auth/services/index", () => ({
   authService: {
     deleteAccount: jest.fn(async () => {}),
+    verifyIdentity: jest.fn(async () => {}),
     recordConsent: jest.fn(async () => {}),
     exportAccountData: jest.fn(async () => ({})),
     changePassword: jest.fn(async () => {}),
@@ -62,6 +65,14 @@ jest.mock("@shared/services/supplementReminders", () => ({
   scheduleTestAlarm: jest.fn(async () => true),
 }))
 jest.mock("expo-document-picker", () => ({ getDocumentAsync: jest.fn() }))
+jest.mock("@features/auth/googleSignIn", () => ({
+  ...jest.requireActual("@features/auth/googleSignIn"),
+  getGoogleIdToken: jest.fn(async () => "google-id-token"),
+}))
+jest.mock("@features/skins/services/marketplace", () => ({
+  canAuthenticate: jest.fn(async () => false),
+  forgetMe: jest.fn(async () => null),
+}))
 jest.mock("expo-file-system", () => ({
   File: jest.fn().mockImplementation(() => ({ text: async () => mockFileText })),
 }))
@@ -70,6 +81,7 @@ let mockFileText = ""
 
 const deleteAllUserData = workoutApi.deleteAllUserData as jest.Mock
 const deleteAccount = authService.deleteAccount as jest.Mock
+const verifyIdentity = authService.verifyIdentity as jest.Mock
 const recordConsent = authService.recordConsent as jest.Mock
 const restore = restoreDeviceBackup as jest.Mock
 const pickDocument = DocumentPicker.getDocumentAsync as jest.Mock
@@ -175,6 +187,66 @@ describe("Delete Account", () => {
     expect(current.auth.logout).not.toHaveBeenCalled()
   })
 
+  it("anonymizes marketplace skins before deleting the account", async () => {
+    ;(canAuthenticate as jest.Mock).mockResolvedValueOnce(true)
+    const order: string[] = []
+    ;(forgetMe as jest.Mock).mockImplementationOnce(async () => order.push("forgetMe"))
+    deleteAccount.mockImplementationOnce(async () => order.push("deleteAccount"))
+    await mount()
+    await openAndSubmit("pw")
+    await waitFor(() => expect(order).toEqual(["forgetMe", "deleteAccount"]))
+    expect(verifyIdentity).toHaveBeenCalledWith("pw", undefined)
+  })
+
+  it("keeps marketplace skins attributed when the password is wrong", async () => {
+    ;(canAuthenticate as jest.Mock).mockResolvedValueOnce(true)
+    verifyIdentity.mockRejectedValueOnce(new ApiError("Incorrect password", 403))
+    await mount()
+    await openAndSubmit("wrong")
+
+    expect(await screen.findByText("Incorrect password")).toBeTruthy()
+    expect(forgetMe).not.toHaveBeenCalled()
+    expect(deleteAccount).not.toHaveBeenCalled()
+  })
+
+  it("keeps marketplace skins attributed when the Google re-auth is cancelled", async () => {
+    ;(canAuthenticate as jest.Mock).mockResolvedValueOnce(true)
+    ;(getGoogleIdToken as jest.Mock).mockRejectedValueOnce(new GoogleSignInCancelledError())
+    await mount({ auth: { user: { ...user, hasPassword: false } } })
+    await fireEvent.press(screen.getByLabelText(/Open account settings/))
+    await press("Delete my account permanently")
+    await pressText("Delete Forever")
+    await waitFor(() => expect(getGoogleIdToken).toHaveBeenCalled())
+    expect(forgetMe).not.toHaveBeenCalled()
+    expect(deleteAccount).not.toHaveBeenCalled()
+    ;(canAuthenticate as jest.Mock).mockReset().mockResolvedValue(false)
+  })
+
+  it("deletes a Google-only account with the proof taken before the marketplace step", async () => {
+    ;(canAuthenticate as jest.Mock).mockResolvedValueOnce(true)
+    await mount({ auth: { user: { ...user, hasPassword: false } } })
+    await fireEvent.press(screen.getByLabelText(/Open account settings/))
+    await press("Delete my account permanently")
+    await pressText("Delete Forever")
+    await waitFor(() => expect(deleteAccount).toHaveBeenCalledWith(null, "google-id-token"))
+    expect(forgetMe).toHaveBeenCalled()
+  })
+
+  it("skips the marketplace without an account there", async () => {
+    await mount()
+    await openAndSubmit("pw")
+    await waitFor(() => expect(deleteAccount).toHaveBeenCalled())
+    expect(forgetMe).not.toHaveBeenCalled()
+  })
+
+  it("still deletes the account when the marketplace fails", async () => {
+    ;(canAuthenticate as jest.Mock).mockResolvedValueOnce(true)
+    ;(forgetMe as jest.Mock).mockRejectedValueOnce(new Error("down"))
+    await mount()
+    await openAndSubmit("pw")
+    await waitFor(() => expect(deleteAccount).toHaveBeenCalledWith("pw", undefined))
+  })
+
   it("keeps the session and local data when the server is unreachable", async () => {
     deleteAccount.mockRejectedValueOnce(new ServerUnreachableError())
     await mount()
@@ -191,7 +263,7 @@ describe("Delete Account", () => {
     await openAndSubmit("wrong")
 
     expect(await screen.findByText("Incorrect password")).toBeTruthy()
-    expect(deleteAccount).toHaveBeenCalledWith("wrong")
+    expect(deleteAccount).toHaveBeenCalledWith("wrong", undefined)
     expect(current.workout.clearAllData).not.toHaveBeenCalled()
   })
 

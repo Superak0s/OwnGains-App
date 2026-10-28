@@ -40,7 +40,7 @@ import {
   Placeholder,
   Row,
   SectionLabel,
-  TINT,
+  tint,
   radius,
   space,
 } from "@shared/components/ui";
@@ -74,7 +74,7 @@ const RECOVERED_COLOR = SEVERITY_STOPS.good;
 function StatusBadge({ status }: { readonly status: string }) {
   const color = STATUS_COLORS[status] ?? RECOVERED_COLOR;
   return (
-    <View style={[styles.badge, { backgroundColor: `${color}${TINT}` }]}>
+    <View style={[styles.badge, { backgroundColor: tint(color) }]}>
       <Text style={[styles.badgeText, { color }]}>{status}</Text>
     </View>
   );

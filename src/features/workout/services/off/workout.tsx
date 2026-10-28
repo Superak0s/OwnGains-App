@@ -300,7 +300,11 @@ export const workoutApi = {
     const cutoff = Date.now() - days * 86_400_000;
     const sessions = await sessionsStore.getSince(new Date(cutoff).toISOString());
     const filtered = sessions.filter(
-      (s) => (!split || s.split === split) && (!dayNumber || s.dayNumber === dayNumber),
+      (s) =>
+        s.endTime &&
+        !s.isDemo &&
+        (!split || s.split === split) &&
+        (!dayNumber || s.dayNumber === dayNumber),
     );
 
     return computeWorkoutAnalytics(filtered);
@@ -372,19 +376,21 @@ export const workoutApi = {
     return fillDemoSessions(workoutApi, program, split);
   },
 
-  clearDemoSessions: async (): Promise<unknown> => {
-    const sessions = await sessionsStore.getAll();
-    const demoIds = sessions.filter((s) => s.isDemo).map((s) => s.id);
-    await sessionsStore.removeMany(demoIds);
-    return { success: true, deletedCount: demoIds.length };
-  },
+  clearDemoSessions: async (): Promise<unknown> =>
+    withLock(SESSIONS_LOCK, async () => {
+      const sessions = await sessionsStore.getAll();
+      const demoIds = sessions.filter((s) => s.isDemo).map((s) => s.id);
+      await sessionsStore.removeMany(demoIds);
+      return { success: true, deletedCount: demoIds.length };
+    }),
 
-  deleteAllSessionsForSplit: async (split: string): Promise<unknown> => {
-    const sessions = await sessionsStore.getWhere({ split });
-    const toDelete = sessions.map((s) => s.id);
-    await sessionsStore.removeMany(toDelete);
-    return { success: true, deletedCount: toDelete.length };
-  },
+  deleteAllSessionsForSplit: async (split: string): Promise<unknown> =>
+    withLock(SESSIONS_LOCK, async () => {
+      const sessions = await sessionsStore.getWhere({ split });
+      const toDelete = sessions.map((s) => s.id);
+      await sessionsStore.removeMany(toDelete);
+      return { success: true, deletedCount: toDelete.length };
+    }),
 
   deleteAllUserData: async (_password?: string): Promise<unknown> => {
     await sessionsStore.clear();

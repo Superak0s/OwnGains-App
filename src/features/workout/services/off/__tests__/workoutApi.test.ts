@@ -326,13 +326,29 @@ describe("getAnalytics", () => {
     const pull = await startAt(daysAgo(1), "pull", 1);
     await record(push, "Bench");
     await record(pull, "Row");
+    await workoutApi.endSession(push);
+    await workoutApi.endSession(pull);
 
     expect((await workoutApi.getAnalytics("push", 1)).totalSessions).toBe(1);
     expect((await workoutApi.getAnalytics()).totalSessions).toBe(2);
   });
 
+  it("leaves out unfinished and demo sessions like the server does", async () => {
+    await startAt(daysAgo(1), "push", 1);
+    const demo = await workoutApi.startSession(
+      "push",
+      1,
+      "Chest day",
+      true,
+      daysAgo(2),
+    );
+    await workoutApi.endSession(demo);
+
+    expect((await workoutApi.getAnalytics()).totalSessions).toBe(0);
+  });
+
   it("ignores sessions older than the requested window", async () => {
-    await startAt(daysAgo(400), "push", 1);
+    await workoutApi.endSession(await startAt(daysAgo(400), "push", 1));
 
     expect((await workoutApi.getAnalytics()).totalSessions).toBe(0);
     expect((await workoutApi.getAnalytics(null, null, 500)).totalSessions).toBe(

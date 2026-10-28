@@ -26,7 +26,7 @@ describe("SessionDetailsSheet", () => {
       workout: { weightUnit: "lbs" },
     })
 
-    expect(screen.getByText("220.5lbs × 5")).toBeTruthy()
+    expect(screen.getByText("220.46lbs × 5")).toBeTruthy()
     expect(screen.queryByText(/100kg/)).toBeNull()
   })
 })

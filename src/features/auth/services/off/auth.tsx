@@ -97,7 +97,9 @@ export const authService = {
     await tokenStorage.clear()
   },
 
-  deleteAccount: async (_password: string | null): Promise<void> => {
+  verifyIdentity: async (_password: string | null, _idToken?: string): Promise<void> => {},
+
+  deleteAccount: async (_password: string | null, _idToken?: string): Promise<void> => {
     // Photo files are referenced only from the user's rows, so they have to be
     // removed before those rows go.
     await deletePhotoFilesFor(LOCAL_USER_ID)

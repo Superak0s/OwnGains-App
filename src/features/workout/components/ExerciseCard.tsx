@@ -344,7 +344,12 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                 onPress={() => onEditExerciseName(exerciseIndex)}
                 style={styles.editButton}
               >
-                <Text style={styles.editButtonText}>✏️</Text>
+                <Text
+                  style={styles.editButtonText}
+                  importantForAccessibility="no"
+                >
+                  ✏️
+                </Text>
               </TouchableOpacity>
             )}
             {!isCurrentDayLocked && machine && (
@@ -369,7 +374,12 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                 onPress={() => onOpenExerciseSettings(exerciseIndex)}
                 style={styles.editButton}
               >
-                <Text style={styles.editButtonText}>⚙️</Text>
+                <Text
+                  style={styles.editButtonText}
+                  importantForAccessibility="no"
+                >
+                  ⚙️
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -430,6 +440,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
             >
               {partnerOnSet && <View style={styles.partnerSetDot} />}
               <Text
+                maxFontSizeMultiplier={1.3}
                 style={[
                   styles.setButtonNumber,
                   done && styles.setButtonNumberComplete,
@@ -439,7 +450,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                   partnerDoneThisSet && done && { color: colors.accentDark },
                 ]}
               >
-                {setDetails?.isWarmup ? "W" : setIndex + 1}
+                {setDetails?.isWarmup ? `W${setIndex + 1}` : setIndex + 1}
               </Text>
               {done && setDetails && (
                 <View style={styles.setDetailsPreview}>
@@ -447,6 +458,8 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                     style={[styles.setDetailsText, lockedTextStyle, onLightFill]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    maxFontSizeMultiplier={1.3}
                   >
                     {setDetails.weight
                       ? `${kgToDisplay(setDetails.weight, weightUnit)}${weightUnit}`
@@ -456,17 +469,40 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                     style={[styles.setDetailsText, lockedTextStyle, onLightFill]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    maxFontSizeMultiplier={1.3}
                   >
                     ×{setDetails.reps || 0}
                   </Text>
                 </View>
               )}
               {done && !!setDetails?.note && (
-                <Text style={styles.setNoteIndicator}>📝</Text>
+                <Text
+                  style={styles.setNoteIndicator}
+                  importantForAccessibility="no"
+                  maxFontSizeMultiplier={1}
+                >
+                  📝
+                </Text>
+              )}
+              {partnerDoneThisSet && (
+                <Text
+                  style={styles.partnerDoneGlyph}
+                  importantForAccessibility="no"
+                  maxFontSizeMultiplier={1}
+                >
+                  👥
+                </Text>
               )}
               {done && (
                 <View style={styles.setCheckmark}>
-                  <Text style={styles.setCheckmarkText}>✓</Text>
+                  <Text
+                    style={styles.setCheckmarkText}
+                    importantForAccessibility="no"
+                    maxFontSizeMultiplier={1}
+                  >
+                    ✓
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -483,7 +519,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
             ]}
             accessibilityRole="button"
             accessibilityLabel="Add a set"
-            accessibilityHint="Long press to add multiple sets"
+            accessibilityHint="Long press to add or remove sets"
             onPress={() => onQuickAddSet(exerciseIndex)}
             onLongPress={() => onAddMultipleSets(exerciseIndex)}
           >

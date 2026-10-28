@@ -235,4 +235,27 @@ describe("a trainer's edit to a client's program that the server refuses", () =>
     expect(markProgramDirty).not.toHaveBeenCalled();
     expect(captureException).not.toHaveBeenCalled();
   });
+
+  it("keeps a later edit that succeeded when an earlier one is refused", async () => {
+    let refuse!: (err: Error) => void;
+    const { api, setWorkoutData } = mount(
+      {
+        addExercise: jest.fn(
+          () => new Promise((_resolve, reject) => (refuse = reject)),
+        ),
+      },
+      undefined,
+      true,
+    );
+    let first!: Promise<void>;
+    await act(async () => {
+      first = api.addNewExercise(1, "A", { name: "Air Bike", sets: 2 }).catch(() => {});
+      await api.updateExerciseName(1, "A", 0, "Wheel Rollout");
+    });
+    await act(async () => {
+      refuse(new Error("Trainers can't remove that"));
+      await first;
+    });
+    expect(savedSplit(setWorkoutData).A.exercises[0].name).toBe("Wheel Rollout");
+  });
 });

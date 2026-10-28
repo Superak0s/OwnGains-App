@@ -1,6 +1,7 @@
 import { getStorageItemSync, setStorageItem, removeStorageItem } from "@shared/services/sqliteStorage"
 import { metric } from "@shared/services/crashReporting"
 import { createEmitter } from "@utils/emitter"
+import { tokenStorage } from "@shared/services/tokenStorage"
 
 const SERVER_URL_KEY = "@server_url"
 export const OFFICIAL_SERVER_HOST = "owngains.superak0s.com"
@@ -27,6 +28,15 @@ export const onServerUrlChange = serverUrlChange.subscribe
 const notify = serverUrlChange.trigger
 
 export const getServerUrl = (): string => currentServerUrl
+
+// Every request attaches the stored tokens to the current server, and a token
+// is only valid on the server that issued it, so they go before the URL does.
+const switchServer = async (next: string): Promise<void> => {
+  if (next === currentServerUrl) return
+  await tokenStorage.clear()
+  currentServerUrl = next
+  notify(next)
+}
 
 // An exact string match, not URL parsing: React Native's URL.hostname is a regex
 // that reads "https://evil.com/@<official host>" as the official host.
@@ -88,8 +98,18 @@ export const assertSecureTransport = (url: string): void => {
  * a doubled slash or a dead URL. Normalise once on save rather than at every
  * call site.
  */
-export const normalizeServerUrl = (url: string): string =>
-  url.trim().replace(/^(https?:\/\/[^/?#]+)\/+$/i, "$1")
+export const normalizeServerUrl = (url: string): string => {
+  let trimmed = url.trim()
+  // A bare host gets HTTPS, except on a private network, where a self-hosted
+  // server rarely has a certificate.
+  if (trimmed && !/^[a-z][\w+.-]*:\/\//i.test(trimmed)) {
+    const host = trimmed.startsWith("[")
+      ? trimmed.slice(1, trimmed.indexOf("]"))
+      : trimmed.split(/[:/?#]/)[0]
+    trimmed = `${isPrivateHost(host) ? "http" : "https"}://${trimmed}`
+  }
+  return trimmed.replace(/^(https?:\/\/[^/?#]+)\/+$/i, "$1")
+}
 
 export const validateServerUrl = (url: string): ServerUrlValidation => {
   const trimmedUrl = normalizeServerUrl(url)
@@ -125,7 +145,7 @@ export const validateServerUrl = (url: string): ServerUrlValidation => {
   if (trimmedUrl.startsWith("http://") && !isPrivateHost(parsed.hostname)) {
     return {
       valid: false,
-      message: "HTTP is not secure. Please use HTTPS for production servers.",
+      message: "HTTP is not encrypted. Use https:// for a server on the internet.",
     }
   }
 
@@ -138,10 +158,8 @@ export const setServerUrl = async (url: string): Promise<boolean> => {
   if (!validateServerUrl(normalized).valid) return false
 
   try {
-    const previous = currentServerUrl
     await setStorageItem(SERVER_URL_KEY, normalized)
-    currentServerUrl = normalized
-    if (previous !== normalized) notify(normalized)
+    await switchServer(normalized)
     return true
   } catch (err) {
     console.error(`Error saving ${SERVER_URL_KEY}:`, err)
@@ -154,10 +172,8 @@ export const getDefaultServerUrl = (): string => DEFAULT_API_BASE_URL
 
 export const resetServerUrl = async (): Promise<boolean> => {
   try {
-    const previous = currentServerUrl
     await removeStorageItem(SERVER_URL_KEY)
-    currentServerUrl = DEFAULT_API_BASE_URL
-    if (previous !== DEFAULT_API_BASE_URL) notify(DEFAULT_API_BASE_URL)
+    await switchServer(DEFAULT_API_BASE_URL)
     return true
   } catch (err) {
     console.error(`Error resetting ${SERVER_URL_KEY}:`, err)

@@ -50,6 +50,7 @@ export default function LocalOnlyNotice({
         const seen = (await loadViews())[feature] ?? 0;
         if (!active || seen >= MAX_VIEWS) return;
         await setViews(feature, seen + 1);
+        if (!active) return;
         setVisible(true);
         timer = setTimeout(() => setVisible(false), VISIBLE_MS);
       })();

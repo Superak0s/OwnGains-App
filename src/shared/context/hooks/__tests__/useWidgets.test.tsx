@@ -6,6 +6,8 @@ import { useWidgets, useWidgetBoard } from "../useWidgets";
 import { loadFromStorage, saveToStorage } from "@shared/services/storage";
 import { showToast } from "@shared/components/toast";
 import type { WidgetDefinition, WidgetInstance, WidgetSize } from "@shared/types";
+import { ThemeProvider } from "@shared/context/ThemeContext";
+import { SkinPreviewProvider, useSkinPreview } from "@shared/context/SkinPreviewContext";
 
 jest.mock("@shared/services/storage", () => ({
   loadFromStorage: jest.fn(),
@@ -202,5 +204,102 @@ describe("useWidgetBoard edit mode", () => {
     expect(boardRef.current!.editMode).toBe(false);
     expect(handler).toBeNull();
     spy.mockRestore();
+  });
+});
+
+describe("useWidgets during a skin preview", () => {
+  type Preview = ReturnType<typeof useSkinPreview>;
+  const refs: { board: Control | null; preview: Preview | null } = { board: null, preview: null };
+
+  function PreviewHarness() {
+    refs.board = useWidgets<T>("u1", { registry, defaults, storageKey: "board" });
+    refs.preview = useSkinPreview();
+    return null;
+  }
+
+  async function mountWithPreview(stored: WidgetInstance<T>[]) {
+    const saved = new Map<string, unknown>([["board", stored]]);
+    load.mockImplementation(async (key: string) => saved.get(key) ?? null);
+    save.mockImplementation(async (key: string, value: unknown) => {
+      saved.set(key, value);
+      return true;
+    });
+    await act(async () => {
+      create(
+        <ThemeProvider>
+          <SkinPreviewProvider>
+            <PreviewHarness />
+          </SkinPreviewProvider>
+        </ThemeProvider>,
+      );
+    });
+    return saved;
+  }
+
+  const skinBoard = [inst("s1", "c", 0, "medium"), inst("s2", "fromTheFuture", 1)];
+
+  it("shows only the widgets this app knows and flags the rest", async () => {
+    await mountWithPreview([inst("1", "a", 0)]);
+    await act(async () => refs.preview!.start({ name: "S", theme: null, boards: { board: skinBoard } }));
+    expect(refs.board!.widgets.map((w) => w.id)).toEqual(["s1"]);
+    expect(refs.board!.widgets[0].size).toBe("medium");
+    expect(refs.preview!.skippedWidgets).toBe(true);
+  });
+
+  it("leaves storage alone when the board is edited mid-preview", async () => {
+    await mountWithPreview([inst("1", "a", 0)]);
+    await act(async () => refs.preview!.start({ name: "S", theme: null, boards: { board: skinBoard } }));
+    await act(async () => {
+      await refs.board!.removeWidget("s1");
+      await refs.board!.reorderWidgets(["s1"]);
+    });
+    expect(save).not.toHaveBeenCalled();
+    await act(async () => refs.preview!.discard());
+    expect(refs.board!.widgets.map((w) => w.id)).toEqual(["1"]);
+  });
+
+  it("refuses adds and offers what the previewed board lacks", async () => {
+    await mountWithPreview([inst("1", "a", 0)]);
+    await act(async () => refs.preview!.start({ name: "S", theme: null, boards: { board: skinBoard } }));
+    expect(refs.board!.availableToAdd.map((d) => d.type)).toEqual(["a", "b"]);
+    let result: { success: boolean } | undefined;
+    await act(async () => {
+      result = await refs.board!.addWidget("a");
+    });
+    expect(result?.success).toBe(false);
+  });
+
+  it("drops widget types named after Object prototype members", async () => {
+    await mountWithPreview([inst("1", "a", 0)]);
+    const hostile = [inst("h1", "constructor" as T, 0), inst("h2", "toString" as T, 1), inst("s1", "c", 2)];
+    await act(async () => refs.preview!.start({ name: "S", theme: null, boards: { board: hostile } }));
+    expect(refs.board!.widgets.map((w) => w.id)).toEqual(["s1"]);
+  });
+
+  it("shows the defaults when nothing in the previewed board is known", async () => {
+    await mountWithPreview([inst("1", "a", 0)]);
+    await act(async () => refs.preview!.start({ name: "S", theme: null, boards: { board: [inst("x", "gone", 0)] } }));
+    expect(refs.board!.widgets).toEqual(defaults);
+  });
+
+  it("keeps the preview when a layout fails to save", async () => {
+    await mountWithPreview([inst("1", "a", 0)]);
+    save.mockResolvedValue(false);
+    await act(async () => refs.preview!.start({ name: "S", theme: null, boards: { board: skinBoard } }));
+    await act(async () => {
+      await expect(refs.preview!.apply("u1")).rejects.toThrow();
+    });
+    expect(refs.preview!.active).toBe(true);
+    expect(refs.preview!.appliedVersion).toBe(0);
+  });
+
+  it("reloads a mounted board after apply and keeps later edits on top of it", async () => {
+    const saved = await mountWithPreview([inst("1", "a", 0)]);
+    const applied = [inst("s1", "c", 0, "medium"), inst("s3", "a", 1)];
+    await act(async () => refs.preview!.start({ name: "S", theme: null, boards: { board: applied } }));
+    await act(async () => refs.preview!.apply("u1"));
+    expect(refs.board!.widgets.map((w) => w.id)).toEqual(["s1", "s3"]);
+    await act(async () => refs.board!.removeWidget("s1"));
+    expect((saved.get("board") as WidgetInstance[]).map((w) => w.id)).toEqual(["s3"]);
   });
 });

@@ -16,6 +16,7 @@ import {
   type SessionRefreshResult,
 } from "../services/authenticatedFetch";
 import { onServerUrlChange } from "../services/config";
+import { onServerStoredFeaturesKnown } from "../services/localOnlyFeatures";
 import { getAppMode, isServerless, onAppModeChange } from "../services/appMode";
 import { Alert, AppState } from "react-native";
 import { refreshTokenStorage, tokenStorage } from "../services/tokenStorage";
@@ -641,16 +642,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [consent, setConsent] = useState(() => consentNeededFor(userId));
   if (consent.userId !== userId) setConsent(consentNeededFor(userId));
   const consented = consent.userId === userId && !consent.needed;
-  const markConsented = useCallback(
-    () => setConsent({ userId, needed: false }),
-    [userId],
-  );
+  const markConsented = useCallback(() => {
+    setConsent({ userId, needed: false });
+    // The consent write stored the server's updated user, and recheckConsent
+    // judges by its terms version and health consent.
+    void authService
+      .getStoredUser()
+      .then((stored) => {
+        if (stored && String(stored.id) === userId) seatUser(stored);
+      })
+      .catch(reportAndReturn(undefined, { stage: "reloadConsentedUser" }));
+  }, [userId, seatUser]);
   const termsVersion = user?.termsVersion;
   const healthConsentAt = user?.healthConsentAt;
   const recheckConsent = useCallback(() => {
     if (userId && !hasAcceptedCurrentTerms(userId, termsVersion, healthConsentAt))
       setConsent({ userId, needed: true });
   }, [userId, termsVersion, healthConsentAt]);
+  // Consent given before the server's list was known covered no health
+  // features, which is only right if the server turns out to store none.
+  useEffect(() => onServerStoredFeaturesKnown(recheckConsent), [recheckConsent]);
 
   const value: AuthContextValue = useMemo(
     () => ({

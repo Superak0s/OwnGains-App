@@ -9,14 +9,15 @@ import {
 } from "react-native";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { userFacingError } from "@shared/services/apiError";
+import { withAlpha } from "@utils/color";
 
 export const radius = { sm: 8, md: 10, lg: 14, pill: 999 } as const;
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 } as const;
 
 /** Hex alpha suffixes. Theme colors are 6-digit hex, so a tone can be tinted
  *  without adding a light variant for every semantic color. */
-const TINT = "1f";
-const TINT_STRONG = "33";
+/** The color at the faint opacity used behind tinted pills and buttons. */
+const tint = (color: string): string => withAlpha(color, 0x1f / 255);
 
 const makeUi = (colors: ThemeColors) =>
   StyleSheet.create({
@@ -241,11 +242,11 @@ export function Button({
   const { ui, colors } = useUi();
   const base = tone ?? colors.accent;
 
-  let skin = { backgroundColor: `${base}${TINT}`, color: base };
+  let skin = { backgroundColor: tint(base), color: base };
   if (variant === "primary")
     skin = { backgroundColor: base, color: colors.textOnAccent };
   else if (variant === "danger")
-    skin = { backgroundColor: `${colors.error}${TINT}`, color: colors.error };
+    skin = { backgroundColor: tint(colors.error), color: colors.error };
 
   return (
     <TouchableOpacity
@@ -300,7 +301,7 @@ export function IconButton({
       onPress={onPress}
       style={[
         ui.iconBtn,
-        tone === "danger" && { backgroundColor: `${colors.error}${TINT}` },
+        tone === "danger" && { backgroundColor: tint(colors.error) },
         disabled && ui.btnDisabled,
       ]}
     >
@@ -415,7 +416,7 @@ export function Metric({
         {range ? <Text style={ui.metricMeta}>{range}</Text> : null}
       </View>
       {delta ? (
-        <View style={[ui.delta, { backgroundColor: `${deltaColor}${TINT}` }]}>
+        <View style={[ui.delta, { backgroundColor: tint(deltaColor) }]}>
           <Text style={[ui.deltaText, { color: deltaColor }]}>
             {DELTA_GLYPH[delta.direction]} {delta.text}
           </Text>
@@ -862,4 +863,4 @@ const localStyles = StyleSheet.create({
   showMore: { alignItems: "center", marginTop: space.md },
 });
 
-export { TINT, TINT_STRONG };
+export { tint };

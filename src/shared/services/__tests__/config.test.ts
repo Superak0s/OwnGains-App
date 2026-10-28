@@ -18,6 +18,11 @@ jest.mock("@shared/services/sqliteStorage", () => ({
   removeStorageItem: mockRemoveStorageItem,
 }));
 
+const mockClearTokens = jest.fn(async () => {});
+jest.mock("@shared/services/tokenStorage", () => ({
+  tokenStorage: { clear: mockClearTokens },
+}));
+
 import type * as ConfigModule from "@shared/services/config";
 
 const DEFAULT_URL = __DEV__ ? "http://192.168.10.243:5000" : "https://owngains.superak0s.com";
@@ -122,15 +127,21 @@ describe("validateServerUrl", () => {
     });
   });
 
+  it("adds the scheme to a bare host, http only for a private one", () => {
+    expect(config.normalizeServerUrl("gym.example.com")).toBe("https://gym.example.com");
+    expect(config.normalizeServerUrl(" 192.168.1.5:3000 ")).toBe("http://192.168.1.5:3000");
+    expect(config.normalizeServerUrl("https://gym.example.com/")).toBe("https://gym.example.com");
+    expect(config.validateServerUrl("gym.example.com")).toEqual({ valid: true });
+  });
+
   it.each([
     ["", "Please enter a server URL"],
     ["   ", "Please enter a server URL"],
-    ["gym.example.com", "URL must start with http:// or https://"],
     ["ftp://gym.example.com", "URL must start with http:// or https://"],
     ["https://", "Invalid URL format"],
     [
       "http://gym.example.com",
-      "HTTP is not secure. Please use HTTPS for production servers.",
+      "HTTP is not encrypted. Use https:// for a server on the internet.",
     ],
   ])("rejects %p", (url, message) => {
     expect(config.validateServerUrl(url)).toEqual({ valid: false, message });
@@ -148,6 +159,19 @@ describe("setServerUrl", () => {
 
     expect(await config.setServerUrl("https://gym.example.com")).toBe(true);
     expect(seen).toEqual(["https://gym.example.com"]);
+  });
+
+  it("drops the stored tokens before another server can receive them", async () => {
+    let urlWhenCleared: string | null = null;
+    mockClearTokens.mockImplementationOnce(async () => {
+      urlWhenCleared = config.getServerUrl();
+    });
+
+    await config.setServerUrl("https://gym.example.com");
+    expect(urlWhenCleared).toBe(DEFAULT_URL);
+
+    await config.setServerUrl("https://gym.example.com");
+    expect(mockClearTokens).toHaveBeenCalledTimes(1);
   });
 
   it("stops notifying after unsubscribe", async () => {

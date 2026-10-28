@@ -388,3 +388,35 @@ export const makeWorkoutApi = (http: HttpFetch) => {
 };
 
 export type WorkoutApi = ReturnType<typeof makeWorkoutApi>;
+
+/**
+ * Patches the session's existing row for this set, or records one when the server has none.
+ * recordSet only appends, and a trainer may not delete, so an edit that appended would count twice.
+ */
+export async function replaceSet(
+  api: Pick<WorkoutApi, "getSession" | "updateSet" | "recordSet">,
+  sessionId: number | string,
+  params: RecordSetParams,
+  idempotencyKey?: string,
+): Promise<void> {
+  const row = (await api.getSession(sessionId)).setTimings
+    ?.filter(
+      (t) =>
+        t.exerciseName === params.exerciseName &&
+        t.setIndex === params.setIndex,
+    )
+    .at(-1);
+  if (row?.id == null) {
+    await api.recordSet(sessionId, params, idempotencyKey);
+    return;
+  }
+  await api.updateSet(sessionId, row.id, {
+    weight: params.weight || 0,
+    reps: params.reps || 0,
+    note: params.note || "",
+    isWarmup: params.isWarmup || false,
+    rir: params.rir ?? null,
+    startTime: params.startTime,
+    endTime: params.endTime,
+  });
+}

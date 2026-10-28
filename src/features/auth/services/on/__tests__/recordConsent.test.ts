@@ -63,6 +63,22 @@ describe("authService.deleteAccount", () => {
   })
 })
 
+describe("authService.verifyIdentity", () => {
+  it("rejects a wrong password", async () => {
+    apiCallMock.mockRejectedValue(new ApiError("Incorrect password", 403))
+    await expect(authService.verifyIdentity("wrong")).rejects.toThrow("Incorrect password")
+    expect(apiCallMock).toHaveBeenCalledWith("/api/auth/reauth", {
+      method: "POST",
+      body: JSON.stringify({ password: "wrong" }),
+    })
+  })
+
+  it("passes on a server without the route", async () => {
+    apiCallMock.mockRejectedValue(new ApiError("Not found", 404))
+    await expect(authService.verifyIdentity(null, "id-token")).resolves.toBeUndefined()
+  })
+})
+
 describe("authService.logout", () => {
   it("still signs out when the server cannot revoke the refresh token", async () => {
     const { refreshTokenStorage, tokenStorage } = jest.requireActual("@shared/services/tokenStorage")
@@ -75,5 +91,34 @@ describe("authService.logout", () => {
 
     expect(clear).toHaveBeenCalled()
     expect(kv["@user"]).toBeUndefined()
+  })
+
+  it("renews an expired access token so the server accepts the sign-out", async () => {
+    const { refreshTokenStorage, tokenStorage } = jest.requireActual("@shared/services/tokenStorage")
+    let refresh = "old-refresh"
+    jest.spyOn(refreshTokenStorage, "get").mockImplementation(async () => refresh)
+    jest.spyOn(refreshTokenStorage, "set").mockImplementation(async (v: unknown) => {
+      refresh = String(v)
+      return true
+    })
+    jest.spyOn(tokenStorage, "get").mockResolvedValue(null)
+    jest.spyOn(tokenStorage, "set").mockResolvedValue(undefined)
+    jest.spyOn(tokenStorage, "clear").mockResolvedValue(undefined)
+    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ token: "fresh", refreshToken: "rotated" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+    apiCallMock.mockResolvedValue({})
+
+    await authService.logout()
+
+    expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/api\/auth\/refresh$/)
+    expect(apiCallMock).toHaveBeenCalledWith(
+      "/api/auth/signout",
+      expect.objectContaining({ body: JSON.stringify({ refreshToken: "rotated", allDevices: false }) }),
+    )
+    fetchMock.mockRestore()
   })
 })
