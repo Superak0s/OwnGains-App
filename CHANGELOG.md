@@ -119,6 +119,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ### Internal
 
+- Line endings are normalized to LF in git via `.gitattributes`, with the normalization commit in `.git-blame-ignore-revs`.
 - Crash reporting for marketplace server errors and failed skin exports or applies, and usage events for skin previews, applies, exports and skin links.
 - Debug builds default to the LAN dev marketplace `http://192.168.10.243:5100`.
 - Release builds let R8 shrink Expo modules, Sentry and react-native-svg (they include their own keep rules), drop the unused animated-GIF decoder, include native debug symbols in the AAB for Play vitals, and use `enableMinifyInReleaseBuilds` in place of the deprecated ProGuard option.
