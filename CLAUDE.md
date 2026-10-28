@@ -156,8 +156,7 @@ Checked into the repo under `.claude/` and `.mcp.json`, so it applies to every s
 - SonarQube: `npm run sonar:scan` (needs `SONAR_TOKEN`, targets `http://192.168.10.12:8999`).
 - Native Android builds need CMake 3.31.6 in the Android SDK (`sdkmanager --install "cmake/3.31.6"`). `plugins/withCMakeVersion.js` pins it because the default 3.22.1 ninja fails on Windows long paths. CMake 4 rejects expo-sqlite's `cmake_minimum_required`, and a `subst` drive breaks codegen ("different roots").
 - Held-back majors: TypeScript stays on 6 (typescript-eslint doesn't support 7), ESLint on 9 (10 breaks `eslint-plugin-react`'s `display-name`), and `expo-iap` on 5.x (6 changes purchase delivery in the billing path).
-- Working-copy files are CRLF (`core.autocrlf`). Scripted edits must keep `
-` or the whole file shows as changed.
+- `.gitattributes` sets `* text=auto`, so git stores text files as LF and either line ending in the working copy diffs as unchanged. `.sh` files are always LF. The normalization commit is listed in `.git-blame-ignore-revs`.
 
 ## Off-limits
 
