@@ -30,6 +30,8 @@ export interface SkinSummary {
   uniqueDownloads: number
   rating: { average: number | null; count: number }
   updatedAt: string
+  /** Only in My skins, on a skin the operator removed. Older marketplaces leave it out. */
+  takenDown?: { reason: string } | null
 }
 
 export interface SkinDetail extends SkinSummary {

@@ -96,6 +96,13 @@ export function canDrawOverlays(): boolean {
   return ExactAlarms.canDrawOverlays();
 }
 
+// Off by default on Android 14+ for apps that are not an alarm clock. Without it
+// an alarm on a locked phone is only a notification.
+export function canUseFullScreenIntent(): boolean {
+  if (Platform.OS !== "android" || !ExactAlarms) return true;
+  return ExactAlarms.canUseFullScreenIntent();
+}
+
 const askToOpenSettings = (
   alert: UseAlertReturn["alert"],
   title: string,
@@ -134,6 +141,15 @@ export async function promptForAlarmPermissions(
       "Allow on-time alarms",
       'Turn on "Alarms & reminders" for OwnGains so supplement alarms ring at the exact time, even when the phone is idle.',
       openExactAlarmSettings,
+    );
+    if (opened) await returnFromSettings();
+  }
+  if (!canUseFullScreenIntent()) {
+    const opened = await askToOpenSettings(
+      alert,
+      "Ring on the lock screen",
+      'Turn on "Full screen notifications" for OwnGains so a supplement alarm opens full screen while the phone is locked.',
+      () => ExactAlarms?.openFullScreenIntentSettings(),
     );
     if (opened) await returnFromSettings();
   }

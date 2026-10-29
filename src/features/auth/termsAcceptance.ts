@@ -3,7 +3,7 @@ import { getAppModeSync } from "@shared/services/appMode";
 import { getServerStoredFeatures } from "@shared/services/localOnlyFeatures";
 
 // Shown as the Terms' "last updated" date. Changing it asks every account to accept again.
-export const TERMS_VERSION = "October 2026";
+export const TERMS_VERSION = "29 October 2026";
 
 type TermsAcceptance = {
   version: string;

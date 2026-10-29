@@ -199,10 +199,20 @@ export default function SkinsScreen({ navigation, route }: Props): React.ReactEl
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
             <View>
-              <SkinCard skin={item} onPress={() => setSheet({ initialRef: String(item.id) })} />
+              <SkinCard
+                skin={item}
+                onPress={item.takenDown ? undefined : () => setSheet({ initialRef: String(item.id) })}
+              />
+              {item.takenDown && (
+                <Text style={{ color: colors.error }}>
+                  Removed by the marketplace: {item.takenDown.reason}
+                </Text>
+              )}
               {mine && (
                 <View style={styles.actions}>
-                  <Button label='Update' size='sm' variant='quiet' onPress={() => setPublishing({ existing: item })} />
+                  {!item.takenDown && (
+                    <Button label='Update' size='sm' variant='quiet' onPress={() => setPublishing({ existing: item })} />
+                  )}
                   <Button label='Delete' size='sm' variant='danger' onPress={() => remove(item)} />
                 </View>
               )}

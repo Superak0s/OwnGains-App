@@ -166,16 +166,37 @@ it("keeps the history of the supplement opened last when an earlier request fini
   expect(screen.queryByText("99 g")).toBeNull()
 })
 
-it("adds a template once when it is tapped twice in a row", async () => {
+it("makes the user enter the dose for a template instead of suggesting one", async () => {
+  api.create.mockResolvedValue({ success: true, supplement: supp() })
+  await renderWithProviders(<SupplementsScreen />)
+
+  await fireEvent.press(await screen.findByText("+ Add"))
+  await fireEvent.press(screen.getByText("Magnesium"))
+  expect(screen.getByLabelText("Supplement name").props.value).toBe("Magnesium")
+  expect(screen.getByLabelText("Dose amount").props.value).toBe("")
+
+  await fireEvent.press(screen.getByText("Add Supplement"))
+  expect(api.create).not.toHaveBeenCalled()
+
+  await fireEvent.changeText(screen.getByLabelText("Dose amount"), "200")
+  await fireEvent.press(screen.getByText("Add Supplement"))
+  expect(api.create).toHaveBeenCalledWith(
+    expect.objectContaining({ name: "Magnesium", unit: "mg", defaultAmount: 200, color: "#059669" }),
+  )
+})
+
+it("adds a supplement once when save is tapped twice in a row", async () => {
   const pending = deferred<unknown>()
   api.create.mockReturnValue(pending.promise)
   await renderWithProviders(<SupplementsScreen />)
 
   await fireEvent.press(await screen.findByText("+ Add"))
-  const row = screen.getByText("Magnesium")
+  await fireEvent.press(screen.getByText("Magnesium"))
+  await fireEvent.changeText(screen.getByLabelText("Dose amount"), "200")
+  const save = screen.getByText("Add Supplement")
   // One outer act: renders flush only when it ends, so the second tap runs before the re-render.
   await act(async () => {
-    const taps = [fireEvent.press(row), fireEvent.press(row)]
+    const taps = [fireEvent.press(save), fireEvent.press(save)]
     pending.resolve({ success: true, supplement: supp() })
     await Promise.all(taps)
   })

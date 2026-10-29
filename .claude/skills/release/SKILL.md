@@ -40,15 +40,16 @@ user starts it. Your job is everything up to the command, then the handover.
 
 3. **Decide the flags.** Check whether native dependencies changed since the last release
    tag. A new or upgraded `expo-*` / `react-native-*` package, or an edit under
-   `plugins/`, means the incremental prebuild is not enough:
+   `plugins/` or `modules/`, means the incremental prebuild is not enough:
 
    ```bash
-   git diff "$(git describe --tags --abbrev=0)"..HEAD -- package.json plugins/ app.json
+   git diff "$(git describe --tags --abbrev=0)"..HEAD -- package.json plugins/ modules/ app.json app.config.js
    ```
 
-   - native deps or `plugins/` changed, or `app.json` config changed → no flag (the
-     default is a clean prebuild)
-   - otherwise → `--no-prebuild` for a faster incremental build
+   - native deps, `plugins/`, `modules/` or app config changed → no flag (the script
+     sees the change and runs a clean prebuild)
+   - otherwise → `--no-prebuild` for a faster incremental build without the script's
+     30-second prompt
    - `--no-push` only if the user explicitly wants the bump kept local
    - `--no-test` only if the user explicitly asks to skip jest
    - `--no-version-code` only if the user explicitly wants `android.versionCode` left

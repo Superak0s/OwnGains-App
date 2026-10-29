@@ -2,7 +2,7 @@
   "expo": {
     "name": "OwnGains",
     "slug": "owngains",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/adaptive-icon.png",
     "scheme": "owngains",
@@ -84,16 +84,23 @@
       "expo-asset"
     ],
     "userInterfaceStyle": "automatic",
-    "runtimeVersion": { "policy": "fingerprint" },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
     "updates": {
       "url": "https://owngains.superak0s.com/api/updates/manifest",
       "checkAutomatically": "NEVER",
-      "requestHeaders": { "expo-channel-name": "play" },
+      "requestHeaders": {
+        "expo-channel-name": "play"
+      },
       "codeSigningCertificate": "./certs/certificate.pem",
-      "codeSigningMetadata": { "keyid": "main", "alg": "rsa-v1_5-sha256" }
+      "codeSigningMetadata": {
+        "keyid": "main",
+        "alg": "rsa-v1_5-sha256"
+      }
     },
     "android": {
-      "versionCode": 18,
+      "versionCode": 19,
       "allowBackup": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon-foreground.png",
@@ -124,7 +131,9 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION",
-        "com.google.android.gms.permission.AD_ID"
+        "com.google.android.gms.permission.AD_ID",
+        "android.permission.ACCESS_ADSERVICES_AD_ID",
+        "android.permission.ACCESS_ADSERVICES_ATTRIBUTION"
       ],
       "package": "com.owngains.app"
     },

@@ -389,6 +389,9 @@ const startSentry = (): void => {
     // Would send an event per failed request, carrying the full URL and
     // response body. Requests are instrumented explicitly instead.
     enableCaptureFailedRequests: false,
+    // Counts of the events beforeSend drops would still reach the server
+    // without consent.
+    sendClientReports: false,
     sendDefaultPii: false,
     // Console and network breadcrumbs would put workout payloads, server
     // URLs and user identifiers into crash reports, which the privacy policy

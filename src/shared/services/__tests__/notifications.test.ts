@@ -95,9 +95,10 @@ describe("promptForExactAlarms", () => {
 });
 
 describe("promptForAlarmPermissions", () => {
-  const loadWith = (exact: boolean, overlay: boolean) => {
+  const loadWith = (exact: boolean, overlay: boolean, fullScreen = true) => {
     jest.resetModules();
     const openOverlaySettings = jest.fn();
+    const openFullScreenIntentSettings = jest.fn();
     jest.doMock("../../../../modules/exact-alarms", () => ({
       __esModule: true,
       default: {
@@ -105,13 +106,35 @@ describe("promptForAlarmPermissions", () => {
         openExactAlarmSettings: jest.fn(),
         canDrawOverlays: () => overlay,
         openOverlaySettings,
+        canUseFullScreenIntent: () => fullScreen,
+        openFullScreenIntentSettings,
       },
     }));
     const { Platform } = require("react-native");
     Object.defineProperty(Platform, "OS", { get: () => "android", configurable: true });
     const mod = require("@shared/services/notifications") as typeof NotificationsService;
-    return { mod, openOverlaySettings };
+    return { mod, openOverlaySettings, openFullScreenIntentSettings };
   };
+
+  it("asks for full screen on the lock screen when Android withholds it", async () => {
+    const { mod, openFullScreenIntentSettings } = loadWith(true, true, false);
+    const pressed: string[] = [];
+    const alert = jest.fn(
+      (title: string, _message: string, buttons?: AlertButton[]) => {
+        pressed.push(title);
+        buttons![title === "Ring on the lock screen" ? 1 : 0].onPress?.();
+      },
+    );
+    const { AppState } = require("react-native");
+    jest.spyOn(AppState, "addEventListener").mockImplementation((_: unknown, fn: unknown) => {
+      queueMicrotask(() => (fn as (state: string) => void)("active"));
+      return { remove: jest.fn() };
+    });
+    await mod.promptForAlarmPermissions(alert);
+
+    expect(pressed[0]).toBe("Ring on the lock screen");
+    expect(openFullScreenIntentSettings).toHaveBeenCalled();
+  });
 
   it("asks to ring full screen once exact alarms are allowed", async () => {
     const { mod, openOverlaySettings } = loadWith(true, false);

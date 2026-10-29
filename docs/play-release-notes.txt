@@ -1,7 +1,0 @@
-• Skins: preview and apply themes and widget layouts from the marketplace, a link or file. Publish your own.
-• Bug fixes now install on their own, without a store update.
-• Undo a trainer's plan change for 7 days, or stop a trainer logging for you.
-• Name any widget and give it an icon.
-• Workout: undo a deleted set, restart a day, last weight, new rest reminder.
-• Clearer Home, sign-in and privacy screens.
-• Fixes: set edits, assisted bests, kg decimals, safer restore.

@@ -2,9 +2,7 @@ export interface SupplementTemplate {
   name: string;
   icon: string;
   unit: string;
-  defaultAmount: number;
   color: string;
-  description: string;
 }
 
 export interface SupplementSummary {

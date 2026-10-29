@@ -40,14 +40,15 @@ Builds are local only. This project does not use EAS. `scripts/sync-eas-version.
 
 - **Local** (via `local-expo-build`): `npm run build:android:apk` / `:clean` (full prebuild) / `:debug` (debug APK, no prebuild)
 - `scripts/release.sh` is the full release path (version bump → lint/typecheck/test → prebuild → signed APKs + AAB via `local-expo-build` → git push → `gh release create` → Play upload). One script for Windows (Git Bash), WSL and native Linux. `scripts/release.sh --help` lists every flag. What the help leaves out:
-  - Under WSL on a `/mnt/c` path it mirrors the project to `$HOME` first because gradle over 9p is unusably slow. Each sync wipes the mirror except `node_modules` (and `android/`/`.expo/` with `--no-prebuild`).
-  - Before building it refuses to run off `main`, behind `origin/main`, or with `gh` logged out, and with Play upload on it sets `versionCode` above the highest one Play already has. Every run is logged to `release/release-<timestamp>.log`.
+  - Under WSL on a `/mnt/c` path it mirrors the project to `$HOME` first because gradle over 9p is unusably slow. Each sync wipes the mirror except `node_modules`, `android/` and `.expo/` (where the prebuild stamp is kept).
+  - It runs a clean prebuild only when packages, `app.json`/`app.config.js`, `plugins/`, `modules/` or `assets/` changed since the last one (hashed into `.expo/prebuild.stamp`). Otherwise it asks, and runs an incremental one after 30 seconds.
+  - Before building it refuses to run off `main`, behind `origin/main`, or with `gh` logged out, and with Play upload on it sets `versionCode` above the highest one Play already has. Every run is logged to `release/release-<timestamp>.log` (last 20 kept), ending with a `FAILED ... during [step]` line when it fails.
   - It refuses to run without `SENTRY_AUTH_TOKEN` unless given `--no-sourcemaps`, since crash reports would be unreadable.
   - Before building it stamps `CHANGELOG.md` (`scripts/release-changelog.js`): `[Unreleased]` becomes `[x.y.z] - date` with a fresh empty `[Unreleased]` above, and that section becomes the GitHub release notes.
   - Whenever an AAB is built and `.env` sets `PLAY_SERVICE_ACCOUNT` (the service-account JSON or a path to it), `scripts/play-upload.js` uploads it with `docs/play-release-notes.txt` as its "What's new" text, and empties that file once the upload succeeds. A failed upload only warns and prints the retry command.
   - It sets `KOFI_URL` in `src/shared/distribution.ts` for the APK build only (Settings links to Ko-fi there, and offers the Play Billing tip jar everywhere else) and fails if the AAB bundle contains the link, since Play's Payments policy bans external payment links. Keep that file `null` in commits.
   - Before the push it runs `.github/workflows/ci.yml` under `act` (needs act and Docker), so a broken lockfile or Linux-only failure is caught locally.
-  - `ota` publishes a JS-only fix as an over-the-air update instead of building: version bump and changelog stamp (no `versionCode`), checks, `publish-ota.js --upload=$OTA_UPLOAD`, then commit and push, with no GitHub release or Play upload. Store releases write `.ota-runtime-version` (tracked), and `publish-ota.js` refuses a checkout whose fingerprint differs from it.
+  - `ota` publishes a JS-only fix as an over-the-air update instead of building: version bump and changelog stamp (no `versionCode`), checks, `publish-ota.js --upload=$OTA_UPLOAD` (`.env`: an scp target `user@host:/host/path`, the host folder mounted as the server's `UPDATES_DIR`, so key-based SSH is required, separately for Git Bash and WSL), then commit and push, with no GitHub release or Play upload. Store releases write `.ota-runtime-version` (tracked), and `publish-ota.js` refuses a checkout whose fingerprint differs from it.
   - `plugins/withGradleTuning.js` sizes the Gradle/Kotlin heaps and worker count to the machine running prebuild.
 - **Claude doesn't run it**: it pushes, publishes a GitHub release and uploads to Play. The `/release` skill does the pre-flight (dirty tree, lint/typecheck/test, native-dep check, `gh auth status`) and hands over the exact command for the user to run, with `--bump=` and `--message=` so the run needs no prompts.
 
@@ -157,6 +158,7 @@ Checked into the repo under `.claude/` and `.mcp.json`, so it applies to every s
 - Native Android builds need CMake 3.31.6 in the Android SDK (`sdkmanager --install "cmake/3.31.6"`). `plugins/withCMakeVersion.js` pins it because the default 3.22.1 ninja fails on Windows long paths. CMake 4 rejects expo-sqlite's `cmake_minimum_required`, and a `subst` drive breaks codegen ("different roots").
 - Held-back majors: TypeScript stays on 6 (typescript-eslint doesn't support 7), ESLint on 9 (10 breaks `eslint-plugin-react`'s `display-name`), and `expo-iap` on 5.x (6 changes purchase delivery in the billing path).
 - `.gitattributes` sets `* text=auto`, so git stores text files as LF and either line ending in the working copy diffs as unchanged. `.sh` files are always LF. The normalization commit is listed in `.git-blame-ignore-revs`.
+- Multi-line Python/JS transforms go in a scratchpad script file, not a Bash heredoc: the heredoc mangles `\\` escapes on this Windows shell.
 
 ## Off-limits
 

@@ -1,6 +1,7 @@
 package expo.modules.exactalarms
 
 import android.app.AlarmManager
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -33,6 +34,23 @@ class ExactAlarmsModule : Module() {
     }
 
     Function("canDrawOverlays") { Settings.canDrawOverlays(context) }
+
+    // Play grants it by default only to calling and alarm-clock apps from Android 14 (API 34).
+    // Without it, Android shows the alarm as a heads-up notification instead.
+    Function("canUseFullScreenIntent") {
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return@Function true
+      val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+      notificationManager.canUseFullScreenIntent()
+    }
+
+    Function("openFullScreenIntentSettings") {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
+          .setData(Uri.parse("package:${context.packageName}"))
+          .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+      }
+    }
 
     Function("openOverlaySettings") {
       val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)

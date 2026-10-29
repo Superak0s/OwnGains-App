@@ -5,6 +5,8 @@ interface ExactAlarmsModule {
   openExactAlarmSettings(): void;
   canDrawOverlays(): boolean;
   openOverlaySettings(): void;
+  canUseFullScreenIntent(): boolean;
+  openFullScreenIntentSettings(): void;
   scheduleAlarm(id: string, at: number, daily: boolean, title: string, body: string, channelId: string, snoozeSeconds: number): void;
   cancelAlarm(id: string): void;
   cancelAlarmsWithPrefix(prefixes: string[]): void;

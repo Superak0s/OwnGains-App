@@ -14,11 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { supplementsApi } from "./services";
-import type {
-  SupplementSummary,
-  SupplementEntry,
-  CreateSupplementParams,
-} from "./services";
+import type { SupplementSummary, SupplementEntry } from "./services";
 import QuickLogSupplement from "./components/QuickLogSupplement";
 import SupplementSettingsModal from "./components/SupplementSettingsModal";
 import ModalSheet from "@shared/components/ModalSheet";
@@ -59,71 +55,15 @@ import { captureException, metric } from "@shared/services/crashReporting";
 import { userFacingError } from "@shared/services/apiError";
 import { SCREEN_PADDING } from "@shared/layout";
 
+// No doses or benefit claims: the user enters the amount from their own label.
 const DEFAULT_SUPPLEMENT_TEMPLATES: SupplementTemplate[] = [
-  {
-    name: "Creatine",
-    icon: "💪",
-    unit: "g",
-    defaultAmount: 5,
-    color: "#6d28d9",
-    description: "Strength & muscle growth",
-  },
-  {
-    name: "Protein",
-    icon: "🥛",
-    unit: "g",
-    defaultAmount: 30,
-    color: "#0ea5e9",
-    description: "Muscle recovery & growth",
-  },
-  {
-    name: "Vitamin D",
-    icon: "☀️",
-    unit: "IU",
-    defaultAmount: 2000,
-    color: "#f59e0b",
-    description: "Bone health & immunity",
-  },
-  {
-    name: "Omega-3",
-    icon: "🐟",
-    unit: "mg",
-    defaultAmount: 1000,
-    color: "#0891b2",
-    description: "Heart & brain health",
-  },
-  {
-    name: "Magnesium",
-    icon: "🧲",
-    unit: "mg",
-    defaultAmount: 400,
-    color: "#059669",
-    description: "Sleep & muscle function",
-  },
-  {
-    name: "Zinc",
-    icon: "⚡",
-    unit: "mg",
-    defaultAmount: 15,
-    color: "#dc2626",
-    description: "Immune support & testosterone",
-  },
-  {
-    name: "Caffeine",
-    icon: "☕",
-    unit: "mg",
-    defaultAmount: 200,
-    color: "#78350f",
-    description: "Energy & focus",
-  },
-  {
-    name: "Ashwagandha",
-    icon: "🌿",
-    unit: "mg",
-    defaultAmount: 600,
-    color: "#65a30d",
-    description: "Stress & cortisol support",
-  },
+  { name: "Creatine", icon: "💪", unit: "g", color: "#6d28d9" },
+  { name: "Protein", icon: "🥛", unit: "g", color: "#0ea5e9" },
+  { name: "Vitamin D", icon: "☀️", unit: "IU", color: "#f59e0b" },
+  { name: "Omega-3", icon: "🐟", unit: "mg", color: "#0891b2" },
+  { name: "Magnesium", icon: "🧲", unit: "mg", color: "#059669" },
+  { name: "Zinc", icon: "⚡", unit: "mg", color: "#dc2626" },
+  { name: "Caffeine", icon: "☕", unit: "mg", color: "#78350f" },
 ];
 
 export default function SupplementsScreen(): React.JSX.Element {
@@ -145,6 +85,7 @@ export default function SupplementsScreen(): React.JSX.Element {
   const [newUnit, setNewUnit] = useState("g");
   const [newAmount, setNewAmount] = useState("5");
   const [newIcon, setNewIcon] = useState("💊");
+  const [newColor, setNewColor] = useState<string>();
   const [saving, setSaving] = useState(false);
   // `saving` disables the buttons only after a re-render, too late for a fast double tap.
   const savingRef = useRef(false);
@@ -218,32 +159,14 @@ export default function SupplementsScreen(): React.JSX.Element {
     void loadSupplements(true);
   };
 
-  const handleAddFromTemplate = async (template: SupplementTemplate) => {
-    if (savingRef.current) return;
-    savingRef.current = true;
-    setSaving(true);
-    try {
-      const params: CreateSupplementParams = {
-        name: template.name,
-        unit: template.unit,
-        defaultAmount: template.defaultAmount,
-        icon: template.icon,
-        color: template.color,
-      };
-      await supplementsApi.create(params);
-      setShowTemplateSheet(false);
-      await loadSupplements(true);
-    } catch (err) {
-      alert(
-        "Error",
-        userFacingError(err, "Failed to add supplement"),
-        [{ text: "OK" }],
-        "error",
-      );
-    } finally {
-      savingRef.current = false;
-      setSaving(false);
-    }
+  const openAddSheet = (template?: SupplementTemplate) => {
+    setNewName(template?.name ?? "");
+    setNewUnit(template?.unit ?? "g");
+    setNewAmount(template ? "" : "5");
+    setNewIcon(template?.icon ?? "💊");
+    setNewColor(template?.color);
+    setShowTemplateSheet(false);
+    setShowAddSheet(true);
   };
 
   const handleAddCustom = async () => {
@@ -289,12 +212,9 @@ export default function SupplementsScreen(): React.JSX.Element {
         unit: newUnit.trim() || "g",
         defaultAmount: amt,
         icon: newIcon || "💊",
+        color: newColor,
       });
       setShowAddSheet(false);
-      setNewName("");
-      setNewUnit("g");
-      setNewAmount("5");
-      setNewIcon("💊");
       await loadSupplements(true);
     } catch (err) {
       alert(
@@ -639,7 +559,7 @@ export default function SupplementsScreen(): React.JSX.Element {
               <TouchableOpacity
                 key={t.name}
                 style={[styles.templateRow, added && styles.templateRowAdded]}
-                onPress={() => !added && handleAddFromTemplate(t)}
+                onPress={() => !added && openAddSheet(t)}
                 disabled={added || saving}
               >
                 <Text style={styles.templateIcon}>{t.icon}</Text>
@@ -651,10 +571,6 @@ export default function SupplementsScreen(): React.JSX.Element {
                     ]}
                   >
                     {t.name}
-                  </Text>
-                  <Text style={styles.templateDesc}>{t.description}</Text>
-                  <Text style={styles.templateAmount}>
-                    Default: {t.defaultAmount} {t.unit}
                   </Text>
                 </View>
                 {added ? (
@@ -669,10 +585,7 @@ export default function SupplementsScreen(): React.JSX.Element {
 
         <TouchableOpacity
           style={styles.customButton}
-          onPress={() => {
-            setShowTemplateSheet(false);
-            setShowAddSheet(true);
-          }}
+          onPress={() => openAddSheet()}
         >
           <Text style={styles.customButtonText}>
             ✏️ Create Custom Supplement
@@ -723,7 +636,7 @@ export default function SupplementsScreen(): React.JSX.Element {
               value={newAmount}
               onChangeText={setNewAmount}
               keyboardType='decimal-pad'
-              placeholder='5'
+              placeholder='As on label'
               accessibilityLabel='Dose amount'
               maxLength={8}
             />
@@ -1191,8 +1104,6 @@ const makeStyles = (colors: ThemeColors) =>
       marginBottom: 2,
     },
     templateNameAdded: { color: colors.textMuted },
-    templateDesc: { fontSize: 13, color: colors.textSecondary },
-    templateAmount: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
     templateAddedBadge: {
       fontSize: 13,
       fontWeight: "700",

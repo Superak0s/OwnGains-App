@@ -3,6 +3,7 @@ const mockUpdates = {
   setUpdateRequestHeadersOverride: jest.fn(),
   checkForUpdateAsync: jest.fn(),
   fetchUpdateAsync: jest.fn(),
+  reloadAsync: jest.fn(),
 }
 const mockDistribution = { GITHUB_BUILD: false }
 jest.mock("expo-updates", () => mockUpdates)
@@ -53,5 +54,32 @@ describe("fetchOtaUpdate", () => {
     mockUpdates.isEnabled = false
     await load().fetchOtaUpdate()
     expect(mockUpdates.checkForUpdateAsync).not.toHaveBeenCalled()
+  })
+})
+
+describe("applyOtaOnResume", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockUpdates.isEnabled = true
+    mockUpdates.checkForUpdateAsync.mockResolvedValue({ isAvailable: true })
+  })
+
+  it("reloads into a downloaded update", async () => {
+    const mod = load()
+    await mod.fetchOtaUpdate()
+    expect(await mod.applyOtaOnResume(false)).toBe(true)
+    expect(mockUpdates.reloadAsync).toHaveBeenCalledTimes(1)
+  })
+
+  it("waits while a workout is in progress", async () => {
+    const mod = load()
+    await mod.fetchOtaUpdate()
+    expect(await mod.applyOtaOnResume(true)).toBe(false)
+    expect(mockUpdates.reloadAsync).not.toHaveBeenCalled()
+  })
+
+  it("does not reload without a download", async () => {
+    expect(await load().applyOtaOnResume(false)).toBe(false)
+    expect(mockUpdates.reloadAsync).not.toHaveBeenCalled()
   })
 })

@@ -28,7 +28,7 @@ if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
 else
     B='' DIM='' RED='' GRN='' YEL='' CYN='' R=''
 fi
-step() { printf '\n%s==> [%s] %s %s(%dm%02ds)%s\n' "$B$CYN" "$1" "$2" "$DIM" $((SECONDS / 60)) $((SECONDS % 60)) "$R"; }
+step() { CURRENT_STEP="[$1] $2"; printf '\n%s==> [%s] %s %s(%dm%02ds)%s\n' "$B$CYN" "$1" "$2" "$DIM" $((SECONDS / 60)) $((SECONDS % 60)) "$R"; }
 ok()   { printf '%s  OK  %s%s\n' "$GRN" "$*" "$R"; }
 info() { printf '%s  ..  %s%s\n' "$DIM" "$*" "$R"; }
 warn() { printf '%s  !!  %s%s\n' "$YEL" "$*" "$R"; }
@@ -63,7 +63,10 @@ ${B}What to build${R} ${DIM}(default: APKs and AAB)${R}
   wsl                 From Git Bash, re-run this inside WSL
 
 ${B}Faster builds${R}
-  --no-prebuild       Incremental prebuild. Unsafe after native deps, plugins/ or app.json change.
+  --no-prebuild       Incremental prebuild without asking. Unsafe after native deps, plugins/,
+                      modules/ or app.json change. Without it a clean prebuild runs when packages,
+                      config, plugins/, modules/ or assets changed since the last one, and otherwise
+                      the script asks (incremental after 30s).
   --32bit             Also build the armeabi-v7a APK (arm64-v8a only by default)
   --no-test           Skip jest and the CI run under act. Lint and typecheck still run.
 
@@ -94,7 +97,7 @@ ${DIM}Steps: [1] WSL sync, [2] version + changelog, [3] verify + prebuild,
 [4] APK, [5] AAB, [6] Play upload, [7] git commit/push, [8] GitHub release.
 A failed or Ctrl+C'd build reverts the bump. Ctrl+C also deletes the WSL mirror
 except node_modules.
-Each run's output is saved to release/release-<timestamp>.log.${R}
+Each run's output is saved to release/release-<timestamp>.log (the last 20 are kept).${R}
 EOF
 }
 
@@ -215,9 +218,12 @@ if [ "$OTA_ONLY" = false ] && [ -z "${ANDROID_HOME:-}${ANDROID_SDK_ROOT:-}" ] &&
 fi
 
 mkdir -p "$SRC/release"
+old_logs=("$SRC"/release/release-*.log)
+if [ ${#old_logs[@]} -gt 19 ]; then rm -f "${old_logs[@]:0:${#old_logs[@]}-19}"; fi
 LOG_FILE="$SRC/release/release-$(date +%Y%m%d-%H%M%S).log"
-# tee ignores Ctrl+C so the cleanup trap's output still reaches the terminal and the log.
-exec > >(trap '' INT; exec tee -a "$LOG_FILE") 2>&1
+# tee -i ignores Ctrl+C so the cleanup trap's output still reaches the terminal and the log.
+# A `trap '' INT` before exec doesn't: MSYS and uutils tee both still die on it.
+exec > >(exec tee -ia "$LOG_FILE") 2>&1
 
 printf '%s=== OwnGains App Release ===%s\n' "$B$CYN" "$R"
 printf '  Environment   %s\n' "$ENV_NAME"
@@ -258,18 +264,19 @@ cleanup() {
         cd "$SRC" && find "$BUILD" -mindepth 1 -maxdepth 1 ! -name node_modules -exec rm -rf {} + \
             && info "Deleted mirror $BUILD (node_modules kept)"
     fi
+    [ $rc -eq 0 ] || err "FAILED with exit code $rc during ${CURRENT_STEP:-startup} at $(date '+%Y-%m-%d %H:%M:%S'). Log: $LOG_FILE"
 }
 trap cleanup EXIT
-trap 'echo ""; ABORTED=true; err "Aborted."; exit 130' INT TERM
+# SIGTERM still kills tee, and the first write to its closed pipe would then kill bash before the revert.
+trap 'trap "" PIPE; echo ""; ABORTED=true; err "Aborted."; exit 130' INT TERM
 
 # [1/6] Mirror to the native filesystem (WSL only)
 if [ "$BUILD" != "$SRC" ]; then
     step 1/8 "Syncing project to $BUILD"
     # Wiped rather than left to rsync --delete, so no file from an earlier sync remains.
-    # node_modules is kept for npm install to update, and with --no-prebuild so are android/ and .expo/.
-    keep=(-name node_modules)
-    [ "$DO_CLEAN" = false ] && keep+=(-o -name android -o -name .expo)
-    [ -d "$BUILD" ] && find "$BUILD" -mindepth 1 -maxdepth 1 ! \( "${keep[@]}" \) -exec rm -rf {} +
+    # node_modules is kept for npm install to update, android/ for an incremental prebuild
+    # (a clean one deletes it itself) and .expo/ for the prebuild stamp.
+    [ -d "$BUILD" ] && find "$BUILD" -mindepth 1 -maxdepth 1 ! \( -name node_modules -o -name android -o -name .expo \) -exec rm -rf {} +
     rsync -a --delete \
       --exclude='node_modules' \
       --exclude='/android' \
@@ -300,7 +307,8 @@ if [ -f "$BUILD/.env" ]; then
 fi
 PREBUILD_STAMP="$BUILD/.expo/prebuild.stamp"
 # Hash of everything that makes a clean prebuild differ: dependencies, app.json minus the
-# per-release version fields, config plugins and assets.
+# per-release version fields, app.config.js and the google-services.json it looks for,
+# config plugins, local native modules and assets.
 prebuild_inputs_hash() {
     node -e '
 const fs = require("fs"), path = require("path"), crypto = require("crypto");
@@ -311,23 +319,26 @@ const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
 delete app.expo.version;
 if (app.expo.android) delete app.expo.android.versionCode;
 h.update(JSON.stringify(app));
-const walk = (d) => { if (!fs.existsSync(d)) return; for (const f of fs.readdirSync(d).sort()) { const p = path.join(d, f); fs.statSync(p).isDirectory() ? walk(p) : (h.update(p), h.update(fs.readFileSync(p))); } };
-["plugins", "assets"].forEach(walk);
-if (fs.existsSync("package-lock.json")) h.update(fs.readFileSync("package-lock.json"));
+h.update(JSON.stringify(["secrets/google-services.json", "google-services.json"].map((f) => fs.existsSync(f))));
+// Gradle writes modules/*/android/build (and .gradle, .cxx) on every build.
+const walk = (d) => { if (!fs.existsSync(d)) return; for (const f of fs.readdirSync(d).sort()) { const p = path.join(d, f); if (!fs.statSync(p).isDirectory()) { h.update(p); h.update(fs.readFileSync(p)); } else if (f !== "build" && !f.startsWith(".")) walk(p); } };
+["plugins", "modules", "assets"].forEach(walk);
+for (const f of ["app.config.js", "package-lock.json"]) if (fs.existsSync(f)) h.update(fs.readFileSync(f));
 process.stdout.write(h.digest("hex"));
 '
 }
-# With nothing changed since the last clean prebuild, asks whether to redo it.
-# No answer within 30 seconds (or no terminal) keeps the clean prebuild.
+# With nothing changed since the last clean prebuild, asks whether to redo it. No answer
+# within 30 seconds (or no terminal) runs an incremental one, which still writes the new versionCode.
 maybe_skip_prebuild() {
     [ "$DO_CLEAN" = true ] || return 0
-    [ -f "$PREBUILD_STAMP" ] && [ -d "$BUILD/android" ] || return 0
-    PREBUILD_HASH="$(prebuild_inputs_hash)"
-    [ "$PREBUILD_HASH" = "$(cat "$PREBUILD_STAMP")" ] || return 0
-    local ans=""
-    read -t 30 -rp "${B}No packages, config or assets changed since the last prebuild. Run a clean prebuild?${R} [Y/n] (clean in 30s) " ans || true
-    echo ""
-    case "$ans" in [nN]*) DO_CLEAN=false ;; esac
+    if [ -f "$PREBUILD_STAMP" ] && [ -d "$BUILD/android" ] && [ "$(prebuild_inputs_hash)" = "$(cat "$PREBUILD_STAMP")" ]; then
+        local ans=""
+        read -t 30 -rp "${B}No packages, config, plugins, modules or assets changed since the last clean prebuild. Run one anyway?${R} [y/N] (incremental in 30s) " ans || true
+        echo ""
+        case "$ans" in [yY]*) ;; *) DO_CLEAN=false; return 0 ;; esac
+    fi
+    # A clean prebuild cut short leaves a half-generated android/ that a matching stamp would hide.
+    rm -f "$PREBUILD_STAMP"
 }
 save_prebuild_stamp() {
     [ "$DO_CLEAN" = true ] || return 0
@@ -576,43 +587,21 @@ step 3/8 "Install, verify, prebuild"
 info "npm install"
 npm install --legacy-peer-deps
 
-if [ "$SKIP_TESTS" = true ]; then
-    info "Verifying: lint, a11y lint, typecheck (tests skipped by --no-test)"
-else
-    info "Verifying: lint, a11y lint, typecheck, tests"
-fi
-VERIFY_LOGS="$(mktemp -d)"
-declare -A VERIFY_PIDS
-run_check() {
-    local name="$1"; shift
-    "$@" >"$VERIFY_LOGS/$name.log" 2>&1 &
-    VERIFY_PIDS[$name]=$!
-}
-run_check lint npm run lint
-run_check lint-a11y npm run lint:a11y
-run_check typecheck npx tsc --noEmit
-if [ "$SKIP_TESTS" = false ]; then
-    run_check test npm test -- --silent
-fi
-# The GitHub workflow itself (npm ci from the lockfile, then the same checks on
-# Linux), so the push doesn't turn up a CI failure the local run missed. act
-# copies the source tree, uncommitted changes included, minus .gitignore.
+# The GitHub workflow itself (npm ci from the lockfile, then lint, a11y lint, typecheck
+# and tests on Linux), so the push doesn't turn up a CI failure a local run missed. act
+# copies the source tree, uncommitted changes included, minus .gitignore. It runs from
+# $SRC because the WSL mirror has no .git.
 if [ "$RUN_ACT" = true ]; then
-    run_check ci-act bash -c 'cd "$1" && exec act push -j check --rm --pull=false -P ubuntu-latest=catthehacker/ubuntu:act-latest' _ "$SRC"
-fi
-VERIFY_FAILED=false
-for name in "${!VERIFY_PIDS[@]}"; do
-    if wait "${VERIFY_PIDS[$name]}"; then
-        ok "$name"
-    else
-        printf '%s  XX  %s FAILED%s\n' "$RED$B" "$name" "$R"
-        cat "$VERIFY_LOGS/$name.log"
-        VERIFY_FAILED=true
-    fi
-done
-rm -rf "$VERIFY_LOGS"
-if [ "$VERIFY_FAILED" = true ]; then
-    false
+    info "Verifying: CI under act (lint, a11y lint, typecheck, tests)"
+    (cd "$SRC" && act push -j check --rm --pull=false -P ubuntu-latest=catthehacker/ubuntu:act-latest)
+    ok "CI (act)"
+else
+    info "Verifying: lint, a11y lint, typecheck$([ "$SKIP_TESTS" = true ] && echo ' (tests skipped by --no-test)' || echo ', tests')"
+    npm run lint
+    npm run lint:a11y
+    npx tsc --noEmit
+    [ "$SKIP_TESTS" = true ] || npm test -- --silent
+    ok "Checks"
 fi
 
 # xlsx is pinned to a SheetJS CDN tarball rather than the npm registry, so

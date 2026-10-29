@@ -127,8 +127,9 @@ you signed up with and say what to remove.</p>
 you signed up with and ask for the account to be deleted.</p>
 <p>For any other server, contact whoever operates it. If you do not know who that
 is, it is the person or organisation who gave you the server address you typed
-into the app. A server operator can remove an account directly from the server's
-database, and can reset a forgotten password with
+into the app. A server operator can delete an account with
+<code>owngains delete &lt;username&gt; --yes</code>, which removes the same data as
+Delete Account in the app, and can reset a forgotten password with
 <code>owngains passwd &lt;username&gt; &lt;newpassword&gt;</code> so you can sign in and
 delete the account yourself.</p>
 

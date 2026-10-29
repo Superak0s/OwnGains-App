@@ -19,7 +19,7 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
   {
     title: "Data we store",
     body:
-      "When you first open OwnGains you choose offline or online mode. In offline mode your workouts, plans, supplements, tracking data, and settings are stored only on your device using local SQLite storage. Nothing about you leaves the device except the crash reports and usage metrics you opt into. The app also checks the official server for bug-fix updates, GitHub builds also check GitHub for new releases, and a tip you choose to send goes through Google Play or Ko-fi, all described below. When you choose a server, the app can also look for OwnGains servers on your local Wi-Fi network. That scan does not leave the local network.",
+      "When you first open OwnGains you choose offline or online mode. In offline mode your workouts, plans, supplements, tracking data, and settings are stored only on your device using local SQLite storage. Nothing about you leaves the device except the crash reports and usage metrics you opt into, and the scanner metrics described under QR code scanner. The app also checks the official server for bug-fix updates, GitHub builds also check GitHub for new releases, and a tip you choose to send goes through Google Play or Ko-fi, all described below. When you choose a server, the app can also look for OwnGains servers on your local Wi-Fi network. That scan does not leave the local network.",
   },
   {
     title: "Online mode and the official server",
@@ -49,7 +49,7 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
   {
     title: "Server logs",
     body:
-      "To diagnose problems and protect the service, the official server and the proxy in front of it log each request: the time, the address requested (which can include your account’s random identifier), and the IP address it came from, which is always recorded. These logs never contain request or response contents, passwords, or health data, and are deleted after at most 14 days. The server also writes recent failed and slow requests to a short in-memory list, including your username and IP address, capped to the most recent entries and lost whenever the server restarts.",
+      "To diagnose problems and protect the service, the official server and the proxy in front of it log each request: the time, the address requested (which can include your account’s random identifier), and the IP address it came from, which is always recorded. These logs never contain request or response contents, passwords, or health data, and are deleted after at most 14 days. The server also saves recent failed and slow requests and logged errors (the time, the address requested, the response status and the error) for up to 30 days, without your username or IP address, so the developer can find faults. The most recent of them are also held in memory with the username and IP address, and those are lost whenever the server restarts.",
   },
   {
     title: "Trainer access",
@@ -72,9 +72,14 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
       "A skin is a color theme, a set of widget layouts, or both, shared through a skin marketplace. The official marketplace runs next to the official server on the same hardware and is the default, even when you use a self-hosted server. Anyone can browse and download skins without an account. Opening Skins contacts the marketplace even in offline mode, without your account. Each download sends a random identifier created for this app install, and the marketplace keeps only a salted hash of it with the skin, so it can count unique downloads without knowing who downloaded. To publish, rate or report a skin you sign in to the official server, and the marketplace then stores your account's random identifier and username with the skins you publish, and a keyed hash of that identifier with your ratings and reports, so each account counts once. Published skins are public and show your username. Your IP address is held in memory for about a minute to limit abuse. You can delete a skin you published at any time under Skins → My skins. When you delete your account in the app, your skins stay public without your name, and your ratings and reports keep only the hash, which no longer leads to an account. If your account is deleted any other way, email the address below to have this done. The app sends your sign-in token only to a marketplace on the same address as your server. A marketplace someone else runs is their responsibility.",
   },
   {
+    title: "QR code scanner",
+    body:
+      "Scanning a friend's or client's QR code uses Google ML Kit, which runs on your device. The camera image is read on the phone and never leaves it. ML Kit sends Google usage and performance metrics about the scanner (device model, Android version, app name and version, and how a scan performed or why it failed) to maintain and improve it, under Google's own terms. It sends nothing you log in OwnGains.",
+  },
+  {
     title: "Location",
     body:
-      "OwnGains does not collect location. The app requests no location permissions and stores no location data. Supplement reminders are scheduled by time of day only.",
+      "OwnGains requests no location permission and never reads GPS or other precise location. Supplement reminders are scheduled by time of day only. The only location information processed is the approximate country worked out from your IP address by Google Analytics for Firebase, and the country, region and city of website visits, both described below.",
   },
   {
     title: "Advertising and data sales",
@@ -109,7 +114,7 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
   {
     title: "Why we process your data",
     body:
-      "Your account and synced workouts are processed to provide the online features you signed up for (performance of a contract, GDPR Art. 6(1)(b)). Because workouts and body data can reveal information about your health, storing them on a server also rests on your explicit consent (Art. 9(2)(a)), given when you first sign in. You can withdraw it under Settings → Privacy and Data → Withdraw Health Consent, which deletes your workout history and any body data from the server and switches the app to on-device storage, copying your current plan and its history to this device first, or by deleting your account. Withdrawing does not affect processing that happened before. Crash reports and usage metrics are sent only with your consent (Art. 6(1)(a)), which you can withdraw at any time in Settings. Server logs, the sign-in throttle, and reports about abusive accounts are kept for the legitimate interest of keeping the service secure and working (Art. 6(1)(f)).",
+      "Your account, synced workouts, messages and their notifications, user search, and the skins, ratings and reports you publish to the marketplace are processed to provide the online features you signed up for (performance of a contract, GDPR Art. 6(1)(b)). Because workouts and body data can reveal information about your health, storing them on a server also rests on your explicit consent (Art. 9(2)(a)), given when you first sign in. You can withdraw it under Settings → Privacy and Data → Withdraw Health Consent, which deletes your workout history and any body data from the server and switches the app to on-device storage, copying your current plan and its history to this device first, or by deleting your account. Withdrawing does not affect processing that happened before. Crash reports and usage metrics are sent only with your consent (Art. 6(1)(a)), which you can withdraw at any time in Settings. Server logs, Cloudflare's protection, the sign-in throttle, backups, update checks, the QR scanner's metrics, counting skin downloads, and reports about abusive accounts are processed for the legitimate interest of keeping the service secure and working (Art. 6(1)(f)). Google Play's order records for tips are kept to meet tax and accounting law (Art. 6(1)(c)).",
   },
   {
     title: "How long we keep it",
@@ -119,7 +124,7 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
   {
     title: "Where your data is stored",
     body:
-      "The official server and crash-report server run on the developer's own hardware in Greece, inside the European Union. Your data is not shared with anyone else, apart from these services when you use them, each under its own privacy policy: Cloudflare (United States, under the EU-US Data Privacy Framework and Cloudflare's data processing terms) handles all traffic to both servers. GitHub (United States, under the EU-US Data Privacy Framework) receives update checks from GitHub builds. Google (United States, under the EU-US Data Privacy Framework) receives Google Play tips and downloads, message notifications (Firebase Cloud Messaging, without their text), usage metrics you switch on (Google Analytics for Firebase and Firebase Performance Monitoring), and email you send the developer, which goes through Gmail. Ko-fi (United Kingdom, covered by an EU adequacy decision) receives tips from GitHub builds.",
+      "The official server and crash-report server run on the developer's own hardware in Greece, inside the European Union. Your data is not shared with anyone else, apart from these services when you use them, each under its own privacy policy: Cloudflare (United States, under the EU-US Data Privacy Framework and Cloudflare's data processing terms) handles all traffic to both servers. GitHub (United States, under the EU-US Data Privacy Framework) receives update checks from GitHub builds. Google (United States, under the EU-US Data Privacy Framework) receives Google Play tips and downloads, message notifications (Firebase Cloud Messaging, without their text), usage metrics you switch on (Google Analytics for Firebase and Firebase Performance Monitoring), QR scanner metrics (ML Kit), and email you send the developer, which goes through Gmail. Ko-fi (United Kingdom, covered by an EU adequacy decision) receives tips from GitHub builds.",
   },
   {
     title: "Your rights",
@@ -134,7 +139,7 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
   {
     title: "Getting a copy of your data",
     body:
-      "Settings → Privacy and Data → Export My Data writes everything stored about your account to a JSON file in the app's Downloads folder, which you can then move or share wherever you like. It contains this account's data on this device, including progress photo images (the newest up to about 32 MB, and the file says how many were left out), and in online mode also everything the server you are signed in to holds about you. Other profiles on the same device are not included. You can protect the file with a passphrase. Without one, anyone who gets the file can read it, health data included. Reports other users filed about you are listed with their reason and date, without naming who filed them.",
+      "Settings → Privacy and Data → Export My Data writes everything stored about your account to a JSON file in the app's Downloads folder, which you can then move or share wherever you like. It contains this account's data on this device, including progress photo images (the newest up to about 32 MB, and the file says how many were left out), and in online mode also the records the server you are signed in to stores about your account, messages you received included. Photos stored on the server are listed without the image itself, which you can view in the app. Skins you published are listed under Skins → My skins. Other profiles on the same device are not included. You can protect the file with a passphrase. Without one, anyone who gets the file can read it, health data included. Reports other users filed about you are listed with their reason and date, without naming who filed them.",
   },
   {
     title: "Blocking and reporting",
@@ -144,7 +149,7 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
   {
     title: "Children",
     body:
-      "OwnGains is not meant for children. You must be at least 16 to use it, and accepting the terms confirms that you are.",
+      "OwnGains is not meant for children. You must be at least 16 to use it, and accepting the terms confirms that you are. If we learn that an account belongs to someone under 16, we delete it. You can report such an account from its entry in the Friends tab, or by email.",
   },
   {
     title: "Contact",
@@ -159,7 +164,7 @@ export default function PrivacyPolicyScreen({
   return (
     <LegalScreen
       title='Privacy Policy'
-      updated='October 2026'
+      updated='29 October 2026'
       sections={SECTIONS}
       onBack={() => navigation.goBack()}
     />

@@ -17,6 +17,8 @@ import { toDateString } from "@utils/format";
 import type { MenstrualEntry } from "../services/types";
 import { Button, Metric, Note, Placeholder, Row, space, useUi } from "@shared/components/ui";
 
+const NOT_FOR_CONTRACEPTION = "Estimates only, not for contraception or fertility planning.";
+
 interface MenstrualRenderCtx {
   entries: MenstrualEntry[];
   prefs: { periodLengthDays: number; cycleLengthDays: number };
@@ -167,6 +169,7 @@ export function renderMenstrualWidget(
             tone={tone}
             meta={`Started ${formatDateLabel(lastStartIso)}`}
           />
+          <Note>{NOT_FOR_CONTRACEPTION}</Note>
           <View
             style={{ flexDirection: "row", gap: space.sm, flexWrap: "wrap" }}
           >
@@ -197,7 +200,7 @@ export function renderMenstrualWidget(
             handleCalendarDatePress(date, "menstrual")
           }
           initialView='month'
-          legendText={`Solid = logged · Faded = estimated from your ${prefs.cycleLengthDays}-day average, not a confirmed date`}
+          legendText={`Solid = logged · Faded = estimated from your ${prefs.cycleLengthDays}-day average, not a confirmed date. ${NOT_FOR_CONTRACEPTION}`}
           dotColor={tone}
           getDayDecoration={(date: Date) => {
             const ds = toDateString(date);

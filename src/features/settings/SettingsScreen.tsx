@@ -203,6 +203,7 @@ import {
 import {
   canDrawOverlays,
   canScheduleExactAlarms,
+  canUseFullScreenIntent,
 } from "@shared/services/notifications";
 import {
   scheduleTestAlarm,
@@ -815,6 +816,7 @@ export default function SettingsScreen(): React.JSX.Element {
     const lines = [
       `Exact alarms: ${canScheduleExactAlarms() ? "allowed" : "NOT allowed (may ring late)"}`,
       `Display over other apps: ${canDrawOverlays() ? "allowed" : "NOT allowed (notification only)"}`,
+      `Full screen on the lock screen: ${canUseFullScreenIntent() ? "allowed" : "NOT allowed (notification only)"}`,
       "",
       scheduled
         ? `The alarm rings in ${TEST_ALARM_DELAY_SECONDS} seconds. Lock the phone to check the lock screen too.`
@@ -2444,16 +2446,21 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
 
       <SettingsGroup title="Open source">
         {[
-          {
-            label: "App on GitHub",
-            description: "Source code, releases and issues",
-            url: "https://github.com/Superak0s/OwnGains-App",
-          },
-          {
-            label: "Server on GitHub",
-            description: "Self-host your own OwnGains Server",
-            url: "https://github.com/Superak0s/OwnGains-Server",
-          },
+          // Both READMEs link to Ko-fi, which Play's Payments policy forbids reaching from the app.
+          ...(KOFI_URL
+            ? [
+                {
+                  label: "App on GitHub",
+                  description: "Source code, releases and issues",
+                  url: "https://github.com/Superak0s/OwnGains-App",
+                },
+                {
+                  label: "Server on GitHub",
+                  description: "Self-host your own OwnGains Server",
+                  url: "https://github.com/Superak0s/OwnGains-Server",
+                },
+              ]
+            : []),
           {
             label: "Open-Source Licences",
             description: "The libraries and data OwnGains is built on",

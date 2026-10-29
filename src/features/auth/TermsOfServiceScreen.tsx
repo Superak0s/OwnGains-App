@@ -25,12 +25,17 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
   {
     title: "Acceptable use",
     body:
-      "Do not use OwnGains to harass, impersonate, or send unwanted contact to other people through the friends, messages, sharing, or live session features. Do not attempt to access another person's account or data, or to disrupt a server you have not been given access to. Server operators, including the developer on the official server, may suspend or remove accounts that do this on the instance they run. You must be at least 16 to use OwnGains, and accepting these terms confirms that you are.",
+      "Do not use OwnGains to harass, impersonate, or send unwanted contact to other people through the friends, messages, sharing, or live session features. Do not post or send sexual, hateful, violent or illegal content in messages, usernames, display names, profile photos or published skins. Do not attempt to access another person's account or data, or to disrupt a server you have not been given access to. Server operators, including the developer on the official server, may suspend or remove accounts that do this on the instance they run. You must be at least 16 to use OwnGains, and accepting these terms confirms that you are.",
+  },
+  {
+    title: "Other users and trainers",
+    body:
+      "OwnGains does not check or vet the people who use it, trainers included. Advice from a trainer or friend is theirs, not OwnGains', and OwnGains is not responsible for it. Decide for yourself whom you trust with your data and your training.",
   },
   {
     title: "Reports and moderation",
     body:
-      "On the official server you can report a user from their entry in the Friends tab, or by email. Every report is reviewed by hand by the developer. Nothing is moderated automatically. Email reports are confirmed on receipt. If your account is suspended, the reason is shown when you try to sign in. You can contest any decision, or the handling of a report you made, by email. It will be looked at again and you will get a reasoned answer. You can also take the matter to the courts or the competent authority.",
+      "On the official server you can report a user from their entry in the Friends tab, or by email. Every report is reviewed by hand by the developer. Nothing is moderated automatically. Email reports are confirmed on receipt. If your account is suspended, the reason is shown when you try to sign in. If content of yours is removed or your account is restricted, you are given a statement of the reasons. The email address below is the point of contact for users and for authorities under the EU Digital Services Act (Art. 11 and 12), removal orders for terrorist content included, in English or Greek. Anyone can report illegal content to it, with or without an account. You can contest any decision, or the handling of a report you made, by email. It will be looked at again and you will get a reasoned answer. You can also take the matter to the courts or the competent authority.",
     email: "kostissuperak0s@gmail.com",
   },
   {
@@ -41,7 +46,7 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
   {
     title: "Published skins",
     body:
-      "When you publish a skin to a skin marketplace, you give everyone a free, permanent licence to download, use, change and share it, and you confirm you have the right to give that licence. Only publish themes and layouts you made or may share. The operator of the marketplace can remove any skin, for example after a report, without notice. A skin you delete, or one left after you delete your account, may remain on devices that already applied it. Skins you published stay public without your name after your account is deleted.",
+      "When you publish a skin to a skin marketplace, you give everyone a free, permanent licence to download, use, change and share it, and you confirm you have the right to give that licence. Only publish themes and layouts you made or may share. The operator of the marketplace can remove a skin that breaks these terms or the law, and then shows you the reason under Skins → My skins. A skin you delete, or one left after you delete your account, may remain on devices that already applied it. Skins you published stay public without your name after your account is deleted.",
   },
   {
     title: "Availability",
@@ -56,7 +61,7 @@ const SECTIONS: ReadonlyArray<LegalSection> = [
   {
     title: "Not medical advice",
     body:
-      "OwnGains records what you tell it about your training. It does not assess your health, and nothing it calculates or suggests is medical or fitness advice. Talk to a qualified professional before starting or changing a training programme, and stop if something hurts.",
+      "OwnGains records what you tell it about your training. It does not assess your health, and nothing it calculates or suggests is medical or fitness advice. Supplement entries record what you choose to take. OwnGains does not suggest doses or say what a supplement does. Cycle phases and the predicted next period are estimates from the dates you log, and are not for contraception or fertility planning. Talk to a qualified professional before starting or changing a training programme or taking a supplement, and stop if something hurts.",
   },
   {
     title: "Warranty and liability",

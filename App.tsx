@@ -45,7 +45,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "./src/shared/context/AuthContext";
-import { WorkoutProvider } from "./src/shared/context/WorkoutContext";
+import { WorkoutProvider, useWorkoutPick } from "./src/shared/context/WorkoutContext";
 import { NavigationBar } from "expo-navigation-bar";
 import {
   isOnboardingComplete,
@@ -539,7 +539,8 @@ function MainTabs() {
   const updateAlert = useGitHubUpdateCheck();
   const whatsNew = useWhatsNewOnUpdate();
   usePlayForcedUpdate();
-  useOtaUpdates();
+  const { workoutStartTime } = useWorkoutPick("workoutStartTime");
+  useOtaUpdates(!!workoutStartTime);
   const [appMode, setAppMode] = useState(getAppModeSync);
   useEffect(() => onAppModeChange.subscribe(setAppMode), []);
   const [role, setRole] = useState(getAppRole);

@@ -6,15 +6,19 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-29
+
 ### Added
 
-- Bug fixes install on their own: the app downloads a fix in the background and uses it the next time it starts, without a store update.
+- Bug fixes install on their own: the app downloads a fix in the background and restarts into it the next time you return to the app, or on its next start if a workout is in progress, without a store update.
 - When a trainer changes your plan, the Plan tab shows who changed it and lets you undo it for 7 days, once the server is updated. A trainer who removes days from a client's plan is asked to confirm first.
 - A ringing supplement alarm snoozes when you press volume down and turns off when you press the power button, like the Android clock.
 - In edit mode, Customize gives any placed widget its own name, emoji icon and subtitle. Leave a field empty to keep the default.
 - In trainer mode, the Clients tab and each client's page are widget boards. Reorder, resize, remove or rename the client lists, a client's schedule, weekly progress, recent sessions, permissions and tracking.
 - Skins: the Skin Marketplace button at the top of Settings (also under Appearance → Skins) lets you browse a marketplace of themes and widget layouts with their downloads, unique downloads and ratings, and load one by ID, link or file. Pick colors, layouts or both, preview the skin across the app, then apply or discard it.
 - Skins: signed in to the official server you can publish your theme and layouts, share the link, update or delete your skins, and rate or report others. Export your current skin to a file without an account.
+- My skins lists a skin the marketplace removed, with the reason, and lets you delete it.
+- You can report an account as under 16.
 
 ### Changed
 
@@ -49,6 +53,10 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The privacy choices are Accept all, Crash reports only and Reject all, with Accept all and Reject all styled the same, and Choose individually for the separate switches. The screen says when a box still needs ticking.
 - The privacy policy and terms open with a list of sections you can jump to, and use shorter paragraphs and larger text.
 - A password that is too long now says the limit is 72 characters, fewer with accents or emoji.
+- Supplement presets no longer suggest a dose or say what a supplement does, and Ashwagandha is no longer offered. Picking a preset opens the add form with its name, unit and icon, and you enter the dose from your label.
+- The cycle tracker says its phases and predictions are estimates, not for contraception or fertility planning.
+- New terms of service, which the app asks you to accept: no sexual, hateful or violent content, other users and trainers are not vetted, Not medical advice covers supplements and the cycle tracker, the EU Digital Services Act contact point is named, and a removed skin comes with its reason.
+- Google Play builds no longer link to the GitHub pages of the app and server, which link to an outside tip page.
 
 ### Security
 
@@ -57,6 +65,10 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The app sends your sign-in token to a skin marketplace only when it is on the same address as your server. Skin downloads are counted with a random identifier for this install, never your account. Deleting your account in the app removes your name from your published skins, ratings and reports, only after your password or Google sign-in is confirmed. The privacy policy and terms describe the marketplace.
 - Changing the server address drops your sign-in first, so your token is never sent to the new address.
 - Signing out after the app was closed for a while still ends the session on the server, instead of leaving it valid until it expires.
+- The privacy policy says that the QR code scanner (Google ML Kit) sends Google usage metrics, that saved server error logs keep no username or IP address, the legal basis for each kind of processing, which location information is used, that Export My Data includes messages you received, and that accounts of people under 16 are deleted.
+- On Android 14 and later, where it is off by default, supplement alarms ask for Full screen notifications so an alarm can open full screen on a locked phone. Without it the alarm shows as a notification.
+- The app no longer declares Android's ad-services permissions (advertising ID and attribution), which Firebase Analytics added.
+- Crash reporting no longer sends counts of dropped events while crash reports are off.
 
 ### Fixed
 
@@ -119,6 +131,10 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ### Internal
 
+- `.env.example` lists every variable the app and release scripts read, grouped and shortened.
+- `scripts/release.sh` keeps only the last 20 run logs and ends a failed run's log with the exit code and the step it failed in.
+- `scripts/release.sh` reverts the version bump and changelog stamp again after Ctrl+C (Ctrl+C killed `tee`, and the next write killed bash before the revert), and runs the CI workflow under act in the foreground with its full output, like the server's release script, in place of the parallel local checks it already covers (those still run, one after another, when act is skipped).
+- `scripts/release.sh` also counts `modules/`, `app.config.js` and `google-services.json` toward a clean prebuild, keeps `android/` and `.expo/` in the WSL mirror so the check works there too, and runs an incremental prebuild when nothing changed and its prompt gets no answer.
 - Line endings are normalized to LF in git via `.gitattributes`, with the normalization commit in `.git-blame-ignore-revs`.
 - Crash reporting for marketplace server errors and failed skin exports or applies, and usage events for skin previews, applies, exports and skin links.
 - Debug builds default to the LAN dev marketplace `http://192.168.10.243:5100`.
@@ -147,11 +163,13 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The workout screen marks itself mounted again after a fast refresh, so dev builds keep closing the set form after a save.
 - The README and the day lock tutorial card mention set delete undo and Start again.
 - Offline demo clearing and split deletion take the sessions lock like every other session write.
+- CLAUDE.md explains the `OTA_UPLOAD` scp target and warns against Bash heredocs for multi-line transforms.
 - Regression tests for trainer and offline set edits, undo after the slot is reused, joint update failures, assisted bests, kg decimals, lbs steps, early unit picks and offline analytics.
 - The web privacy policy and terms keep the in-app paragraph breaks.
 - Regression tests for server switching, sign-out renewal, consent rechecks, the consent double tap, Google sign-in in progress and the sign-up checks.
 - Review fixes with regression tests: account deletion checks the password through `POST /api/auth/reauth` (specced in `api-requests.md`) before anonymizing marketplace data, a set edit that fails to send is queued as a patch of the server row, a refused trainer edit no longer rolls back a later one, and export and publish use the saved theme during a skin preview.
 - Over-the-air updates: `expo-updates` with the fingerprint runtime and code signing, a `play`/`github` channel split, `npm run publish:ota` to export and sign both, `scripts/release.sh ota` to bump, check, publish and push one (store releases record their fingerprint in `.ota-runtime-version`, and an OTA with a different one is refused), and the update server spec in `api-requests.md`. The Play forced update compares the installed build's version.
+- Tests cover entering a supplement preset's dose and the Full screen notifications prompt. The web account deletion page mentions `owngains delete`.
 
 ## [1.0.1] - 2026-10-22
 

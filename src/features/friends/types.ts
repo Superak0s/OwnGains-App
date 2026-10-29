@@ -156,6 +156,7 @@ export const REPORT_REASONS = [
   { key: "spam", label: "Spam or scam" },
   { key: "impersonation", label: "Impersonation" },
   { key: "inappropriate", label: "Inappropriate content" },
+  { key: "underage", label: "Under 16" },
   { key: "other", label: "Something else" },
 ] as const;
 
