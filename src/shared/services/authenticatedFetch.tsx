@@ -113,8 +113,19 @@ export const authenticatedFetch = (
   options: AuthenticatedFetchOptions = {},
 ): Promise<Response> => fetchAuthenticated(url, options, true)
 
-const originOf = (url: string): string =>
-  /^(https?:\/\/[^/?#]+)/i.exec(url)?.[1].toLowerCase() ?? ""
+/**
+ * Whether the token may go to `url`: the configured server's origin only. Dev builds also accept
+ * the server's host on another port, where the dev marketplace runs (5100 beside the server's 5000).
+ */
+export function isOwnServer(url: string): boolean {
+  try {
+    const target = new URL(url)
+    const server = new URL(getServerUrl())
+    return target.origin === server.origin || (__DEV__ && target.hostname === server.hostname)
+  } catch {
+    return false
+  }
+}
 
 const fetchAuthenticated = async (
   url: string,
@@ -129,7 +140,7 @@ const fetchAuthenticated = async (
   assertSecureTransport(resolvedUrl)
 
   console.debug(`[API] Calling: ${resolvedUrl}`)
-  const toOwnServer = originOf(resolvedUrl) === originOf(getServerUrl())
+  const toOwnServer = isOwnServer(resolvedUrl)
   const token = toOwnServer ? await tokenStorage.get() : null
 
   // A multipart body sets its own Content-Type boundary. Forcing JSON here

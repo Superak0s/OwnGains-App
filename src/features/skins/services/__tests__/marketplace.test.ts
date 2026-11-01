@@ -6,10 +6,11 @@ jest.mock("@shared/services/tokenStorage", () => ({
 }))
 jest.mock("@shared/services/config", () => ({
   ...jest.requireActual("@shared/services/config"),
-  getServerUrl: () => "https://owngains.superak0s.com",
+  getServerUrl: jest.fn(() => "https://owngains.superak0s.com"),
 }))
 
 import { setSessionRefresher } from "@shared/services/authenticatedFetch"
+import { getServerUrl } from "@shared/services/config"
 import { tokenStorage } from "@shared/services/tokenStorage"
 import { getSkin, rateSkin, recordDownload, setMarketplaceUrl } from "../marketplace"
 
@@ -50,6 +51,23 @@ describe("marketplace client", () => {
     mockFetch("https://owngains.superak0s.com")
     await rateSkin(1, 5, BASE)
     expect(calls.find((c) => c.url.endsWith("/rating"))?.headers.Authorization).toBe("Bearer tok")
+  })
+
+  it("dev builds send the token to a marketplace on the server's host and another port, release builds don't", async () => {
+    ;(getServerUrl as jest.Mock).mockReturnValue("http://192.168.10.243:5000")
+    const base = "http://192.168.10.243:5100"
+    try {
+      mockFetch("http://192.168.10.243:5000")
+      await getSkin(1, base)
+      expect(calls.find((c) => c.url === `${base}/api/skins/1`)?.headers.Authorization).toBe("Bearer tok")
+      ;(globalThis as unknown as { __DEV__: boolean }).__DEV__ = false
+      mockFetch("http://192.168.10.243:5000")
+      await getSkin(1, base)
+      expect(calls.find((c) => c.url === `${base}/api/skins/1`)?.headers.Authorization).toBeUndefined()
+    } finally {
+      ;(globalThis as unknown as { __DEV__: boolean }).__DEV__ = true
+      ;(getServerUrl as jest.Mock).mockReturnValue("https://owngains.superak0s.com")
+    }
   })
 
   it("refreshes an expired token once and retries", async () => {

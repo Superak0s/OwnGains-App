@@ -1,8 +1,8 @@
 import { randomUUID } from "expo-crypto"
 import { ApiError } from "@shared/services/apiError"
 import { getAppMode } from "@shared/services/appMode"
-import { authenticatedFetch } from "@shared/services/authenticatedFetch"
-import { assertSecureTransport, getServerUrl, isPrivateHost } from "@shared/services/config"
+import { authenticatedFetch, isOwnServer } from "@shared/services/authenticatedFetch"
+import { assertSecureTransport, isPrivateHost } from "@shared/services/config"
 import { captureException } from "@shared/services/crashReporting"
 import { countCall } from "@shared/services/dispatchProxy"
 import { getStorageItem, removeStorageItem, setStorageItem } from "@shared/services/sqliteStorage"
@@ -89,12 +89,13 @@ export function getInstallId(): Promise<string> {
 /**
  * Whether this marketplace may see the user's token: only when it is served from the same origin
  * as the app's server. What a marketplace says about itself can't be trusted, so a third-party one
- * never receives a token that works on the user's server.
+ * never receives a token that works on the user's server. Dev builds also accept the server's host
+ * on another port (`isOwnServer`).
  */
 export async function canAuthenticate(baseUrl?: string): Promise<boolean> {
   const base = baseUrl ?? (await getMarketplaceUrl())
   if ((await getAppMode()) !== "online" || !(await tokenStorage.get())) return false
-  return new URL(base).origin === new URL(getServerUrl()).origin
+  return isOwnServer(base)
 }
 
 interface RequestOptions {

@@ -18,6 +18,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 - `npm start` passes the OTA signing key to Metro, since the dev build has the code-signing certificate and rejects unsigned dev manifests.
 - `CLAUDE.md` requires asking before any change to the privacy policy, terms or consent copy, or a bump of the version that asks users to accept again.
+- Dev builds send the account token to the dev marketplace (the server's host, port 5100), so the demo data's skins show up there. Release builds still require the server's exact origin (`isOwnServer`).
 
 ## [1.1.0] - 2026-10-29
 
