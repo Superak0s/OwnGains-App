@@ -5,6 +5,7 @@ import { STORAGE_KEYS } from "@shared/services/storage";
 import type { PendingSync } from "../../../types";
 import { ApiError } from "@shared/services/apiError";
 import { CUSTOM_DAY } from "@utils/dayCarryOver";
+import { countTowelUse } from "@features/homescreen/towels";
 
 jest.mock("expo-sqlite", () => ({
   openDatabaseSync: () => ({
@@ -22,6 +23,8 @@ jest.mock("@features/workout/services/index", () => ({
     endSession: jest.fn(),
   },
 }));
+
+jest.mock("@features/homescreen/towels", () => ({ countTowelUse: jest.fn() }));
 
 const endSession = workoutApi.endSession as jest.Mock;
 
@@ -172,6 +175,33 @@ describe("useSessionOperations endWorkout", () => {
         data: { sessionId: "local_1" },
       }),
     );
+  });
+});
+
+describe("useSessionOperations towel use", () => {
+  it("counts a use on the user's towel when they end their own workout", async () => {
+    endSession.mockResolvedValue(undefined);
+    const { endWorkout } = await renderEndWorkout({ currentSessionId: "42" });
+
+    await act(async () => {
+      await endWorkout();
+    });
+
+    expect(countTowelUse).toHaveBeenCalledWith("user-1");
+  });
+
+  it("counts nothing when a trainer ends a client's workout", async () => {
+    endSession.mockResolvedValue(undefined);
+    const { endWorkout } = await renderEndWorkout({
+      currentSessionId: "42",
+      canQueueOffline: false,
+    });
+
+    await act(async () => {
+      await endWorkout();
+    });
+
+    expect(countTowelUse).not.toHaveBeenCalled();
   });
 });
 

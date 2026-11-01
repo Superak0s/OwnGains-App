@@ -1,2 +1,4 @@
+• New Towel widget for Home: add your towels with a photo, pick how many workouts each one lasts before a wash, and see when it's time to wash it
 • Redesigned Skins screen: browse skins as previews drawn in their own colors, and find import, export and sorting behind their own buttons
+• Adding a machine suggests names you already use, one tap each, and pools best stats across all machines
 • Fixed a tab bar error when the Friends or Clients tab appeared or went away

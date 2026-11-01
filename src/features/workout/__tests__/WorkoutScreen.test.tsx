@@ -374,6 +374,46 @@ describe("removing a set", () => {
   })
 })
 
+describe("adding a suggested machine", () => {
+  const withBrandOnRow = (benchChanges: Record<string, unknown> = {}) => {
+    const edited = structuredClone(program)
+    Object.assign(edited.days[0].split.A.exercises[0], benchChanges)
+    edited.days[1].split.A.exercises[0].machines = ["Hammer Strength"]
+    return withProgram({ workoutData: edited, sessionWorkoutData: edited })
+  }
+  const addHammerStrength = async () => {
+    fireEvent.press((await screen.findAllByRole("button", { name: "Exercise and machine settings" }))[0])
+    await press("Add Hammer Strength")
+  }
+
+  it("offers another exercise's machine and turns on best stats across machines", async () => {
+    await renderWithProviders(<WorkoutScreen />, withBrandOnRow())
+    await addHammerStrength()
+
+    await waitFor(() =>
+      expect(current.workout.updateExerciseMachines).toHaveBeenCalledWith(
+        1,
+        "A",
+        0,
+        expect.objectContaining({ machines: ["Hammer Strength"], bestAcrossMachines: true }),
+      ),
+    )
+  })
+
+  it("leaves best stats off when the user switched it off", async () => {
+    await renderWithProviders(<WorkoutScreen />, withBrandOnRow({ bestAcrossMachines: false }))
+    await addHammerStrength()
+
+    await waitFor(() => expect(current.workout.updateExerciseMachines).toHaveBeenCalled())
+    expect(current.workout.updateExerciseMachines).toHaveBeenCalledWith(
+      1,
+      "A",
+      0,
+      expect.not.objectContaining({ bestAcrossMachines: true }),
+    )
+  })
+})
+
 describe("renaming a machine", () => {
   it("merges it into a machine that already has that name", async () => {
     await renderWithProviders(<WorkoutScreen />, withExercise({ machines: ["Machine A", "Machine B"] }))

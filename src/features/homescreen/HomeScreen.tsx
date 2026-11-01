@@ -52,6 +52,7 @@ import {
 } from "@shared/components/widgets/WidgetBoardChrome";
 import WidgetsPanel from "@shared/components/widgets/WidgetsPanel";
 import ForeignWidget from "./ForeignWidget";
+import TowelWidget from "./TowelWidget";
 import { sorenessApi } from "@features/tracking/services";
 import { needsFollowUp } from "@features/tracking/utils";
 import HealthWidget from "@features/healthConnect/HealthWidget";
@@ -747,6 +748,8 @@ export default function HomeScreen(): React.JSX.Element {
         );
       case "switch_to_trainer":
         return <SwitchToTrainerWidget isOffline={isOffline} styles={styles} />;
+      case "towel":
+        return <TowelWidget />;
       case "health_steps":
       case "health_heart_rate":
       case "health_sleep":

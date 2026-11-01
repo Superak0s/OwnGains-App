@@ -1,7 +1,12 @@
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import { darken, isDarkColor } from "@utils/color";
 import type { PartnerProgress } from "@shared/context/hooks/useJointSession";
-import type { Exercise, MachineMeta, WorkoutSession } from "@shared/types";
+import type {
+  Exercise,
+  MachineMeta,
+  WorkoutData,
+  WorkoutSession,
+} from "@shared/types";
 import {
   getCanonicalName,
   normalizeExerciseName,
@@ -92,6 +97,46 @@ export function editMachineMeta(
   delete next[from];
   if (entry.note || entry.pin !== undefined) next[to] = entry;
   return next;
+}
+
+/**
+ * Machine names used on other exercises, most widely used first. Logged sets
+ * count too, so a brand from a replaced program is still offered.
+ */
+export function suggestMachineNames(
+  program: Pick<WorkoutData, "days"> | null | undefined,
+  records: Pick<WorkoutSession, "setTimings">[] | null | undefined,
+  current: string[],
+  query: string,
+): string[] {
+  const uses: [exercise: string, machine: string][] = [];
+  for (const day of program?.days ?? [])
+    for (const split of Object.values(day.split ?? {}))
+      for (const ex of split.exercises ?? [])
+        for (const machine of ex.machines ?? []) uses.push([ex.name, machine]);
+  for (const session of records ?? [])
+    for (const set of session.setTimings ?? [])
+      if (set.machineName) uses.push([set.exerciseName ?? "", set.machineName]);
+
+  const taken = new Set(current.map((m) => m.trim().toLowerCase()));
+  const needle = query.trim().toLowerCase();
+  const byKey = new Map<string, { exercises: Set<string>; spellings: Map<string, number> }>();
+  for (const [exercise, raw] of uses) {
+    const machine = raw.trim();
+    const key = machine.toLowerCase();
+    if (!key || taken.has(key) || !key.includes(needle)) continue;
+    const entry = byKey.get(key) ?? { exercises: new Set(), spellings: new Map() };
+    entry.exercises.add(exercise.toLowerCase());
+    entry.spellings.set(machine, (entry.spellings.get(machine) ?? 0) + 1);
+    byKey.set(key, entry);
+  }
+  return [...byKey.values()]
+    .map(({ exercises, spellings }) => ({
+      uses: exercises.size,
+      name: [...spellings].sort((a, b) => b[1] - a[1])[0][0],
+    }))
+    .sort((a, b) => b.uses - a.uses || a.name.localeCompare(b.name))
+    .map((s) => s.name);
 }
 
 export const EMPTY_WORKOUT_TITLE = "Empty workout";

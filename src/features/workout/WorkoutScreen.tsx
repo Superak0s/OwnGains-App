@@ -32,7 +32,7 @@ import { useAuth } from "@shared/context/AuthContext";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import ModalSheet from "@shared/components/ModalSheet";
-import { Button, EmptyState } from "@shared/components/ui";
+import { Button, Chip, EmptyState } from "@shared/components/ui";
 import { useAlert } from "@shared/components/CustomAlert";
 import {
   promptForAlarmPermissions,
@@ -99,6 +99,7 @@ import {
   isAssistedExercise,
   getLocalHistoryEntries,
   getServerHistoryEntries,
+  suggestMachineNames,
   pickBestPerformanceSummary,
   suggestNextSetLoad,
   progressionStepKg,
@@ -395,6 +396,7 @@ function WorkoutScreenBody({
   const [showEditNameModal, setShowEditNameModal] = useState<boolean>(false);
   const [machinesFor, setMachinesFor] = useState<number | null>(null);
   const [newMachineName, setNewMachineName] = useState<string>("");
+  const [machineRecords, setMachineRecords] = useState<WorkoutSession[] | null>(null);
   const [settingsFor, setSettingsFor] = useState<number | null>(null);
   const [editMachine, setEditMachine] = useState<{
     key: string;
@@ -1471,6 +1473,27 @@ Note: ${existing.note}`;
 
   const settingsExercise = exerciseAt(dayWorkout, settingsFor);
 
+  const settingsOpen = settingsFor !== null;
+  useEffect(() => {
+    if (!settingsOpen) return;
+    let live = true;
+    void cachedFetchRecordSessions().then((records) => {
+      if (live) setMachineRecords(records);
+    });
+    return () => {
+      live = false;
+    };
+  }, [settingsOpen, cachedFetchRecordSessions]);
+
+  const machineSuggestions = settingsOpen
+    ? suggestMachineNames(
+        workoutData,
+        machineRecords,
+        settingsExercise?.machines ?? [],
+        newMachineName,
+      )
+    : [];
+
   const handleSetDefaultMachine = (name: string) => {
     patchMachines(settingsFor, {
       defaultMachine: name,
@@ -1478,17 +1501,22 @@ Note: ${existing.note}`;
     });
   };
 
-  const handleAddMachine = () => {
-    const trimmed = newMachineName.trim();
+  const addMachine = (name: string) => {
+    const trimmed = name.trim();
     if (settingsFor === null || !trimmed) return;
     const existing = settingsExercise?.machines ?? [];
     patchMachines(settingsFor, {
       machines: [...new Set([...existing, trimmed])],
       selectedMachine: settingsExercise?.selectedMachine ?? trimmed,
       defaultMachine: settingsExercise?.defaultMachine ?? trimmed,
+      // Undefined means never touched. Someone who switched it off keeps it off.
+      ...(settingsExercise?.bestAcrossMachines === undefined && {
+        bestAcrossMachines: true,
+      }),
     });
     setNewMachineName("");
   };
+  const handleAddMachine = () => addMachine(newMachineName);
 
   const handleSaveMachineEdit = () => {
     if (settingsFor === null || !editMachine) return;
@@ -2783,6 +2811,19 @@ Note: ${existing.note}`;
               onSubmitEditing={handleAddMachine}
               returnKeyType='done'
             />
+            {machineSuggestions.length > 0 && (
+              <View style={styles.machineSuggestions}>
+                {machineSuggestions.map((name) => (
+                  <Chip
+                    key={name}
+                    label={`+ ${name}`}
+                    selected={false}
+                    accessibilityLabel={`Add ${name}`}
+                    onPress={once(`addMachine:${name}`, () => addMachine(name))}
+                  />
+                ))}
+              </View>
+            )}
             <TouchableOpacity
               style={styles.saveButton}
               accessibilityRole='button'
@@ -3395,6 +3436,12 @@ export const makeStyles = (colors: ThemeColors) => {
       fontWeight: "600",
       color: colors.accent,
       maxWidth: 110,
+    },
+    machineSuggestions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginTop: 8,
     },
     machineRow: {
       flexDirection: "row",

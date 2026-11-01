@@ -6,9 +6,15 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Added
+
+- A Towel widget for Home shows the towel you're using, with its photo and how many workouts it has been used for. Pick how many uses each towel gets before it needs a wash, and the widget turns red when it's time. Every workout you finish counts as one use, and Washed resets the count. Towels and their photos are kept on your phone only.
+- Exercise Settings suggests machine names you already use on other exercises or in your logged sets, most used first, so a brand like Hammer Strength is one tap to add.
+
 ### Changed
 
 - The Skins screen is now a gallery: each skin shows as a tile drawn in its own colors, with a bigger preview when you open it. Importing and exporting moved to the ＋ and ⋯ buttons in the header, sorting to a button beside the search box, and My skins lists your published skins with their previews under a card for publishing your current look.
+- Adding a machine to an exercise now turns on best stats across all machines, unless you turned that off for the exercise. Exercises that already have machines keep their setting.
 
 ### Fixed
 

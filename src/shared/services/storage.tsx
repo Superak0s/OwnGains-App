@@ -117,6 +117,7 @@ export const STORAGE_KEYS = {
   WEIGHT_UNIT: "weight_unit",
   WEIGHT_UNIT_BY_EXERCISE: "weight_unit_by_exercise",
   HOME_WIDGETS: "homeWidgets",
+  TOWELS: "towels",
   WORKOUT_WIDGETS: "workoutWidgets",
   PLAN_WIDGETS: "planWidgets",
   ANALYTICS_WIDGETS: "analyticsWidgets",

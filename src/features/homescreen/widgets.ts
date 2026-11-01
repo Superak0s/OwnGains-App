@@ -57,7 +57,8 @@ type HomeOwnWidgetType =
   | "weekly_progress"
   | "workout_calendar"
   | "workout_streak"
-  | "switch_to_trainer";
+  | "switch_to_trainer"
+  | "towel";
 
 const HOME_OWN_REGISTRY: Record<
   HomeOwnWidgetType,
@@ -99,6 +100,13 @@ const HOME_OWN_REGISTRY: Record<
     description: "Switch to the coaching tools for your clients",
     availableSizes: ["small"],
     defaultSize: "small",
+  },
+  towel: {
+    type: "towel",
+    title: "Towel",
+    description: "The towel you're using and how many workouts until it needs a wash",
+    availableSizes: ["medium"],
+    defaultSize: "medium",
   },
 };
 

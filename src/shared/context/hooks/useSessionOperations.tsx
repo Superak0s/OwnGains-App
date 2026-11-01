@@ -13,6 +13,7 @@ import {
   replaceSet,
   type WorkoutApi,
 } from "@features/workout/services/workoutApiFactory";
+import { countTowelUse } from "@features/homescreen/towels";
 import type { WorkoutData, WorkoutDay, PendingSync, SetDetail } from "../../types";
 import type { CompletedDays, LockedDays } from "../../../utils/dayCompletion";
 import {
@@ -510,6 +511,8 @@ export const useSessionOperations = ({
           await lockDay(currentDay);
         }
         await clearActiveWorkout();
+        // A trainer ending a client's workout isn't using their own towel.
+        if (canQueueOffline) await countTowelUse(userId);
         if (workoutStartTime) {
           const exercises = Object.values(completedDays[currentDay] ?? {});
           trackWorkoutCompleted(Date.parse(workoutStartTime), {
@@ -565,6 +568,7 @@ export const useSessionOperations = ({
       syncPendingData,
       useManualTime,
       fetchAnalytics,
+      canQueueOffline,
     ],
   );
 

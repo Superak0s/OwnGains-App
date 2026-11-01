@@ -17,11 +17,13 @@ import {
   exercisesForMuscle,
   resolveExerciseUnit,
   parseRestDuration,
+  suggestMachineNames,
 } from "../utils";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { PartnerProgress } from "@shared/context/hooks/useJointSession";
 import { isDarkColor } from "@utils/color";
 import { estimateOneRepMax } from "@utils/oneRepMax";
+import type { WorkoutData } from "@shared/types";
 
 const colors = {
   background: "#ffffff",
@@ -589,5 +591,58 @@ describe("beatsBest", () => {
 
   it("counts one more rep as a new best", () => {
     expect(beatsBest(estimateOneRepMax(100, 6), estimateOneRepMax(100, 5))).toBe(true);
+  });
+});
+
+describe("suggestMachineNames", () => {
+  const ex = (name: string, machines?: string[]) => ({ name, machines, sets: 3 });
+  const program: WorkoutData = {
+    days: [
+      {
+        dayNumber: 1,
+        split: {
+          A: { totalSets: 0, exercises: [ex("Chest Press", ["Hammer Strength"]), ex("Row", ["hammer strength", "Technogym"])] },
+          B: { totalSets: 0, exercises: [ex("Curl")] },
+        },
+      },
+      {
+        dayNumber: 2,
+        split: { A: { totalSets: 0, exercises: [ex("Leg Press", ["Hammer Strength"])] } },
+      },
+    ],
+  };
+  const records = [
+    {
+      id: 1,
+      setTimings: [
+        { setIndex: 0, endTime: "", exerciseName: "Pulldown", machineName: "Life Fitness" },
+        { setIndex: 1, endTime: "", exerciseName: "Shoulder Press", machineName: "Technogym" },
+        { setIndex: 2, endTime: "", exerciseName: "Squat" },
+      ],
+    },
+  ];
+
+  it("ranks names by how many exercises use them, across the program and logged sets", () => {
+    expect(suggestMachineNames(program, records, [], "")).toEqual([
+      "Hammer Strength",
+      "Technogym",
+      "Life Fitness",
+    ]);
+  });
+
+  it("leaves out names the exercise already has, ignoring case", () => {
+    expect(suggestMachineNames(program, records, ["HAMMER STRENGTH"], "")).toEqual([
+      "Technogym",
+      "Life Fitness",
+    ]);
+  });
+
+  it("narrows to names containing the typed text", () => {
+    expect(suggestMachineNames(program, records, [], " gym ")).toEqual(["Technogym"]);
+  });
+
+  it("still suggests program names when the logged sets failed to load", () => {
+    expect(suggestMachineNames(program, null, [], "")).toEqual(["Hammer Strength", "Technogym"]);
+    expect(suggestMachineNames(null, null, [], "")).toEqual([]);
   });
 });
