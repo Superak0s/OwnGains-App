@@ -5,9 +5,9 @@
   "license": "MIT",
   "main": "index.ts",
   "scripts": {
-    "start": "expo start",
-    "android": "expo prebuild --platform android --clean && expo run:android --app-id com.owngains.app.debug",
-    "prebuild": "expo prebuild --platform android --clean",
+    "start": "expo start --private-key-path secrets/expo-updates/private-key.pem",
+    "android": "node scripts/prebuild.js && expo run:android --app-id com.owngains.app.debug",
+    "prebuild": "node scripts/prebuild.js --clean",
     "build:android:apk": "npm run prebuild && local-expo-build build android --apk --no-sync --no-bump",
     "build:android:apk:clean": "npm run prebuild && local-expo-build build android --apk --no-sync --clean --no-bump",
     "build:android:apk:debug": "local-expo-build build android --apk --no-sync --no-bump --debug",

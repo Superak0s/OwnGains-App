@@ -237,7 +237,7 @@ else
     printf '  Commit+push   %s\n' "$(yn "$([ "$SKIP_PUSH" = true ] && echo false || echo true)")"
     printf '  GitHub rel.   %s %s\n' "$(yn "$([ "$SKIP_RELEASE" = true ] && echo false || echo true)")" "${GH_RELEASE_FLAGS[*]}"
 fi
-printf '  Prebuild      %s\n' "$([ "$DO_CLEAN" = true ] && echo clean || echo incremental)"
+printf '  Prebuild      %s\n' "$([ "$DO_CLEAN" = true ] && echo 'clean if native inputs changed' || echo incremental)"
 printf '  ABIs          %s\n' "$([ "$SKIP_32BIT" = true ] && echo arm64-v8a || echo 'arm64-v8a + armeabi-v7a')"
 
 # BACKUP_DIR is set from the version bump until the build succeeds. Any exit in
@@ -305,58 +305,14 @@ if [ -f "$BUILD/.env" ]; then
     . <(tr -d '\r' < "$BUILD/.env")
     set +a
 fi
-PREBUILD_STAMP="$BUILD/.expo/prebuild.stamp"
-# Hash of everything that makes a clean prebuild differ: dependencies, app.json minus the
-# per-release version fields, app.config.js and the google-services.json it looks for,
-# config plugins, local native modules and assets.
-prebuild_inputs_hash() {
-    node -e '
-const fs = require("fs"), path = require("path"), crypto = require("crypto");
-const h = crypto.createHash("sha1");
-const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-h.update(JSON.stringify([pkg.dependencies, pkg.devDependencies]));
-const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
-delete app.expo.version;
-if (app.expo.android) delete app.expo.android.versionCode;
-h.update(JSON.stringify(app));
-h.update(JSON.stringify(["secrets/google-services.json", "google-services.json"].map((f) => fs.existsSync(f))));
-// Gradle writes modules/*/android/build (and .gradle, .cxx) on every build.
-const walk = (d) => { if (!fs.existsSync(d)) return; for (const f of fs.readdirSync(d).sort()) { const p = path.join(d, f); if (!fs.statSync(p).isDirectory()) { h.update(p); h.update(fs.readFileSync(p)); } else if (f !== "build" && !f.startsWith(".")) walk(p); } };
-["plugins", "modules", "assets"].forEach(walk);
-for (const f of ["app.config.js", "package-lock.json"]) if (fs.existsSync(f)) h.update(fs.readFileSync(f));
-process.stdout.write(h.digest("hex"));
-'
-}
-# With nothing changed since the last clean prebuild, asks whether to redo it. No answer
-# within 30 seconds (or no terminal) runs an incremental one, which still writes the new versionCode.
-maybe_skip_prebuild() {
-    [ "$DO_CLEAN" = true ] || return 0
-    if [ -f "$PREBUILD_STAMP" ] && [ -d "$BUILD/android" ] && [ "$(prebuild_inputs_hash)" = "$(cat "$PREBUILD_STAMP")" ]; then
-        local ans=""
-        read -t 30 -rp "${B}No packages, config, plugins, modules or assets changed since the last clean prebuild. Run one anyway?${R} [y/N] (incremental in 30s) " ans || true
-        echo ""
-        case "$ans" in [yY]*) ;; *) DO_CLEAN=false; return 0 ;; esac
-    fi
-    # A clean prebuild cut short leaves a half-generated android/ that a matching stamp would hide.
-    rm -f "$PREBUILD_STAMP"
-}
-save_prebuild_stamp() {
-    [ "$DO_CLEAN" = true ] || return 0
-    mkdir -p "$(dirname "$PREBUILD_STAMP")"
-    prebuild_inputs_hash > "$PREBUILD_STAMP"
-}
+PREBUILD_ARGS=()
+[ "$DO_CLEAN" = true ] || PREBUILD_ARGS=(--no-clean)
 
 if [ "$DEBUG_ONLY" = true ]; then
     step debug "npm install"
     npm install --legacy-peer-deps
-    maybe_skip_prebuild
-    step debug "Prebuild ($([ "$DO_CLEAN" = true ] && echo clean || echo incremental))"
-    if [ "$DO_CLEAN" = true ]; then
-        npx expo prebuild --platform android --clean
-    else
-        npx expo prebuild --platform android
-    fi
-    save_prebuild_stamp
+    step debug "Prebuild"
+    node scripts/prebuild.js "${PREBUILD_ARGS[@]}"
     sed -i 's/signingConfig = signingConfigs\.debug/signingConfig signingConfigs.debug/' "$BUILD/android/app/build.gradle"
     rm -f "$BUILD"/android/app/build/outputs/apk/debug/*.apk "$SRC"/release/OwnGains-debug-*.apk
     step debug "Building debug APK"
@@ -622,15 +578,8 @@ if [ "$OTA_ONLY" = true ]; then
     # [Unreleased] is stamped now, and the notes must cover only what it holds.
     : > "$SRC/docs/play-release-notes.txt"
 else
-    maybe_skip_prebuild
-    if [ "$DO_CLEAN" = true ]; then
-        info "Running full clean prebuild"
-        npx expo prebuild --platform android --clean
-    else
-        info "Running incremental prebuild"
-        npx expo prebuild --platform android
-    fi
-    save_prebuild_stamp
+    info "Prebuild"
+    node scripts/prebuild.js "${PREBUILD_ARGS[@]}"
 
     # Expo's template writes `signingConfig = signingConfigs.debug`, which local-expo-build's
     # release wiring (it matches `signingConfig signingConfigs.debug`) skips, shipping a debug-signed build.

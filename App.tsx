@@ -163,16 +163,10 @@ import { useOtaUpdates } from "./src/shared/services/otaUpdate";
 import { useHealthConnectSync } from "./src/features/healthConnect/importer";
 import { useTrackingShare } from "./src/features/trainer/utils/trackingShare";
 import { HydrationTileModal } from "./src/features/tracking/hydrationTiles";
-import { MessagesProvider, useMessages } from "./src/features/messages/MessagesContext";
+import { MessagesProvider } from "./src/features/messages/MessagesContext";
+import { createTabBarIcon } from "./src/shared/components/TabBarIcon";
 import { ScheduleProvider } from "./src/features/schedule/ScheduleContext";
 import { messageSender } from "./src/features/messages/push";
-
-interface TabIconProps {
-  readonly icon: string;
-  readonly label: string;
-  readonly focused: boolean;
-  readonly badge?: number;
-}
 
 interface CustomTabBarProps {
   readonly state: {
@@ -252,39 +246,6 @@ const showNavBarTemporarily = async (ms = 3000) => {
   } catch (error) {
     console.warn("Failed to show navigation bar:", error);
   }
-};
-
-const TabIcon = ({ icon, label, focused, badge = 0 }: TabIconProps) => {
-  const { colors } = useTheme();
-  return (
-    <View style={styles.tabIconContainer}>
-      <View
-        style={[
-          styles.iconWrapper,
-          focused && {
-            backgroundColor: colors.accent,
-            shadowColor: colors.accent,
-            borderRadius: 23,
-          },
-        ]}
-      >
-        <Text style={styles.icon}>{icon}</Text>
-        {badge > 0 && (
-          <View style={[styles.badge, { backgroundColor: colors.error }]}>
-            <Text style={styles.badgeText}>{badge > 99 ? "99+" : badge}</Text>
-          </View>
-        )}
-      </View>
-      <Text
-        style={[
-          styles.label,
-          focused && { color: colors.accent, fontWeight: "700" },
-        ]}
-      >
-        {label}
-      </Text>
-    </View>
-  );
 };
 
 const CustomTabBar = ({
@@ -462,22 +423,6 @@ const renderCustomTabBar = (props: Record<string, unknown>) => (
   <CustomTabBar {...(props as unknown as CustomTabBarProps)} />
 );
 
-const createTabBarIcon = (icon: string, label: string) => {
-  const TabBarIcon = ({ focused }: { readonly focused: boolean }) => (
-    <TabIcon icon={icon} label={label} focused={focused} />
-  );
-  TabBarIcon.displayName = `TabBarIcon(${label})`;
-  return TabBarIcon;
-};
-
-const createUnreadTabBarIcon = (icon: string, label: string) => {
-  const TabBarIcon = ({ focused }: { readonly focused: boolean }) => (
-    <TabIcon icon={icon} label={label} focused={focused} badge={useMessages().unreadCount} />
-  );
-  TabBarIcon.displayName = `TabBarIcon(${label})`;
-  return TabBarIcon;
-};
-
 // A render crash in one tab shows a retry in that tab only, instead of
 // replacing the whole app (and an in-progress workout) with the root fallback.
 const withTabBoundary = (
@@ -519,14 +464,14 @@ const FROZEN_WHEN_BLURRED = new Set<MainTabName>(["Settings", "Analytics", "Plan
 const TAB_ICONS = Object.fromEntries(
   DEFAULT_TAB_ORDER.map((name) => [
     name,
-    (name === "Friends" ? createUnreadTabBarIcon : createTabBarIcon)(TAB_META[name].icon, TAB_META[name].label),
+    createTabBarIcon(TAB_META[name].icon, TAB_META[name].label, name === "Friends"),
   ]),
 ) as Record<TabName, ReturnType<typeof createTabBarIcon>>;
 
 const TRAINER_TAB_ICONS = Object.fromEntries(
   Object.entries(TRAINER_TAB_META).map(([name, meta]) => [
     name,
-    (name === "Clients" ? createUnreadTabBarIcon : createTabBarIcon)(meta.icon, meta.label),
+    createTabBarIcon(meta.icon, meta.label, name === "Clients"),
   ]),
 ) as Record<keyof typeof TRAINER_TAB_META, ReturnType<typeof createTabBarIcon>>;
 
@@ -935,41 +880,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 5,
-  },
-  tabIconContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 5,
-    minWidth: 65,
-  },
-  iconWrapper: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 2,
-    backgroundColor: "transparent",
-  },
-  icon: { fontSize: 24 },
-  badge: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 4,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
-  label: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: "#9ca3af",
-    marginTop: 2,
-    letterSpacing: 0.3,
   },
   toggleContainer: {
     position: "absolute",

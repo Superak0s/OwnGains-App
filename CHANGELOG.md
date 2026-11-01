@@ -6,6 +6,15 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Fixed
+
+- The tab bar no longer breaks with a React hook error when the Friends or Clients tab appears or goes away, such as after switching app mode or role.
+
+### Internal
+
+- `npm start` passes the OTA signing key to Metro, since the dev build has the code-signing certificate and rejects unsigned dev manifests.
+- `CLAUDE.md` requires asking before any change to the privacy policy, terms or consent copy, or a bump of the version that asks users to accept again.
+
 ## [1.1.0] - 2026-10-29
 
 ### Added
@@ -134,7 +143,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - `.env.example` lists every variable the app and release scripts read, grouped and shortened.
 - `scripts/release.sh` keeps only the last 20 run logs and ends a failed run's log with the exit code and the step it failed in.
 - `scripts/release.sh` reverts the version bump and changelog stamp again after Ctrl+C (Ctrl+C killed `tee`, and the next write killed bash before the revert), and runs the CI workflow under act in the foreground with its full output, like the server's release script, in place of the parallel local checks it already covers (those still run, one after another, when act is skipped).
-- `scripts/release.sh` also counts `modules/`, `app.config.js` and `google-services.json` toward a clean prebuild, keeps `android/` and `.expo/` in the WSL mirror so the check works there too, and runs an incremental prebuild when nothing changed and its prompt gets no answer.
+- `npm run android` and `scripts/release.sh` share `scripts/prebuild.js`, which runs a clean prebuild only when packages, lockfile resolutions, app config, `plugins/`, `modules/`, assets or `google-services.json` changed since the last clean one (ignoring the release version bump), and otherwise asks, with an incremental prebuild when the prompt gets no answer. The WSL mirror keeps `android/` and `.expo/` so the check works there too, and `npm run prebuild` records the stamp.
 - Line endings are normalized to LF in git via `.gitattributes`, with the normalization commit in `.git-blame-ignore-revs`.
 - Crash reporting for marketplace server errors and failed skin exports or applies, and usage events for skin previews, applies, exports and skin links.
 - Debug builds default to the LAN dev marketplace `http://192.168.10.243:5100`.

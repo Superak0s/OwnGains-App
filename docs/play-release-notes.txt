@@ -1,0 +1,1 @@
+• Fixed a tab bar error when the Friends or Clients tab appeared or went away

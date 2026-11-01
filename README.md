@@ -226,8 +226,8 @@ Requires Node 22 and Python 3 (used by `lint:a11y` and the audit scripts). Nativ
 
 ```bash
 npm install --legacy-peer-deps   # required: peer deps are not resolvable otherwise
-npm start                        # Expo dev server
-npm run android                  # prebuild + run on Android (dev client, not Expo Go)
+npm start                        # Expo dev server (needs secrets/expo-updates/private-key.pem to sign dev manifests)
+npm run android                  # prebuild (clean only when native inputs changed) + run on Android (dev client, not Expo Go)
 npm test                         # jest / jest-expo (always writes coverage/)
 npm run typecheck                # tsc --noEmit
 npm run lint                     # eslint

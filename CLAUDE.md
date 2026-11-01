@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm install --legacy-peer-deps   # required: peer deps are not resolvable otherwise
-npm start                        # Expo dev server
-npm run prebuild                 # expo prebuild --platform android --clean (regenerates android/)
-npm run android                  # prebuild --clean, then expo run:android (no maintained iOS target)
+npm start                        # Expo dev server, signs dev manifests with secrets/expo-updates/private-key.pem (the dev build expects a signature)
+npm run prebuild                 # scripts/prebuild.js --clean (regenerates android/)
+npm run android                  # scripts/prebuild.js (clean only when native inputs changed), then expo run:android (no maintained iOS target). Run `npm start` first: its own Metro cannot sign manifests, and `a` in `npm start` looks for com.owngains.app, not the installed .debug build
 npm test                         # jest / jest-expo, always writes coverage/ (collectCoverage is on)
 npm run test:coverage
 npx jest src/utils/__tests__/exerciseMatching.test.ts   # run a single test file
@@ -41,7 +41,7 @@ Builds are local only. This project does not use EAS. `scripts/sync-eas-version.
 - **Local** (via `local-expo-build`): `npm run build:android:apk` / `:clean` (full prebuild) / `:debug` (debug APK, no prebuild)
 - `scripts/release.sh` is the full release path (version bump → lint/typecheck/test → prebuild → signed APKs + AAB via `local-expo-build` → git push → `gh release create` → Play upload). One script for Windows (Git Bash), WSL and native Linux. `scripts/release.sh --help` lists every flag. What the help leaves out:
   - Under WSL on a `/mnt/c` path it mirrors the project to `$HOME` first because gradle over 9p is unusably slow. Each sync wipes the mirror except `node_modules`, `android/` and `.expo/` (where the prebuild stamp is kept).
-  - It runs a clean prebuild only when packages, `app.json`/`app.config.js`, `plugins/`, `modules/` or `assets/` changed since the last one (hashed into `.expo/prebuild.stamp`). Otherwise it asks, and runs an incremental one after 30 seconds.
+  - Its prebuild goes through `scripts/prebuild.js`, the same one `npm run android` uses: clean only when packages or their lockfile resolutions, `app.json`/`app.config.js`, `plugins/`, `modules/` or `assets/` changed since the last clean one (hashed into `.expo/prebuild.stamp`, minus the version bump). Otherwise it asks, and runs an incremental one after 30 seconds.
   - Before building it refuses to run off `main`, behind `origin/main`, or with `gh` logged out, and with Play upload on it sets `versionCode` above the highest one Play already has. Every run is logged to `release/release-<timestamp>.log` (last 20 kept), ending with a `FAILED ... during [step]` line when it fails.
   - It refuses to run without `SENTRY_AUTH_TOKEN` unless given `--no-sourcemaps`, since crash reports would be unreadable.
   - Before building it stamps `CHANGELOG.md` (`scripts/release-changelog.js`): `[Unreleased]` becomes `[x.y.z] - date` with a fresh empty `[Unreleased]` above, and that section becomes the GitHub release notes.
@@ -56,7 +56,7 @@ Builds are local only. This project does not use EAS. `scripts/sync-eas-version.
 
 OwnGains is an **offline-first** React Native/Expo fitness tracker. It works with zero backend (local device storage, no login) or can optionally sync against [OwnGains-Server](../OwnGains-Server) (Node/Express/MySQL, a sibling repo) for cross-device sync and social/live features.
 
-There is an **official central server** at `https://owngains.superak0s.com` (the app's default server URL), run by the developer on their own hardware in Greece, with `LOCAL_ONLY_FEATURES=tracking,supplements`, so health/tracking data never reaches it. Self-hosted servers stay supported. The legal screens (`PrivacyPolicyScreen`, `TermsOfServiceScreen`, the delete page in `scripts/build-privacy-policy.js`) describe that setup (the controller, what the official server stores, retention, hosting location), so update them when any of it changes, including new server-side storage or logging.
+There is an **official central server** at `https://owngains.superak0s.com` (the app's default server URL), run by the developer on their own hardware in Greece, with `LOCAL_ONLY_FEATURES=tracking,supplements`, so health/tracking data never reaches it. Self-hosted servers stay supported. The legal screens (`PrivacyPolicyScreen`, `TermsOfServiceScreen`, the delete page in `scripts/build-privacy-policy.js`) describe that setup (the controller, what the official server stores, retention, hosting location), so they need an update when any of it changes, including new server-side storage or logging. **Ask the user before** editing the privacy policy, the terms, the consent screen copy or their `docs/*.html` builds, or bumping `TERMS_VERSION` or `DIAGNOSTICS_PROMPT_VERSION`, even when a task or this file calls for it. Say what would change and whether every account gets asked to accept again (a version bump asks on every device), then wait for an explicit okay.
 
 ### App-mode dispatch (the core pattern)
 
