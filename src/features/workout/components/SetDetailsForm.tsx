@@ -22,6 +22,7 @@ import {
   parseReps,
   pickBestPerformanceSummary,
   repsInReserveLabel,
+  stepWeight,
   validateWeightInput,
   type PerformanceEntry,
   type ProgressionSuggestion,
@@ -59,6 +60,8 @@ interface SetDetailsFormProps {
   colors: ThemeColors;
   initial: SetDraft;
   weightUnit: WeightUnit;
+  /** The active machine's arrow step in kg. Undefined uses the unit default. */
+  weightStepKg?: number;
   loadingHistory: boolean;
   /** Past sessions could not be fetched, so "no previous data" would be wrong. */
   historyFailed: boolean;
@@ -83,6 +86,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
   colors,
   initial,
   weightUnit,
+  weightStepKg,
   loadingHistory,
   historyFailed,
   onRetryHistory,
@@ -141,6 +145,10 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
   const hasWeight = weight.trim() !== "";
   const canSave = !isSavingSet && hasValidReps && hasWeight && !weightError;
   const last = performanceHistory?.last;
+  const lastWeight = last ? kgToDisplay(last.weight, weightUnit) : "0";
+  const stepLabel = stepWeight("0", weightUnit, weightStepKg, 1);
+  const nudge = (direction: 1 | -1) =>
+    setWeight(stepWeight(weight, weightUnit, weightStepKg, direction, lastWeight));
 
   return (
     <View style={styles.setFormBody}>
@@ -159,19 +167,39 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
               {weightUnit} × {last.reps}
             </Text>
           )}
-          <TextInput
-            style={styles.input}
-            value={weight}
-            onChangeText={setWeight}
-            keyboardType='decimal-pad'
-            autoFocus
-            returnKeyType='next'
-            submitBehavior='submit'
-            onSubmitEditing={() => repsRef.current?.focus()}
-            placeholder='0 for bodyweight'
-            placeholderTextColor={colors.textMuted}
-            accessibilityLabel={`Weight in ${weightUnit}, leave zero for bodyweight`}
-          />
+          <View style={styles.weightRow}>
+            <TextInput
+              style={[styles.input, styles.weightInput]}
+              value={weight}
+              onChangeText={setWeight}
+              keyboardType='decimal-pad'
+              autoFocus
+              returnKeyType='next'
+              submitBehavior='submit'
+              onSubmitEditing={() => repsRef.current?.focus()}
+              placeholder='0 for bodyweight'
+              placeholderTextColor={colors.textMuted}
+              accessibilityLabel={`Weight in ${weightUnit}, leave zero for bodyweight`}
+            />
+            <View style={styles.weightArrows}>
+              <TouchableOpacity
+                style={styles.weightArrowButton}
+                accessibilityRole='button'
+                accessibilityLabel={`Increase weight by ${stepLabel} ${weightUnit}`}
+                onPress={() => nudge(1)}
+              >
+                <Text style={styles.weightArrowText}>▲</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.weightArrowButton}
+                accessibilityRole='button'
+                accessibilityLabel={`Decrease weight by ${stepLabel} ${weightUnit}`}
+                onPress={() => nudge(-1)}
+              >
+                <Text style={styles.weightArrowText}>▼</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
           {weightError && (
             <Text style={styles.inputError}>{weightError}</Text>
           )}

@@ -404,6 +404,7 @@ function WorkoutScreenBody({
     name: string;
     note: string;
     pin: string;
+    step: string;
   } | null>(null);
   const [editingExercise, setEditingExercise] = useState<{
     index: number;
@@ -626,8 +627,13 @@ function WorkoutScreenBody({
     [exerciseUnits, dayWorkout, weightUnit],
   );
   const selectedUnit = unitFor(selectedSet?.exerciseIndex);
-  const selectedExerciseName =
-    dayWorkout?.exercises?.[selectedSet?.exerciseIndex ?? -1]?.name;
+  const selectedExercise =
+    dayWorkout?.exercises?.[selectedSet?.exerciseIndex ?? -1];
+  const selectedExerciseName = selectedExercise?.name;
+  const selectedMachineName = selectedExercise && activeMachine(selectedExercise);
+  const selectedWeightStep = selectedMachineName
+    ? selectedExercise?.machineMeta?.[selectedMachineName]?.step
+    : undefined;
   const switchSelectedUnit = useCallback(
     (unit: WeightUnit) => {
       if (selectedExerciseName) setExerciseUnit(selectedExerciseName, unit);
@@ -1475,6 +1481,7 @@ Note: ${existing.note}`;
   const settingsExercise = exerciseAt(dayWorkout, settingsFor);
 
   const settingsOpen = settingsFor !== null;
+  const settingsUnit = unitFor(settingsFor ?? undefined);
   useEffect(() => {
     if (!settingsOpen) return;
     let live = true;
@@ -1529,9 +1536,11 @@ Note: ${existing.note}`;
     const swap = (v?: string) => (v === editMachine.key ? name : v);
     const note = editMachine.note.trim();
     const pin = Number.parseInt(editMachine.pin, 10);
+    const stepKg = displayToKg(editMachine.step, settingsUnit);
     const entry: MachineMeta = {};
     if (note) entry.note = note;
     if (Number.isFinite(pin)) entry.pin = pin;
+    if (stepKg > 0) entry.step = stepKg;
     const meta = editMachineMeta(
       settingsExercise?.machineMeta,
       editMachine.key,
@@ -2507,6 +2516,7 @@ Note: ${existing.note}`;
             colors={colors}
             initial={setDraft}
             weightUnit={selectedUnit}
+            weightStepKg={selectedWeightStep}
             loadingHistory={loadingHistory}
             historyFailed={historyFailed}
             onRetryHistory={loadPerformanceHistory}
@@ -2702,6 +2712,9 @@ Note: ${existing.note}`;
             const detail = [
               meta?.pin === undefined ? null : `Pin ${meta.pin}`,
               meta?.note,
+              meta?.step === undefined
+                ? null
+                : `Step ${kgToDisplay(meta.step, settingsUnit)} ${settingsUnit}`,
             ]
               .filter(Boolean)
               .join(" · ");
@@ -2737,6 +2750,10 @@ Note: ${existing.note}`;
                       name,
                       note: meta?.note ?? "",
                       pin: meta?.pin === undefined ? "" : String(meta.pin),
+                      step:
+                        meta?.step === undefined
+                          ? ""
+                          : kgToDisplay(meta.step, settingsUnit),
                     })
                   }
                   style={styles.editButton}
@@ -2790,9 +2807,24 @@ Note: ${existing.note}`;
                 placeholder='Note, e.g., seat 3, wide handles (optional)'
                 placeholderTextColor={colors.textMuted}
                 accessibilityLabel='Machine note, optional'
+                returnKeyType='next'
+              />
+              <TextInput
+                style={styles.input}
+                value={editMachine.step}
+                onChangeText={(v) =>
+                  setEditMachine({ ...editMachine, step: v })
+                }
+                placeholder={`Weight step in ${settingsUnit} (default ${settingsUnit === "kg" ? "2.5" : "5"})`}
+                placeholderTextColor={colors.textMuted}
+                accessibilityLabel={`Weight step in ${settingsUnit}, optional`}
+                keyboardType='decimal-pad'
                 onSubmitEditing={handleSaveMachineEdit}
                 returnKeyType='done'
               />
+              <Text style={styles.machineHint}>
+                How much the ▲ and ▼ arrows change the weight on this machine.
+              </Text>
               <TouchableOpacity
                 style={styles.saveButton}
                 accessibilityRole='button'
@@ -3804,6 +3836,20 @@ export const makeStyles = (colors: ThemeColors) => {
       borderColor: colors.surfaceBorder,
     },
     notesInput: { minHeight: 80, textAlignVertical: "top" },
+    weightRow: { flexDirection: "row", gap: 8 },
+    weightInput: { flex: 1 },
+    weightArrows: { gap: 4 },
+    weightArrowButton: {
+      flex: 1,
+      width: 56,
+      borderRadius: 10,
+      borderWidth: 2,
+      borderColor: colors.surfaceBorder,
+      backgroundColor: colors.badgeBackground,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    weightArrowText: { fontSize: 18, color: colors.textPrimary },
     assistedInfoBox: {
       backgroundColor: colors.infoLight,
       padding: 12,

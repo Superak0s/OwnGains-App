@@ -13,6 +13,7 @@ import {
   pickBestPerformanceSummary,
   getPartnerStatusText,
   editMachineMeta,
+  stepWeight,
   resolveExerciseMuscles,
   exercisesForMuscle,
   resolveExerciseUnit,
@@ -509,6 +510,34 @@ describe("editMachineMeta", () => {
     expect(
       editMachineMeta(both, "Machine A", "Machine A", { note: "x" }),
     ).toEqual({ "Machine A": { note: "x" }, Smith: { pin: 2 } });
+  });
+
+  it("keeps an entry that only has a step", () => {
+    expect(editMachineMeta({}, "Smith", "Smith", { step: 1.25 })).toEqual({
+      Smith: { step: 1.25 },
+    });
+  });
+});
+
+describe("stepWeight", () => {
+  it("moves by the machine's step", () => {
+    expect(stepWeight("60", "kg", 1.25, 1)).toBe("61.25");
+    expect(stepWeight("60", "kg", 5, -1)).toBe("55");
+  });
+
+  it("falls back to 2.5 kg or 5 lbs with no step set", () => {
+    expect(stepWeight("60", "kg", undefined, 1)).toBe("62.5");
+    expect(stepWeight("100", "lbs", undefined, -1)).toBe("95");
+  });
+
+  it("keeps a step entered in lbs round when shown in lbs", () => {
+    expect(stepWeight("100", "lbs", 5 * 0.45359237, 1)).toBe("105");
+  });
+
+  it("starts an empty field from last time and never goes below 0", () => {
+    expect(stepWeight("", "kg", 2.5, 1, "57.5")).toBe("60");
+    expect(stepWeight("", "kg", 2.5, 1)).toBe("2.5");
+    expect(stepWeight("1", "kg", 2.5, -1)).toBe("0");
   });
 });
 

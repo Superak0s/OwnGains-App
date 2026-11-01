@@ -95,8 +95,31 @@ export function editMachineMeta(
 ): Record<string, MachineMeta> {
   const next = { ...meta };
   delete next[from];
-  if (entry.note || entry.pin !== undefined) next[to] = entry;
+  if (entry.note || entry.pin !== undefined || entry.step !== undefined)
+    next[to] = entry;
   return next;
+}
+
+/** Arrow step when a machine has none set, in the display unit. */
+const DEFAULT_STEP = { kg: 2.5, lbs: 5 } as const;
+
+/**
+ * The weight one arrow press away, as display text. An empty or unreadable
+ * weight starts from `from` (last time's weight), and the result never goes
+ * below 0.
+ * @param stepKg - The machine's step in kg, or undefined for the unit default.
+ */
+export function stepWeight(
+  weight: string,
+  unit: "kg" | "lbs",
+  stepKg: number | undefined,
+  direction: 1 | -1,
+  from = "0",
+): string {
+  const step = stepKg ? Number(kgToDisplay(stepKg, unit)) : DEFAULT_STEP[unit];
+  const current = parseDecimal(weight) ?? parseDecimal(from) ?? 0;
+  const next = Math.max(0, current + direction * step);
+  return String(Math.round(next * 100) / 100);
 }
 
 /**

@@ -49,6 +49,8 @@ export interface Exercise {
 export interface MachineMeta {
   note?: string;
   pin?: number;
+  /** How far the set form's up/down arrows move the weight, in kg. */
+  step?: number;
 }
 
 export interface SplitWorkout {
