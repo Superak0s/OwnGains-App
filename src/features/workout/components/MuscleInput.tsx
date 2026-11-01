@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { useTheme } from "@shared/context/ThemeContext";
 import { checkForTypo } from "@utils/exerciseMatching";
 import type { makeStyles } from "../WorkoutScreen";

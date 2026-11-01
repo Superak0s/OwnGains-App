@@ -12,15 +12,14 @@ import { trackScreenView, captureException, reportAndReturn, trackFeature } from
 import { trainerApi, type TrainerRequest } from "@features/trainer/services";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  TextInput,
   type TextInputInstance,
 } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   CameraView,

@@ -1,7 +1,8 @@
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { TrackingStyles } from "../styles";
 import React, { useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Text } from "@shared/components/Text";
 import ProgressChart from "@shared/components/ProgressChart";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import { CycleSettingsWidget } from "../tabs/MenstrualTab";

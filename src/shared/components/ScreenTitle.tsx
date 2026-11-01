@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import {
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useTheme, type ThemeColors } from "../context/ThemeContext";
 
 interface ScreenTitleProps {

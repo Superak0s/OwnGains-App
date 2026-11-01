@@ -1,13 +1,13 @@
 import React, { useMemo, useRef } from "react";
 import {
   View,
-  Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
   Linking,
   type ScrollViewInstance,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { useAlert } from "@shared/components/CustomAlert";

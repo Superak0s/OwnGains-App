@@ -4,7 +4,8 @@
 // widget plus the modals that widget opens.
 
 import React from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useTheme } from "@shared/context/ThemeContext";
 import PlanScreen from "@features/plan/PlanScreen";
 import AnalyticsScreen from "@features/analytics/AnalyticsScreen";

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { View } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { Chip, useUi } from "@shared/components/ui";
 import makeStyles from "../styles";
 import {

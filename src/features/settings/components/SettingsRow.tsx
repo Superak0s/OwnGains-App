@@ -3,13 +3,13 @@ import {
   ActivityIndicator,
   StyleSheet,
   Switch,
-  Text,
   TouchableOpacity,
   View,
   type AccessibilityRole,
   type AccessibilityState,
   type ViewInstance,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 
 interface SettingsRowProps {

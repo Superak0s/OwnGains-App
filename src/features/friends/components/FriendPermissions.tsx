@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Text } from "react-native";
+import { Text } from "@shared/components/Text";
 import { trackingRelayApi } from "@features/trainer/services";
 import { safetyCode } from "@features/trainer/utils/trackingCrypto";
 import { reportAndReturn } from "@shared/services/crashReporting";

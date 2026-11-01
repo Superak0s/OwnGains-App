@@ -31,6 +31,7 @@ jest.mock("@shared/context/ThemeContext", () => {
       colors: actual.LIGHT_COLORS,
       theme: { id: "previewed", name: "Theirs", colors: actual.DARK_COLORS },
       savedTheme: { id: "x", name: "Mine", colors: actual.LIGHT_COLORS },
+      typography: { font: "default", scale: 1 },
     }),
   }
 })

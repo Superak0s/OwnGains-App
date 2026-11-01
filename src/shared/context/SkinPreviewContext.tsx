@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { useTheme, type AppTheme } from "./ThemeContext"
 import { saveToStorage } from "@shared/services/storage"
 import type { WidgetInstance } from "@shared/types"
+import type { Typography } from "@shared/components/Text"
 
 /** Widget layouts keyed by the board's storage key. */
 export type PreviewBoards = Record<string, WidgetInstance[]>
@@ -9,6 +10,7 @@ export type PreviewBoards = Record<string, WidgetInstance[]>
 export interface SkinPreview {
   name: string
   theme: AppTheme | null
+  typography?: Typography | null
   boards: PreviewBoards
 }
 
@@ -42,7 +44,7 @@ const inert: SkinPreviewValue = {
 const SkinPreviewContext = createContext<SkinPreviewValue>(inert)
 
 export function SkinPreviewProvider({ children }: { readonly children: ReactNode }) {
-  const { setPreviewTheme, saveCustomTheme } = useTheme()
+  const { setPreviewTheme, saveCustomTheme, setPreviewTypography, setTypography } = useTheme()
   const [preview, setPreview] = useState<SkinPreview | null>(null)
   const [skippedWidgets, setSkippedWidgets] = useState(false)
   const [appliedVersion, setAppliedVersion] = useState(0)
@@ -52,15 +54,17 @@ export function SkinPreviewProvider({ children }: { readonly children: ReactNode
       setSkippedWidgets(false)
       setPreview(next)
       setPreviewTheme(next.theme)
+      setPreviewTypography(next.typography ?? null)
     },
-    [setPreviewTheme],
+    [setPreviewTheme, setPreviewTypography],
   )
 
   const discard = useCallback(() => {
     setPreview(null)
     setSkippedWidgets(false)
     setPreviewTheme(null)
-  }, [setPreviewTheme])
+    setPreviewTypography(null)
+  }, [setPreviewTheme, setPreviewTypography])
 
   const apply = useCallback(
     async (userId: string | null) => {
@@ -69,10 +73,11 @@ export function SkinPreviewProvider({ children }: { readonly children: ReactNode
         if (!(await saveToStorage(key, list, userId))) throw new Error("Couldn't save the skin's widget layouts")
       if (preview.theme)
         await saveCustomTheme({ ...preview.theme, id: `skin-${Date.now()}`, name: preview.name }, { select: true })
+      if (preview.typography) await setTypography(preview.typography)
       discard()
       setAppliedVersion((v) => v + 1)
     },
-    [preview, saveCustomTheme, discard],
+    [preview, saveCustomTheme, setTypography, discard],
   )
 
   const noteSkipped = useCallback(() => setSkippedWidgets(true), [])

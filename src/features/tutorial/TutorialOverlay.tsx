@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, Mask, Rect } from "react-native-svg";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";

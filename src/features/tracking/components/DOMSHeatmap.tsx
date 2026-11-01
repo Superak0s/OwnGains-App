@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   Dimensions,
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useTheme } from "@shared/context/ThemeContext";
 import { useTrackingApis } from "../TrackingApisContext";
 import { DOMSStats, MUSCLE_GROUP_LABELS } from "../types/muscleRecovery";

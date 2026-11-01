@@ -2,11 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from "expo-camera";
 import ModalSheet from "@shared/components/ModalSheet";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";

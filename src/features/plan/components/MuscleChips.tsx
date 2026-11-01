@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, TouchableOpacity, StyleSheet } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { muscleGroups } from "@utils/exerciseDb";
 

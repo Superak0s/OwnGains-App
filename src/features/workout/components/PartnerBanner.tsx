@@ -2,11 +2,11 @@ import React, { useEffect, useRef } from "react";
 import {
   AccessibilityInfo,
   View,
-  Text,
   TouchableOpacity,
   Animated,
   StyleSheet,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { PartnerProgress } from "@shared/context/hooks/useJointSession";

@@ -9,14 +9,13 @@ import React, {
 import ScreenTitle from "@shared/components/ScreenTitle";
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
-  TextInput,
   LayoutAnimation,
 } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   useWorkoutPick,

@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 
 type TrainerLoggedBadgeProps = {

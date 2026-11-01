@@ -1,11 +1,10 @@
 import { useState, useMemo, useRef } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
 } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import ModalSheet from "@shared/components/ModalSheet";
 import { useTheme } from "@shared/context/ThemeContext";
 import { parseDecimal } from "@utils/format";

@@ -2,16 +2,15 @@ import React, { useState, useEffect, useMemo } from "react";
 import ScreenTitle from "@shared/components/ScreenTitle";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  TextInput,
   RefreshControl,
   Dimensions,
 } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import ProgressChart, {
   type ChartMetric,

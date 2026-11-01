@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import type { ClientSummary } from "../types";
 import { weeklyTarget } from "../utils/roster";

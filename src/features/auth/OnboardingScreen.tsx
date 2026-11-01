@@ -4,12 +4,12 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
   ActivityIndicator,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";

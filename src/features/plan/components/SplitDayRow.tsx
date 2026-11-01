@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, TouchableOpacity, TextInput } from "react-native";
+import { View, TouchableOpacity } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import { SuggestionsBox } from "@shared/components/SuggestionsBox";
 import type { CanonicalExercise } from "@utils/exerciseDb";

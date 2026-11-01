@@ -1,5 +1,6 @@
 import React from "react"
-import { StyleSheet, Text, TouchableOpacity, View, type StyleProp, type ViewStyle } from "react-native"
+import { StyleSheet, TouchableOpacity, View, type StyleProp, type ViewStyle } from "react-native"
+import { Text } from "@shared/components/Text"
 import { radius, space, useUi } from "@shared/components/ui"
 import type { ThemeColors } from "@shared/context/ThemeContext"
 import type { SkinSummary } from "../services/marketplace"
@@ -7,8 +8,10 @@ import type { SkinSummary } from "../services/marketplace"
 export const ratingText = (r: SkinSummary["rating"]) =>
   r.average === null ? "No ratings yet" : `${r.average.toFixed(1)} ★ (${r.count})`
 
-export const skinContents = (hasTheme: boolean, hasBoards: boolean) =>
-  [hasTheme && "Theme", hasBoards && "Widget layouts"].filter(Boolean).join(" and ")
+export function skinContents(hasTheme: boolean, hasBoards: boolean, hasFont = false): string {
+  const parts = [hasTheme && "Theme", hasFont && "Font", hasBoards && "Widget layouts"].filter((p) => p !== false)
+  return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : (parts[0] ?? "")
+}
 
 /** The same four colors, in the same order, as the marketplace's `swatch`. */
 export const swatchOf = (theme: ThemeColors | null) =>

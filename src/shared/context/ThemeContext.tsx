@@ -18,6 +18,12 @@ import {
 import themesData from "./themes.json"
 import { isDarkColor } from "@utils/color"
 import { captureException, metric, trackFeature } from "@shared/services/crashReporting"
+import {
+  DEFAULT_TYPOGRAPHY,
+  TypographyContext,
+  normalizeTypography,
+  type Typography,
+} from "@shared/components/Text"
 
 export {
   isDarkColor,
@@ -289,6 +295,11 @@ interface ThemeContextValue {
 
   /** Shown instead of the active theme without being saved, while a skin is previewed. */
   setPreviewTheme: (theme: AppTheme | null) => void
+
+  /** The user's own font and text size, ignoring any skin preview. */
+  typography: Typography
+  setTypography: (typography: Typography) => Promise<void>
+  setPreviewTypography: (typography: Typography | null) => void
 }
 
 
@@ -299,6 +310,7 @@ interface PersistedState {
   customThemes: AppTheme[]
   chartColorOverride?: string | null
   chartColorDarkOverride?: string | null
+  typography?: Typography
 }
 
 const DEFAULT_STATE: PersistedState = {
@@ -306,6 +318,7 @@ const DEFAULT_STATE: PersistedState = {
   customThemes: [],
   chartColorOverride: null,
   chartColorDarkOverride: null,
+  typography: DEFAULT_TYPOGRAPHY,
 }
 
 async function loadState(): Promise<PersistedState> {
@@ -319,6 +332,7 @@ async function loadState(): Promise<PersistedState> {
       customThemes: Array.isArray(parsed.customThemes)
         ? parsed.customThemes
         : [],
+      typography: normalizeTypography(parsed.typography),
     }
   } catch (error) {
     // Falling back to defaults silently discards the user's custom themes.
@@ -350,6 +364,8 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
   >(null)
   const [loaded, setLoaded] = useState(false)
   const [previewTheme, setPreviewTheme] = useState<AppTheme | null>(null)
+  const [typography, setTypographyState] = useState<Typography>(DEFAULT_TYPOGRAPHY)
+  const [previewTypography, setPreviewTypography] = useState<Typography | null>(null)
 
   useEffect(() => {
     loadState().then(
@@ -358,11 +374,13 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
         customThemes: custom,
         chartColorOverride: co,
         chartColorDarkOverride: cod,
+        typography: type,
       }) => {
         setActiveThemeId(id)
         setCustomThemes(custom)
         setChartColorOverride(co ?? null)
         setChartColorDarkOverride(cod ?? null)
+        setTypographyState(type ?? DEFAULT_TYPOGRAPHY)
         setLoaded(true)
       },
     )
@@ -398,7 +416,7 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
   // The record is a ref so back-to-back writes from one render, like saving a
   // theme and then selecting it, each build on the previous write.
   const persistedRef = useRef<PersistedState>(DEFAULT_STATE)
-  persistedRef.current = { activeThemeId, customThemes, chartColorOverride, chartColorDarkOverride }
+  persistedRef.current = { activeThemeId, customThemes, chartColorOverride, chartColorDarkOverride, typography }
   const persist = useCallback((next: Partial<PersistedState>) => {
     persistedRef.current = { ...persistedRef.current, ...next }
     return saveState(persistedRef.current)
@@ -412,6 +430,14 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
         chartColorOverride: color,
         chartColorDarkOverride: dark,
       })
+    },
+    [persist],
+  )
+
+  const setTypography = useCallback(
+    async (next: Typography) => {
+      setTypographyState(next)
+      await persist({ typography: next })
     },
     [persist],
   )
@@ -468,6 +494,9 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
       resolvedChartColor,
       resolvedChartColorDark,
       setPreviewTheme,
+      typography,
+      setTypography,
+      setPreviewTypography,
     }),
     [
       theme,
@@ -484,6 +513,8 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
       applyChartColorOverride,
       resolvedChartColor,
       resolvedChartColorDark,
+      typography,
+      setTypography,
     ],
   )
 
@@ -503,7 +534,9 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
   }
 
   return (
-    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+    <ThemeContext.Provider value={value}>
+      <TypographyContext.Provider value={previewTypography ?? typography}>{children}</TypographyContext.Provider>
+    </ThemeContext.Provider>
   )
 }
 

@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { TouchableOpacity, Text, StyleSheet } from "react-native";
+import { TouchableOpacity, StyleSheet } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useIsFocused } from "@react-navigation/native";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { tutorialAnchor } from "@features/tutorial/anchors";

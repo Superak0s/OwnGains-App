@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, TextInput, ScrollView } from "react-native";
+import { View, ScrollView } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { useTheme } from "@shared/context/ThemeContext";
 import { useTrackingApis } from "../TrackingApisContext";
 import { MuscleGroup, MUSCLE_GROUP_LABELS } from "../types/muscleRecovery";

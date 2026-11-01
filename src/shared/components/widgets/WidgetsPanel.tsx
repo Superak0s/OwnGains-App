@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react"
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native"
+import { View, TouchableOpacity, StyleSheet } from "react-native"
+import { Text, TextInput } from "@shared/components/Text"
 import { useTheme } from "@shared/context/ThemeContext"
 import { useAlert } from "@shared/components/CustomAlert"
 import ModalSheet from "@shared/components/ModalSheet"

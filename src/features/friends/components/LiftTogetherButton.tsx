@@ -1,5 +1,6 @@
 import React from "react";
-import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from "react-native";
+import { TouchableOpacity, ActivityIndicator, StyleSheet } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 

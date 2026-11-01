@@ -2,10 +2,10 @@ import React, { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import Svg, { Path } from "react-native-svg";
 import { useAuth } from "@shared/context/AuthContext";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";

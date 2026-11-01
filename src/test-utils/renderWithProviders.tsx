@@ -211,6 +211,9 @@ export const themeModule = (() => {
     setChartColorOverride: resolved(undefined),
     resolvedChartColor: colors.accent,
     resolvedChartColorDark: colors.accent,
+    typography: { font: "default", scale: 1 },
+    setTypography: resolved(undefined),
+    setPreviewTypography: () => {},
   }
   return {
     ...actual,

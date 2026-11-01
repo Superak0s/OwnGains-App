@@ -2,14 +2,14 @@ import { captureException } from "@shared/services/crashReporting"
 import { Fragment, useState } from "react"
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  TextInput,
   Platform,
   ActivityIndicator,
 } from "react-native"
+import { FONTS, TEXT_SCALES, Text, TextInput, type FontId } from "@shared/components/Text"
+import { Chip } from "./ui"
 import {
   useTheme,
   type AppTheme,
@@ -470,6 +470,8 @@ export default function ThemeEditorModal({
     setTheme,
     saveCustomTheme,
     deleteCustomTheme,
+    typography,
+    setTypography,
   } = useTheme()
   const { alert, AlertComponent } = useAlert()
 
@@ -703,6 +705,32 @@ export default function ThemeEditorModal({
       >
         {tab === "browse" && (
           <View>
+            <Text style={[s.sectionHeader, { color: colors.textSecondary }]}>
+              FONT
+            </Text>
+            <View style={s.chipRow}>
+              {(Object.keys(FONTS) as FontId[]).map((id) => (
+                <Chip
+                  key={id}
+                  label={FONTS[id].label}
+                  selected={typography.font === id}
+                  onPress={() => void setTypography({ ...typography, font: id })}
+                />
+              ))}
+            </View>
+            <Text style={[s.sectionHeader, { color: colors.textSecondary }]}>
+              TEXT SIZE
+            </Text>
+            <View style={s.chipRow}>
+              {TEXT_SCALES.map((k) => (
+                <Chip
+                  key={k}
+                  label={`${Math.round(k * 100)}%`}
+                  selected={typography.scale === k}
+                  onPress={() => void setTypography({ ...typography, scale: k })}
+                />
+              ))}
+            </View>
             <Text style={[s.sectionHeader, { color: colors.textSecondary }]}>
               BUILT-IN
             </Text>
@@ -1104,6 +1132,7 @@ const s = StyleSheet.create({
   textArea: { minHeight: 60, textAlignVertical: "top" },
 
   presetRow: { flexDirection: "row", gap: 12 },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
   presetChip: {
     flex: 1,
     borderWidth: 2,

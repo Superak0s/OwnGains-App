@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  TextInput,
   Modal,
 } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import PagerView from "react-native-pager-view";
 import { useTheme } from "@shared/context/ThemeContext";
 import { useAuthToken } from "@shared/context/AuthContext";

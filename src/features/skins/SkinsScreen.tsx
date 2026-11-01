@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react"
-import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native"
+import { FlatList, StyleSheet, TouchableOpacity, View } from "react-native"
+import { Text, TextInput } from "@shared/components/Text"
 import { SafeAreaView } from "react-native-safe-area-context"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import * as DocumentPicker from "expo-document-picker"
@@ -58,7 +59,7 @@ interface SheetState {
 
 export default function SkinsScreen({ navigation, route }: Props): React.ReactElement {
   const { colors } = useUi()
-  const { savedTheme } = useTheme()
+  const { savedTheme, typography } = useTheme()
   const { user } = useAuth()
   const userId = user?.id == null ? null : String(user.id)
   const { alert, AlertComponent } = useAlert()
@@ -154,7 +155,7 @@ export default function SkinsScreen({ navigation, route }: Props): React.ReactEl
 
   const exportFile = async () => {
     try {
-      const doc = buildSkin(savedTheme, await storedBoards(userId))
+      const doc = buildSkin(savedTheme, await storedBoards(userId), typography)
       const result = await writeJsonExport("owngains-skin", doc)
       trackFeature("skins", "export", { destination: result.destination })
       alert("Skin exported", `Your skin was ${DESTINATION_TEXT[result.destination]}.`, [{ text: "OK" }], "success")

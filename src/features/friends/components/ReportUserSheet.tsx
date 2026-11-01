@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import ModalSheet from "@shared/components/ModalSheet";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { userFacingError } from "@shared/services/apiError";

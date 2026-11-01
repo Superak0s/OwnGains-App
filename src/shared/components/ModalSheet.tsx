@@ -8,7 +8,6 @@ import {
 } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   Modal,
   TouchableOpacity,
@@ -21,6 +20,7 @@ import {
   Dimensions,
   Alert,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { captureException } from "@shared/services/crashReporting";
 import { useTheme } from "../context/ThemeContext";

@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity } from "react-native";
+import { ScrollView, StyleSheet, TouchableOpacity } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { TUTORIAL } from "./chapters";

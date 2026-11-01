@@ -1,11 +1,11 @@
 import React from "react";
 import {
   View,
-  Text,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { MuscleTags } from "./MuscleTags";
 
 interface ProgramExerciseLike {

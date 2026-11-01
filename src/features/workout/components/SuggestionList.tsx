@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity } from "react-native";
+import { Text } from "@shared/components/Text";
 import type { makeStyles } from "../WorkoutScreen";
 
 const PAGE_SIZE = 3;

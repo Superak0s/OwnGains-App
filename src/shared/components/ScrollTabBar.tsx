@@ -3,12 +3,12 @@ import { useIsFocused } from "@react-navigation/native"
 import {
   ScrollView,
   TouchableOpacity,
-  Text,
   View,
   StyleSheet,
   type StyleProp,
   type ViewStyle,
 } from "react-native"
+import { Text } from "@shared/components/Text"
 import { readJSON, writeJSON } from "@shared/services/offlineHelpers"
 import { useTheme } from "../context/ThemeContext"
 import type { ThemeColors } from "../context/ThemeContext"

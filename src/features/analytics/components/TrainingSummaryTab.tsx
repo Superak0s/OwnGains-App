@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { FillBar } from "@shared/components/FillBar";
 import ModalSheet from "@shared/components/ModalSheet";
 import { EmptyState } from "@shared/components/ui";

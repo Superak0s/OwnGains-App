@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   AppState,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useTheme } from "../context/ThemeContext";
 import { startOfToday, toDateString } from "@utils/format";
 import type { ThemeColors } from "@shared/context/ThemeContext"

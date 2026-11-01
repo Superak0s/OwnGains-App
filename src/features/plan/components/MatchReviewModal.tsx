@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import { View, TouchableOpacity, StyleSheet } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import ModalSheet from "@shared/components/ModalSheet";
 import { SuggestionsBox } from "@shared/components/SuggestionsBox";
 import { useTheme } from "@shared/context/ThemeContext";

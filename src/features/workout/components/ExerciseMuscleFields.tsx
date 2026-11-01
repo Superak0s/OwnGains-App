@@ -1,13 +1,13 @@
 import React from "react";
 import {
   View,
-  Text,
   TouchableOpacity,
   ScrollView,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { Chip, useUi } from "@shared/components/ui";
 import { muscleLabel, parseMuscleList } from "@utils/exerciseDb";
 import { BROWSE_MUSCLES, muscleDisplayName } from "../utils";

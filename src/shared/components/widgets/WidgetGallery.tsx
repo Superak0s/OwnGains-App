@@ -2,12 +2,11 @@ import React, { useEffect, useMemo, useState } from "react"
 import {
   Modal,
   View,
-  Text,
   TouchableOpacity,
-  TextInput,
   ScrollView,
   StyleSheet,
 } from "react-native"
+import { Text, TextInput } from "@shared/components/Text"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTheme } from "@shared/context/ThemeContext"
 import { useAlert } from "@shared/components/CustomAlert"

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { View, Text, StyleSheet, Modal } from "react-native";
+import { View, StyleSheet, Modal } from "react-native";
+import { Text } from "@shared/components/Text";
 import type { WidgetDefinition } from "@shared/types";
 import { toDefaultWidgets } from "@shared/types";
 import { useTheme } from "@shared/context/ThemeContext";

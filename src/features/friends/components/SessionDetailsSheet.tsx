@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@shared/components/Text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ModalSheet from "@shared/components/ModalSheet";
 import { SessionDetails } from "@shared/components/SessionDetails";

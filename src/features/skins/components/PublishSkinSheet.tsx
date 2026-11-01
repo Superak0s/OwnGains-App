@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react"
-import { Share, StyleSheet, Switch, Text, TextInput, View } from "react-native"
+import { Share, StyleSheet, Switch, View } from "react-native"
+import { Text, TextInput, isDefaultTypography } from "@shared/components/Text"
 import ModalSheet from "@shared/components/ModalSheet"
 import { Button, radius, space, useUi } from "@shared/components/ui"
 import { useAuth } from "@shared/context/AuthContext"
@@ -21,12 +22,13 @@ interface Props {
 
 export default function PublishSkinSheet({ visible, onClose, existing, onPublished }: Props): React.ReactElement {
   const { colors } = useUi()
-  const { savedTheme } = useTheme()
+  const { savedTheme, typography } = useTheme()
   const { user } = useAuth()
   const { canSignIn, signInLine } = useMarketplaceAccount(visible)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [withTheme, setWithTheme] = useState(false)
+  const [withFont, setWithFont] = useState(false)
   const [available, setAvailable] = useState<Partial<Record<SkinBoardId, WidgetInstance[]>>>({})
   const [chosen, setChosen] = useState<Set<SkinBoardId>>(new Set())
   const [busy, setBusy] = useState(false)
@@ -38,6 +40,7 @@ export default function PublishSkinSheet({ visible, onClose, existing, onPublish
     setName(existing?.name ?? "")
     setDescription(existing?.description ?? "")
     setWithTheme(false)
+    setWithFont(false)
     setChosen(new Set())
     setError(null)
     setLink(null)
@@ -52,14 +55,15 @@ export default function PublishSkinSheet({ visible, onClose, existing, onPublish
       return next
     })
 
-  const ready = name.trim().length > 0 && (withTheme || chosen.size > 0) && !busy
+  const hasFont = !isDefaultTypography(typography)
+  const ready = name.trim().length > 0 && (withTheme || (withFont && hasFont) || chosen.size > 0) && !busy
 
   const publish = async () => {
     setBusy(true)
     setError(null)
     try {
       const boards = Object.fromEntries([...chosen].map((id) => [id, available[id] ?? []]))
-      const body = { name: name.trim(), description: description.trim(), skin: buildSkin(withTheme ? savedTheme : null, boards) }
+      const body = { name: name.trim(), description: description.trim(), skin: buildSkin(withTheme ? savedTheme : null, boards, withFont ? typography : null) }
       const res = existing ? await updateSkin(existing.id, body) : await publishSkin(body)
       setLink(res.url)
       onPublished?.()
@@ -109,6 +113,7 @@ export default function PublishSkinSheet({ visible, onClose, existing, onPublish
             style={[styles.input, styles.multiline, { color: colors.textPrimary, borderColor: colors.surfaceBorder }]}
           />
           <Row label='Include my theme' value={withTheme} onChange={setWithTheme} />
+          {hasFont && <Row label='Include my font & text size' value={withFont} onChange={setWithFont} />}
           {boardIds.length > 0 && <Text style={{ color: colors.textMuted }}>Widget layouts</Text>}
           {boardIds.map((id) => (
             <Row key={id} label={SKIN_BOARDS[id].label} value={chosen.has(id)} onChange={(on) => toggle(id, on)} />

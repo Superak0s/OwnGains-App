@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { BackHandler, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { BackHandler, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@shared/components/Text";
 import { FALLBACK_COLORS } from "@shared/context/ThemeContext";
 import { captureException } from "@shared/services/crashReporting";
 import {

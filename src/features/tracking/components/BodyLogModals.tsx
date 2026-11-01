@@ -1,5 +1,6 @@
 import React, { useEffect, useEffectEvent, useState } from "react";
-import { Switch, Text, TextInput, View } from "react-native";
+import { Switch, View } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { useTheme } from "@shared/context/ThemeContext";
 import ModalSheet from "@shared/components/ModalSheet";
 import { useAlert } from "@shared/components/CustomAlert";

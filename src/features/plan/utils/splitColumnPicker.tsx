@@ -2,11 +2,11 @@ import React, { useMemo } from "react"
 import {
   Modal,
   View,
-  Text,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
 } from "react-native"
+import { Text } from "@shared/components/Text"
 import type { ThemeColors } from "@shared/context/ThemeContext"
 import type { SplitColumnCandidate } from "@utils/clientWorkoutParser"
 

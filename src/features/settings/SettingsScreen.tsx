@@ -9,16 +9,15 @@ import ScreenTitle from "@shared/components/ScreenTitle";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   ActivityIndicator,
   Share,
   Linking,
   BackHandler,
 } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { Image } from "expo-image";
 import Constants from "expo-constants";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -2146,7 +2145,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
     <SettingsGroup>
       <SettingsRow
         label="Theme"
-        description="Customize app colors and appearance"
+        description="Colors, font and text size"
         onPress={() => setShowThemeEditor(true)}
         accessibilityLabel="Edit the app theme"
       />

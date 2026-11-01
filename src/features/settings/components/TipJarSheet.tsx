@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import {
   ErrorCode,
   finishTransaction,

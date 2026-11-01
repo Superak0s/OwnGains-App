@@ -1,5 +1,6 @@
 import { useState, type ComponentProps } from "react";
-import { Text, TextInput, type TextStyle } from "react-native";
+import { type TextStyle } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { useTheme } from "@shared/context/ThemeContext";
 import ModalSheet from "@shared/components/ModalSheet";
 import {

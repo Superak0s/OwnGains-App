@@ -2,10 +2,10 @@ import { useMemo, useState } from "react";
 import {
   Pressable,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useTheme, type ThemeColors } from "../context/ThemeContext";
 import { useWidgetSize } from "./widgets/widgetSize";
 import ChartView from "./chart/ChartView";

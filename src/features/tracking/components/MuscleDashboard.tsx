@@ -1,14 +1,13 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-  TextInput,
   Alert,
   Dimensions,
 } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { ProgressPhotoThumb } from "./ProgressPhotoThumb";
 import { useTheme } from "@shared/context/ThemeContext";
 import { useAuthToken } from "@shared/context/AuthContext";

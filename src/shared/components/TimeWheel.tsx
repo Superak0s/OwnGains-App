@@ -2,13 +2,13 @@ import React, { useEffect, useMemo, useRef } from "react";
 import {
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type ScrollViewInstance,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 
 const ITEM = 40;

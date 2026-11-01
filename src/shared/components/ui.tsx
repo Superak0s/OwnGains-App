@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { userFacingError } from "@shared/services/apiError";
 import { withAlpha } from "@utils/color";

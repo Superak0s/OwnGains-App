@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { View, ScrollView, TouchableOpacity } from "react-native";
+import { Text } from "@shared/components/Text";
 import { formatDate } from "@utils/format";
 import { EmptyState } from "@shared/components/ui";
 import {

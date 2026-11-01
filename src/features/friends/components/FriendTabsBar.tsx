@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity } from "react-native";
+import { Text } from "@shared/components/Text";
 import type { Friend, PermissionType } from "../services";
 import type { ReceivedProgram } from "../types";
 import { friendTabLocks } from "../utils";

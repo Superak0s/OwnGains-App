@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, TouchableOpacity, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { View, TouchableOpacity, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { Text } from "@shared/components/Text";
 import { isDarkColor } from "@utils/color";
 
 interface IntensityPickerStyles {

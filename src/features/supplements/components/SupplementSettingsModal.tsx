@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Switch,
   Platform,
   ActivityIndicator,
   Linking,
 } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import {
   getStorageItem,
   setStorageItem,

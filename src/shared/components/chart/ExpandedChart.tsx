@@ -3,13 +3,12 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
   useWindowDimensions,
   type ViewInstance,
 } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Gesture,

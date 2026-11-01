@@ -1,4 +1,6 @@
-• New Towel widget for Home: add your towels with a photo, pick how many workouts each one lasts before a wash, and see when it's time to wash it
-• Redesigned Skins screen: browse skins as previews drawn in their own colors, and find import, export and sorting behind their own buttons
-• Adding a machine suggests names you already use, one tap each, and pools best stats across all machines
+• New Towel widget for Home: add towels with a photo, set how many workouts each lasts, and see when to wash it
+• Pick a font and text size under Appearance, and share them in skins
+• Redesigned Skins screen with previews in each skin's colors
+• Adding a machine suggests names you already use and pools best stats
+• The set Effort field is now called Reps in reserve (RIR)
 • Fixed a tab bar error when the Friends or Clients tab appeared or went away

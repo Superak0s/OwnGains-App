@@ -1,12 +1,12 @@
 import React from "react";
 import {
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { Image } from "expo-image";
 import { useTheme } from "@shared/context/ThemeContext";
 import { useFriendPhoto } from "@features/friends/friendPhoto";

@@ -3,8 +3,6 @@ import {
   ActivityIndicator,
   ScrollView,
   Switch,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
   type StyleProp,
@@ -12,6 +10,7 @@ import {
   type ViewStyle,
   type TextInputInstance,
 } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import { Chip, useUi } from "@shared/components/ui";
 import { formatDate, parseDecimal } from "@utils/format";
@@ -375,7 +374,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Effort (optional)</Text>
+          <Text style={styles.inputLabel}>Reps in reserve (RIR, optional)</Text>
           <View style={ui.chipRow} accessibilityRole='radiogroup'>
             {RIR_SCALE.map((value) => {
               const selected = rir === value;
@@ -393,7 +392,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
           </View>
           <Text style={styles.inputHint}>
             {rir === null
-              ? "Reps in reserve: how many more could you have done?"
+              ? "How many more reps could you have done?"
               : repsInReserveLabel(rir)}
           </Text>
         </View>

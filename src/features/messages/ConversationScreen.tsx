@@ -6,11 +6,10 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { useAlert } from "@shared/components/CustomAlert";

@@ -1,15 +1,14 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   Modal,
   ScrollView,
   FlatList,
   TouchableOpacity,
-  TextInput,
   ActivityIndicator,
 } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { workoutApi } from "@features/workout/services/index";
 import {

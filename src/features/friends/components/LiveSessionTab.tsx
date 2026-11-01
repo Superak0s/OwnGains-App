@@ -2,7 +2,6 @@ import { captureException } from "@shared/services/crashReporting";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -11,6 +10,7 @@ import {
   Animated,
   type TextStyle,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { sharingApi } from "../services";
 import { mergeLiveSet } from "../utils";
 import { normalizeExerciseName } from "@utils/exerciseMatching";

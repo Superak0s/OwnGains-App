@@ -3,9 +3,9 @@ import {
   AccessibilityInfo,
   Animated,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 

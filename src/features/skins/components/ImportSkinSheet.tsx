@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react"
-import { StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native"
+import { StyleSheet, Switch, TouchableOpacity, View } from "react-native"
+import { Text, TextInput } from "@shared/components/Text"
 import ModalSheet from "@shared/components/ModalSheet"
 import { useAlert } from "@shared/components/CustomAlert"
 import { Button, radius, space, useUi } from "@shared/components/ui"
@@ -49,6 +50,7 @@ export default function ImportSkinSheet({ visible, onClose, initialRef, marketpl
   const [busy, setBusy] = useState(false)
   const [withTheme, setWithTheme] = useState(true)
   const [withBoards, setWithBoards] = useState(true)
+  const [withFont, setWithFont] = useState(true)
   const { canSignIn, signInLine } = useMarketplaceAccount(visible)
 
   const rate = async (stars: number) => {
@@ -90,6 +92,7 @@ export default function ImportSkinSheet({ visible, onClose, initialRef, marketpl
       setLoaded({ parsed: parseSkin(detail.skin), detail, base })
       setWithTheme(true)
       setWithBoards(true)
+      setWithFont(true)
     } catch (e) {
       setLoaded(null)
       setError(userFacingError(e, "Couldn't load that skin."))
@@ -127,6 +130,7 @@ export default function ImportSkinSheet({ visible, onClose, initialRef, marketpl
     setError(null)
     setWithTheme(true)
     setWithBoards(true)
+    setWithFont(true)
     setInput(initialRef ?? "")
     if (initialRef && !fileSkin) void load(initialRef, marketplace)
     // Only a newly opened sheet resets: load is stable apart from the alert it shows.
@@ -135,6 +139,7 @@ export default function ImportSkinSheet({ visible, onClose, initialRef, marketpl
 
   const hasTheme = !!loaded?.parsed.theme
   const hasBoards = !!loaded && Object.keys(loaded.parsed.boards).length > 0
+  const hasFont = !!loaded?.parsed.typography
   const name = loaded?.detail?.name ?? loaded?.parsed.themeName ?? "Skin from file"
 
   const preview = () => {
@@ -153,13 +158,14 @@ export default function ImportSkinSheet({ visible, onClose, initialRef, marketpl
     start({
       name,
       theme: withTheme && parsed.theme ? { id: "preview", name: parsed.themeName ?? name, colors: parsed.theme } : null,
+      typography: withFont ? parsed.typography : null,
       boards,
     })
     onClose()
     onPreviewed?.()
   }
 
-  const canPreview = (withTheme && hasTheme) || (withBoards && hasBoards)
+  const canPreview = (withTheme && hasTheme) || (withBoards && hasBoards) || (withFont && hasFont)
 
   return (
     <ModalSheet visible={visible} onClose={onClose} title='Import a skin' showConfirmButton={false} scrollable>
@@ -196,7 +202,7 @@ export default function ImportSkinSheet({ visible, onClose, initialRef, marketpl
             <Text style={{ color: colors.textMuted }}>
               {loaded.detail &&
                 `${loaded.detail.downloads} downloads · ${loaded.detail.uniqueDownloads} unique · `}
-              {skinContents(hasTheme, hasBoards)}
+              {skinContents(hasTheme, hasBoards, hasFont)}
             </Text>
           </View>
           {loaded.detail?.description ? (
@@ -206,6 +212,7 @@ export default function ImportSkinSheet({ visible, onClose, initialRef, marketpl
             <Text style={{ color: colors.textMuted }}>Some layouts are for screens this app version doesn't have.</Text>
           )}
           <Toggle label='Colors & theme' value={withTheme && hasTheme} disabled={!hasTheme} onChange={setWithTheme} />
+          {hasFont && <Toggle label='Font & text size' value={withFont} onChange={setWithFont} />}
           <Toggle label='Widget layouts' value={withBoards && hasBoards} disabled={!hasBoards} onChange={setWithBoards} />
           <Text style={{ color: colors.textMuted }}>
             Preview shows the skin across the app. Nothing is saved until you apply it.
@@ -244,7 +251,7 @@ function Toggle({
 }: {
   readonly label: string
   readonly value: boolean
-  readonly disabled: boolean
+  readonly disabled?: boolean
   readonly onChange: (v: boolean) => void
 }): React.ReactElement {
   const { colors } = useUi()

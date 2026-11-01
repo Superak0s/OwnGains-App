@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, TextInput, ScrollView, Alert } from "react-native";
+import { View, StyleSheet, ScrollView, Alert } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";

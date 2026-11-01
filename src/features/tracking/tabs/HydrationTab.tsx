@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { View, Text, StyleSheet, ScrollView, TextInput } from "react-native";
+import { View, StyleSheet, ScrollView } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import ModalSheet from "@shared/components/ModalSheet";
 import { useAuth } from "@shared/context/AuthContext";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";

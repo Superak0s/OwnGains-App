@@ -1,3 +1,4 @@
+import { isDefaultTypography, normalizeTypography, type Typography } from "@shared/components/Text"
 import { DARK_COLORS, LIGHT_COLORS, isDarkColor, type AppTheme, type ThemeColors } from "@shared/context/ThemeContext"
 import type { WidgetInstance, WidgetSize } from "@shared/types"
 import { generateId } from "@utils/format"
@@ -17,6 +18,7 @@ export interface SkinWidget {
 export interface SkinDocument {
   format: 1
   theme?: { name: string; colors: Partial<Record<keyof ThemeColors, string>> }
+  typography?: Typography
   boards?: Partial<Record<SkinBoardId, SkinWidget[]>>
 }
 
@@ -25,6 +27,7 @@ export type SkinBoards = Partial<Record<SkinBoardId, WidgetInstance[]>>
 export interface ParsedSkin {
   theme: ThemeColors | null
   themeName: string | null
+  typography: Typography | null
   boards: SkinBoards
   droppedBoards: number
 }
@@ -76,6 +79,8 @@ export function parseSkin(input: unknown): ParsedSkin {
   if (JSON.stringify(input ?? null).length > MAX_SKIN_BYTES) fail("This skin is too large.")
   if (!isObject(input) || input.format !== 1) return fail("This is not an OwnGains skin, or it needs a newer app version.")
   const theme = input.theme === undefined ? null : parseTheme(input.theme)
+  if (input.typography !== undefined && !isObject(input.typography)) fail("The skin's font settings are damaged.")
+  const typography = input.typography === undefined ? null : normalizeTypography(input.typography)
   const boards: SkinBoards = {}
   let droppedBoards = 0
   if (input.boards !== undefined) {
@@ -94,14 +99,16 @@ export function parseSkin(input: unknown): ParsedSkin {
         .sort((a, b) => a.order - b.order)
     }
   }
-  if (!theme && !Object.keys(boards).length && !droppedBoards) fail("This skin has no theme or widget layouts.")
-  return { theme: theme?.colors ?? null, themeName: theme?.name ?? null, boards, droppedBoards }
+  if (!theme && !typography && !Object.keys(boards).length && !droppedBoards)
+    fail("This skin has no theme, font or widget layouts.")
+  return { theme: theme?.colors ?? null, themeName: theme?.name ?? null, typography, boards, droppedBoards }
 }
 
-/** Turns a theme and widget layouts into a shareable skin document. Widget ids stay on the device. */
-export function buildSkin(theme: AppTheme | null, boards: SkinBoards): SkinDocument {
+/** Turns a theme, font settings and widget layouts into a shareable skin document. Widget ids stay on the device. */
+export function buildSkin(theme: AppTheme | null, boards: SkinBoards, typography: Typography | null = null): SkinDocument {
   const doc: SkinDocument = { format: 1 }
   if (theme) doc.theme = { name: theme.name, colors: { ...theme.colors } }
+  if (typography && !isDefaultTypography(typography)) doc.typography = { ...typography }
   const entries = Object.entries(boards) as [SkinBoardId, WidgetInstance[]][]
   if (entries.length)
     doc.boards = Object.fromEntries(entries.map(([id, list]) => [id, list.map(({ id: _id, ...w }) => w)]))

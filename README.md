@@ -126,7 +126,8 @@ Every screen has a customizable widget board. Add, remove, resize, and reorder w
 
 - 7 built-in themes (Light, Dark, Yellow, Red, Green, Blue, Pink), plus automatic light/dark switching.
 - **Create your own custom themes** with a full color editor.
-- **Skins**: share your theme and widget layouts, or load one from the skin marketplace by ID, link or file. Choose colors, layouts or both and preview them across the app before applying. Publishing and rating need an account on the official server. The marketplace is an optional service on OwnGains-Server, and the official one is the default even for self-hosted servers.
+- **Font and text size**: Serif, Mono, Condensed or Casual (Android's built-in fonts), and text from 90% to 130% on top of the phone's font size.
+- **Skins**: share your theme, font and widget layouts, or load one from the skin marketplace by ID, link or file. Choose colors, font, layouts or any mix and preview them across the app before applying. Publishing and rating need an account on the official server. The marketplace is an optional service on OwnGains-Server, and the official one is the default even for self-hosted servers.
 - **Interactive tutorial**: a short tour that opens by pointing trainers to Trainer Mode, then covers only the easy-to-miss parts of each screen with spotlights and practice mini-demos, plus friends, sharing, joint-session and trainer chapters in server mode. Reopen it any time from Settings.
 
 ### 🔧 Settings

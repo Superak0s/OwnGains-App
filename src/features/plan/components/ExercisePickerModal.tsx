@@ -1,5 +1,6 @@
 import React, { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import { TouchableOpacity, StyleSheet } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import ModalSheet from "@shared/components/ModalSheet";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import {

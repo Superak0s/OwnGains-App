@@ -13,11 +13,11 @@ import {
 } from "@react-navigation/native";
 import {
   View,
-  Text,
   ScrollView,
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@shared/context/AuthContext";
 import { onLocalOnlyFeaturesChange } from "@shared/services/localOnlyFeatures";

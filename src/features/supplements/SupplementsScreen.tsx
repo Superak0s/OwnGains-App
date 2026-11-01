@@ -2,15 +2,14 @@ import React, { useState, useCallback, useMemo, useRef } from "react";
 import ScreenTitle from "@shared/components/ScreenTitle";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   FlatList,
   TouchableOpacity,
-  TextInput,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { supplementsApi } from "./services";

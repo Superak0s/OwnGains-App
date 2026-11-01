@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useWorkoutPick } from "@shared/context/WorkoutContext";
 import { formatTime as formatDuration } from "@utils/timeEstimation";
 import type { makeStyles } from "../WorkoutScreen";

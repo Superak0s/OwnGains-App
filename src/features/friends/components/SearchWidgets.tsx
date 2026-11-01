@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, type TextInputInstance } from "react-native";
+import { View, TouchableOpacity, ActivityIndicator, type TextInputInstance } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import type {
   Friend,

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@shared/components/Text";
 import ModalSheet from "@shared/components/ModalSheet";
 import { Avatar } from "@shared/components/Avatar";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";

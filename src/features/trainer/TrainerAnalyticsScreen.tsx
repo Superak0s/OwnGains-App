@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet } from "react-native";
+import { Text } from "@shared/components/Text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import ScreenTitle from "@shared/components/ScreenTitle";

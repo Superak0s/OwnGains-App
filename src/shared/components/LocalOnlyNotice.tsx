@@ -1,12 +1,12 @@
 import React, { useCallback, useState } from "react";
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTheme } from "@shared/context/ThemeContext";
 import {

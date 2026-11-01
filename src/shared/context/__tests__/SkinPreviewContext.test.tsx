@@ -1,5 +1,6 @@
-import React from "react"
+import React, { useContext } from "react"
 import { create, act } from "react-test-renderer"
+import { DEFAULT_TYPOGRAPHY, TypographyContext, type Typography } from "@shared/components/Text"
 import { ThemeProvider, useTheme, DARK_COLORS, LIGHT_COLORS } from "../ThemeContext"
 import { SkinPreviewProvider, useSkinPreview } from "../SkinPreviewContext"
 import { getStorageItem } from "@shared/services/sqliteStorage"
@@ -11,10 +12,10 @@ jest.mock("@shared/services/sqliteStorage", () => require("test-utils/memorySqli
 
 beforeEach(() => require("test-utils/memorySqlite").resetMemorySqlite())
 
-type Grab = { theme: ReturnType<typeof useTheme>; preview: ReturnType<typeof useSkinPreview> }
+type Grab = { theme: ReturnType<typeof useTheme>; preview: ReturnType<typeof useSkinPreview>; shownType: Typography }
 
 function Harness({ out }: { out: { current: Grab | null } }) {
-  out.current = { theme: useTheme(), preview: useSkinPreview() }
+  out.current = { theme: useTheme(), preview: useSkinPreview(), shownType: useContext(TypographyContext) }
   return null
 }
 
@@ -59,5 +60,20 @@ describe("SkinPreviewContext", () => {
     expect(out.current!.theme.colors.accent).toBe("#123456")
     expect(out.current!.theme.allThemes.some((t) => t.id === out.current!.theme.activeThemeId)).toBe(true)
     expect(await loadFromStorage("homeWidgets", "u1")).toEqual(board)
+  })
+
+  it("shows the skin's font while previewing and saves it on apply", async () => {
+    const out = await mount()
+    const typography: Typography = { font: "mono", scale: 1.15 }
+    const skin = { name: "Mono", theme: null, typography, boards: {} }
+    await act(async () => out.current!.preview.start(skin))
+    expect(out.current!.shownType).toEqual(typography)
+    expect(out.current!.theme.typography).toEqual(DEFAULT_TYPOGRAPHY)
+    await act(async () => out.current!.preview.discard())
+    expect(out.current!.shownType).toEqual(DEFAULT_TYPOGRAPHY)
+    await act(async () => out.current!.preview.start(skin))
+    await act(async () => out.current!.preview.apply("u1"))
+    expect(out.current!.shownType).toEqual(typography)
+    expect(JSON.parse((await getStorageItem("app_theme_v1"))!).typography).toEqual(typography)
   })
 })

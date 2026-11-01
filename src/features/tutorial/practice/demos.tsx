@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { useTheme } from "@shared/context/ThemeContext";
 import { useAlert } from "@shared/components/CustomAlert";
 import { IntensityPicker } from "@shared/components/IntensityPicker";
@@ -59,7 +60,7 @@ export function LogSetDemo({ onComplete }: PracticeProps) {
   const s = usePracticeStyles();
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
-  const [effort, setEffort] = useState(7);
+  const [effort, setEffort] = useState(2);
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
   const valid = Number(weight) > 0 && Number(reps) > 0;
@@ -81,7 +82,7 @@ export function LogSetDemo({ onComplete }: PracticeProps) {
         <TextInput style={s.input} value={weight} onChangeText={(t) => setWeight(t.replace(/[^\d.]/g, ""))} keyboardType="decimal-pad" placeholder="kg" placeholderTextColor={colors.textMuted} accessibilityLabel="Weight in kilograms" />
         <TextInput style={s.input} value={reps} onChangeText={(t) => setReps(t.replace(/\D/g, ""))} keyboardType="number-pad" placeholder="reps" placeholderTextColor={colors.textMuted} accessibilityLabel="Reps" />
       </View>
-      <Text style={s.muted}>Effort {effort}/10</Text>
+      <Text style={s.muted}>Reps in reserve (RIR): {effort}</Text>
       <IntensityPicker
         value={effort}
         onChange={setEffort}

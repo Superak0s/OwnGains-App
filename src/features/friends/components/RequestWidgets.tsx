@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity } from "react-native";
+import { Text } from "@shared/components/Text";
 import { formatDate } from "@utils/format";
 import type { PendingFriendRequest, SentFriendRequest } from "../services";
 import type { UserRef } from "../types";

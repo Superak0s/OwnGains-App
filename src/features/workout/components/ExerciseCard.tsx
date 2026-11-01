@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity } from "react-native";
+import { Text } from "@shared/components/Text";
 import type { LayoutChangeEvent, StyleProp, ViewStyle } from "react-native";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { PartnerProgress } from "@shared/context/hooks/useJointSession";

@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
+import { Text } from "@shared/components/Text";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import type { WorkoutData } from "@shared/types";
 import { useJointSessionContext } from "@shared/context/JointSessionContext";

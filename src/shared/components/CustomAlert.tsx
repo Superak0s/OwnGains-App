@@ -8,13 +8,13 @@ import {
 } from "react"
 import {
   View,
-  Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
   StyleSheet,
   Modal,
   Animated,
 } from "react-native"
+import { Text } from "@shared/components/Text"
 import { useTheme, type ThemeColors } from "../context/ThemeContext"
 
 export type AlertType =

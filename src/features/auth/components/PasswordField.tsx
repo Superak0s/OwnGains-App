@@ -1,8 +1,6 @@
 import React, { useMemo, useState, type Ref } from "react";
 import {
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
   type StyleProp,
@@ -10,6 +8,7 @@ import {
   type ViewStyle,
   type TextInputInstance,
 } from "react-native";
+import { Text, TextInput } from "@shared/components/Text";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 
 type Props = Omit<TextInputProps, "style" | "secureTextEntry"> & {

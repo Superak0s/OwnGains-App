@@ -10,7 +10,6 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
@@ -19,6 +18,7 @@ import {
   AppState,
   type ScrollViewInstance,
 } from "react-native";
+import { Text } from "@shared/components/Text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useWorkoutPick } from "@shared/context/WorkoutContext";
 import { useAuth } from "@shared/context/AuthContext";

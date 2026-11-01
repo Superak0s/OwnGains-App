@@ -10,11 +10,13 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 - A Towel widget for Home shows the towel you're using, with its photo and how many workouts it has been used for. Pick how many uses each towel gets before it needs a wash, and the widget turns red when it's time. Every workout you finish counts as one use, and Washed resets the count. Towels and their photos are kept on your phone only.
 - Exercise Settings suggests machine names you already use on other exercises or in your logged sets, most used first, so a brand like Hammer Strength is one tap to add.
+- Settings → Appearance → Theme lets you pick a font (Serif, Mono, Condensed or Casual) and a text size from 90% to 130%, on top of your phone's own font size. Skins can include them: previewing a skin shows its font, applying keeps it, and publishing or exporting can include yours. The marketplace keeps a skin's font once its server is updated.
 
 ### Changed
 
 - The Skins screen is now a gallery: each skin shows as a tile drawn in its own colors, with a bigger preview when you open it. Importing and exporting moved to the ＋ and ⋯ buttons in the header, sorting to a button beside the search box, and My skins lists your published skins with their previews under a card for publishing your current look.
 - Adding a machine to an exercise now turns on best stats across all machines, unless you turned that off for the exercise. Exercises that already have machines keep their setting.
+- When logging a set, the Effort field is now called Reps in reserve (RIR).
 
 ### Fixed
 
@@ -25,6 +27,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - `npm start` passes the OTA signing key to Metro, since the dev build has the code-signing certificate and rejects unsigned dev manifests.
 - `CLAUDE.md` requires asking before any change to the privacy policy, terms or consent copy, or a bump of the version that asks users to accept again.
 - Dev builds send the account token to the dev marketplace (the server's host, port 5100), so the demo data's skins show up there. Release builds still require the server's exact origin (`isOwnServer`).
+- Every `Text` and `TextInput` now comes from `@shared/components/Text`, which applies the font and text size. ESLint rejects importing them from `react-native`.
 
 ## [1.1.0] - 2026-10-29
 

@@ -88,4 +88,22 @@ module.exports = [
     files: ["src/utils/clientWorkoutParser.tsx"],
     rules: { "import/no-named-as-default-member": "off" },
   },
+  {
+    files: ["src/**/*.ts", "src/**/*.tsx", "App.tsx"],
+    ignores: ["**/__tests__/**", "src/shared/components/Text.tsx"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "react-native",
+              importNames: ["Text", "TextInput"],
+              message: "Import them from @shared/components/Text so the skin's font and text size apply.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];

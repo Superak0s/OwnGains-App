@@ -27,7 +27,6 @@ import {
   View,
   StyleSheet,
   Platform,
-  Text,
   TouchableOpacity,
   Animated,
   ActivityIndicator,
@@ -38,6 +37,7 @@ import {
   type AppStateStatus,
   type ScrollViewInstance,
 } from "react-native";
+import { Text } from "./src/shared/components/Text";
 import { LinearGradient } from "expo-linear-gradient";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {

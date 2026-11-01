@@ -1,6 +1,7 @@
 import { captureException } from "@shared/services/crashReporting";
 import React from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Pressable } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useTheme } from "@shared/context/ThemeContext";
 import { useAlert } from "@shared/components/CustomAlert";
 import type { Watcher } from "@shared/context/hooks/useJointSession";

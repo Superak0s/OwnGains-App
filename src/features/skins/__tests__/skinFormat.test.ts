@@ -1,3 +1,4 @@
+import { DEFAULT_TYPOGRAPHY } from "@shared/components/Text"
 import { DARK_COLORS, LIGHT_COLORS, type AppTheme } from "@shared/context/ThemeContext"
 import { buildSkin, parseSkin, SkinFormatError } from "../skinFormat"
 
@@ -41,7 +42,22 @@ describe("skin format", () => {
       /size/,
     )
     expect(() => parseSkin({ format: 1, theme: { name: "x", colors: { accent: "url(evil)" } } })).toThrow(SkinFormatError)
-    expect(() => parseSkin({ format: 1 })).toThrow(/theme or widget/)
+    expect(() => parseSkin({ format: 1 })).toThrow(/no theme, font or widget/)
+    expect(() => parseSkin({ format: 1, typography: "big" })).toThrow(/font settings/)
+  })
+
+  it("carries the font and text size, and leaves the defaults out", () => {
+    const typography = { font: "serif" as const, scale: 1.15 }
+    expect(parseSkin(buildSkin(null, {}, typography)).typography).toEqual(typography)
+    expect(buildSkin(theme, {}, DEFAULT_TYPOGRAPHY)).not.toHaveProperty("typography")
+    expect(parseSkin(buildSkin(theme, {})).typography).toBeNull()
+  })
+
+  it("falls back from a font it doesn't know and clamps the text size", () => {
+    expect(parseSkin({ format: 1, typography: { font: "comic", scale: 9 } }).typography).toEqual({
+      font: "default",
+      scale: 1.3,
+    })
   })
 
   it("rejects a skin over 64KB", () => {

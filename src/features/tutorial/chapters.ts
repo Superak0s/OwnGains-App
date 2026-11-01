@@ -114,7 +114,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
   ], true),
   widgets: chapter("widgets", "🧩", "Widgets", [
     practice("Pull down with two fingers anywhere on a board to open its widget gallery. Every screen has its own board.", { type: "twoFingerPull" }),
-    card("🎨", "Skins", "Settings → Appearance → Skins shares your theme and widget layouts, or loads someone else's by ID, link or file. Preview a skin before you apply it."),
+    card("🎨", "Skins", "Settings → Appearance → Theme sets your colors, font and text size. Skins shares them with your widget layouts, or loads someone else's by ID, link or file. Preview a skin before you apply it."),
   ]),
   settings: chapter("settings", "⚙️", "Settings", [
     spot("Settings", "settings.tutorial", "Replay any chapter of this tutorial from here.", "Settings → About → Tutorial replays any chapter."),

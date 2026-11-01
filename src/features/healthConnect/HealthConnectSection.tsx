@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { AppState, Switch, Text, TouchableOpacity, View } from "react-native";
+import { AppState, Switch, TouchableOpacity, View } from "react-native";
+import { Text } from "@shared/components/Text";
 import { useFocusEffect } from "@react-navigation/native";
 import type { useAlert } from "@shared/components/CustomAlert";
 import { useTheme } from "@shared/context/ThemeContext";
