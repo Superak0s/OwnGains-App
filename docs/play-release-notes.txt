@@ -1,1 +1,2 @@
+• Redesigned Skins screen: browse skins as previews drawn in their own colors, and find import, export and sorting behind their own buttons
 • Fixed a tab bar error when the Friends or Clients tab appeared or went away

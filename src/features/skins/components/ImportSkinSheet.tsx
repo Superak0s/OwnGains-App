@@ -20,7 +20,7 @@ import {
 } from "../services/marketplace"
 import { showToast } from "@shared/components/toast"
 import { useMarketplaceAccount } from "../hooks/useMarketplaceAccount"
-import SkinCard, { skinContents } from "./SkinCard"
+import { ratingText, SkinPreview, skinContents, swatchOf } from "./SkinCard"
 
 interface Props {
   readonly visible: boolean
@@ -182,13 +182,23 @@ export default function ImportSkinSheet({ visible, onClose, initialRef, marketpl
       {error && <Text style={{ color: colors.error }}>{error}</Text>}
       {loaded && (
         <View style={styles.body}>
-          {loaded.detail ? (
-            <SkinCard skin={loaded.detail} />
-          ) : (
-            <Text style={[styles.title, { color: colors.textPrimary }]}>
-              {name} · {skinContents(hasTheme, hasBoards)}
+          <SkinPreview
+            swatch={loaded.detail?.swatch ?? swatchOf(loaded.parsed.theme)}
+            style={[styles.preview, { borderColor: colors.surfaceBorder }]}
+          />
+          <View>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{name}</Text>
+            {loaded.detail && (
+              <Text style={{ color: colors.textSecondary }}>
+                by {loaded.detail.author ?? "Deleted user"} · {ratingText(loaded.detail.rating)}
+              </Text>
+            )}
+            <Text style={{ color: colors.textMuted }}>
+              {loaded.detail &&
+                `${loaded.detail.downloads} downloads · ${loaded.detail.uniqueDownloads} unique · `}
+              {skinContents(hasTheme, hasBoards)}
             </Text>
-          )}
+          </View>
           {loaded.detail?.description ? (
             <Text style={{ color: colors.textSecondary }}>{loaded.detail.description}</Text>
           ) : null}
@@ -250,7 +260,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: space.sm, alignItems: "center" },
   input: { flex: 1, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: space.sm },
   body: { gap: space.md, marginTop: space.md },
-  title: { fontSize: 16, fontWeight: "700" },
+  title: { fontSize: 18, fontWeight: "800" },
+  preview: { height: 150, borderRadius: radius.lg, borderWidth: 1, padding: space.md, gap: space.sm },
   star: { fontSize: 26 },
   spacer: { flex: 1 },
   toggle: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },

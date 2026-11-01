@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react"
-import { FlatList, StyleSheet, Text, TextInput, View } from "react-native"
+import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import * as DocumentPicker from "expo-document-picker"
 import { File as ExpoFile } from "expo-file-system"
 import { useAlert } from "@shared/components/CustomAlert"
-import { Button, Chip, IconButton, Placeholder, radius, space, useUi } from "@shared/components/ui"
+import { Button, IconButton, Placeholder, Row, radius, space, useUi } from "@shared/components/ui"
 import { useAuth } from "@shared/context/AuthContext"
 import { useTheme } from "@shared/context/ThemeContext"
 import { userFacingError } from "@shared/services/apiError"
@@ -25,7 +25,7 @@ import {
 } from "./services/marketplace"
 import ModalSheet from "@shared/components/ModalSheet"
 import ImportSkinSheet from "./components/ImportSkinSheet"
-import SkinCard from "./components/SkinCard"
+import SkinCard, { SkinPreview, SkinRow, swatchOf } from "./components/SkinCard"
 import PublishSkinSheet from "./components/PublishSkinSheet"
 import { useMarketplaceAccount } from "./hooks/useMarketplaceAccount"
 
@@ -36,6 +36,19 @@ const SORTS: { id: SkinSort; label: string }[] = [
   { id: "rating", label: "Top rated" },
   { id: "new", label: "New" },
 ]
+
+const TABS = [
+  { label: "Browse", mine: false },
+  { label: "My skins", mine: true },
+] as const
+
+type Menu = "add" | "more" | "sort"
+
+interface MenuItem {
+  title: string
+  meta?: string
+  onPress: () => void
+}
 
 interface SheetState {
   initialRef?: string
@@ -63,6 +76,7 @@ export default function SkinsScreen({ navigation, route }: Props): React.ReactEl
   const [marketplace, setMarketplace] = useState<string | null>(null)
   const [draftUrl, setDraftUrl] = useState<string | null>(null)
   const [urlError, setUrlError] = useState<string | null>(null)
+  const [menu, setMenu] = useState<Menu | null>(null)
 
   useEffect(() => {
     void getMarketplaceUrl().then(setMarketplace)
@@ -150,78 +164,125 @@ export default function SkinsScreen({ navigation, route }: Props): React.ReactEl
     }
   }
 
+  const open = (skin: SkinSummary) => setSheet({ initialRef: String(skin.id) })
+  const showMine = canSignIn && mine
+  const sortLabel = SORTS.find((s) => s.id === sort)?.label ?? ""
+  const menus: Record<Menu, { title: string; items: MenuItem[] }> = {
+    add: {
+      title: "Add a skin",
+      items: [
+        { title: "Paste an ID or link", meta: "From a friend or the marketplace website", onPress: () => setSheet({}) },
+        { title: "Open a skin file", meta: "A skin someone exported", onPress: () => void importFile() },
+      ],
+    },
+    more: {
+      title: "Skins",
+      items: [
+        { title: "Export my skin to a file", meta: "Your theme and widget layouts", onPress: () => void exportFile() },
+        {
+          title: "Marketplace address",
+          meta: marketplace ? new URL(marketplace).host : undefined,
+          onPress: () => {
+            setUrlError(null)
+            setDraftUrl(marketplace ?? DEFAULT_MARKETPLACE_URL)
+          },
+        },
+      ],
+    },
+    sort: {
+      title: "Sort by",
+      items: SORTS.map((s) => ({ title: s.label, meta: s.id === sort ? "Current" : undefined, onPress: () => setSort(s.id) })),
+    },
+  }
+
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={["top"]}>
       <View style={styles.header}>
         <IconButton glyph='‹' label='Back' onPress={() => navigation.goBack()} />
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Skins</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]} accessibilityRole='header'>
+          Skins
+        </Text>
+        <IconButton glyph='＋' label='Add a skin' onPress={() => setMenu("add")} />
+        <IconButton glyph='⋯' label='More skin options' onPress={() => setMenu("more")} />
       </View>
-      <View style={styles.actions}>
-        <Button label='Import by ID or link' size='sm' variant='quiet' onPress={() => setSheet({})} />
-        <Button label='Import from file' size='sm' variant='quiet' onPress={() => void importFile()} />
-        <Button label='Export to file' size='sm' variant='quiet' onPress={() => void exportFile()} />
-        {canSignIn && <Button label='Publish' size='sm' variant='quiet' onPress={() => setPublishing({})} />}
-        <Button
-          label='Marketplace address'
-          size='sm'
-          variant='quiet'
-          onPress={() => {
-            setUrlError(null)
-            setDraftUrl(marketplace ?? DEFAULT_MARKETPLACE_URL)
-          }}
-        />
-      </View>
-      <TextInput
-        value={query}
-        onChangeText={setQuery}
-        placeholder='Search skins'
-        placeholderTextColor={colors.textMuted}
-        accessibilityLabel='Search skins'
-        style={[styles.search, { color: colors.textPrimary, borderColor: colors.surfaceBorder }]}
-      />
       {canSignIn && (
-        <View style={styles.sorts}>
-          <Chip label='Browse' selected={!mine} onPress={() => setMine(false)} accessibilityRole='radio' />
-          <Chip label='My skins' selected={mine} onPress={() => setMine(true)} accessibilityRole='radio' />
+        <View style={[styles.segment, { backgroundColor: colors.separator }]} accessibilityRole='radiogroup'>
+          {TABS.map((t) => {
+            const on = mine === t.mine
+            return (
+              <TouchableOpacity
+                key={t.label}
+                style={[styles.segmentItem, on && { backgroundColor: colors.surface }]}
+                onPress={() => setMine(t.mine)}
+                accessibilityRole='radio'
+                accessibilityState={{ checked: on }}
+              >
+                <Text style={[styles.segmentText, { color: on ? colors.textPrimary : colors.textSecondary }]}>{t.label}</Text>
+              </TouchableOpacity>
+            )
+          })}
         </View>
       )}
-      <View style={styles.sorts}>
-        {SORTS.map((s) => (
-          <Chip key={s.id} label={s.label} selected={sort === s.id} onPress={() => setSort(s.id)} accessibilityRole='radio' />
-        ))}
+      <View style={styles.searchRow}>
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder='Search skins'
+          placeholderTextColor={colors.textMuted}
+          accessibilityLabel='Search skins'
+          style={[styles.search, { color: colors.textPrimary, borderColor: colors.surfaceBorder }]}
+        />
+        <Button
+          label={`${sortLabel} ▾`}
+          accessibilityLabel={`Sort by ${sortLabel}`}
+          size='sm'
+          variant='quiet'
+          onPress={() => setMenu("sort")}
+        />
       </View>
       {error && skins.length === 0 ? (
         <Placeholder icon='📡' text={error} action={{ label: "Try again", onPress: () => void fetchPage(1) }} />
       ) : (
         <FlatList
+          // numColumns can't change on a mounted FlatList.
+          key={showMine ? "mine" : "browse"}
           data={skins}
+          numColumns={showMine ? 1 : 2}
+          columnWrapperStyle={showMine ? undefined : styles.column}
           keyExtractor={(s) => String(s.id)}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <View>
-              <SkinCard
-                skin={item}
-                onPress={item.takenDown ? undefined : () => setSheet({ initialRef: String(item.id) })}
-              />
-              {item.takenDown && (
-                <Text style={{ color: colors.error }}>
-                  Removed by the marketplace: {item.takenDown.reason}
-                </Text>
-              )}
-              {mine && (
-                <View style={styles.actions}>
-                  {!item.takenDown && (
-                    <Button label='Update' size='sm' variant='quiet' onPress={() => setPublishing({ existing: item })} />
-                  )}
-                  <Button label='Delete' size='sm' variant='danger' onPress={() => remove(item)} />
+          ListHeaderComponent={
+            showMine ? (
+              <View style={[styles.share, { backgroundColor: colors.accent }]}>
+                <SkinPreview swatch={swatchOf(savedTheme.colors)} style={styles.shareThumb} />
+                <View style={styles.shareText}>
+                  <Text style={[styles.shareTitle, { color: colors.textOnAccent }]}>Share your current look</Text>
+                  <Text style={{ color: colors.textOnAccent }}>Your theme and widget layouts</Text>
                 </View>
-              )}
-            </View>
-          )}
+                <Button label='Publish' size='sm' variant='quiet' tone={colors.textOnAccent} onPress={() => setPublishing({})} />
+              </View>
+            ) : undefined
+          }
+          renderItem={({ item }) =>
+            showMine ? (
+              <SkinRow skin={item} onPress={item.takenDown ? undefined : () => open(item)}>
+                {!item.takenDown && (
+                  <Button label='Update' size='sm' variant='quiet' onPress={() => setPublishing({ existing: item })} />
+                )}
+                <Button label='Delete' size='sm' variant='danger' onPress={() => remove(item)} />
+              </SkinRow>
+            ) : (
+              <SkinCard skin={item} onPress={() => open(item)} />
+            )
+          }
           onEndReached={() => {
             if (hasMore && !loading) void fetchPage(page + 1)
           }}
-          ListEmptyComponent={loading ? undefined : <Placeholder icon='🎨' text='No skins found.' />}
+          ListEmptyComponent={
+            loading ? undefined : (
+              <Placeholder icon='🎨' text={showMine ? "You haven't published a skin yet." : "No skins found."} />
+            )
+          }
         />
       )}
       <ImportSkinSheet
@@ -253,10 +314,33 @@ export default function SkinsScreen({ navigation, route }: Props): React.ReactEl
           autoCorrect={false}
           keyboardType='url'
           accessibilityLabel='Marketplace address'
-          style={[styles.search, { color: colors.textPrimary, borderColor: colors.surfaceBorder }]}
+          style={[styles.field, { color: colors.textPrimary, borderColor: colors.surfaceBorder }]}
         />
         {urlError && <Text style={{ color: colors.error }}>{urlError}</Text>}
         <Button label='Use the official marketplace' size='sm' variant='quiet' onPress={() => void saveUrl(null)} />
+      </ModalSheet>
+      <ModalSheet
+        visible={menu !== null}
+        onClose={() => setMenu(null)}
+        title={menu ? menus[menu].title : undefined}
+        showCancelButton={false}
+        showConfirmButton={false}
+      >
+        <View style={styles.menu}>
+          {menu &&
+            menus[menu].items.map((item, i, all) => (
+              <Row
+                key={item.title}
+                title={item.title}
+                meta={item.meta}
+                last={i === all.length - 1}
+                onPress={() => {
+                  setMenu(null)
+                  item.onPress()
+                }}
+              />
+            ))}
+        </View>
       </ModalSheet>
       {AlertComponent}
     </SafeAreaView>
@@ -266,9 +350,18 @@ export default function SkinsScreen({ navigation, route }: Props): React.ReactEl
 const styles = StyleSheet.create({
   root: { flex: 1, paddingHorizontal: space.lg },
   header: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: space.sm },
-  title: { fontSize: 22, fontWeight: "800" },
-  actions: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
-  search: { borderWidth: 1, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: space.sm, marginTop: space.md },
-  sorts: { flexDirection: "row", gap: space.sm, marginVertical: space.md },
+  title: { flex: 1, fontSize: 22, fontWeight: "800" },
+  segment: { flexDirection: "row", borderRadius: radius.md, padding: 3, marginBottom: space.md },
+  segmentItem: { flex: 1, alignItems: "center", paddingVertical: space.sm, borderRadius: radius.sm },
+  segmentText: { fontSize: 14, fontWeight: "700" },
+  searchRow: { flexDirection: "row", alignItems: "center", gap: space.sm, marginBottom: space.md },
+  field: { borderWidth: 1, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: space.sm },
+  search: { flex: 1, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: space.sm },
+  column: { justifyContent: "space-between" },
   list: { gap: space.md, paddingBottom: space.xl },
+  share: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md, borderRadius: radius.lg },
+  shareThumb: { width: 52, height: 64, borderRadius: radius.sm, padding: 5, gap: 3 },
+  shareText: { flex: 1, gap: 2 },
+  shareTitle: { fontSize: 15, fontWeight: "700" },
+  menu: { paddingHorizontal: space.md },
 })

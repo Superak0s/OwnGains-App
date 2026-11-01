@@ -6,6 +6,10 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Changed
+
+- The Skins screen is now a gallery: each skin shows as a tile drawn in its own colors, with a bigger preview when you open it. Importing and exporting moved to the ＋ and ⋯ buttons in the header, sorting to a button beside the search box, and My skins lists your published skins with their previews under a card for publishing your current look.
+
 ### Fixed
 
 - The tab bar no longer breaks with a React hook error when the Friends or Clients tab appears or goes away, such as after switching app mode or role.
