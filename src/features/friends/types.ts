@@ -118,7 +118,8 @@ export type PermissionType =
   | "joint_session"
   | "watch_session"
   | "trainer"
-  | "tracking";
+  | "tracking"
+  | "machines";
 
 export interface GrantedPermission {
   id: number | string;

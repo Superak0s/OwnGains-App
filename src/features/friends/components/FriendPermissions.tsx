@@ -84,6 +84,14 @@ export const PERMISSION_TYPES: Array<{
     describe: (username) =>
       `Let ${username} watch your active workout session live.`,
   },
+  {
+    type: "machines",
+    icon: "🏷️",
+    title: "Share My Machine Names",
+    receivedTitle: "Shared Machine Names",
+    describe: (username) =>
+      `Send ${username} the machine names in your program, so they can add them in one tap when you train at the same gym.`,
+  },
 ];
 
 export const PERMISSION_GROUPS: ReadonlyArray<{
@@ -93,6 +101,7 @@ export const PERMISSION_GROUPS: ReadonlyArray<{
   { label: "Coaching", types: ["trainer", "tracking"] },
   { label: "Progress", types: ["history", "analytics", "program"] },
   { label: "Live workouts", types: ["joint_session", "watch_session"] },
+  { label: "Same gym", types: ["machines"] },
 ];
 
 /** Types that must be granted alongside `type` for it to work. */
@@ -159,6 +168,7 @@ interface FriendGrantedPermissionsProps {
   ) => boolean;
   readonly onGrantPermission: (friend: Friend, type: PermissionType) => void;
   readonly onGrantProgramPermission: (friend: Friend) => void;
+  readonly onGrantMachinesPermission: (friend: Friend) => void;
   readonly onRevokePermission: (friend: Friend, type: PermissionType) => void;
 }
 
@@ -170,6 +180,7 @@ export function FriendGrantedPermissions({
   isPermLoading,
   onGrantPermission,
   onGrantProgramPermission,
+  onGrantMachinesPermission,
   onRevokePermission,
 }: FriendGrantedPermissionsProps): React.JSX.Element {
   const friendId = selectedFriend?.id;
@@ -182,6 +193,7 @@ export function FriendGrantedPermissions({
       if (!isGranted(prerequisite))
         onGrantPermission(selectedFriend, prerequisite);
     if (type === "program") onGrantProgramPermission(selectedFriend);
+    else if (type === "machines") onGrantMachinesPermission(selectedFriend);
     else onGrantPermission(selectedFriend, type);
   };
   return (

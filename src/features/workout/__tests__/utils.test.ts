@@ -645,4 +645,10 @@ describe("suggestMachineNames", () => {
     expect(suggestMachineNames(program, null, [], "")).toEqual(["Hammer Strength", "Technogym"]);
     expect(suggestMachineNames(null, null, [], "")).toEqual([]);
   });
+
+  it("adds names friends shared, merged by case with the user's own", () => {
+    expect(
+      suggestMachineNames(program, null, ["Hammer Strength"], "", ["technogym", "Matrix", "matrix"]),
+    ).toEqual(["Technogym", "Matrix"]);
+  });
 });

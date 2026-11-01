@@ -49,7 +49,7 @@ Split creation is a core feature. You can start from a template, from a spreadsh
 - **Demonstration photos**: reference photos for an exercise, with your own alignment guides drawn over them. Switchable off, and then nothing is downloaded at all.
 - **Rest timer & smart time estimates**: see how long you've rested and get an estimated time remaining and finish time for the session based on your pace. A rest reminder tells you when your rest reaches the time you set, as a notification or as a full-screen alarm like the supplement alarm.
 - **PR celebration & live session stats**: personal records are called out as you hit them, and a running ticker tracks the session.
-- **Machines**: list the machines you use for an exercise, each with a pin setting and note, and switch between them mid-workout. Names from your other exercises and logged sets are offered as one-tap suggestions, and best stats can pool every machine or keep each one separate.
+- **Machines**: list the machines you use for an exercise, each with a pin setting and note, and switch between them mid-workout. Names from your other exercises and logged sets, and those friends at your gym shared with you, are offered as one-tap suggestions, and best stats can pool every machine or keep each one separate.
 - **Add exercises or extra sets on the fly** mid-workout, with the same fuzzy matching so nothing gets duplicated, a muscle browser, and muscles filled in for known exercises.
 - **Empty workouts**: start a workout outside your plan, even with no plan at all, and add exercises as you go. It is saved to your history only.
 - **Day locking & weekly reset**: completed days lock until your week resets, keeping you on schedule (start a finished day again from its banner, or unlock days in Settings).
@@ -101,7 +101,7 @@ Every tracking sub-tab is its own widget board: the calendar, the "today" card, 
 ### 👥 Train with friends _(server mode)_
 
 - Add friends from the **Find Friends** search bar or by scanning their **QR friend code**.
-- **Granular sharing**: switch each permission on or off per friend, grouped into Progress, Live workouts and Coaching.
+- **Granular sharing**: switch each permission on or off per friend, grouped into Progress, Live workouts, Coaching and Same gym (Share My Machine Names).
 - **Use a friend's plan**: any program shared with you can be made your own with one tap.
 - **Messages**: chat with friends, and between a trainer and their clients, with unread badges, read receipts, deleting your own messages (and editing them for 15 minutes) and a notification when a message arrives, even with the app closed (needs a build with `google-services.json`, otherwise only while the app is running). It needs a server with a working FCM key: a server without one, or with `DISABLED_FEATURES=messages`, switches messaging off and the app hides it until that changes.
 - **Joint sessions**: work out together in real time, synced set-for-set.

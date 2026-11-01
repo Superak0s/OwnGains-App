@@ -88,7 +88,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     checklist("A few things you might miss.", [
       ["✏️", "Edit a set", "Tap a logged set to fix its weight, reps or notes, or to delete it."],
       ["⚖️", "kg or lbs", "Switch the unit while logging a set. Each exercise remembers its own."],
-      ["🔧", "Machines", "Save the machines at your gym and pick one per exercise. Names you already use show up as one-tap suggestions."],
+      ["🔧", "Machines", "Save the machines at your gym and pick one per exercise. Names you and friends at your gym use show up as one-tap suggestions."],
       ["⏰", "Rest alarm", "Rest can ring full screen like an alarm clock instead of a notification."],
       ["🔄", "Change day", "Picked the wrong day? Change it mid-workout and logged exercises come with you."],
     ]),

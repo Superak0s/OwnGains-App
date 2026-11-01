@@ -31,6 +31,7 @@ import { useAuth } from "@shared/context/AuthContext";
 import { useTheme } from "@shared/context/ThemeContext";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import ModalSheet from "@shared/components/ModalSheet";
+import { fetchFriendMachineNames } from "@features/friends/machineSharing";
 import { Button, Chip, EmptyState } from "@shared/components/ui";
 import { useAlert } from "@shared/components/CustomAlert";
 import {
@@ -396,6 +397,7 @@ function WorkoutScreenBody({
   const [machinesFor, setMachinesFor] = useState<number | null>(null);
   const [newMachineName, setNewMachineName] = useState<string>("");
   const [machineRecords, setMachineRecords] = useState<WorkoutSession[] | null>(null);
+  const [friendMachines, setFriendMachines] = useState<string[]>([]);
   const [settingsFor, setSettingsFor] = useState<number | null>(null);
   const [editMachine, setEditMachine] = useState<{
     key: string;
@@ -1479,6 +1481,9 @@ Note: ${existing.note}`;
     void cachedFetchRecordSessions().then((records) => {
       if (live) setMachineRecords(records);
     });
+    void fetchFriendMachineNames().then((names) => {
+      if (live) setFriendMachines(names);
+    });
     return () => {
       live = false;
     };
@@ -1490,6 +1495,7 @@ Note: ${existing.note}`;
         machineRecords,
         settingsExercise?.machines ?? [],
         newMachineName,
+        friendMachines,
       )
     : [];
 

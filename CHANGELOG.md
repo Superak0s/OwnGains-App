@@ -10,6 +10,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 - A Towel widget for Home shows the towel you're using, with its photo and how many workouts it has been used for. Pick how many uses each towel gets before it needs a wash, and the widget turns red when it's time. Every workout you finish counts as one use, and Washed resets the count. Towels and their photos are kept on your phone only.
 - Exercise Settings suggests machine names you already use on other exercises or in your logged sets, most used first, so a brand like Hammer Strength is one tap to add.
+- Friends who train at the same gym can share their machine names: turn on Share My Machine Names for a friend in Friends, and your program's machines show up as one-tap suggestions in their Exercise Settings. The list is sent again after each workout you finish. Needs a server update.
 - Settings → Appearance → Theme lets you pick a font (Serif, Mono, Condensed or Casual) and a text size from 90% to 130%, on top of your phone's own font size. Skins can include them: previewing a skin shows its font, applying keeps it, and publishing or exporting can include yours. The marketplace keeps a skin's font once its server is updated.
 
 ### Changed

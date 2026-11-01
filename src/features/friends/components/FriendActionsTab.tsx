@@ -261,6 +261,7 @@ interface FriendActionsTabProps {
   readonly onGrantPermission: (friend: Friend, type: PermissionType) => void;
   readonly onRevokePermission: (friend: Friend, type: PermissionType) => void;
   readonly onGrantProgramPermission: (friend: Friend) => void;
+  readonly onGrantMachinesPermission: (friend: Friend) => void;
   readonly friendSessionStatuses: Record<string | number, boolean>;
   readonly checkingActiveSession: boolean;
   readonly onWatchSession: (friend: Friend) => void;
@@ -286,6 +287,7 @@ export function FriendActionsTab({
   onGrantPermission,
   onRevokePermission,
   onGrantProgramPermission,
+  onGrantMachinesPermission,
   friendSessionStatuses,
   checkingActiveSession,
   onWatchSession,
@@ -347,6 +349,7 @@ export function FriendActionsTab({
           isPermLoading={isPermLoading}
           onGrantPermission={onGrantPermission}
           onGrantProgramPermission={onGrantProgramPermission}
+          onGrantMachinesPermission={onGrantMachinesPermission}
           onRevokePermission={onRevokePermission}
         />
 

@@ -65,6 +65,7 @@ import { sessionTitle } from "@shared/components/SessionDetails";
 import { friendsApi, sharingApi } from "./services";
 import ReportUserSheet from "./components/ReportUserSheet";
 import { MIN_USER_SEARCH_LENGTH, programPayload } from "./utils";
+import { sharedMachinesPayload } from "./machineSharing";
 import { formatTime } from "@utils/timeEstimation";
 import { formatClockTime, formatDate, toDateString } from "@utils/format";
 import { dayLabel } from "@utils/dayCarryOver";
@@ -683,6 +684,9 @@ export default function FriendsScreen({
     }
     await handleGrantPermission(friend, "program", programPayload(workoutData));
   };
+
+  const handleGrantMachinesPermission = (friend: Friend) =>
+    void handleGrantPermission(friend, "machines", sharedMachinesPayload(workoutData));
 
   const handleUsePlan = (program: ReceivedProgram) => {
     const apply = async () => {
@@ -1598,6 +1602,7 @@ export default function FriendsScreen({
               onGrantPermission={confirmGrantPermission}
               onRevokePermission={handleRevokePermission}
               onGrantProgramPermission={handleGrantProgramPermission}
+              onGrantMachinesPermission={handleGrantMachinesPermission}
               friendSessionStatuses={friendSessionStatuses}
               checkingActiveSession={checkingActiveSession}
               onWatchSession={handleWatchSession}

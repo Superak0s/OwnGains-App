@@ -102,12 +102,14 @@ export function editMachineMeta(
 /**
  * Machine names used on other exercises, most widely used first. Logged sets
  * count too, so a brand from a replaced program is still offered.
+ * @param shared - Names friends shared. Each counts as one more use.
  */
 export function suggestMachineNames(
   program: Pick<WorkoutData, "days"> | null | undefined,
   records: Pick<WorkoutSession, "setTimings">[] | null | undefined,
   current: string[],
   query: string,
+  shared: string[] = [],
 ): string[] {
   const uses: [exercise: string, machine: string][] = [];
   for (const day of program?.days ?? [])
@@ -117,6 +119,7 @@ export function suggestMachineNames(
   for (const session of records ?? [])
     for (const set of session.setTimings ?? [])
       if (set.machineName) uses.push([set.exerciseName ?? "", set.machineName]);
+  for (const machine of shared) uses.push(["(shared)", machine]);
 
   const taken = new Set(current.map((m) => m.trim().toLowerCase()));
   const needle = query.trim().toLowerCase();
