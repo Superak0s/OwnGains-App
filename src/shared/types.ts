@@ -87,9 +87,17 @@ export interface WorkoutData {
   split?: string[];
 }
 
+/** One weight change within a drop set, after the set's own weight × reps. */
+export interface DropSegment {
+  /** kg, like the set's own weight. */
+  weight: number;
+  reps: number;
+}
+
 export interface SetDetail {
   weight: number;
   reps: number;
+  drops?: DropSegment[];
   completedAt: string;
   /** When the set began, so an edit re-records it with its original duration. */
   startedAt?: string;
@@ -145,6 +153,7 @@ export interface SetTiming {
   endTime: string;
   weight?: number;
   reps?: number;
+  drops?: DropSegment[];
   note?: string;
   isWarmup?: boolean;
   /** Reps in reserve, 0-9: how many more reps the set had left. */
@@ -257,6 +266,7 @@ interface RecordSetSyncData {
   endTime: string;
   weight: number;
   reps: number;
+  drops?: DropSegment[];
   note?: string;
   isWarmup?: boolean;
   rir?: number;

@@ -173,6 +173,8 @@ function setAccessibilityLabel(
       ? `${kgToDisplay(detail.weight, weightUnit)} ${weightUnit}`
       : "bodyweight";
     parts.push(`completed, ${load} for ${detail.reps || 0} reps`);
+    if (detail.drops?.length)
+      parts.push(`drop set, ${detail.drops.length} ${detail.drops.length === 1 ? "drop" : "drops"}`);
     if (detail.note) parts.push("has a note");
   } else if (done) {
     parts.push("completed");

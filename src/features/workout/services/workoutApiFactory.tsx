@@ -6,6 +6,7 @@ import {
 } from "@shared/services/apiClient";
 import type { HttpFetch } from "@shared/services/authenticatedFetch";
 import type {
+  DropSegment,
   SetTiming,
   WorkoutSession,
   FullSessionWithGroups,
@@ -32,6 +33,8 @@ export interface UpdateSetParams {
   secondaryMuscles?: string[] | null;
   weight?: number;
   reps?: number;
+  /** An empty list removes the set's drops. */
+  drops?: DropSegment[];
   startTime?: string;
   endTime?: string;
   note?: string;
@@ -46,6 +49,7 @@ export interface RecordSetParams {
   endTime: string;
   weight: number;
   reps: number;
+  drops?: DropSegment[];
   note?: string;
   isWarmup?: boolean;
   /** Reps in reserve, 0-9. Omitted when the user didn't rate the set. */
@@ -413,6 +417,7 @@ export async function replaceSet(
   await api.updateSet(sessionId, row.id, {
     weight: params.weight || 0,
     reps: params.reps || 0,
+    drops: params.drops ?? [],
     note: params.note || "",
     isWarmup: params.isWarmup || false,
     rir: params.rir ?? null,

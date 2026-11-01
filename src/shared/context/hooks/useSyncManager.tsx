@@ -354,6 +354,7 @@ export const useSyncManager = ({
             endTime: sync.data.endTime,
             weight,
             reps,
+            drops: sync.data.drops,
             note: sync.data.note,
             isWarmup: sync.data.isWarmup,
             rir: sync.data.rir,

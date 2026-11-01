@@ -87,6 +87,7 @@ import {
   kgToDisplay,
   validateWeightInput,
   parseReps,
+  parseDrops,
   MAX_REPS,
   displayToKg,
   beatsBest,
@@ -981,6 +982,9 @@ function WorkoutScreenBody({
         : "0";
       let msg = `Weight: ${displayWeight} ${unit}
 Reps: ${existing.reps || 0}`;
+      for (const drop of existing.drops ?? [])
+        msg += `
+↘ ${kgToDisplay(drop.weight, unit)} ${unit} × ${drop.reps}`;
       if (existing.rir != null) msg += `
 RIR: ${existing.rir}`;
       if (existing.isWarmup) msg = `Warm-up set
@@ -1008,6 +1012,10 @@ Note: ${existing.note}`;
       openSetForm({
         weight: existing.weight ? displayWeight : "",
         reps: existing.reps?.toString() || "",
+        drops: (existing.drops ?? []).map((d) => ({
+          weight: kgToDisplay(d.weight, unit),
+          reps: String(d.reps),
+        })),
         note: existing.note || "",
         isWarmup: existing.isWarmup || false,
         rir: existing.rir ?? null,
@@ -1104,6 +1112,7 @@ Note: ${existing.note}`;
       return;
     }
     void saveSetDetailsCtx(day, exerciseIndex, setIndex, detail.weight, detail.reps, {
+      drops: detail.drops,
       note: detail.note,
       isWarmup: detail.isWarmup,
       rir: detail.rir,
@@ -1250,6 +1259,17 @@ Note: ${existing.note}`;
       return;
     }
 
+    const drops = parseDrops(draft.drops, selectedUnit);
+    if (!drops) {
+      alert(
+        "Check the drops",
+        "Each drop needs a weight and at least 1 rep.",
+        [{ text: "OK" }],
+        "error",
+      );
+      return;
+    }
+
     isSavingSetRef.current = true;
     setIsSavingSet(true);
     try {
@@ -1260,7 +1280,12 @@ Note: ${existing.note}`;
         selectedSet.setIndex,
         weightInKg,
         r,
-        { note: draft.note.trim(), isWarmup: draft.isWarmup, rir: draft.rir ?? undefined },
+        {
+          drops,
+          note: draft.note.trim(),
+          isWarmup: draft.isWarmup,
+          rir: draft.rir ?? undefined,
+        },
       );
       // saveSetDetails has already told the user why the set wasn't kept.
       if (!saved) return;
@@ -3837,6 +3862,7 @@ export const makeStyles = (colors: ThemeColors) => {
     },
     notesInput: { minHeight: 80, textAlignVertical: "top" },
     weightRow: { flexDirection: "row", gap: 8 },
+    dropRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
     weightInput: { flex: 1 },
     weightArrows: { gap: 4 },
     weightArrowButton: {

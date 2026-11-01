@@ -1,4 +1,5 @@
 import {
+  buildExerciseHistory,
   buildProgressPoints,
   computeExerciseInsights,
   exerciseBreakdown,
@@ -273,6 +274,41 @@ describe("buildProgressPoints", () => {
     expect(values("bestSetVolume")).toEqual([400, 220])
     expect(values("sessionVolume")).toEqual([700, 220])
     expect(values("totalReps")).toEqual([8, 2])
+  })
+
+  it("counts a drop set's drops toward volume and reps, not weight", () => {
+    const [set] = buildExerciseHistory(
+      {
+        sessions: [
+          {
+            dayNumber: 1,
+            setTimings: [
+              {
+                exerciseName: "Bench Press",
+                setIndex: 0,
+                endTime: daysAgo(1).toISOString(),
+                weight: 100,
+                reps: 8,
+                drops: [
+                  { weight: 80, reps: 6 },
+                  { weight: 60, reps: 5 },
+                ],
+              },
+            ],
+          },
+        ],
+        workoutData: null,
+        selectedSplit: null,
+        completedDays: {},
+      },
+      { selection: "Bench Press", isGroupFocus: false, currentBodyWeight: null },
+    )
+    const value = (metric: Parameters<typeof buildProgressPoints>[1]) =>
+      buildProgressPoints([set], metric)[0].value
+    expect(value("sessionVolume")).toBe(800 + 480 + 300)
+    expect(value("bestSetVolume")).toBe(1580)
+    expect(value("totalReps")).toBe(19)
+    expect(value("heaviest")).toBe(100)
   })
 
   it("is empty without history", () => {

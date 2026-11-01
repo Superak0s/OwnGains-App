@@ -1,6 +1,8 @@
-• New Towel widget for Home: add towels with a photo, set how many workouts each lasts, and see when to wash it
+• Drop sets: add drops at lower weights to the same set
+• ▲/▼ arrows step the weight by each machine's step
+• Towel widget for Home: track uses and when to wash
 • Pick a font and text size under Appearance, and share them in skins
 • Redesigned Skins screen with previews in each skin's colors
-• Adding a machine suggests names you and friends at your gym use, and pools best stats
-• The set Effort field is now called Reps in reserve (RIR)
+• Machine name suggestions from you and friends at your gym
+• Effort is now called Reps in reserve (RIR)
 • Fixed a tab bar error when the Friends or Clients tab appeared or went away

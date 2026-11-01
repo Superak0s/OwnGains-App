@@ -12,18 +12,20 @@ import {
 } from "react-native";
 import { Text, TextInput } from "@shared/components/Text";
 import type { ThemeColors } from "@shared/context/ThemeContext";
-import { Chip, useUi } from "@shared/components/ui";
+import { Button, Chip, useUi } from "@shared/components/ui";
 import { formatDate, parseDecimal } from "@utils/format";
 import { trackFeature } from "@shared/services/crashReporting";
 import { estimateOneRepMax } from "@utils/oneRepMax";
 import {
   displayToKg,
   kgToDisplay,
+  parseDrops,
   parseReps,
   pickBestPerformanceSummary,
   repsInReserveLabel,
   stepWeight,
   validateWeightInput,
+  type DropDraft,
   type PerformanceEntry,
   type ProgressionSuggestion,
 } from "../utils";
@@ -40,6 +42,7 @@ const PROGRESSION_ICON: Record<ProgressionSuggestion["direction"], string> = {
 export interface SetDraft {
   weight: string;
   reps: string;
+  drops: DropDraft[];
   note: string;
   isWarmup: boolean;
   rir: number | null;
@@ -48,6 +51,7 @@ export interface SetDraft {
 export const EMPTY_SET_DRAFT: SetDraft = {
   weight: "",
   reps: "",
+  drops: [],
   note: "",
   isWarmup: false,
   rir: null,
@@ -104,6 +108,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
   const { ui } = useUi();
   const [weight, setWeight] = useState(initial.weight);
   const [reps, setReps] = useState(initial.reps);
+  const [drops, setDrops] = useState(initial.drops);
   const [setNote, setSetNote] = useState(initial.note);
   const [isWarmupSet, setIsWarmupSet] = useState(initial.isWarmup);
   const [rir, setRir] = useState(initial.rir);
@@ -116,6 +121,7 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
   const dirty =
     weight !== initial.weight ||
     reps !== initial.reps ||
+    drops !== initial.drops ||
     setNote !== initial.note ||
     isWarmupSet !== initial.isWarmup ||
     rir !== initial.rir;
@@ -137,18 +143,38 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
     if (current !== null && current > 0) {
       setWeight(kgToDisplay(displayToKg(weight, weightUnit), unit));
     }
+    if (drops.length)
+      setDrops(
+        drops.map((d) =>
+          parseDecimal(d.weight)
+            ? { ...d, weight: kgToDisplay(displayToKg(d.weight, weightUnit), unit) }
+            : d,
+        ),
+      );
     onSwitchUnit(unit);
   };
 
   const save = () =>
-    onSave({ weight, reps, note: setNote, isWarmup: isWarmupSet, rir });
+    onSave({ weight, reps, drops, note: setNote, isWarmup: isWarmupSet, rir });
   const hasWeight = weight.trim() !== "";
-  const canSave = !isSavingSet && hasValidReps && hasWeight && !weightError;
+  const dropsValid = parseDrops(drops, weightUnit) !== null;
+  const canSave =
+    !isSavingSet && hasValidReps && hasWeight && !weightError && dropsValid;
   const last = performanceHistory?.last;
   const lastWeight = last ? kgToDisplay(last.weight, weightUnit) : "0";
   const stepLabel = stepWeight("0", weightUnit, weightStepKg, 1);
   const nudge = (direction: 1 | -1) =>
     setWeight(stepWeight(weight, weightUnit, weightStepKg, direction, lastWeight));
+  const addDrop = () => {
+    const from = drops.at(-1)?.weight ?? weight;
+    setDrops([
+      ...drops,
+      { weight: stepWeight(from, weightUnit, weightStepKg, -1, lastWeight), reps: "" },
+    ]);
+    trackFeature("drop_set", "add");
+  };
+  const editDrop = (index: number, change: Partial<DropDraft>) =>
+    setDrops(drops.map((d, i) => (i === index ? { ...d, ...change } : d)));
 
   return (
     <View style={styles.setFormBody}>
@@ -289,6 +315,54 @@ export const SetDetailsForm = React.memo(function SetDetailsForm({
               {weightUnit}
             </Text>
           )}
+        </View>
+
+        <View style={styles.inputGroup}>
+          {drops.length > 0 && (
+            <Text style={styles.inputLabel}>Drops ({weightUnit} × reps)</Text>
+          )}
+          {drops.map((drop, index) => (
+             
+            <View key={index} style={styles.dropRow}>
+              <TextInput
+                style={[styles.input, styles.weightInput]}
+                value={drop.weight}
+                onChangeText={(text) => editDrop(index, { weight: text })}
+                keyboardType='decimal-pad'
+                placeholderTextColor={colors.textMuted}
+                accessibilityLabel={`Drop ${index + 1} weight in ${weightUnit}`}
+              />
+              <TextInput
+                style={[styles.input, styles.weightInput]}
+                value={drop.reps}
+                onChangeText={(text) => editDrop(index, { reps: text })}
+                keyboardType='number-pad'
+                autoFocus={drop.reps === ""}
+                placeholder='reps'
+                placeholderTextColor={colors.textMuted}
+                accessibilityLabel={`Drop ${index + 1} reps`}
+              />
+              <Button
+                label='✕'
+                variant='danger'
+                size='sm'
+                accessibilityLabel={`Remove drop ${index + 1}`}
+                onPress={() => setDrops(drops.filter((_, i) => i !== index))}
+              />
+            </View>
+          ))}
+          {!dropsValid && (
+            <Text style={styles.inputHint}>
+              Fill in a weight and reps for each drop, or remove it.
+            </Text>
+          )}
+          <Button
+            label='↘ Add drop'
+            variant='quiet'
+            size='sm'
+            accessibilityLabel='Add a drop: keep going at a lower weight'
+            onPress={addDrop}
+          />
         </View>
 
         {progression && !isWarmupSet && (

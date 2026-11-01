@@ -244,6 +244,7 @@ export const useServerSync = ({
         newCompletedDays[dayNumber][exerciseIndex][setIndex] = {
           weight: timing.weight ?? 0,
           reps: timing.reps ?? 0,
+          ...(timing.drops?.length && { drops: timing.drops }),
           completedAt: timing.endTime,
           note: timing.note ?? "",
           isWarmup: timing.isWarmup ?? false,

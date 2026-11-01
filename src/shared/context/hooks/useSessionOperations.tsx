@@ -15,7 +15,13 @@ import {
 } from "@features/workout/services/workoutApiFactory";
 import { countTowelUse } from "@features/homescreen/towels";
 import { refreshSharedMachines } from "@features/friends/machineSharing";
-import type { WorkoutData, WorkoutDay, PendingSync, SetDetail } from "../../types";
+import type {
+  DropSegment,
+  WorkoutData,
+  WorkoutDay,
+  PendingSync,
+  SetDetail,
+} from "../../types";
 import type { CompletedDays, LockedDays } from "../../../utils/dayCompletion";
 import {
   metric,
@@ -93,6 +99,7 @@ interface UseSessionOperationsOptions {
 }
 
 export interface SetDetailsOptions {
+  drops?: DropSegment[];
   note?: string;
   isWarmup?: boolean;
   rir?: number;
@@ -586,7 +593,7 @@ export const useSessionOperations = ({
       reps: number,
       details: SetDetailsOptions = {},
     ): Promise<boolean> => {
-      const { note = "", isWarmup = false, rir, restoring } = details;
+      const { drops = [], note = "", isWarmup = false, rir, restoring } = details;
       let optimisticallyCompleted = false;
       try {
         let sessionId = currentSessionId;
@@ -660,6 +667,7 @@ export const useSessionOperations = ({
         newCompleted[dayNumber][exerciseIndex][setIndex] = {
           weight: weight || 0,
           reps: reps || 0,
+          ...(drops.length > 0 && { drops }),
           completedAt: setEndTime,
           startedAt: setStartTime,
           note: note || "",
@@ -696,6 +704,7 @@ export const useSessionOperations = ({
           endTime: setEndTime,
           weight,
           reps,
+          drops,
           note,
           isWarmup,
           rir,
@@ -732,6 +741,7 @@ export const useSessionOperations = ({
               endTime: setEndTime,
               weight: weight || 0,
               reps: reps || 0,
+              drops,
               note: note || "",
               isWarmup: isWarmup || false,
               rir,

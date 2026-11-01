@@ -2,6 +2,7 @@ import type { ThemeColors } from "@shared/context/ThemeContext";
 import { darken, isDarkColor } from "@utils/color";
 import type { PartnerProgress } from "@shared/context/hooks/useJointSession";
 import type {
+  DropSegment,
   Exercise,
   MachineMeta,
   WorkoutData,
@@ -120,6 +121,30 @@ export function stepWeight(
   const current = parseDecimal(weight) ?? parseDecimal(from) ?? 0;
   const next = Math.max(0, current + direction * step);
   return String(Math.round(next * 100) / 100);
+}
+
+export interface DropDraft {
+  weight: string;
+  reps: string;
+}
+
+/** A drop set's extra rows in kg, or null while any row is empty or invalid. */
+export function parseDrops(
+  drafts: readonly DropDraft[],
+  unit: "kg" | "lbs",
+): DropSegment[] | null {
+  const drops: DropSegment[] = [];
+  for (const draft of drafts) {
+    const reps = parseReps(draft.reps);
+    if (
+      reps === null ||
+      draft.weight.trim() === "" ||
+      validateWeightInput(draft.weight, unit)
+    )
+      return null;
+    drops.push({ weight: displayToKg(draft.weight, unit), reps });
+  }
+  return drops;
 }
 
 /**

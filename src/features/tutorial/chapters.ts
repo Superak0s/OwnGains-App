@@ -87,6 +87,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     practice("Log a set: enter the weight and reps, rate the effort, then save. Tap Use it to copy last time's numbers.", { type: "logSet" }),
     checklist("A few things you might miss.", [
       ["✏️", "Edit a set", "Tap a logged set to fix its weight, reps or notes, or to delete it."],
+      ["↘", "Drop sets", "Tap Add drop under the reps to keep going at a lower weight. Each drop is logged in the same set."],
       ["⚖️", "kg or lbs", "Switch the unit while logging a set. Each exercise remembers its own."],
       ["🔧", "Machines", "Save the machines at your gym and pick one per exercise. Give each a weight step and the ▲/▼ arrows on the set form move by it. Names you and friends at your gym use show up as one-tap suggestions."],
       ["⏰", "Rest alarm", "Rest can ring full screen like an alarm clock instead of a notification."],

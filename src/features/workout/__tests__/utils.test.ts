@@ -14,6 +14,7 @@ import {
   getPartnerStatusText,
   editMachineMeta,
   stepWeight,
+  parseDrops,
   resolveExerciseMuscles,
   exercisesForMuscle,
   resolveExerciseUnit,
@@ -538,6 +539,35 @@ describe("stepWeight", () => {
     expect(stepWeight("", "kg", 2.5, 1, "57.5")).toBe("60");
     expect(stepWeight("", "kg", 2.5, 1)).toBe("2.5");
     expect(stepWeight("1", "kg", 2.5, -1)).toBe("0");
+  });
+});
+
+describe("parseDrops", () => {
+  it("converts each drop to kg", () => {
+    expect(
+      parseDrops(
+        [
+          { weight: "80", reps: "6" },
+          { weight: "0", reps: "4" },
+        ],
+        "kg",
+      ),
+    ).toEqual([
+      { weight: 80, reps: 6 },
+      { weight: 0, reps: 4 },
+    ]);
+    expect(parseDrops([{ weight: "100", reps: "5" }], "lbs")?.[0].weight).toBeCloseTo(45.359, 3);
+  });
+
+  it("is null while any row is incomplete or invalid", () => {
+    expect(parseDrops([{ weight: "80", reps: "" }], "kg")).toBeNull();
+    expect(parseDrops([{ weight: "", reps: "6" }], "kg")).toBeNull();
+    expect(parseDrops([{ weight: "abc", reps: "6" }], "kg")).toBeNull();
+    expect(parseDrops([{ weight: "80", reps: "0" }], "kg")).toBeNull();
+  });
+
+  it("is an empty list for a plain set", () => {
+    expect(parseDrops([], "kg")).toEqual([]);
   });
 });
 

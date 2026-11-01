@@ -4,6 +4,7 @@ import { DAY_MS, daysSinceLocal, parseDate, toDateString } from "@utils/format";
 import type { ChartPoint } from "@shared/components/chart/chartMath";
 import { median, REST_WINDOW_MAX_SEC, REST_WINDOW_MIN_SEC } from "@utils/session";
 import type {
+  DropSegment,
   FullSessionWithGroups,
   SetTiming,
   WorkoutData,
@@ -375,6 +376,22 @@ const effectiveLoad = (
   bodyWeight: number | null,
 ): number => (isAssisted && bodyWeight ? bodyWeight - weight : weight);
 
+const dropTotals = (
+  drops: readonly DropSegment[] | undefined,
+  isAssisted: boolean,
+  bodyWeight: number | null,
+): Pick<ExerciseHistoryEntry, "dropVolume" | "dropReps"> =>
+  drops?.length
+    ? {
+        dropVolume: drops.reduce(
+          (sum, d) =>
+            sum + finite(effectiveLoad(isAssisted, d.weight, bodyWeight)) * finite(d.reps),
+          0,
+        ),
+        dropReps: drops.reduce((sum, d) => sum + finite(d.reps), 0),
+      }
+    : {};
+
 export function buildAvailableExercises(
   sources: ExerciseHistorySources,
 ): ExerciseMeta[] {
@@ -471,6 +488,7 @@ function historyFromSessions(
           load: finite(
             effectiveLoad(isAssisted, rawWeight, selection.currentBodyWeight),
           ),
+          ...dropTotals(timing.drops, isAssisted, selection.currentBodyWeight),
           dayNumber,
           setNumber: (timing.setIndex ?? 0) + 1,
           source: "server",
@@ -530,6 +548,7 @@ function historyFromCompletedDays(
                   selection.currentBodyWeight,
                 ),
               ),
+              ...dropTotals(setData.drops, isAssisted, selection.currentBodyWeight),
               dayNumber,
               setNumber: Number.parseInt(setIndex) + 1,
               source: "local",
@@ -636,7 +655,9 @@ export function buildProgressPoints(
   });
 
   const value = (session: ExerciseHistoryEntry[]): number => {
-    const volumes = session.map((e) => finite(e.load) * finite(e.reps));
+    const volumes = session.map(
+      (e) => finite(e.load) * finite(e.reps) + (e.dropVolume ?? 0),
+    );
     switch (metric) {
       case "weight":
         return average(session.map((entry) => finite(entry.weight)));
@@ -645,7 +666,10 @@ export function buildProgressPoints(
       case "reps":
         return average(session.map((entry) => finite(entry.reps)));
       case "totalReps":
-        return session.reduce((sum, entry) => sum + finite(entry.reps), 0);
+        return session.reduce(
+          (sum, entry) => sum + finite(entry.reps) + (entry.dropReps ?? 0),
+          0,
+        );
       case "bestSetVolume":
         return Math.max(...volumes);
       case "sessionVolume":

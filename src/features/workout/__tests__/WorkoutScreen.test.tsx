@@ -95,7 +95,7 @@ describe("recording a set", () => {
     await fillSet("80", "8")
 
     await waitFor(() =>
-      expect(current.workout.saveSetDetails).toHaveBeenCalledWith(1, 0, 0, 80, 8, { note: "", isWarmup: false, rir: undefined }),
+      expect(current.workout.saveSetDetails).toHaveBeenCalledWith(1, 0, 0, 80, 8, { drops: [], note: "", isWarmup: false, rir: undefined }),
     )
   })
 

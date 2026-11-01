@@ -27,6 +27,9 @@ export interface ExerciseHistoryEntry {
   reps: number;
   /** Effective weight moved per rep, net of assistance on assisted machines. */
   load: number;
+  /** Load × reps of a drop set's drops, on top of `load` × `reps`. */
+  dropVolume?: number;
+  dropReps?: number;
   dayNumber: number;
   setNumber: number;
   source: "server" | "local";

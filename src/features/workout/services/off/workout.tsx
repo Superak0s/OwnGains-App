@@ -165,6 +165,7 @@ export const workoutApi = {
       endTime,
       weight,
       reps,
+      drops,
       note = "",
       isWarmup = false,
       rir,
@@ -187,6 +188,7 @@ export const workoutApi = {
         endTime,
         weight,
         reps,
+        ...(drops?.length && { drops }),
         note,
         isWarmup: isWarmup,
         rir,
@@ -219,6 +221,8 @@ export const workoutApi = {
         timing.exerciseSecondaryMuscles = updates.secondaryMuscles ?? undefined;
       if (updates.weight !== undefined) timing.weight = updates.weight;
       if (updates.reps !== undefined) timing.reps = updates.reps;
+      if (updates.drops !== undefined)
+        timing.drops = updates.drops.length ? updates.drops : undefined;
       if (updates.startTime !== undefined) timing.startTime = updates.startTime;
       if (updates.endTime !== undefined) timing.endTime = updates.endTime;
       if (updates.note !== undefined) timing.note = updates.note;
