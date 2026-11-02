@@ -38,6 +38,7 @@ jest.mock("@shared/services/crashReporting", () => ({
 
 jest.mock("@shared/services/sqliteStorage", () => ({
   exportAll: jest.fn(async () => store.snapshot),
+  getStorageItem: jest.fn(async (key: string) => store.snapshot.kv[key] ?? null),
   clearUserData: jest.fn(async (userId: string) => {
     const keep = ([key]: [string, unknown]) => !key.endsWith(`_user_${userId}`);
     store.snapshot = {
@@ -199,7 +200,7 @@ describe("deviceBackup", () => {
 
   it("merges onto existing data, or replaces it, as asked", async () => {
     const onDevice: Snapshot = {
-      kv: { "@keep": "device" },
+      kv: { "@keep": "device", appMode: "offline" },
       records: { sessions: [{ id: "s1", sortKey: "1", value: "device" }] },
     };
     const backup: DeviceBackup = {
@@ -215,6 +216,7 @@ describe("deviceBackup", () => {
     await restoreDeviceBackup(backup, "merge");
     expect(store.snapshot.kv).toEqual({
       "@keep": "device",
+      appMode: "offline",
       "@added": "backup",
     });
     expect(store.snapshot.records.sessions!.map((r) => r.id)).toEqual([
@@ -224,7 +226,7 @@ describe("deviceBackup", () => {
 
     store.snapshot = onDevice;
     await restoreDeviceBackup(backup, "replace");
-    expect(store.snapshot.kv).toEqual({ "@added": "backup" });
+    expect(store.snapshot.kv).toEqual({ "@added": "backup", appMode: "offline" });
     expect(store.snapshot.records.sessions!.map((r) => r.id)).toEqual(["s2"]);
   });
 

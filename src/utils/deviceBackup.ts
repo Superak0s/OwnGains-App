@@ -3,6 +3,7 @@ import { trackSpan } from "@shared/services/crashReporting";
 import {
   clearUserData,
   exportAll,
+  getStorageItem,
   importAll,
   type ImportMode,
   type StorageSnapshot,
@@ -248,6 +249,12 @@ export const restoreDeviceBackup = async (
     await clearUserData(backup.userId);
     await importAll(snapshot, "merge");
   } else {
+    // A full replace wipes every row, and the device's own settings must outlive it.
+    if (mode === "replace")
+      for (const key of DEVICE_SCOPED_KEYS) {
+        const value = await getStorageItem(key);
+        if (value !== null) snapshot.kv[key] = value;
+      }
     await importAll(snapshot, mode);
   }
   return { photosOmitted: backup.photosOmitted ?? 0 };

@@ -35,6 +35,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - When messages fail to load, the inbox and conversations now say so and offer Retry instead of looking empty.
 - When a trainer stops a client's session and the workout can't be ended, the app now says so and keeps the session open instead of leaving the client's workout running unnoticed.
 - Uploading a workout no longer keeps retrying forever when the server keeps refusing its start. After about half a day it stops and lists the workout under Settings as not uploaded. Switching accounts during an upload no longer sends the previous account's sets to the new one.
+- Restoring an older full backup no longer resets the chosen server, app mode, onboarding and theme on this phone.
 
 ### Security
 
