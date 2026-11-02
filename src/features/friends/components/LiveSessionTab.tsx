@@ -20,6 +20,8 @@ import { dayLabel } from "@utils/dayCarryOver";
 import { sessionTitle } from "@shared/components/SessionDetails";
 import { formatTime } from "@utils/timeEstimation";
 import { useTheme } from "@shared/context/ThemeContext";
+import { useWorkoutPick } from "@shared/context/WorkoutContext";
+import { kgToDisplay } from "@features/workout/utils";
 import type { ThemeColors } from "@shared/context/ThemeContext";
 import { withAlpha } from "@utils/color";
 import type { SetTiming } from "@shared/types";
@@ -143,6 +145,7 @@ const SetBubble = React.memo(function SetBubble({
 }: SetBubbleProps) {
   const { colors } = useTheme();
   const bbl = useMemo(() => makeBblStyles(colors), [colors]);
+  const { weightUnit } = useWorkoutPick("weightUnit");
   const done = !!setData;
   const isWarmup = done && (setData?.isWarmup ?? false);
 
@@ -155,7 +158,10 @@ const SetBubble = React.memo(function SetBubble({
       </Text>
       {done && (
         <View style={bbl.details}>
-          <Text style={bbl.detailText}>{setData?.weight ?? 0}kg</Text>
+          <Text style={bbl.detailText}>
+            {kgToDisplay(setData?.weight ?? 0, weightUnit)}
+            {weightUnit}
+          </Text>
           <Text style={bbl.detailText}>×{setData?.reps ?? 0}</Text>
         </View>
       )}

@@ -50,7 +50,14 @@ import {
   BROWSE_MUSCLES,
   exercisesForMuscle,
   muscleDisplayName,
+  kgToDisplay,
+  LBS_TO_KG,
+  resolveExerciseUnit,
+  type WeightUnit,
 } from "@features/workout/utils";
+import { useExerciseUnits } from "@features/workout/hooks/useExerciseUnits";
+import { useWorkoutPick } from "@shared/context/WorkoutContext";
+import { useAuth } from "@shared/context/AuthContext";
 import { MuscleBrowseChips } from "@features/workout/components/ExerciseMuscleFields";
 
 const BROWSE_PAGE_SIZE = 3;
@@ -487,6 +494,7 @@ interface SessionDetailViewProps {
   readonly groupedExercises: GroupedExercise[];
   readonly openEditExercise: (group: GroupedExercise) => void;
   readonly openEditSet: (set: SetTiming) => void;
+  readonly unitOf: (exerciseName: string | undefined) => WeightUnit;
   readonly styles: ReturnType<typeof makeStyles>;
   readonly colors: ThemeColors;
 }
@@ -496,6 +504,7 @@ function SessionDetailView({
   groupedExercises,
   openEditExercise,
   openEditSet,
+  unitOf,
   styles,
   colors,
 }: SessionDetailViewProps): React.JSX.Element {
@@ -546,7 +555,8 @@ function SessionDetailView({
           >
             <Text style={styles.setLabel}>Set {set.setIndex}</Text>
             <Text style={styles.setDetail}>
-              {set.weight ?? 0}kg × {set.reps ?? 0}
+              {kgToDisplay(set.weight ?? 0, unitOf(group.exerciseName))}{" "}
+              {unitOf(group.exerciseName)} × {set.reps ?? 0}
             </Text>
             <Text style={styles.setTime}>
               {formatDateTime(set.endTime, {
@@ -576,6 +586,14 @@ export default function EditWorkoutHistoryModal({
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { alert, AlertComponent } = useAlert();
+  const { weightUnit } = useWorkoutPick("weightUnit");
+  const { user } = useAuth();
+  const { units: exerciseUnits } = useExerciseUnits(user?.id ?? null);
+  const unitOf = useCallback(
+    (exerciseName: string | undefined) =>
+      resolveExerciseUnit(exerciseUnits, exerciseName, weightUnit),
+    [exerciseUnits, weightUnit],
+  );
 
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
@@ -614,6 +632,9 @@ export default function EditWorkoutHistoryModal({
   const [setWeightInput, setSetWeightInput] = useState("");
   const [setRepsInput, setSetRepsInput] = useState("");
   const [savingSet, setSavingSet] = useState(false);
+  const editingUnit = unitOf(editingSet?.exerciseName);
+  const editingWeightText =
+    editingSet?.weight == null ? "" : kgToDisplay(editingSet.weight, editingUnit);
   const [sessionsError, setSessionsError] = useState(false);
   const [nameIndexFailed, setNameIndexFailed] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -978,7 +999,9 @@ export default function EditWorkoutHistoryModal({
     setShowDatePicker(false);
     setSetDateInput(date);
     setSetTimeInput(time);
-    setSetWeightInput(String(set.weight ?? ""));
+    setSetWeightInput(
+      set.weight == null ? "" : kgToDisplay(set.weight, unitOf(set.exerciseName)),
+    );
     setSetRepsInput(String(set.reps ?? ""));
   };
 
@@ -1004,8 +1027,15 @@ export default function EditWorkoutHistoryModal({
       return;
     }
 
-    const weight =
+    const unit = unitOf(editingSet.exerciseName);
+    const entered =
       setWeightInput.trim() === "" ? undefined : parseDecimal(setWeightInput);
+    let weight = entered;
+    if (setWeightInput === editingWeightText) {
+      weight = editingSet.weight ?? undefined;
+    } else if (entered != null && unit === "lbs") {
+      weight = entered * LBS_TO_KG;
+    }
     const reps =
       setRepsInput.trim() === "" ? undefined : parseDecimal(setRepsInput);
     if (
@@ -1014,7 +1044,7 @@ export default function EditWorkoutHistoryModal({
     ) {
       alert(
         "Invalid Weight",
-        "Enter a weight between 0 and 2000.",
+        `Enter a weight between 0 and ${kgToDisplay(2000, unit)} ${unit}.`,
         [{ text: "OK" }],
         "error",
       );
@@ -1209,6 +1239,7 @@ export default function EditWorkoutHistoryModal({
             groupedExercises={groupedExercises}
             openEditExercise={openEditExercise}
             openEditSet={openEditSet}
+            unitOf={unitOf}
             styles={styles}
             colors={colors}
           />
@@ -1327,7 +1358,7 @@ export default function EditWorkoutHistoryModal({
         onClose={() => setEditingSet(null)}
         dirty={
           !!editingSet &&
-          (setWeightInput !== String(editingSet.weight ?? "") ||
+          (setWeightInput !== editingWeightText ||
             setRepsInput !== String(editingSet.reps ?? "") ||
             combineToIso(setDateInput, setTimeInput) !== editingSet.endTime)
         }
@@ -1380,7 +1411,7 @@ export default function EditWorkoutHistoryModal({
           placeholderTextColor={colors.textMuted}
           accessibilityLabel="Time, 24 hour, hours colon minutes"
         />
-        <Text style={styles.fieldLabel}>Weight (kg)</Text>
+        <Text style={styles.fieldLabel}>Weight ({editingUnit})</Text>
         <TextInput
           style={styles.input}
           value={setWeightInput}
@@ -1388,7 +1419,7 @@ export default function EditWorkoutHistoryModal({
           keyboardType="decimal-pad"
           placeholder="60"
           placeholderTextColor={colors.textMuted}
-          accessibilityLabel="Weight in kilograms"
+          accessibilityLabel={`Weight in ${editingUnit === "lbs" ? "pounds" : "kilograms"}`}
         />
         <Text style={styles.fieldLabel}>Reps</Text>
         <TextInput
