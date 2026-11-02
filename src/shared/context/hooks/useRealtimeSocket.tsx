@@ -337,7 +337,7 @@ export function useRealtimeSocket({
         attributes: { attempt: retryCountRef.current, code: e.code ?? 0, refused },
       })
       // Jitter spreads out every client reconnecting at once after a server restart.
-      retryTimerRef.current = setTimeout(connect, delay * (0.5 + Math.random()))
+      retryTimerRef.current = setTimeout(connect, delay * (0.5 + Math.random() / 2))
     }
   }, [enabled])
 
