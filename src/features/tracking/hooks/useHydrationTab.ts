@@ -6,7 +6,7 @@ import { useTrackingApis } from "../TrackingApisContext";
 import { createDeleteHandler, withConfirm, describeError } from "../helpers";
 import { isoToLocalDateStr } from "../utils";
 import { useRetryKey } from "./useRetryKey";
-import { toDateString } from "@utils/format";
+import { parseDecimal, toDateString } from "@utils/format";
 
 interface UseHydrationTabDeps extends TabDeps {
   loadTabData: () => Promise<void>;
@@ -38,8 +38,8 @@ export function useHydrationTab(deps: UseHydrationTabDeps) {
   );
 
   const handleLogHydration = useCallback(async () => {
-    const amt = Number.parseFloat(newHydrationAmount);
-    if (!newHydrationAmount || Number.isNaN(amt))
+    const amt = parseDecimal(newHydrationAmount);
+    if (amt == null)
       return alert("Invalid Input", "Enter a valid amount in ml", [{ text: "OK" }], "error");
     try {
       const loggedAt = selectedLogDate

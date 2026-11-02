@@ -59,6 +59,13 @@ describe("useHydrationTab.handleLogHydration", () => {
     expect(alert).toHaveBeenCalledTimes(2);
   });
 
+  it("reads a decimal comma and rejects trailing junk", async () => {
+    await logAmount("12abc");
+    expect(logHydration).not.toHaveBeenCalled();
+    await logAmount("250,5");
+    expect(logHydration).toHaveBeenCalledWith(250.5, undefined, null, expect.any(String));
+  });
+
   it("backdates to the picked calendar day and clears the form", async () => {
     const tab = await logAmount("500", new Date("2026-09-20T12:00:00Z"));
     expect(logHydration).toHaveBeenCalledWith(500, undefined, "2026-09-20T08:00", expect.any(String));

@@ -130,7 +130,7 @@ export function useMacrosTab(deps: UseMacrosTabDeps) {
 
     try {
       const dateStr = selectedLogDate ? toDateString(selectedLogDate) : null;
-      const errorMargin = Number.parseFloat(form.errorMargin) || 0;
+      const errorMargin = parseDecimal(form.errorMargin) ?? 0;
       await macrosTrackingApi.logMacros({
         name: name || undefined,
         protein,
