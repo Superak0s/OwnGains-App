@@ -2,7 +2,7 @@ import { randomUUID } from "expo-crypto"
 import { ApiError } from "@shared/services/apiError"
 import { getAppMode } from "@shared/services/appMode"
 import { authenticatedFetch, isOwnServer } from "@shared/services/authenticatedFetch"
-import { assertSecureTransport, isPrivateHost } from "@shared/services/config"
+import { assertSecureTransport, isPrivateHost, parseStrictUrl } from "@shared/services/config"
 import { captureException } from "@shared/services/crashReporting"
 import { countCall } from "@shared/services/dispatchProxy"
 import { getStorageItem, removeStorageItem, setStorageItem } from "@shared/services/sqliteStorage"
@@ -50,15 +50,10 @@ export interface SkinUpload {
 /** Unlike a server URL, a marketplace may sit under a path such as `/marketplace`. */
 export function normalizeMarketplaceUrl(url: string): string {
   const trimmed = url.trim().replace(/\/+$/, "")
-  let parsed: URL
-  try {
-    parsed = new URL(trimmed)
-  } catch {
+  const parsed = parseStrictUrl(trimmed)
+  if (!parsed || (parsed.scheme !== "http" && parsed.scheme !== "https"))
     throw new Error("Enter a full address starting with https://")
-  }
-  if (!/^https?:$/.test(parsed.protocol) || !parsed.hostname)
-    throw new Error("Enter a full address starting with https://")
-  if (parsed.protocol === "http:" && !isPrivateHost(parsed.hostname))
+  if (parsed.scheme === "http" && !isPrivateHost(parsed.hostname))
     throw new Error("Use https:// for a marketplace on the internet")
   return trimmed
 }

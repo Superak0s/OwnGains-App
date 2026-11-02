@@ -6,6 +6,7 @@ import { useAlert } from "@shared/components/CustomAlert"
 import { Button, radius, space, useUi } from "@shared/components/ui"
 import { useSkinPreview, type PreviewBoards } from "@shared/context/SkinPreviewContext"
 import { userFacingError } from "@shared/services/apiError"
+import { parseStrictUrl } from "@shared/services/config"
 import { trackFeature } from "@shared/services/crashReporting"
 import { SKIN_BOARDS } from "../boards"
 import { parseSkin, type ParsedSkin } from "../skinFormat"
@@ -116,7 +117,7 @@ export default function ImportSkinSheet({ visible, onClose, initialRef, marketpl
       if (base === (await getMarketplaceUrl())) return fetchSkin(ref.id)
       alert(
         "Another marketplace",
-        `Load this skin from ${new URL(base).host}?`,
+        `Load this skin from ${parseStrictUrl(base)?.host ?? base}?`,
         [{ text: "Cancel", style: "cancel" }, { text: "Load", onPress: () => void fetchSkin(ref.id, base) }],
         "warning",
       )

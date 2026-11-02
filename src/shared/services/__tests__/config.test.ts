@@ -288,3 +288,32 @@ describe("isOfficialServer", () => {
     }
   });
 });
+
+describe("backslash-userinfo URLs under React Native's URL parser", () => {
+  const withRnUrl = (fn: () => void) => {
+    const nodeUrl = global.URL;
+    global.URL = jest.requireActual("react-native/Libraries/Blob/URL").URL;
+    try {
+      fn();
+    } finally {
+      global.URL = nodeUrl;
+    }
+  };
+  const spoofed = "http://evil.example\@192.168.1.10";
+
+  it("refuses to save a public host disguised as a private one", () => {
+    withRnUrl(() => {
+      expect(config.validateServerUrl(spoofed).valid).toBe(false);
+      expect(config.validateServerUrl("http://user@192.168.1.10").valid).toBe(false);
+      expect(config.validateServerUrl("http://192.168.1.10:5000").valid).toBe(true);
+      expect(config.validateServerUrl("http://[fd00::1]:5000").valid).toBe(true);
+    });
+  });
+
+  it("refuses a cleartext request to it", () => {
+    withRnUrl(() => {
+      expect(() => config.assertSecureTransport(`${spoofed}/api/x`)).toThrow();
+      expect(() => config.assertSecureTransport("http://192.168.1.10/api/x?a=b@c")).not.toThrow();
+    });
+  });
+});

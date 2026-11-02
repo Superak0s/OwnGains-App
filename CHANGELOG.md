@@ -26,6 +26,10 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 - The tab bar no longer breaks with a React hook error when the Friends or Clients tab appears or goes away, such as after switching app mode or role.
 
+### Security
+
+- Server and marketplace addresses with a backslash or a user name before the host (such as `http://evil.example\@192.168.1.10`) are now refused. Before, they could pass as a private network address and send your login over plain HTTP to a public host.
+
 ### Internal
 
 - `npm start` passes the OTA signing key to Metro, since the dev build has the code-signing certificate and rejects unsigned dev manifests.

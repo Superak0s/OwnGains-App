@@ -68,6 +68,30 @@ export const isPrivateHost = (hostname: string): boolean => {
   return a === 127 || a === 10 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)
 }
 
+const STRICT_URL = /^(https?|wss?):\/\/([a-z0-9.-]+|\[[0-9a-f:.]+\])(?::(\d{1,5}))?([/?#].*)?$/i
+
+/**
+ * Splits a URL without React Native's URL polyfill, whose hostname regex reads
+ * "http://evil.com\@10.0.0.1" as 10.0.0.1 while OkHttp connects to evil.com.
+ *
+ * @returns null for userinfo, backslashes, whitespace or any other authority that
+ * is not a plain host and optional port
+ */
+export const parseStrictUrl = (
+  url: string,
+): { scheme: string; hostname: string; host: string; rest: string } | null => {
+  if (/\s/.test(url)) return null
+  const match = STRICT_URL.exec(url)
+  if (!match) return null
+  const [, scheme, rawHost, port, rest = ""] = match
+  return {
+    scheme: scheme.toLowerCase(),
+    hostname: rawHost.replace(/^\[|]$/g, "").toLowerCase(),
+    host: port ? `${rawHost}:${port}` : rawHost,
+    rest,
+  }
+}
+
 /**
  * Cleartext stays enabled at the OS level so a self-hosted LAN server on an
  * arbitrary RFC 1918 address keeps working, because Android's network security config
@@ -78,14 +102,10 @@ export const isPrivateHost = (hostname: string): boolean => {
 export const assertSecureTransport = (url: string): void => {
   if (!/^(http|ws):\/\//i.test(url)) return
 
-  let hostname: string
-  try {
-    hostname = new URL(url).hostname
-  } catch {
-    throw new Error("Refusing to send a request to a malformed URL")
-  }
+  const parsed = parseStrictUrl(url)
+  if (!parsed) throw new Error("Refusing to send a request to a malformed URL")
 
-  if (!hostname || !isPrivateHost(hostname)) {
+  if (!isPrivateHost(parsed.hostname)) {
     throw new Error(
       "Refusing to send an unencrypted request to a public host. Use https://.",
     )
@@ -122,27 +142,19 @@ export const validateServerUrl = (url: string): ServerUrlValidation => {
     return { valid: false, message: "URL must start with http:// or https://" }
   }
 
-  let parsed: URL
-  try {
-    parsed = new URL(trimmedUrl)
-  } catch {
+  const parsed = parseStrictUrl(trimmedUrl)
+  if (!parsed) {
     return { valid: false, message: "Invalid URL format" }
   }
 
-  // React Native's URL never throws on a malformed single-argument URL, so an
-  // empty hostname means there is nothing to connect to.
-  if (!parsed.hostname) {
-    return { valid: false, message: "Invalid URL format" }
-  }
-
-  if (parsed.pathname.replace(/\/+$/, "") !== "" || parsed.search || parsed.hash) {
+  if (parsed.rest.replace(/\/+$/, "") !== "") {
     return {
       valid: false,
       message: "Enter the server address only, with no path or query (e.g. https://example.com)",
     }
   }
 
-  if (trimmedUrl.startsWith("http://") && !isPrivateHost(parsed.hostname)) {
+  if (parsed.scheme === "http" && !isPrivateHost(parsed.hostname)) {
     return {
       valid: false,
       message: "HTTP is not encrypted. Use https:// for a server on the internet.",
