@@ -103,6 +103,20 @@ describe("push token", () => {
     expect(mockApi.unregisterPushToken).toHaveBeenLastCalledWith("http://srv", "tok");
   });
 
+  it("still owes the old server its unregister after signing in to another one", async () => {
+    mockNotifications.getDevicePushTokenAsync.mockResolvedValue({ type: "android", data: "tok" });
+    mockApi.registerPushToken.mockResolvedValue(true);
+    await registerPushToken();
+    mockApi.unregisterPushToken.mockRejectedValue(new Error("offline"));
+    await unregisterPushToken();
+
+    mockServerUrl.current = "http://other";
+    await registerPushToken();
+    mockApi.unregisterPushToken.mockReset().mockResolvedValue(undefined);
+    await retryPushUnregister();
+    expect(mockApi.unregisterPushToken).toHaveBeenCalledWith("http://srv", "tok");
+  });
+
   it("drops an owed unregister once the same token is registered again for the next account", async () => {
     mockNotifications.getDevicePushTokenAsync.mockResolvedValue({ type: "android", data: "tok" });
     mockApi.registerPushToken.mockResolvedValue(true);
