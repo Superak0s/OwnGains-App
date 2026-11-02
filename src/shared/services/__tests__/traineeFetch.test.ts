@@ -1,6 +1,7 @@
 jest.mock("@shared/services/authenticatedFetch", () => ({
   authenticatedFetch: jest.fn(async () => new Response(null, { status: 200 })),
   routeOf: jest.requireActual("@shared/services/authenticatedFetch").routeOf,
+  isOwnServer: (url: string) => url.startsWith("https://own.example/"),
 }));
 
 import { authenticatedFetch } from "@shared/services/authenticatedFetch";
@@ -66,5 +67,28 @@ describe("traineeFetch", () => {
       "must not target an auth route",
     );
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("traineeFetch path checks", () => {
+  beforeEach(() => mockFetch.mockClear());
+
+  it.each([
+    "/API/auth/account",
+    "/api//auth/password",
+    "/api/sessions/../auth/account",
+    "/api/%61uth/account",
+    "/api/auth",
+    "/api/sessions/\\..\\auth/x",
+    "/api/%zz",
+  ])("refuses %s", async (url) => {
+    await expect(traineeFetch("42")(url)).rejects.toThrow();
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("refuses another server and allows its own", async () => {
+    await expect(traineeFetch("42")("https://evil.example/api/sessions")).rejects.toThrow();
+    await traineeFetch("42")("https://own.example/api/sessions");
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 });
