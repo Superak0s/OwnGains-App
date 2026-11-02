@@ -4,7 +4,7 @@ import type { Notification } from "expo-notifications";
 import { getNotifications, type NotificationsModule } from "@shared/services/notifications";
 import { getServerUrl } from "@shared/services/config";
 import { loadFromStorage, removeFromStorage, saveToStorage } from "@shared/services/storage";
-import { captureUnreported, reportAndReturn } from "@shared/services/crashReporting";
+import { captureUnreported } from "@shared/services/crashReporting";
 import { messagesApi } from "./services";
 import { messagesApi as onlineMessagesApi } from "./services/on/messages";
 
@@ -16,6 +16,7 @@ const REGISTRATION_KEY = "@push_registration";
 interface Registration {
   serverUrl: string;
   token: string;
+  signedOut?: boolean;
 }
 
 let channelReady = false;
@@ -45,6 +46,7 @@ export const serverPushesMessages = (): boolean => serverPushes;
  * google-services.json or against a server without FCM, where the socket alone delivers messages.
  */
 export async function registerPushToken(): Promise<void> {
+  await retryPushUnregister();
   const Notifications = await getNotifications();
   if (!Notifications || Platform.OS !== "android" || getApps().length === 0) return;
   const started = generation;
@@ -72,11 +74,24 @@ export async function unregisterPushToken(): Promise<void> {
   generation += 1;
   serverPushes = false;
   const registration = await loadFromStorage<Registration>(REGISTRATION_KEY);
-  if (!registration) return;
-  await removeFromStorage(REGISTRATION_KEY);
-  // ponytail: one try. If the server is unreachable now, the token moves to the next account that signs in here.
-  await onlineMessagesApi.unregisterPushToken(registration.serverUrl, registration.token)
-    .catch(reportAndReturn(undefined, { stage: "pushUnregister" }));
+  if (registration) await sendUnregister(registration);
+}
+
+/** Retries an unregister that failed at sign-out. */
+export async function retryPushUnregister(): Promise<void> {
+  const registration = await loadFromStorage<Registration>(REGISTRATION_KEY);
+  if (registration?.signedOut) await sendUnregister(registration);
+}
+
+async function sendUnregister(registration: Registration): Promise<void> {
+  try {
+    await onlineMessagesApi.unregisterPushToken(registration.serverUrl, registration.token);
+    await removeFromStorage(REGISTRATION_KEY);
+  } catch (error) {
+    // Until the server forgets the token, the signed-out account's messages keep arriving on this phone.
+    await saveToStorage(REGISTRATION_KEY, { ...registration, signedOut: true } satisfies Registration);
+    captureUnreported(error, { stage: "pushUnregister" }, "warning");
+  }
 }
 
 /** Asks once for the notification permission Android 13 and later needs to show a message push. */

@@ -42,6 +42,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The privacy policy now covers Share My Machine Names: what the server stores, who sees it, and when it is deleted.
 - When a device on your Wi-Fi advertises a server with an internet address, the server picker now says so and asks you to use it only if you recognise the address.
 - Trainer access now also refuses account routes written with different letter case, encoded characters or extra path segments, and never sends a client's requests to another server.
+- Signing out now keeps trying to stop message notifications for that account on this phone when the server couldn't be reached at the time.
 
 ### Internal
 

@@ -23,6 +23,7 @@ import {
   ensureMessagesChannel,
   messageSender,
   registerPushToken,
+  retryPushUnregister,
   serverPushesMessages,
 } from "./push";
 import { threadEvents } from "./threadEvents";
@@ -152,9 +153,11 @@ export function MessagesProvider({ children }: { readonly children: React.ReactN
     });
   }, [enabled, subscribeToSocket, refresh]);
 
+  const signedOut = user?.id == null;
   useEffect(() => {
     if (enabled) void registerPushToken();
-  }, [enabled]);
+    else if (signedOut) void retryPushUnregister();
+  }, [enabled, signedOut]);
 
   useEffect(() => {
     if (!enabled) return;

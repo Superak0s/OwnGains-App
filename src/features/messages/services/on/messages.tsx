@@ -1,5 +1,7 @@
 import { apiCall, fetchIdempotent, parseApiResponse } from "@shared/services/apiClient"
 import { authenticatedFetch } from "@shared/services/authenticatedFetch"
+import { ApiError } from "@shared/services/apiError"
+import { assertSecureTransport } from "@shared/services/config"
 import { generateId } from "@utils/format"
 import type { Conversation, Message, Thread } from "../../types"
 
@@ -51,11 +53,14 @@ export const messagesApi = {
 
   /** Unauthenticated, so it works after the session was revoked, and sent to the server the token was registered with. */
   unregisterPushToken: async (serverUrl: string, token: string): Promise<void> => {
-    await fetch(`${serverUrl}/api/push/token`, {
+    const url = `${serverUrl}/api/push/token`
+    assertSecureTransport(url)
+    const res = await fetch(url, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),
       signal: AbortSignal.timeout(10_000),
     })
+    if (!res.ok) throw new ApiError("Couldn't unregister the push token", res.status)
   },
 }

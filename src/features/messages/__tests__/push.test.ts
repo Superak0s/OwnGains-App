@@ -31,7 +31,13 @@ jest.mock("@shared/services/storage", () => ({
 
 import { getApps } from "@react-native-firebase/app";
 import { captureUnreported } from "@shared/services/crashReporting";
-import { messageSender, registerPushToken, serverPushesMessages, unregisterPushToken } from "../push";
+import {
+  messageSender,
+  registerPushToken,
+  retryPushUnregister,
+  serverPushesMessages,
+  unregisterPushToken,
+} from "../push";
 
 const notification = (content: object, trigger: object | null = null) =>
   ({ request: { content: { data: {}, ...content }, trigger } }) as unknown as Notification;
@@ -80,6 +86,21 @@ describe("push token", () => {
     mockServerUrl.current = "http://other";
     await unregisterPushToken();
     expect(mockApi.unregisterPushToken).toHaveBeenCalledWith("http://srv", "tok");
+  });
+
+  it("keeps retrying to unregister after the server couldn't be reached at sign-out", async () => {
+    mockNotifications.getDevicePushTokenAsync.mockResolvedValue({ type: "android", data: "tok" });
+    mockApi.registerPushToken.mockResolvedValue(true);
+    await registerPushToken();
+
+    mockApi.unregisterPushToken.mockRejectedValueOnce(new Error("offline"));
+    await unregisterPushToken();
+    mockApi.unregisterPushToken.mockResolvedValue(undefined);
+    await retryPushUnregister();
+    await retryPushUnregister();
+
+    expect(mockApi.unregisterPushToken).toHaveBeenCalledTimes(2);
+    expect(mockApi.unregisterPushToken).toHaveBeenLastCalledWith("http://srv", "tok");
   });
 
   it("ignores a registration that finishes after sign-out", async () => {
