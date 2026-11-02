@@ -84,7 +84,7 @@ export const CHAPTERS: Record<ChapterId, Chapter> = {
     card("📅", "Schedule workouts", "The Schedule widget books a workout on a future day with a notification or alarm, and can copy it into your phone's calendar."),
   ]),
   workout: chapter("workout", "🏋️", "Workout", [
-    practice("Log a set: enter the weight and reps, rate the effort, then save. Tap Use it to copy last time's numbers.", { type: "logSet" }),
+    practice("Log a set: enter the weight and reps, optionally pick how many reps you had left (RIR), then save. Tap Use it to copy last time's numbers.", { type: "logSet" }),
     checklist("A few things you might miss.", [
       ["✏️", "Edit a set", "Tap a logged set to fix its weight, reps or notes, or to delete it."],
       ["↘", "Drop sets", "Tap Add drop under the reps to keep going at a lower weight. Each drop is logged in the same set."],

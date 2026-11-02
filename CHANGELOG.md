@@ -28,6 +28,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Warnings in the light theme use a darker amber that is easier to read.
 - Deleting or cancelling a scheduled workout now asks for confirmation first.
 - Screen readers announce more buttons in Supplements, Friends and the theme editor as buttons, and the search clear and Friends back buttons are easier to tap.
+- The tutorial's set logging step names the reps in reserve (RIR) field the set form actually shows.
 
 ### Fixed
 
