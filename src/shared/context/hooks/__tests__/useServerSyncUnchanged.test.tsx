@@ -128,3 +128,57 @@ it("resolves false when the sync fails and true when it succeeds", async () => {
   expect(failed).toBe(false);
   expect(succeeded).toBe(true);
 });
+
+it("doesn't overwrite a program edited while the server copy was being fetched", async () => {
+  const edited = {
+    days: [{ dayNumber: 1, split: { push: { exercises: [{ name: "Bench" }, { name: "Dips" }] } } }],
+  } as unknown as WorkoutData;
+  const serverCopy = {
+    days: [{ dayNumber: 1, split: { push: { exercises: [{ name: "Bench" }] } } }],
+  };
+  let resolveFetch!: (v: unknown) => void;
+  const slowProgramApi = {
+    fetchSavedProgram: jest.fn(() => new Promise((r) => (resolveFetch = r))),
+  };
+  const setWorkoutData = jest.fn();
+  let sync!: () => Promise<boolean>;
+
+  function Harness({ data }: { data: WorkoutData }) {
+    ({ syncFromServer: sync } = useServerSync({
+      userId: "u1",
+      selectedSplit: "push",
+      workoutData: data,
+      setWorkoutData,
+      completedDays: {},
+      lockedDays: {},
+      setCompletedDays: jest.fn(),
+      setLockedDays: jest.fn(),
+      currentSessionId: null,
+      unlockedOverrides: {},
+      saveToStorage: jest.fn().mockResolvedValue(true),
+      STORAGE_KEYS,
+      clearActiveWorkout: jest.fn(),
+      workoutApi: workoutApi as never,
+      programApi: slowProgramApi as never,
+    }));
+    return null;
+  }
+
+  let root!: ReturnType<typeof create>;
+  await act(async () => {
+    root = create(<Harness data={program} />);
+  });
+  let pending!: Promise<boolean>;
+  await act(async () => {
+    pending = sync();
+  });
+  await act(async () => {
+    root.update(<Harness data={edited} />);
+  });
+  await act(async () => {
+    resolveFetch(serverCopy);
+    await pending;
+  });
+
+  expect(setWorkoutData).not.toHaveBeenCalled();
+});

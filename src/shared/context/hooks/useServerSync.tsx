@@ -184,6 +184,9 @@ export const useServerSync = ({
       const savedProgram = await programApi.fetchSavedProgram();
       if (!savedProgram?.days) return null;
       if (!latestWorkoutData) return null;
+      // An edit made during the fetch would be overwritten by a merge built on the old copy.
+      if (workoutDataRef.current !== latestWorkoutData || (await isProgramDirty(userId)))
+        return null;
 
       const mergedData: WorkoutData = {
         ...latestWorkoutData,
