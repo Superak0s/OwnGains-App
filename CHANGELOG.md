@@ -21,6 +21,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Adding a machine to an exercise now turns on best stats across all machines, unless you turned that off for the exercise. Exercises that already have machines keep their setting.
 - When logging a set, the Effort field is now called Reps in reserve (RIR).
 - Messages no longer label people as Trainer or Client in the inbox or the conversation header.
+- Servers older than OwnGains-Server 1.1.0 are now flagged as outdated in Settings, since program snapshots and re-authentication need 1.1.0.
 
 ### Fixed
 
@@ -41,6 +42,8 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - `CLAUDE.md` requires asking before any change to the privacy policy, terms or consent copy, or a bump of the version that asks users to accept again.
 - Dev builds send the account token to the dev marketplace (the server's host, port 5100), so the demo data's skins show up there. Release builds still require the server's exact origin (`isOwnServer`).
 - Every `Text` and `TextInput` now comes from `@shared/components/Text`, which applies the font and text size. ESLint rejects importing them from `react-native`.
+- Set rows normalize the server's 0/1 `isWarmup` to a boolean, and `User.name` allows the `null` the server sends.
+
 
 ## [1.1.0] - 2026-10-29
 

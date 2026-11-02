@@ -2,7 +2,7 @@ export interface User {
   id: string;
   username: string;
   email?: string;
-  name?: string;
+  name?: string | null;
   /** Server-granted. Absent in offline mode, where there is no admin. */
   isAdmin?: boolean;
   heightCm?: number | null;

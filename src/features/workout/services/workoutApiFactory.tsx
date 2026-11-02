@@ -67,9 +67,11 @@ export interface RenameExerciseResult {
 // The server's weight column is DECIMAL, which mysql2 serializes as a string
 // (e.g. "62.50") rather than a number. Normalize it here so every caller
 // gets the real number the SetTiming type promises.
+// MySQL returns is_warmup as 0/1, which a strict `=== true` would read as false.
 const normalizeTiming = (timing: SetTiming): SetTiming => ({
   ...timing,
   weight: timing.weight == null ? timing.weight : Number(timing.weight),
+  ...(timing.isWarmup != null && { isWarmup: Boolean(timing.isWarmup) }),
 });
 
 const normalizeSession = <T extends { setTimings?: SetTiming[] }>(

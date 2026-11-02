@@ -108,10 +108,10 @@ describe("getServerVersionStatus", () => {
   it("asks again after a check the server didn't answer", async () => {
     mockApiCall
       .mockRejectedValueOnce(new Error("Network request failed"))
-      .mockResolvedValueOnce({ version: "1.0.0" });
+      .mockResolvedValueOnce({ version: "1.1.0" });
 
     expect(await getServerVersionStatus()).toBeNull();
     await Promise.resolve();
-    expect(await getServerVersionStatus()).toEqual({ version: "1.0.0", outdated: false });
+    expect(await getServerVersionStatus()).toEqual({ version: "1.1.0", outdated: false });
   });
 });

@@ -76,6 +76,17 @@ describe("makeWorkoutApi", () => {
     expect(timing.weight).toBe(62.5);
   });
 
+  it("turns the 0/1 isWarmup MySQL sends into a boolean", async () => {
+    const http = jest.fn(async () =>
+      jsonResponse({ session: { id: 7, setTimings: [{ id: 1, isWarmup: 1 }, { id: 2, isWarmup: 0 }] } }),
+    );
+    const api = makeWorkoutApi(http);
+
+    const session = await api.getSession(7);
+
+    expect(session.setTimings?.map((t) => t.isWarmup)).toEqual([true, false]);
+  });
+
   it("builds the analytics query string from the arguments", async () => {
     const http = jest.fn(async () => jsonResponse({ totalSessions: 3 }));
     const api = makeWorkoutApi(http);
