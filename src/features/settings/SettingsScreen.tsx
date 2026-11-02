@@ -2263,9 +2263,10 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
                 </Text>
                 <Text style={styles.settingDescription}>
                   They are kept on this phone only. They will not sync to your
-                  other devices, and they are gone if you uninstall OwnGains or
-                  lose the phone. Use Export My Data under Privacy and Data to
-                  keep a copy.
+                  other devices, they are not uploaded later if you move to a
+                  server that stores them, and they are gone if you uninstall
+                  OwnGains or lose the phone. Use Export My Data under Privacy
+                  and Data to keep a copy.
                 </Text>
               </View>
             </View>

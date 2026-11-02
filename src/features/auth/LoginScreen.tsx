@@ -274,7 +274,7 @@ OwnGains could not reach that address, so it could not check what the server sto
           "Some data stays on this phone",
           `${message}
 
-This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are kept on this device only: they will not sync to your other devices, and they are gone if you uninstall OwnGains or lose the phone.`,
+This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are kept on this device only: they will not sync to your other devices, they are not uploaded later if you move to a server that stores them, and they are gone if you uninstall OwnGains or lose the phone.`,
           [{ text: "Got it" }],
           "warning",
         );

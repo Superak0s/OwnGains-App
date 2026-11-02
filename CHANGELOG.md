@@ -22,6 +22,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - When logging a set, the Effort field is now called Reps in reserve (RIR).
 - Messages no longer label people as Trainer or Client in the inbox or the conversation header.
 - Servers older than OwnGains-Server 1.1.0 are now flagged as outdated on Home and in Settings, since undoing program changes needs 1.1.0.
+- The server notices in Settings and on the login screen now say that entries kept on this phone are not uploaded later if you move to a server that stores them.
 
 ### Fixed
 
