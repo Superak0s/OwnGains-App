@@ -43,6 +43,7 @@ describe("skin format", () => {
     )
     expect(() => parseSkin({ format: 1, theme: { name: "x", colors: { accent: "url(evil)" } } })).toThrow(SkinFormatError)
     expect(() => parseSkin({ format: 1 })).toThrow(/no theme, font or widget/)
+    expect(() => parseSkin({ format: 1, theme: { name: "x", colors: { background: "#ffffff", textPrimary: "#fafafa" } } })).toThrow(/unreadable/)
     expect(() => parseSkin({ format: 1, typography: "big" })).toThrow(/font settings/)
   })
 

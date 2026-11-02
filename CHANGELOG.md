@@ -24,6 +24,8 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Servers older than OwnGains-Server 1.1.0 are now flagged as outdated on Home and in Settings, since undoing program changes needs 1.1.0.
 - The server notices in Settings and on the login screen now say that entries kept on this phone are not uploaded later if you move to a server that stores them.
 - A widget that fails to load now shows a retry in its own card instead of an error over the whole tab.
+- Importing a skin whose text would be unreadable on its background is refused.
+- Warnings in the light theme use a darker amber that is easier to read.
 
 ### Fixed
 

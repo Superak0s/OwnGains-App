@@ -1,5 +1,5 @@
 import { isDefaultTypography, normalizeTypography, type Typography } from "@shared/components/Text"
-import { DARK_COLORS, LIGHT_COLORS, isDarkColor, type AppTheme, type ThemeColors } from "@shared/context/ThemeContext"
+import { DARK_COLORS, LIGHT_COLORS, contrastRatio, isDarkColor, toRgbHex, type AppTheme, type ThemeColors } from "@shared/context/ThemeContext"
 import type { WidgetInstance, WidgetSize } from "@shared/types"
 import { generateId } from "@utils/format"
 import { isSkinBoardId, type SkinBoardId } from "./boards"
@@ -56,7 +56,12 @@ function parseTheme(v: unknown): { name: string; colors: ThemeColors } {
     picked[key as keyof ThemeColors] = value as string
   }
   const base = picked.background && isDarkColor(picked.background) ? DARK_COLORS : LIGHT_COLORS
-  return { name, colors: { ...base, ...picked } }
+  const colors = { ...base, ...picked }
+  // Below 3:1 the app is unreadable, and the user would need to read it to undo the import.
+  for (const bg of [colors.background, colors.surface])
+    if (toRgbHex(colors.textPrimary) && toRgbHex(bg) && contrastRatio(colors.textPrimary, bg) < 3)
+      fail("This theme's text would be unreadable on its background.")
+  return { name, colors }
 }
 
 function parseWidget(v: unknown, board: string): WidgetInstance {
