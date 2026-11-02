@@ -254,6 +254,7 @@ const DROPPED_SYNC_REASONS: Record<string, string> = {
   session_gone: "its session no longer exists",
   local_id: "its session was never uploaded",
   retries_exhausted: "the server kept rejecting it",
+  start_rejected: "the server kept rejecting its session",
   unknown_type: "it was not a recognised operation",
 };
 

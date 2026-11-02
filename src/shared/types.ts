@@ -290,6 +290,8 @@ export type PendingSync =
       type: "startSession";
       syncId?: string;
       localSessionId?: string;
+      /** Server refusals so far, kept with the op so an app restart doesn't reset the count. */
+      rejections?: number;
       data: StartSessionSyncData;
       timestamp: string;
     }
@@ -297,6 +299,8 @@ export type PendingSync =
       type: "recordSet";
       syncId?: string;
       localSessionId?: string;
+      /** Server refusals so far, kept with the op so an app restart doesn't reset the count. */
+      rejections?: number;
       data: RecordSetSyncData;
       timestamp: string;
     }
@@ -304,6 +308,8 @@ export type PendingSync =
       type: "endSession";
       syncId?: string;
       localSessionId?: string;
+      /** Server refusals so far, kept with the op so an app restart doesn't reset the count. */
+      rejections?: number;
       data: EndSessionSyncData;
       timestamp: string;
     }
@@ -311,6 +317,8 @@ export type PendingSync =
       type: "updateSessionDay";
       syncId?: string;
       localSessionId?: string;
+      /** Server refusals so far, kept with the op so an app restart doesn't reset the count. */
+      rejections?: number;
       data: UpdateSessionDaySyncData;
       timestamp: string;
     };

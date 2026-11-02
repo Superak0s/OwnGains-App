@@ -62,6 +62,9 @@ interface UseSyncManagerReturn {
 // rate limit says nothing about the op itself, and dropping on those would
 // discard a workout logged in a gym without reception.
 const MAX_SYNC_RETRIES = 8;
+// A start with sets queued behind it gets far longer, since dropping it drops the
+// whole workout's upload, but a start the server refuses for half a day never succeeds.
+const MAX_START_REJECTIONS_WITH_SETS = 24;
 const BASE_BACKOFF_MS = 30_000;
 const MAX_BACKOFF_MS = 30 * 60_000;
 // Idempotency keys make re-sending a few ops after a mid-replay kill harmless,
@@ -123,6 +126,8 @@ export const useSyncManager = ({
   // Kept after a replay run: ops enqueued after the run that created the real id
   // still need it (see addPendingSync).
   const localToServerIdRef = useRef(new Map<string, string>());
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
   const mappedUserRef = useRef(userId);
   if (mappedUserRef.current !== userId) {
     mappedUserRef.current = userId;
@@ -238,6 +243,9 @@ export const useSyncManager = ({
 
     syncingRef.current = true;
     setIsSyncing(true);
+    // After an account switch the remaining ops would go out under the new
+    // account's token, and the run's queue writes would replace the new account's queue.
+    const switchedAccount = (): boolean => userIdRef.current !== userId;
     const stopRunTrace = startTrace("sync.run");
     try {
       console.debug(
@@ -303,7 +311,7 @@ export const useSyncManager = ({
           // offline keeps its local id, is deferred forever by the guard in
           // processSync, and remains open on the server.
           localToServerId.set(sync.localSessionId, serverIdStr);
-          if (currentSessionId === sync.localSessionId) {
+          if (currentSessionId === sync.localSessionId && !switchedAccount()) {
             await saveToStorage(
               STORAGE_KEYS.CURRENT_SESSION_ID,
               serverIdStr,
@@ -461,8 +469,12 @@ export const useSyncManager = ({
         });
 
         const nextCount = (previous?.count ?? 0) + 1;
-        const rejections = (previous?.rejections ?? 0) + (rejected ? 1 : 0);
-        if (rejections > MAX_SYNC_RETRIES && !hasQueuedDependants(sync)) {
+        const rejections =
+          (previous?.rejections ?? sync.rejections ?? 0) + (rejected ? 1 : 0);
+        if (rejections > 0) sync.rejections = rejections;
+        const dependants = hasQueuedDependants(sync);
+        const limit = dependants ? MAX_START_REJECTIONS_WITH_SETS : MAX_SYNC_RETRIES;
+        if (rejections > limit) {
           console.warn(
             `⚠ Dropping ${sync.type} sync after ${rejections} rejections`,
           );
@@ -478,6 +490,13 @@ export const useSyncManager = ({
           });
           noteDropped(sync.type, "retries_exhausted");
           retryStateRef.current.delete(retryKey);
+          if (dependants) {
+            for (const s of workingSyncs) {
+              if (s.type === "startSession" || String(s.data.sessionId) !== sync.localSessionId) continue;
+              if (s.syncId) removedIdsRef.current.add(s.syncId);
+              noteDropped(s.type, "start_rejected");
+            }
+          }
         } else {
           const backoff = Math.min(
             BASE_BACKOFF_MS * 2 ** (nextCount - 1),
@@ -614,7 +633,9 @@ export const useSyncManager = ({
         Math.ceil(workingSyncs.length / MAX_REPLAY_CHECKPOINTS),
       );
       for (let i = 0; i < workingSyncs.length; i++) {
+        if (switchedAccount()) return;
         await processSync(workingSyncs[i]);
+        if (switchedAccount()) return;
         const isLast = i === workingSyncs.length - 1;
         if (rateLimited) {
           await persistFrom(i + 1);

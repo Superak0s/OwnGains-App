@@ -77,9 +77,11 @@ type Control = {
 function Harness({
   initialSyncs,
   controlRef,
+  userId = "u1",
 }: {
   initialSyncs: PendingSync[];
   controlRef: React.MutableRefObject<Control | null>;
+  userId?: string;
 }) {
   const [pendingSyncs, setPendingSyncs] = useState(initialSyncs);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -90,7 +92,7 @@ function Harness({
     setIsSyncing,
     currentSessionId: null,
     setCurrentSessionId: () => {},
-    userId: "u1",
+    userId,
     saveToStorage: jest.fn().mockResolvedValue(true),
     STORAGE_KEYS: { PENDING_SYNCS: "pending", CURRENT_SESSION_ID: "session" },
     useManualTime: true,
@@ -283,6 +285,77 @@ describe("useSyncManager retry/backoff", () => {
 
     expect(controlRef.current!.getPendingSyncs()).toHaveLength(2);
     expect(controlRef.current!.getDroppedSyncs()).toEqual([]);
+  });
+
+  it("drops a start the server keeps refusing for half a day, with the sets queued behind it", async () => {
+    startSession.mockRejectedValue(new ApiError("Invalid split", 400));
+    const controlRef: React.MutableRefObject<Control | null> = { current: null };
+    act(() => {
+      create(
+        <Harness
+          initialSyncs={[localStart("local_1", "t1"), localSet("local_1", "t2")]}
+          controlRef={controlRef}
+        />,
+      );
+    });
+
+    await runAfterBackoff(controlRef, 25);
+
+    expect(controlRef.current!.getPendingSyncs()).toEqual([]);
+    expect(controlRef.current!.getDroppedSyncs().map((d) => d.reason)).toEqual([
+      "retries_exhausted",
+      "start_rejected",
+    ]);
+  });
+
+  it("counts rejections from before an app restart", async () => {
+    startSession.mockRejectedValue(new ApiError("Invalid split", 400));
+    const controlRef: React.MutableRefObject<Control | null> = { current: null };
+    act(() => {
+      create(<Harness initialSyncs={[makeSync("t1")]} controlRef={controlRef} />);
+    });
+    await runAfterBackoff(controlRef, 4);
+    const persisted = controlRef.current!.getPendingSyncs();
+    expect(persisted[0].rejections).toBe(4);
+
+    const restarted: React.MutableRefObject<Control | null> = { current: null };
+    act(() => {
+      create(<Harness initialSyncs={persisted} controlRef={restarted} />);
+    });
+    await runAfterBackoff(restarted, 5);
+
+    expect(restarted.current!.getPendingSyncs()).toEqual([]);
+    expect(startSession).toHaveBeenCalledTimes(9);
+  });
+});
+
+describe("useSyncManager account switch", () => {
+  it("stops a replay when the account changes, so the rest isn't sent as the new account", async () => {
+    let finishFirst!: (id: number) => void;
+    startSession.mockReset();
+    startSession
+      .mockImplementationOnce(() => new Promise((resolve) => (finishFirst = resolve)))
+      .mockResolvedValue(2);
+    const controlRef: React.MutableRefObject<Control | null> = { current: null };
+    const syncs = [makeSync("t1"), makeSync("t2")];
+    let root!: ReturnType<typeof create>;
+    act(() => {
+      root = create(<Harness initialSyncs={syncs} controlRef={controlRef} />);
+    });
+
+    let run!: Promise<void>;
+    act(() => {
+      run = controlRef.current!.syncPendingData();
+    });
+    act(() => {
+      root.update(<Harness initialSyncs={syncs} controlRef={controlRef} userId="u2" />);
+    });
+    await act(async () => {
+      finishFirst(1);
+      await run;
+    });
+
+    expect(startSession).toHaveBeenCalledTimes(1);
   });
 });
 
