@@ -18,6 +18,7 @@ import {
   clearCollection,
   renameCollection,
 } from "./sqliteStorage"
+import { captureException } from "./crashReporting"
 import { sortableStamp, toDateString } from "@utils/format"
 
 export async function readJSON<T>(
@@ -80,6 +81,17 @@ export function setRecordStoreUser(userId: string | null): void {
   for (const reset of recordStoreResets) reset()
 }
 
+/** Skips and reports an unreadable row, so one corrupt record can't hide the rest of the collection. */
+const parseRows = <T,>(collection: string, rows: string[]): T[] =>
+  rows.flatMap((value) => {
+    try {
+      return [JSON.parse(value) as T]
+    } catch (error) {
+      captureException(error, { stage: "recordStore.parse", collection })
+      return []
+    }
+  })
+
 /**
  * One-row-per-record store over `kv_records`, scoped to the active account. The
  * first access claims rows written before an account was active.
@@ -135,7 +147,7 @@ export function createRecordStore<T>(
     const version = getRecordsVersion()
     const pending: Promise<T[]> = listRecords(col, limit)
       .then((rows) => {
-        const records = rows.map((v) => JSON.parse(v) as T)
+        const records = parseRows<T>(col, rows)
         if (limit == null && inFlightReads.get(limit) === pending) {
           parsed = { version, rows: records }
         }
@@ -175,17 +187,17 @@ export function createRecordStore<T>(
     async getWhere(where, limit) {
       await ensureMigrated()
       const rows = await listRecordsWhere(col, where, limit)
-      return rows.map((v) => JSON.parse(v) as T)
+      return parseRows<T>(col, rows)
     },
     async getPageBefore(before, limit) {
       await ensureMigrated()
       const rows = await listRecordsBefore(col, before, limit)
-      return rows.map((v) => JSON.parse(v) as T)
+      return parseRows<T>(col, rows)
     },
     async getOne(id) {
       await ensureMigrated()
       const row = await getRecord(col, String(id))
-      return row ? (JSON.parse(row) as T) : null
+      return row ? (parseRows<T>(col, [row])[0] ?? null) : null
     },
     async put(record) {
       await ensureMigrated()

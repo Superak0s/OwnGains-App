@@ -28,6 +28,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - A Cloudflare challenge, captive portal or other proxy error page during a token refresh no longer signs you out. Only an answer from the server itself can end the session.
 - On a patchy connection, a workout start, set or workout end that reached the server but whose reply was lost is no longer saved twice when it syncs again later.
 - An edit to your program made while the app was refreshing it from the server is no longer undone by the refresh.
+- In offline mode, one damaged entry no longer makes a whole history or tracking log unreadable. The damaged entry is skipped and the rest show as normal.
 
 ### Security
 

@@ -145,6 +145,17 @@ describe("createRecordStore", () => {
     expect((await store.getSince("2026-10-23T05:15:00.000Z")).map((e) => e.id)).toEqual([2])
   })
 
+  it("skips one unreadable row instead of failing every read of the collection", async () => {
+    const store = makeStore()
+    await store.put(entry(1, "2024-01-01"))
+    await store.put(entry(2, "2024-01-02"))
+    rowsOf("entries").push({ id: "bad", sortKey: "2024-01-03", value: "{not json" })
+
+    expect((await store.getAll()).map((e) => e.id)).toEqual([2, 1])
+    expect((await store.getRecent(5)).map((e) => e.id)).toEqual([2, 1])
+    expect(await store.getOne("bad" as unknown as number)).toBeNull()
+  })
+
   it("overwrites a record with the same id", async () => {
     const store = makeStore()
     await store.put(entry(1, "2024-01-01", "first"))
