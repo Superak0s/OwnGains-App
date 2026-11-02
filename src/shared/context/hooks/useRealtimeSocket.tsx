@@ -336,7 +336,8 @@ export function useRealtimeSocket({
       metric.count("ws.reconnect_scheduled", 1, {
         attributes: { attempt: retryCountRef.current, code: e.code ?? 0, refused },
       })
-      retryTimerRef.current = setTimeout(connect, delay)
+      // Jitter spreads out every client reconnecting at once after a server restart.
+      retryTimerRef.current = setTimeout(connect, delay * (0.5 + Math.random()))
     }
   }, [enabled])
 

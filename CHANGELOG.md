@@ -23,6 +23,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Messages no longer label people as Trainer or Client in the inbox or the conversation header.
 - Servers older than OwnGains-Server 1.1.0 are now flagged as outdated on Home and in Settings, since undoing program changes needs 1.1.0.
 - The server notices in Settings and on the login screen now say that entries kept on this phone are not uploaded later if you move to a server that stores them.
+- A widget that fails to load now shows a retry in its own card instead of an error over the whole tab.
 
 ### Fixed
 
@@ -56,6 +57,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Set rows normalize the server's 0/1 `isWarmup` to a boolean, and `User.name` allows the `null` the server sends.
 - isOwnServer and the login screen's LAN check parse URLs with parseStrictUrl instead of React Native's URL.
 - Offline schedule keeps cancelled entries as cancelled and lists them on request, matching the server.
+- Realtime reconnects are jittered so clients don't all retry at the same moment after a server restart.
 
 
 ## [1.1.0] - 2026-10-29

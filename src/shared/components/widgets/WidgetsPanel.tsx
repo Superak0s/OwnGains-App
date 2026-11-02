@@ -6,6 +6,7 @@ import { useAlert } from "@shared/components/CustomAlert"
 import ModalSheet from "@shared/components/ModalSheet"
 import { WidgetSizeContext } from "./widgetSize"
 import { moveWidget, type MoveDirection } from "./moveWidget"
+import { captureException } from "@shared/services/crashReporting"
 import type { ThemeColors } from "@shared/context/ThemeContext"
 import type {
   WidgetDefinition,
@@ -268,7 +269,9 @@ export default function WidgetsPanel<T extends string>({
             )}
             <View style={styles.widgetBody}>
               <WidgetSizeContext.Provider value={instance.size}>
-                {renderContent(instance)}
+                <WidgetErrorBoundary type={instance.type} styles={styles}>
+                  <RenderWidget render={() => renderContent(instance)} />
+                </WidgetErrorBoundary>
               </WidgetSizeContext.Provider>
             </View>
           </>
@@ -327,6 +330,38 @@ export default function WidgetsPanel<T extends string>({
       </ModalSheet>
     </View>
   )
+}
+
+// Rendering inside a child component lets the boundary catch a throw from renderContent itself.
+const RenderWidget = ({ render }: { readonly render: () => React.ReactNode }) => <>{render()}</>
+
+/** One widget's render crash shows a retry in its own slot instead of taking down the whole board. */
+class WidgetErrorBoundary extends React.Component<
+  { children: React.ReactNode; type: string; styles: ReturnType<typeof makeStyles> },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    captureException(error, { boundary: "widget", widget: this.props.type, componentStack: errorInfo.componentStack ?? "" })
+  }
+
+  render() {
+    if (!this.state.hasError) return this.props.children
+    const { styles } = this.props
+    return (
+      <View style={styles.widgetError}>
+        <Text style={styles.widgetErrorText}>This widget couldn&apos;t load.</Text>
+        <TouchableOpacity accessibilityRole='button' onPress={() => this.setState({ hasError: false })}>
+          <Text style={styles.widgetErrorRetry}>Try again</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
 }
 
 const makeStyles = (colors: ThemeColors) =>
@@ -462,5 +497,20 @@ const makeStyles = (colors: ThemeColors) =>
     },
     widgetBody: {
       flexGrow: 1,
+    },
+    widgetError: {
+      flexGrow: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      padding: 16,
+    },
+    widgetErrorText: {
+      color: colors.textSecondary,
+    },
+    widgetErrorRetry: {
+      color: colors.accent,
+      fontWeight: "700",
+      padding: 8,
     },
   })

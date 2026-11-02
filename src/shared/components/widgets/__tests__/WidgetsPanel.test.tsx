@@ -78,3 +78,26 @@ it("saves what the user types in the customize sheet", async () => {
   await fireEvent.press(screen.getByText("Save"))
   expect(onCustomize).toHaveBeenCalledWith("c", { title: "Squat", icon: undefined, subtitle: undefined })
 })
+
+it("contains one widget's crash to its own card", async () => {
+  jest.spyOn(console, "error").mockImplementation(() => {})
+  const Broken = () => {
+    throw new Error("boom")
+  }
+  await render(
+    <WidgetsPanel
+      widgets={[
+        { id: "bad", type: "chart", size: "medium", order: 0 },
+        { id: "ok", type: "chart", size: "medium", order: 1 },
+      ]}
+      editMode={false}
+      onCycleSize={jest.fn()}
+      onRemove={jest.fn()}
+      onReorder={jest.fn()}
+      registry={registry}
+      renderContent={(w) => (w.id === "bad" ? <Broken /> : <Text>{w.id}</Text>)}
+    />,
+  )
+  expect(screen.getByText("This widget couldn't load.")).toBeTruthy()
+  expect(screen.getByText("ok")).toBeTruthy()
+})
