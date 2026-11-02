@@ -657,7 +657,17 @@ function ScheduleForm({
       {editing && !readOnly && (
         <TouchableOpacity
           style={[styles.secondaryButton, styles.removeButton]}
-          onPress={() => void remove()}
+          onPress={() =>
+            alert(
+              removeLabel === "Cancel" ? "Cancel this workout?" : `${removeLabel}?`,
+              `"${editing.title}" is removed from the schedule.`,
+              [
+                { text: "Keep", style: "cancel" },
+                { text: removeLabel, style: "destructive", onPress: () => void remove() },
+              ],
+              "warning",
+            )
+          }
           accessibilityRole='button'
           accessibilityLabel={removeLabel === "Cancel" ? "Cancel this workout" : removeLabel}
         >
