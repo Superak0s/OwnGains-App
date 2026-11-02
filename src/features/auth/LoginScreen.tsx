@@ -26,6 +26,7 @@ import {
   normalizeServerUrl,
   isOfficialServer,
   isPrivateHost,
+  parseStrictUrl,
 } from "@shared/services/config";
 import { scanForLanServer } from "@shared/services/lanDiscovery";
 import { commitAutofill } from "../../../modules/autofill";
@@ -316,7 +317,7 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
 
     const fromDiscovery =
       detectedLanUrl !== null && url === normalizeServerUrl(detectedLanUrl);
-    if (url.startsWith("http://") && isPrivateHost(new URL(url).hostname) && !fromDiscovery) {
+    if (url.startsWith("http://") && isPrivateHost(parseStrictUrl(url)?.hostname ?? "") && !fromDiscovery) {
       alert(
         "Unencrypted connection",
         "This server is on your local network and doesn't use encryption. Anyone on this Wi-Fi could see your traffic, including your password.",
@@ -625,7 +626,9 @@ This server does not store ${describeLocalOnlyFeatures(localOnly)}. Those are ke
               accessibilityLabel={`Use the server found on this network: ${detectedLanUrl}`}
             >
               <Text style={styles.lanSuggestionText}>
-                📡 Found on this network: {detectedLanUrl} (tap to use)
+                {detectedLanUrl.startsWith("https://")
+                  ? `📡 A device on this network points to ${detectedLanUrl}. Use it only if you recognise the address (tap to use)`
+                  : `📡 Found on this network: ${detectedLanUrl} (tap to use)`}
               </Text>
             </TouchableOpacity>
           )}

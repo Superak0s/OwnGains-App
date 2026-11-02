@@ -8,6 +8,7 @@ jest.mock("@shared/services/sqliteStorage", () => ({
 jest.mock("@shared/services/config", () => ({
   getServerUrl: jest.fn(() => "https://api.example.com"),
   assertSecureTransport: jest.fn(),
+  parseStrictUrl: jest.requireActual("@shared/services/config").parseStrictUrl,
 }))
 
 jest.mock("@shared/services/tokenStorage", () => ({
@@ -17,7 +18,7 @@ jest.mock("@shared/services/tokenStorage", () => ({
 
 import { refreshTokenStorage, tokenStorage } from "@shared/services/tokenStorage"
 import { ApiError, ServerUnreachableError, userFacingError } from "../apiError"
-import { authenticatedFetch, setSessionRefresher } from "../authenticatedFetch"
+import { authenticatedFetch, isOwnServer, setSessionRefresher } from "../authenticatedFetch"
 
 const tokenGet = tokenStorage.get as jest.Mock
 const clearAccess = tokenStorage.clearAccess as jest.Mock
@@ -191,5 +192,26 @@ describe("authenticatedFetch unreachable server", () => {
     expect(error).toBeInstanceOf(ServerUnreachableError)
     expect((error as Error).message).not.toMatch(/java|192\.168/)
     expect(userFacingError(error, "fallback")).toBe((error as Error).message)
+  })
+})
+
+describe("isOwnServer", () => {
+  const RNURL = jest.requireActual("react-native/Libraries/Blob/URL").URL
+  const nodeURL = globalThis.URL
+  beforeAll(() => {
+    globalThis.URL = RNURL
+  })
+  afterAll(() => {
+    globalThis.URL = nodeURL
+  })
+
+  it("sends the token to the configured server only", () => {
+    expect(isOwnServer("https://api.example.com/api/x")).toBe(true)
+    expect(isOwnServer("https://API.example.com/api/x")).toBe(true)
+    expect(isOwnServer("https://other.example.com/api/x")).toBe(false)
+  })
+
+  it("refuses a backslash-userinfo URL React Native's parser reads as the server", () => {
+    expect(isOwnServer("https://evil.test\\@api.example.com/api/x")).toBe(false)
   })
 })

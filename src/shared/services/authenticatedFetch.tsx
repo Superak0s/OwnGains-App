@@ -1,5 +1,5 @@
 import { refreshTokenStorage, tokenStorage } from "./tokenStorage"
-import { assertSecureTransport, getServerUrl } from "./config"
+import { assertSecureTransport, getServerUrl, parseStrictUrl } from "./config"
 import { log, metric, startTrace, trackBreadcrumb } from "./crashReporting"
 import { ApiError, ServerUnreachableError } from "./apiError"
 
@@ -118,13 +118,12 @@ export const authenticatedFetch = (
  * the server's host on another port, where the dev marketplace runs (5100 beside the server's 5000).
  */
 export function isOwnServer(url: string): boolean {
-  try {
-    const target = new URL(url)
-    const server = new URL(getServerUrl())
-    return target.origin === server.origin || (__DEV__ && target.hostname === server.hostname)
-  } catch {
-    return false
-  }
+  const target = parseStrictUrl(url)
+  const server = parseStrictUrl(getServerUrl())
+  if (!target || !server) return false
+  const sameOrigin =
+    target.scheme === server.scheme && target.host.toLowerCase() === server.host.toLowerCase()
+  return sameOrigin || (__DEV__ && target.hostname === server.hostname)
 }
 
 const fetchAuthenticated = async (

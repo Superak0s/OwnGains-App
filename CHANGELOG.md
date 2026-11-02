@@ -34,12 +34,13 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Editing a past set and watching a friend's live session now show weights in your chosen unit (kg or lbs) instead of always kg, and an edited weight is saved correctly in either unit.
 - When messages fail to load, the inbox and conversations now say so and offer Retry instead of looking empty.
 - When a trainer stops a client's session and the workout can't be ended, the app now says so and keeps the session open instead of leaving the client's workout running unnoticed.
-- Uploading a workout no longer keeps retrying for ever when the server keeps refusing its start. After about half a day it stops and lists the workout under Settings as not uploaded. Switching accounts during an upload no longer sends the previous account's sets to the new one.
+- Uploading a workout no longer keeps retrying forever when the server keeps refusing its start. After about half a day it stops and lists the workout under Settings as not uploaded. Switching accounts during an upload no longer sends the previous account's sets to the new one.
 
 ### Security
 
 - Server and marketplace addresses with a backslash or a user name before the host (such as `http://evil.example\@192.168.1.10`) are now refused. Before, they could pass as a private network address and send your login over plain HTTP to a public host.
 - The privacy policy now covers Share My Machine Names: what the server stores, who sees it, and when it is deleted.
+- When a device on your Wi-Fi advertises a server with an internet address, the server picker now says so and asks you to use it only if you recognise the address.
 
 ### Internal
 
@@ -48,6 +49,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Dev builds send the account token to the dev marketplace (the server's host, port 5100), so the demo data's skins show up there. Release builds still require the server's exact origin (`isOwnServer`).
 - Every `Text` and `TextInput` now comes from `@shared/components/Text`, which applies the font and text size. ESLint rejects importing them from `react-native`.
 - Set rows normalize the server's 0/1 `isWarmup` to a boolean, and `User.name` allows the `null` the server sends.
+- isOwnServer and the login screen's LAN check parse URLs with parseStrictUrl instead of React Native's URL.
 
 
 ## [1.1.0] - 2026-10-29
