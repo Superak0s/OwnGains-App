@@ -141,6 +141,7 @@ describe("push token", () => {
     finish(true);
     await pending;
     expect(serverPushesMessages()).toBe(false);
+    expect(mockApi.unregisterPushToken).toHaveBeenCalledWith("http://srv", "late");
   });
 
   it("skips FCM when the build has no Firebase config", async () => {
