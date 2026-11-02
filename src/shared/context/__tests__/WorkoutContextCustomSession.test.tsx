@@ -105,7 +105,7 @@ describe("WorkoutProvider custom session", () => {
     await act(async () => {
       await ctx.current!.startCustomWorkout("Empty workout", [])
     })
-    expect(mockWorkoutApi.startSession).toHaveBeenCalledWith("A", CUSTOM_DAY, "Empty workout", false, expect.any(String))
+    expect(mockWorkoutApi.startSession).toHaveBeenCalledWith("A", CUSTOM_DAY, "Empty workout", false, expect.any(String), expect.any(String))
     expect(ctx.current!.currentDay).toBe(CUSTOM_DAY)
 
     await act(async () => {
