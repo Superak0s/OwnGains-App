@@ -53,9 +53,8 @@ export const messagesApi = {
 
   /** Unauthenticated, so it works after the session was revoked, and sent to the server the token was registered with. */
   unregisterPushToken: async (serverUrl: string, token: string): Promise<void> => {
-    const url = `${serverUrl}/api/push/token`
-    assertSecureTransport(url)
-    const res = await fetch(url, {
+    assertSecureTransport(serverUrl)
+    const res = await fetch(`${serverUrl}/api/push/token`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),

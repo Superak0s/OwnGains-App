@@ -46,6 +46,9 @@ const out = path.join(ROOT, "dist/ota");
 
 const original = fs.readFileSync(DISTRIBUTION, "utf8");
 if (!original.includes("KOFI_URL: string | null = null;")) die("src/shared/distribution.ts must keep KOFI_URL null.");
+// Ctrl+C during an export would otherwise exit before the finally below and leave the Ko-fi link in the source.
+process.on("exit", () => fs.writeFileSync(DISTRIBUTION, original));
+process.on("SIGINT", () => process.exit(130));
 
 function publish(channel) {
   const dir = path.join(out, runtimeVersion, channel, stamp);

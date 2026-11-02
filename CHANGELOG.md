@@ -65,6 +65,9 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Offline schedule keeps cancelled entries as cancelled and lists them on request, matching the server.
 - Realtime reconnects are jittered so clients don't all retry at the same moment after a server restart.
 - Split a run-on import in HomeScreen and dropped an always-true ternary in endWorkout.
+- api_audit.py follows the skin marketplace app, fetch wrappers and `fooRouter` routers, so it reports no false gaps.
+- play-upload.js refuses release notes over 500 characters before uploading.
+- publish-ota.js restores `distribution.ts` when interrupted.
 
 
 ## [1.1.0] - 2026-10-29

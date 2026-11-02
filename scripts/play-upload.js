@@ -19,6 +19,14 @@ if (!checkOnly && (!aab || !tracks.length)) {
   process.exit(1);
 }
 
+const notesFile = path.join(ROOT, "docs", "play-release-notes.txt");
+const notes = fs.existsSync(notesFile) ? fs.readFileSync(notesFile, "utf8").trim() : "";
+// Play refuses the whole edit over 500 characters, but only after the bundle has uploaded.
+if (!checkOnly && notes.length > 500) {
+  console.error(`docs/play-release-notes.txt is ${notes.length} characters, Play allows 500.`);
+  process.exit(1);
+}
+
 async function main() {
   const auth = { Authorization: `Bearer ${await accessToken()}` };
   const json = { ...auth, "Content-Type": "application/json" };
@@ -41,8 +49,6 @@ async function main() {
     body: fs.readFileSync(aab),
   });
 
-  const notesFile = path.join(ROOT, "docs", "play-release-notes.txt");
-  const notes = fs.existsSync(notesFile) ? fs.readFileSync(notesFile, "utf8").trim() : "";
   for (const track of tracks) {
     await call(`${API}${editPath}/tracks/${track}`, {
       method: "PUT",

@@ -375,7 +375,7 @@ def collect_routes(prefix, f, seen, endpoints):
     router_imports = named_imports(text, f.parent)
     # first arg is one path or an array of aliases: (["/split/:s", "/person/:p"], ...)
     for m in re.finditer(
-        r'router\.(%s)\(\s*(\[[^\]]*\]|"[^"]*")' % "|".join(METHODS), text
+        r'\b(?:router|\w+Router)\.(%s)\(\s*(\[[^\]]*\]|"[^"]*")' % "|".join(METHODS), text
     ):
         handler = handler_span(text, m)
         for path in re.findall(r'"([^"]*)"', m.group(2)):
@@ -393,30 +393,43 @@ def collect_routes(prefix, f, seen, endpoints):
                            (f.parent / rel.replace(".js", ".ts")).resolve(), seen, endpoints)
 
 
+# The skin marketplace is its own Express app with its own mounts.
+SERVER_APP_ROOTS = ("routes.ts", "marketplace/app.ts")
+
+
 def parse_server():
-    routes_ts = (SERVER_ROOT / "routes.ts").read_text(encoding="utf-8")
+    endpoints = []
+    for root_rel in SERVER_APP_ROOTS:
+        root_file = SERVER_ROOT / root_rel
+        if root_file.exists():
+            parse_server_app(root_file, endpoints)
+    return endpoints
+
+
+def parse_server_app(root_file, endpoints):
+    routes_ts = root_file.read_text(encoding="utf-8")
+    root_dir = root_file.parent
     imports = dict(re.findall(r'import\s+(\w+)\s+from\s+"\./([^"]+)"', routes_ts))
+    imports.update(re.findall(r'import\s+\{\s*(\w+)\s*\}\s+from\s+"\./([^"]+)"', routes_ts))
     mounts = re.findall(r'app\.use\(\s*"([^"]+)"\s*,\s*(?:\w+\s*,\s*)*(\w+)\s*\)', routes_ts)
     # routers mounted in a loop over a `["/path", router]` table
     mounts += re.findall(r'\[\s*"(/[^"]+)"\s*,\s*(\w+Routes)\s*\]', routes_ts)
-    top_level_imports = named_imports(routes_ts, SERVER_ROOT)
+    top_level_imports = named_imports(routes_ts, root_dir)
 
-    endpoints = []
     # routes declared straight on the app, not on a mounted router
     for m in re.finditer(
         r'app\.(%s)\(\s*"([^"]+)"' % "|".join(METHODS), routes_ts
     ):
         endpoints.append(
-            route_endpoint(m.group(1), m.group(2), "routes.ts", routes_ts, m,
+            route_endpoint(m.group(1), m.group(2), server_rel(root_file), routes_ts, m,
                            handler_span(routes_ts, m), top_level_imports)
         )
 
     for prefix, ident in mounts:
         rel = imports.get(ident)
         if rel:
-            collect_routes(prefix, (SERVER_ROOT / rel.replace(".js", ".ts")).resolve(),
+            collect_routes(prefix, (root_dir / rel.replace(".js", ".ts")).resolve(),
                            frozenset(), endpoints)
-    return endpoints
 
 
 def server_extractions(handler: str, source: str) -> list:
@@ -454,7 +467,7 @@ def server_extractions(handler: str, source: str) -> list:
             out.append({"key": m.group(1), "binding": None, "kind": "direct", "at": m.end()})
 
     for m in re.finditer(
-        r"const\s+(\w+)\s*=\s*%s\??\.(\w+)" % re.escape(source), handler
+        r"\b(?:const|let|var)\s+(\w+)\s*=\s*%s\??\.(\w+)" % re.escape(source), handler
     ):
         out.append(
             {
@@ -470,7 +483,7 @@ def server_extractions(handler: str, source: str) -> list:
 
 def destructured_extractions(handler: str, source: str) -> list:
     out = []
-    for m in re.finditer(r"const\s*\{", handler):
+    for m in re.finditer(r"\b(?:const|let|var)\s*\{", handler):
         tail = handler[m.end() : m.end() + 600]
         close = tail.find("}")
         if close < 0:
@@ -1065,6 +1078,19 @@ def options_helper(span: str, text: str):
     return None
 
 
+def wrapper_method(text: str, ident) -> str | None:
+    """The one fixed method a same-file wrapper such as
+    `async function unauthenticatedCall(path, body) { fetch(url, { method: "POST" }) }`
+    sends every call with, so its call sites aren't read as GETs."""
+    if not ident:
+        return None
+    decl = re.search(r"\bfunction\s+%s\b[^{]*\{" % re.escape(ident), text)
+    if not decl:
+        return None
+    methods = set(re.findall(r'method:\s*"(\w+)"', balanced_span(text, decl.end() - 1)))
+    return methods.pop() if len(methods) == 1 else None
+
+
 def app_call(f, text: str, m) -> dict:
     # +1 skips the string's closing quote
     span_start = m.end() + 1
@@ -1080,6 +1106,8 @@ def app_call(f, text: str, m) -> dict:
     helper = None if method else options_helper(span, text)
     if helper:
         method, span = helper
+    callee = re.search(r"(\w+)\s*(?:<[^()]*>)?\s*\(\s*$", text[max(0, m.start() - 300) : m.start()])
+    method = method or wrapper_method(text, callee and callee.group(1))
     raw = m.group(1)
     # a nested template literal ends the path string early, so `span` starts
     # mid-expression and its braces are not this call's arguments
@@ -1100,7 +1128,7 @@ def app_call(f, text: str, m) -> dict:
     }
 
 
-OPTION_KEYS = {"method", "headers", "body", "signal", "credentials"}
+OPTION_KEYS = {"method", "headers", "body", "signal", "credentials", "auth", "baseUrl"}
 
 
 def top_level_brace(span: str):
@@ -1178,8 +1206,11 @@ def app_body(span: str, text: str = "", call_at: int = 0, f: Path = None) -> tup
 
     # `body:` is checked second: it would otherwise match `body: JSON` out of
     # `body: JSON.stringify(params)` and name the wrong variable
-    m = re.search(r"JSON\.stringify\(\s*(\w+)\s*\)", span) or re.search(
-        r"\bbody\s*:\s*(\w+)\s*[,}\n]", span
+    m = (
+        re.search(r"JSON\.stringify\(\s*(\w+)\s*\)", span)
+        or re.search(r"\bbody\s*:\s*(\w+)\s*[,}\n]", span)
+        # `{ method, body, auth }` shorthand handed to a fetch wrapper
+        or re.search(r"[{,]\s*(body)\s*[,}\n]", span)
     )
     if not m:
         return set(), False
