@@ -103,6 +103,19 @@ describe("push token", () => {
     expect(mockApi.unregisterPushToken).toHaveBeenLastCalledWith("http://srv", "tok");
   });
 
+  it("drops an owed unregister once the same token is registered again for the next account", async () => {
+    mockNotifications.getDevicePushTokenAsync.mockResolvedValue({ type: "android", data: "tok" });
+    mockApi.registerPushToken.mockResolvedValue(true);
+    await registerPushToken();
+    mockApi.unregisterPushToken.mockRejectedValue(new Error("offline"));
+    await unregisterPushToken();
+
+    await registerPushToken();
+    mockApi.unregisterPushToken.mockClear();
+    await retryPushUnregister();
+    expect(mockApi.unregisterPushToken).not.toHaveBeenCalled();
+  });
+
   it("ignores a registration that finishes after sign-out", async () => {
     let finish!: (enabled: boolean) => void;
     mockNotifications.getDevicePushTokenAsync.mockResolvedValue({ type: "android", data: "late" });

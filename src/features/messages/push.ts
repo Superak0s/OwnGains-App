@@ -4,6 +4,7 @@ import type { Notification } from "expo-notifications";
 import { getNotifications, type NotificationsModule } from "@shared/services/notifications";
 import { getServerUrl } from "@shared/services/config";
 import { loadFromStorage, removeFromStorage, saveToStorage } from "@shared/services/storage";
+import { withLock } from "@shared/services/offlineHelpers";
 import { captureUnreported } from "@shared/services/crashReporting";
 import { messagesApi } from "./services";
 import { messagesApi as onlineMessagesApi } from "./services/on/messages";
@@ -12,12 +13,22 @@ export const MESSAGES_CHANNEL = "messages";
 
 // Persisted so a revoked session or a killed app can still unregister on the next sign-out.
 const REGISTRATION_KEY = "@push_registration";
+// Token per server URL that a signed-out account may still receive pushes on.
+const PENDING_UNREGISTER_KEY = "@push_pending_unregister";
 
 interface Registration {
   serverUrl: string;
   token: string;
-  signedOut?: boolean;
 }
+
+type PendingUnregisters = Record<string, string>;
+
+const editPending = (edit: (pending: PendingUnregisters, active: Registration | null) => void): Promise<void> =>
+  withLock(PENDING_UNREGISTER_KEY, async () => {
+    const pending = (await loadFromStorage<PendingUnregisters>(PENDING_UNREGISTER_KEY)) ?? {};
+    edit(pending, await loadFromStorage<Registration>(REGISTRATION_KEY));
+    await saveToStorage(PENDING_UNREGISTER_KEY, pending);
+  });
 
 let channelReady = false;
 let serverPushes = false;
@@ -59,6 +70,10 @@ export async function registerPushToken(): Promise<void> {
     const enabled = await messagesApi.registerPushToken(data);
     if (started !== generation) return;
     serverPushes = enabled;
+    await editPending((pending) => {
+      // The server now binds this token to the new account, so a delayed unregister would cut it off.
+      if (pending[serverUrl] === data) delete pending[serverUrl];
+    });
     await saveToStorage(REGISTRATION_KEY, { serverUrl, token: data } satisfies Registration);
   } catch (error) {
     if (started === generation) serverPushes = false;
@@ -74,22 +89,28 @@ export async function unregisterPushToken(): Promise<void> {
   generation += 1;
   serverPushes = false;
   const registration = await loadFromStorage<Registration>(REGISTRATION_KEY);
-  if (registration) await sendUnregister(registration);
+  if (!registration) return;
+  await removeFromStorage(REGISTRATION_KEY);
+  await sendUnregister(registration);
 }
 
-/** Retries an unregister that failed at sign-out. */
+/** Retries the unregisters that failed at an earlier sign-out. */
 export async function retryPushUnregister(): Promise<void> {
-  const registration = await loadFromStorage<Registration>(REGISTRATION_KEY);
-  if (registration?.signedOut) await sendUnregister(registration);
+  const pending = (await loadFromStorage<PendingUnregisters>(PENDING_UNREGISTER_KEY)) ?? {};
+  for (const [serverUrl, token] of Object.entries(pending)) await sendUnregister({ serverUrl, token });
 }
 
-async function sendUnregister(registration: Registration): Promise<void> {
+async function sendUnregister({ serverUrl, token }: Registration): Promise<void> {
   try {
-    await onlineMessagesApi.unregisterPushToken(registration.serverUrl, registration.token);
-    await removeFromStorage(REGISTRATION_KEY);
+    await onlineMessagesApi.unregisterPushToken(serverUrl, token);
+    await editPending((pending) => {
+      if (pending[serverUrl] === token) delete pending[serverUrl];
+    });
   } catch (error) {
     // Until the server forgets the token, the signed-out account's messages keep arriving on this phone.
-    await saveToStorage(REGISTRATION_KEY, { ...registration, signedOut: true } satisfies Registration);
+    await editPending((pending, active) => {
+      if (active?.serverUrl !== serverUrl || active.token !== token) pending[serverUrl] = token;
+    });
     captureUnreported(error, { stage: "pushUnregister" }, "warning");
   }
 }
