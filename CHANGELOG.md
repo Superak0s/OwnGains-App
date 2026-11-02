@@ -45,6 +45,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Restoring an older full backup no longer resets the chosen server, app mode, onboarding and theme on this phone.
 - Water amounts and the macros error margin now accept a decimal comma, and an amount with stray letters is refused instead of being cut short.
 - Offline cycle tracking shows when the current phase ends in this cycle, instead of a date in the first logged cycle.
+- Supplement alarms set before you allowed exact alarms now ring on time as soon as you allow them, instead of only after a restart.
 
 ### Security
 
