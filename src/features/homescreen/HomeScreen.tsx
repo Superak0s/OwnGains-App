@@ -1074,7 +1074,8 @@ export default function HomeScreen(): React.JSX.Element {
               {serverNoticeOpen && (
                 <Text style={styles.noticeBannerDetail}>
                   It runs version {outdatedServer.version}. Blocking, reporting,
-                  data export and changing day mid-workout need version{" "}
+                  data export, undoing program changes and changing day
+                  mid-workout need version{" "}
                   {MIN_SERVER_VERSION} or newer. Ask the person who runs it to
                   update.
                 </Text>

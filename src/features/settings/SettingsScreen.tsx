@@ -2275,7 +2275,7 @@ ${photosOmitted} progress ${photoNoun} too large to fit in this backup and could
           label="Server Version"
           description={
             serverInfo?.outdated
-              ? `This server runs ${serverInfo.version}. Version ${MIN_SERVER_VERSION} or newer is needed for blocking, reporting, data export and changing day mid-workout. Ask its operator to update.`
+              ? `This server runs ${serverInfo.version}. Version ${MIN_SERVER_VERSION} or newer is needed for blocking, reporting, data export, undoing program changes and changing day mid-workout. Ask its operator to update.`
               : "The version of OwnGains-Server you are signed in to"
           }
           right={versionAccessory}

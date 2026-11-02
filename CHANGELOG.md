@@ -21,7 +21,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Adding a machine to an exercise now turns on best stats across all machines, unless you turned that off for the exercise. Exercises that already have machines keep their setting.
 - When logging a set, the Effort field is now called Reps in reserve (RIR).
 - Messages no longer label people as Trainer or Client in the inbox or the conversation header.
-- Servers older than OwnGains-Server 1.1.0 are now flagged as outdated in Settings, since program snapshots and re-authentication need 1.1.0.
+- Servers older than OwnGains-Server 1.1.0 are now flagged as outdated on Home and in Settings, since undoing program changes needs 1.1.0.
 
 ### Fixed
 
