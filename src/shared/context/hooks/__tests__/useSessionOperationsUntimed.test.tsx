@@ -97,6 +97,7 @@ describe("useSessionOperations untimed session", () => {
     expect(recordSet).toHaveBeenCalledWith(
       "42",
       expect.objectContaining({ startTime: START, endTime: START }),
+      expect.any(String),
     );
     const [[completed]] = (options.setCompletedDays as jest.Mock<void, [CompletedDays]>).mock.calls;
     expect(completed[1][0][0].completedAt).toBe(START);
@@ -111,7 +112,7 @@ describe("useSessionOperations untimed session", () => {
       await ops.endWorkout();
     });
 
-    expect(endSession).toHaveBeenCalledWith("42", START);
+    expect(endSession).toHaveBeenCalledWith("42", START, expect.any(String));
   });
 
   it("times sets normally when the session is not untimed", async () => {

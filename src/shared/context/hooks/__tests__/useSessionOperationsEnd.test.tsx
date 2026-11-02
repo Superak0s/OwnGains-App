@@ -93,7 +93,7 @@ describe("useSessionOperations endWorkout", () => {
       result = await endWorkout(true);
     });
 
-    expect(endSession).toHaveBeenCalledWith("42", expect.any(String));
+    expect(endSession).toHaveBeenCalledWith("42", expect.any(String), expect.any(String));
     expect(options.addPendingSync).not.toHaveBeenCalled();
     expect(result).toBe(true);
   });
@@ -251,6 +251,7 @@ describe("useSessionOperations custom day", () => {
       CUSTOM_DAY,
       "Empty workout",
       false,
+      expect.any(String),
       expect.any(String),
     );
   });

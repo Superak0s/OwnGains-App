@@ -29,7 +29,16 @@ import {
   captureException,
   trackWorkoutCompleted,
 } from "../../services/crashReporting";
-import { userFacingError } from "../../services/apiError";
+import { ApiError, userFacingError } from "../../services/apiError";
+
+
+/**
+ * The key to queue a failed direct call under. Reusing the direct call's key makes a
+ * replay after a lost response harmless, but a malformed 2xx is cached under that key,
+ * so it gets a fresh one or the replay would receive the same broken answer forever.
+ */
+const queueKeyAfter = (error: unknown, directKey: string): string =>
+  error instanceof ApiError && error.status < 300 ? generateId("sync") : directKey;
 
 export const TRAINEE_WRITE_REFUSED_MESSAGE =
   "You need to be online to log for a trainee. This set was not saved.";
@@ -321,9 +330,12 @@ export const useSessionOperations = ({
       let newSessionId: string | null = null;
       const localSessionId = generateId("local");
 
+      const startKey = generateId("sync");
+
       const queueLocalSession = async (
         outcome: string,
         warning: string,
+        syncId: string,
       ): Promise<string> => {
         if (!canQueueOffline) {
           // The start time was already persisted. Without a session id behind
@@ -339,6 +351,7 @@ export const useSessionOperations = ({
         setCurrentSessionId(localSessionId);
         await addPendingSync({
           type: "startSession",
+          syncId,
           localSessionId,
           data: {
             split: split ?? "",
@@ -363,6 +376,7 @@ export const useSessionOperations = ({
           day.dayTitle,
           false,
           startTime,
+          startKey,
         );
 
         if (sessionId) {
@@ -385,6 +399,7 @@ export const useSessionOperations = ({
           newSessionId = await queueLocalSession(
             "queued_no_id",
             "⚠ Session queued for sync with local ID (no id returned):",
+            generateId("sync"),
           );
           log.error("workout.start_session_no_id");
         }
@@ -393,6 +408,7 @@ export const useSessionOperations = ({
         newSessionId = await queueLocalSession(
           "queued_offline",
           "⚠ Session queued for sync with local ID:",
+          queueKeyAfter(error, startKey),
         );
       }
 
@@ -440,8 +456,9 @@ export const useSessionOperations = ({
 
   const endServerSession = useCallback(
     async (sessionId: string, auto: boolean, endTime: string): Promise<void> => {
+      const endKey = generateId("sync");
       try {
-        await workoutApi.endSession(sessionId, endTime);
+        await workoutApi.endSession(sessionId, endTime, endKey);
         console.info("✓ Session ended");
         metric.count("workout.session_ended", 1, {
           attributes: { outcome: "server", auto },
@@ -456,6 +473,7 @@ export const useSessionOperations = ({
 
         await addPendingSync({
           type: "endSession",
+          syncId: queueKeyAfter(error, endKey),
           data: { sessionId },
           timestamp: endTime,
         });
@@ -697,6 +715,7 @@ export const useSessionOperations = ({
         }
 
         let recorded = false;
+        let setKey = generateId("sync");
         const setParams = {
           exerciseName,
           setIndex,
@@ -716,8 +735,8 @@ export const useSessionOperations = ({
         // until the session start replays and remaps it.
         if (!isLocalSessionId(sessionId)) {
           try {
-            if (previous) await replaceSet(workoutApi, sessionId, setParams);
-            else await workoutApi.recordSet(sessionId, setParams);
+            if (previous) await replaceSet(workoutApi, sessionId, setParams, setKey);
+            else await workoutApi.recordSet(sessionId, setParams, setKey);
             recorded = true;
             console.debug("✓ Set recorded");
             metric.count("workout.set_recorded", 1, {
@@ -725,11 +744,13 @@ export const useSessionOperations = ({
             });
           } catch (error) {
             console.error("Failed to record set:", error);
+            setKey = queueKeyAfter(error, setKey);
           }
         }
         if (!recorded) {
           await addPendingSync({
             type: "recordSet",
+            syncId: setKey,
             data: {
               sessionId,
               exerciseName,

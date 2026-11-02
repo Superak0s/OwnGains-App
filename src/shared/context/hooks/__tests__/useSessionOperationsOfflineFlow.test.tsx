@@ -229,7 +229,7 @@ describe("offline workout replayed on reconnect", () => {
       await get().ops.saveSetDetails(1, 0, 1, 80, 6)
     })
 
-    expect(api.recordSet).toHaveBeenCalledWith("777", expect.objectContaining({ setIndex: 1 }))
+    expect(api.recordSet).toHaveBeenCalledWith("777", expect.objectContaining({ setIndex: 1 }), expect.any(String))
   })
 
   it("remaps a set queued after its local session already replayed instead of orphaning it", async () => {
@@ -286,5 +286,53 @@ describe("ending a server session that fails to reach the server", () => {
       ["endSession", "42"],
     ])
     expect(get().state.currentSessionId).toBeNull()
+  })
+})
+
+describe("lost responses", () => {
+  const timeout = () => Promise.reject(new TypeError("Network request timed out"))
+
+  it("replays a start, set and end under the keys their direct calls used, so a server that committed doesn't duplicate them", async () => {
+    api.startSession.mockResolvedValue(700)
+    api.recordSet.mockImplementation(timeout)
+    api.endSession.mockImplementation(timeout)
+    const get = await mount()
+    await act(async () => {
+      await get().ops.saveSetDetails(1, 0, 0, 80, 8)
+    })
+    await act(async () => {
+      await get().ops.endWorkout()
+    })
+    const directSetKey = api.recordSet.mock.calls[0][2] as string
+    const directEndKey = api.endSession.mock.calls[0][2] as string
+    expect(directSetKey).toBeTruthy()
+    expect(directEndKey).toBeTruthy()
+
+    api.recordSet.mockReset().mockResolvedValue(undefined)
+    api.endSession.mockReset().mockResolvedValue(undefined)
+    await act(async () => {
+      await get().sync.syncPendingData()
+    })
+
+    expect(api.recordSet.mock.calls[0][2]).toBe(directSetKey)
+    expect(api.endSession.mock.calls[0][2]).toBe(directEndKey)
+  })
+
+  it("replays a session start under its direct call's key", async () => {
+    api.startSession.mockImplementation(timeout)
+    const get = await mount()
+    await act(async () => {
+      await get().ops.saveSetDetails(1, 0, 0, 80, 8)
+    })
+    const directKey = api.startSession.mock.calls[0][5] as string
+    expect(directKey).toBeTruthy()
+
+    api.startSession.mockReset().mockResolvedValue(701)
+    api.recordSet.mockResolvedValue(undefined)
+    await act(async () => {
+      await get().sync.syncPendingData()
+    })
+
+    expect(api.startSession.mock.calls[0][5]).toBe(directKey)
   })
 })

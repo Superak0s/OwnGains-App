@@ -144,7 +144,7 @@ describe("useSessionOperations editing a logged set", () => {
     expect(recordSet).toHaveBeenCalledWith(
       "42",
       expect.objectContaining({ weight: 100, setIndex: 0 }),
-      undefined,
+      expect.any(String),
     );
   });
 
@@ -183,6 +183,7 @@ describe("useSessionOperations editing a logged set", () => {
     expect(recordSet).toHaveBeenCalledWith(
       "42",
       expect.objectContaining({ endTime: expect.not.stringContaining("2026-10-14") }),
+      expect.any(String),
     );
   });
 
@@ -213,6 +214,7 @@ describe("useSessionOperations restoring a deleted set", () => {
     expect(recordSet).toHaveBeenCalledWith(
       "42",
       expect.objectContaining({ startTime: LOGGED.startedAt, endTime: LOGGED.completedAt }),
+      expect.any(String),
     );
     expect(options.setLastSetEndTime).not.toHaveBeenCalled();
   });
