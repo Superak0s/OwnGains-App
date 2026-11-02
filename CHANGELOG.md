@@ -25,6 +25,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 ### Fixed
 
 - The tab bar no longer breaks with a React hook error when the Friends or Clients tab appears or goes away, such as after switching app mode or role.
+- A Cloudflare challenge, captive portal or other proxy error page during a token refresh no longer signs you out. Only an answer from the server itself can end the session.
 
 ### Security
 

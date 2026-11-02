@@ -19,6 +19,18 @@ describe("isCredentialRejection", () => {
   it("does not treat a transport error as a refusal", () => {
     expect(isCredentialRejection(new TypeError("Network request failed"))).toBe(false)
   })
+
+  it.each([403, 404])("does not treat a proxy's HTML %i page as a refusal", async (status) => {
+    const res = {
+      ok: false,
+      status,
+      headers: { get: () => null },
+      json: () => Promise.reject(new SyntaxError("Unexpected token <")),
+    } as unknown as Response
+    const error = await parseApiResponse(res).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(ApiError)
+    expect(isCredentialRejection(error)).toBe(false)
+  })
 })
 
 describe("parseApiResponse", () => {

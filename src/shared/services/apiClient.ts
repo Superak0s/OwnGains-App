@@ -8,6 +8,9 @@ import { normalizeServerDates } from "@utils/format"
 
 export { ApiError }
 
+/** A non-JSON body is a proxy, WAF or captive-portal page, never the server's own answer. */
+export const INVALID_JSON = "INVALID_JSON"
+
 /**
  * True only when the server answered and refused: a 4xx other than timeout or
  * rate limiting. A 5xx, 429 or proxy error page says the server is unwell, not
@@ -15,6 +18,7 @@ export { ApiError }
  */
 export const isCredentialRejection = (error: unknown): boolean =>
   error instanceof ApiError &&
+  error.code !== INVALID_JSON &&
   error.status >= 400 &&
   error.status < 500 &&
   error.status !== 408 &&
@@ -29,7 +33,7 @@ export async function parseApiResponse<T = unknown>(res: Response): Promise<T> {
   try {
     data = normalizeServerDates(await res.json())
   } catch {
-    throw new ApiError(`Invalid JSON response (status ${res.status})`, res.status)
+    throw new ApiError(`Invalid JSON response (status ${res.status})`, res.status, undefined, INVALID_JSON)
   }
 
   const body = (data && typeof data === "object" ? data : {}) as {
