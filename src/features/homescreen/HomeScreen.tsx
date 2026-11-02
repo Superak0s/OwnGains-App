@@ -86,7 +86,8 @@ import {
   MIN_SERVER_VERSION,
   useOutdatedServer,
 } from "@shared/services/serverVersion";
-import { captureException, metric } from "@shared/services/crashReporting";import { tutorialAnchor } from "@features/tutorial/anchors";
+import { captureException, metric } from "@shared/services/crashReporting";
+import { tutorialAnchor } from "@features/tutorial/anchors";
 import { SCREEN_PADDING } from "@shared/layout";
 
 // One year of near-daily training. The weekly streak and the calendar dots

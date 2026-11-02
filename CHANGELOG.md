@@ -64,6 +64,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - isOwnServer and the login screen's LAN check parse URLs with parseStrictUrl instead of React Native's URL.
 - Offline schedule keeps cancelled entries as cancelled and lists them on request, matching the server.
 - Realtime reconnects are jittered so clients don't all retry at the same moment after a server restart.
+- Split a run-on import in HomeScreen and dropped an always-true ternary in endWorkout.
 
 
 ## [1.1.0] - 2026-10-29

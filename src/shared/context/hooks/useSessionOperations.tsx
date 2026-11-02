@@ -566,12 +566,7 @@ export const useSessionOperations = ({
           // Leaving the session open leaves the trainer's device with a
           // workout it cannot close until the 30-minute sweep.
           await clearActiveWorkout();
-          Alert.alert(
-            "Workout not ended",
-            isTraineeWriteRefused(error)
-              ? error.message
-              : userFacingError(error, "Could not end the workout."),
-          );
+          Alert.alert("Workout not ended", error.message);
           return false;
         }
         console.error("Error ending workout:", error);
