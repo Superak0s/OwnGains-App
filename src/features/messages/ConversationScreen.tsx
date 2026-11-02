@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { useAlert } from "@shared/components/CustomAlert";
 import { generateId } from "@utils/format";
+import { Button, EmptyState } from "@shared/components/ui";
 import { userFacingError } from "@shared/services/apiError";
 import { reportAndReturn } from "@shared/services/crashReporting";
 import { messagesApi } from "./services";
@@ -49,6 +50,8 @@ export default function ConversationScreen({
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [editing, setEditing] = useState<Message | null>(null);
   const { alert, AlertComponent } = useAlert();
@@ -65,6 +68,7 @@ export default function ConversationScreen({
     let current = true;
     setMessages(null);
     setError(null);
+    setLoadError(null);
     messagesApi
       .getThread(peer.userUuid)
       .then((thread) => {
@@ -75,15 +79,12 @@ export default function ConversationScreen({
         markRead();
       })
       .catch((e: unknown) => {
-        if (current) {
-          setMessages([]);
-          setError(userFacingError(e, "Couldn't load the conversation."));
-        }
+        if (current) setLoadError(userFacingError(e, "Couldn't load the conversation."));
       });
     return () => {
       current = false;
     };
-  }, [peer.userUuid, markRead]);
+  }, [peer.userUuid, markRead, loadAttempt]);
 
   useEffect(
     () =>
@@ -251,7 +252,11 @@ export default function ConversationScreen({
         </View>
       </View>
 
-      {messages === null ? (
+      {loadError ? (
+        <EmptyState icon="⚠️" title="Couldn't load messages" text={loadError} style={styles.fill}>
+          <Button label="Retry" onPress={() => setLoadAttempt((n) => n + 1)} />
+        </EmptyState>
+      ) : messages === null ? (
         <ActivityIndicator style={styles.fill} color={colors.accent} accessibilityLabel="Loading messages" />
       ) : messages.length === 0 ? (
         <View style={[styles.fill, styles.empty]}>

@@ -4,7 +4,7 @@ import { Text } from "@shared/components/Text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme, type ThemeColors } from "@shared/context/ThemeContext";
 import { useAlert } from "@shared/components/CustomAlert";
-import { EmptyState } from "@shared/components/ui";
+import { Button, EmptyState } from "@shared/components/ui";
 import { userFacingError } from "@shared/services/apiError";
 import { friendsApi } from "@features/friends/services";
 import ReportUserSheet from "@features/friends/components/ReportUserSheet";
@@ -18,6 +18,7 @@ interface MessagesListScreenProps {
   readonly onOpen: (conversation: Conversation) => void;
   readonly onClose: () => void;
   readonly onRefresh: () => Promise<void>;
+  readonly loadFailed: boolean;
 }
 
 
@@ -26,6 +27,7 @@ export default function MessagesListScreen({
   onOpen,
   onClose,
   onRefresh,
+  loadFailed,
 }: MessagesListScreenProps): React.JSX.Element {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -138,12 +140,23 @@ export default function MessagesListScreen({
           />
         }
         ListEmptyComponent={
-          <EmptyState
-            icon="💬"
-            title="No messages yet"
-            text="Open a friend or client and tap Message to start a conversation."
-            style={styles.empty}
-          />
+          loadFailed ? (
+            <EmptyState
+              icon="⚠️"
+              title="Couldn't load messages"
+              text="Check your connection and try again."
+              style={styles.empty}
+            >
+              <Button label="Retry" onPress={() => void onRefresh()} />
+            </EmptyState>
+          ) : (
+            <EmptyState
+              icon="💬"
+              title="No messages yet"
+              text="Open a friend or client and tap Message to start a conversation."
+              style={styles.empty}
+            />
+          )
         }
       />
       <ReportUserSheet

@@ -75,6 +75,7 @@ export function MessagesProvider({ children }: { readonly children: React.ReactN
   const enabled = online && user?.id != null && serverAllows;
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [sheet, setSheet] = useState<"closed" | "inbox" | Peer>("closed");
   const openPeerRef = useRef<string | null>(null);
   openPeerRef.current = typeof sheet === "object" ? sheet.userUuid : null;
@@ -91,12 +92,14 @@ export function MessagesProvider({ children }: { readonly children: React.ReactN
     if (!enabled) return;
     try {
       setConversations(await messagesApi.listConversations());
+      setLoadFailed(false);
     } catch (error) {
       if (error instanceof ApiError && error.code === "FEATURE_DISABLED") {
         void refreshLocalOnlyFeatures();
         return;
       }
       // A failed refresh keeps the last list. The next foreground or socket reconnect retries.
+      setLoadFailed(true);
       captureUnreported(error, { stage: "messagesRefresh" });
     }
   }, [enabled]);
@@ -235,6 +238,7 @@ export function MessagesProvider({ children }: { readonly children: React.ReactN
             onOpen={(c) => setSheet({ userUuid: c.userUuid, username: c.username })}
             onClose={() => setSheet("closed")}
             onRefresh={refresh}
+            loadFailed={loadFailed}
           />
         )}
       </Modal>
