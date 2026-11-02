@@ -4,12 +4,12 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-  Alert,
   Dimensions,
 } from "react-native";
 import { Text, TextInput } from "@shared/components/Text";
 import { ProgressPhotoThumb } from "./ProgressPhotoThumb";
 import { useTheme } from "@shared/context/ThemeContext";
+import { useAlert } from "@shared/components/CustomAlert";
 import { useAuthToken } from "@shared/context/AuthContext";
 import { useTrackingApis } from "../TrackingApisContext";
 import {
@@ -85,6 +85,7 @@ export const MuscleDashboard: React.FC<MuscleDashboardProps> = ({
 }) => {
   const { sorenessApi, injuryApi, progressPhotoApi, personalNotesApi } = useTrackingApis();
   const { colors } = useTheme();
+  const { alert, AlertComponent } = useAlert();
   const authToken = useAuthToken();
   const [activeTab, setActiveTab] = useState<TabType>("soreness");
   const [loading, setLoading] = useState(true);
@@ -168,7 +169,7 @@ export const MuscleDashboard: React.FC<MuscleDashboardProps> = ({
     } catch (error) {
       console.error("Failed to save note:", error);
       captureException(error, { stage: "saveMuscleNote" });
-      Alert.alert("Couldn't save note", "Try again.");
+      alert("Couldn't save note", "Try again.", [{ text: "OK" }], "error");
     } finally {
       setSavingNote(false);
     }
@@ -179,15 +180,20 @@ export const MuscleDashboard: React.FC<MuscleDashboardProps> = ({
       await injuryApi.deleteInjury(injury.id);
       setInjuries((prev) => prev.filter((i) => i.id !== injury.id));
     } catch (error) {
-      Alert.alert("Couldn't delete injury", describeError(error));
+      alert("Couldn't delete injury", describeError(error), [{ text: "OK" }], "error");
     }
   };
 
   const deleteInjury = (injury: InjuryRecord) => {
-    Alert.alert("Delete injury", "Remove this injury record?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => removeInjury(injury) },
-    ]);
+    alert(
+      "Delete injury",
+      "Remove this injury record?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => void removeInjury(injury) },
+      ],
+      "warning",
+    );
   };
 
   const removeNote = async (note: PersonalMuscleNote) => {
@@ -195,15 +201,20 @@ export const MuscleDashboard: React.FC<MuscleDashboardProps> = ({
       await personalNotesApi.deleteNote(note.id);
       setPersonalNotes((prev) => prev.filter((n) => n.id !== note.id));
     } catch (error) {
-      Alert.alert("Couldn't delete note", describeError(error));
+      alert("Couldn't delete note", describeError(error), [{ text: "OK" }], "error");
     }
   };
 
   const deleteNote = (note: PersonalMuscleNote) => {
-    Alert.alert("Delete note", "Remove this note?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => removeNote(note) },
-    ]);
+    alert(
+      "Delete note",
+      "Remove this note?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => void removeNote(note) },
+      ],
+      "warning",
+    );
   };
 
   if (loading) {
@@ -508,6 +519,7 @@ export const MuscleDashboard: React.FC<MuscleDashboardProps> = ({
           </View>
         )}
       </ScrollView>
+      {AlertComponent}
     </View>
   );
 };
