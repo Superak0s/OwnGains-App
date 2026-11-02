@@ -19,16 +19,14 @@ import { reportAndReturn } from "@shared/services/crashReporting";
 import { messagesApi } from "./services";
 import { canEdit, clockLabel, dayLabel, markMineRead, mergeMessages, sameRun } from "./utils/conversation";
 import { Avatar, BackButton, SendIcon } from "./parts";
-import { relationLabel } from "./MessagesListScreen";
 import { threadEvents } from "./threadEvents";
-import type { Message, Peer, Relation } from "./types";
+import type { Message, Peer } from "./types";
 
 /** Longest message the server accepts. */
 export const MAX_MESSAGE_LENGTH = 2000;
 
 interface ConversationScreenProps {
   readonly peer: Peer;
-  readonly relation: Relation;
   readonly onBack: () => void;
   readonly onRead: (userUuid: string) => void;
   readonly onSent: (peer: Peer, message: Message) => void;
@@ -38,7 +36,6 @@ interface ConversationScreenProps {
 
 export default function ConversationScreen({
   peer,
-  relation,
   onBack,
   onRead,
   onSent,
@@ -195,7 +192,6 @@ export default function ConversationScreen({
       ],
     );
 
-  const label = relationLabel(relation);
 
   const renderItem = ({ item, index }: { item: Message; index: number }) => {
     // Newest first, so the older neighbour is the next item and the newer one the previous.
@@ -252,7 +248,6 @@ export default function ConversationScreen({
           <Text style={styles.title} accessibilityRole="header" numberOfLines={1}>
             {peer.username}
           </Text>
-          {label && <Text style={styles.subtitle}>{label}</Text>}
         </View>
       </View>
 
@@ -338,7 +333,6 @@ const makeStyles = (colors: ThemeColors) =>
     },
     titleWrap: { flex: 1 },
     title: { color: colors.textPrimary, fontSize: 17, fontWeight: "700" },
-    subtitle: { color: colors.info, fontSize: 12, fontWeight: "600" },
     fill: { flex: 1 },
     list: { paddingHorizontal: 10, paddingVertical: 8 },
     empty: { alignItems: "center", justifyContent: "center", gap: 8, padding: 32 },

@@ -212,8 +212,6 @@ export function MessagesProvider({ children }: { readonly children: React.ReactN
     [enabled, conversations, openInbox, openConversation],
   );
 
-  const relationOf = (uuid: string) => conversations.find((c) => c.userUuid === uuid)?.relation ?? null;
-
   return (
     <MessagesContext.Provider value={value}>
       {children}
@@ -226,7 +224,6 @@ export function MessagesProvider({ children }: { readonly children: React.ReactN
         {typeof sheet === "object" ? (
           <ConversationScreen
             peer={sheet}
-            relation={relationOf(sheet.userUuid)}
             onBack={() => setSheet("inbox")}
             onRead={onThreadRead}
             onSent={onSent}

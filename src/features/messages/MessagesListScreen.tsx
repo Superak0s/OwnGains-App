@@ -11,7 +11,7 @@ import ReportUserSheet from "@features/friends/components/ReportUserSheet";
 import type { UserRef } from "@features/friends/types";
 import { Avatar, BackButton } from "./parts";
 import { listTimeLabel } from "./utils/conversation";
-import type { Conversation, Relation } from "./types";
+import type { Conversation } from "./types";
 
 interface MessagesListScreenProps {
   readonly conversations: readonly Conversation[];
@@ -20,8 +20,6 @@ interface MessagesListScreenProps {
   readonly onRefresh: () => Promise<void>;
 }
 
-export const relationLabel = (relation: Relation): string | null =>
-  relation === "trainer" ? "Trainer" : relation === "client" ? "Client" : null;
 
 export default function MessagesListScreen({
   conversations,
@@ -72,7 +70,6 @@ export default function MessagesListScreen({
     );
 
   const renderItem = ({ item }: { item: Conversation }) => {
-    const label = relationLabel(item.relation);
     const unread = item.unreadCount > 0;
     const preview = `${item.lastMessage.fromMe ? "You: " : ""}${item.lastMessage.body}`;
     return (
@@ -86,7 +83,6 @@ export default function MessagesListScreen({
         onAccessibilityAction={(e) => e.nativeEvent.actionName === "longpress" && showSafetyActions(item)}
         accessibilityLabel={[
           `Conversation with ${item.username}`,
-          label,
           unread ? `${item.unreadCount} unread` : null,
           preview,
         ]
@@ -99,7 +95,6 @@ export default function MessagesListScreen({
             <Text style={styles.name} numberOfLines={1}>
               {item.username}
             </Text>
-            {label && <Text style={styles.tag}>{label}</Text>}
             <Text style={[styles.time, unread && styles.timeUnread]}>{listTimeLabel(item.lastMessage.createdAt)}</Text>
           </View>
           <View style={styles.line}>
@@ -182,16 +177,6 @@ const makeStyles = (colors: ThemeColors) =>
     rowBody: { flex: 1, gap: 3 },
     line: { flexDirection: "row", alignItems: "center", gap: 6 },
     name: { flexShrink: 1, color: colors.textPrimary, fontSize: 16, fontWeight: "700" },
-    tag: {
-      paddingHorizontal: 6,
-      paddingVertical: 1,
-      borderRadius: 8,
-      overflow: "hidden",
-      fontSize: 11,
-      fontWeight: "700",
-      color: colors.info,
-      backgroundColor: colors.infoLight,
-    },
     time: { marginLeft: "auto", color: colors.textMuted, fontSize: 12 },
     timeUnread: { color: colors.accent, fontWeight: "700" },
     preview: { flex: 1, color: colors.textMuted, fontSize: 14 },

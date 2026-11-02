@@ -20,6 +20,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - The Skins screen is now a gallery: each skin shows as a tile drawn in its own colors, with a bigger preview when you open it. Importing and exporting moved to the ＋ and ⋯ buttons in the header, sorting to a button beside the search box, and My skins lists your published skins with their previews under a card for publishing your current look.
 - Adding a machine to an exercise now turns on best stats across all machines, unless you turned that off for the exercise. Exercises that already have machines keep their setting.
 - When logging a set, the Effort field is now called Reps in reserve (RIR).
+- Messages no longer label people as Trainer or Client in the inbox or the conversation header.
 
 ### Fixed
 
