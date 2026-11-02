@@ -32,6 +32,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - In offline mode, one damaged entry no longer makes a whole history or tracking log unreadable. The damaged entry is skipped and the rest show as normal.
 - Editing a past set and watching a friend's live session now show weights in your chosen unit (kg or lbs) instead of always kg, and an edited weight is saved correctly in either unit.
 - When messages fail to load, the inbox and conversations now say so and offer Retry instead of looking empty.
+- When a trainer stops a client's session and the workout can't be ended, the app now says so and keeps the session open instead of leaving the client's workout running unnoticed.
 
 ### Security
 

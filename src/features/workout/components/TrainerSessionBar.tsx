@@ -58,8 +58,16 @@ export function TrainerSessionBar({
           text: "End workout",
           style: "destructive",
           onPress: async () => {
-            await endWorkout();
-            onStop();
+            if (await endWorkout()) return onStop();
+            alert(
+              "Workout not ended",
+              `${username}'s workout is still open. Check your connection and try again.`,
+              [
+                { text: "Stay", style: "cancel" },
+                { text: "Leave anyway", style: "destructive", onPress: onStop },
+              ],
+              "error",
+            );
           },
         },
       ],
