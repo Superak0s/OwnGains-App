@@ -53,6 +53,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Every `Text` and `TextInput` now comes from `@shared/components/Text`, which applies the font and text size. ESLint rejects importing them from `react-native`.
 - Set rows normalize the server's 0/1 `isWarmup` to a boolean, and `User.name` allows the `null` the server sends.
 - isOwnServer and the login screen's LAN check parse URLs with parseStrictUrl instead of React Native's URL.
+- Offline schedule keeps cancelled entries as cancelled and lists them on request, matching the server.
 
 
 ## [1.1.0] - 2026-10-29

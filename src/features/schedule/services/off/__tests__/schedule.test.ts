@@ -32,6 +32,7 @@ describe("offline schedule", () => {
     await scheduleApi.cancel(a.id)
     await scheduleApi.remove(b.id)
     expect(await scheduleApi.list(...year)).toEqual([])
-    await expect(scheduleApi.update(a.id, { title: "x" })).rejects.toThrow()
+    expect(await scheduleApi.list(...year, true)).toEqual([expect.objectContaining({ id: a.id, status: "cancelled" })])
+    await expect(scheduleApi.update(b.id, { title: "x" })).rejects.toThrow()
   })
 })

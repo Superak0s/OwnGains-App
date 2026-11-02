@@ -22,10 +22,10 @@ function change(id: number, edit: (entry: ScheduledWorkout) => ScheduledWorkout 
 }
 
 export const scheduleApi: ScheduleApi = {
-  list: async (from, to) => {
+  list: async (from, to, includeCancelled = false) => {
     const [start, end] = [from.toISOString(), to.toISOString()]
     return (await readAll())
-      .filter((e) => e.startAt >= start && e.startAt < end)
+      .filter((e) => e.startAt >= start && e.startAt < end && (includeCancelled || e.status !== "cancelled"))
       .sort((a, b) => a.startAt.localeCompare(b.startAt))
   },
 
@@ -55,7 +55,7 @@ export const scheduleApi: ScheduleApi = {
     })),
 
   accept: (id) => change(id, (e) => ({ ...e, status: "accepted" })),
-  cancel: (id) => change(id, () => null),
+  cancel: (id) => change(id, (e) => ({ ...e, status: "cancelled" })),
   remove: async (id) => {
     await change(id, () => null)
   },
