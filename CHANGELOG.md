@@ -37,6 +37,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Uploading a workout no longer keeps retrying forever when the server keeps refusing its start. After about half a day it stops and lists the workout under Settings as not uploaded. Switching accounts during an upload no longer sends the previous account's sets to the new one.
 - Restoring an older full backup no longer resets the chosen server, app mode, onboarding and theme on this phone.
 - Water amounts and the macros error margin now accept a decimal comma, and an amount with stray letters is refused instead of being cut short.
+- Offline cycle tracking shows when the current phase ends in this cycle, instead of a date in the first logged cycle.
 
 ### Security
 

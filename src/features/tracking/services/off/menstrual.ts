@@ -49,7 +49,6 @@ export function createMenstrualApi(user?: string) {
 
     const { periodDays, cycleLengthDays } = settings;
     const info = getCyclePhaseInfo(daysSinceStart, periodDays, cycleLengthDays);
-    const cycleStart = start.getTime() - (info.dayOfCycle - 1) * 24 * 60 * 60 * 1000;
     const phaseEndDay = {
       Menstrual: info.periodEnd,
       Follicular: info.ovulationStart,
@@ -61,7 +60,11 @@ export function createMenstrualApi(user?: string) {
       phase: PHASE_MAP[info.phase],
       daysInPhase: phaseEndDay - info.dayOfCycle + 1,
       estimatedEnd: new Date(
-        cycleStart + phaseEndDay * 24 * 60 * 60 * 1000,
+        start.getFullYear(),
+        start.getMonth(),
+        start.getDate() + daysSinceStart - (info.dayOfCycle - 1) + phaseEndDay,
+        start.getHours(),
+        start.getMinutes(),
       ).toISOString(),
     };
   }

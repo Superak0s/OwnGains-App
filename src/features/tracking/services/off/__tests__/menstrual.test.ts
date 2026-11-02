@@ -132,10 +132,11 @@ describe("getCycleStats", () => {
   });
 
   it.each([
-    [2, "menstruation", 3, "2024-01-04T00:00:00.000Z"],
-    [8, "follicular", 5, "2024-01-06T00:00:00.000Z"],
-    [13, "ovulation", 2, "2024-01-03T00:00:00.000Z"],
-    [20, "luteal", 8, "2024-01-09T00:00:00.000Z"],
+    [2, "menstruation", 3, "2024-01-06T00:00:00.000Z"],
+    [8, "follicular", 5, "2024-01-14T00:00:00.000Z"],
+    [13, "ovulation", 2, "2024-01-16T00:00:00.000Z"],
+    [20, "luteal", 8, "2024-01-29T00:00:00.000Z"],
+    [30, "menstruation", 3, "2024-02-03T00:00:00.000Z"],
   ])(
     "places day %i of the cycle in the %s phase",
     async (daysIn, phase, daysInPhase, estimatedEnd) => {
