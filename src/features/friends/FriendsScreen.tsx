@@ -304,6 +304,7 @@ const FriendsListWidget = React.memo(function FriendsListWidget({
 
             return (
               <TouchableOpacity
+                accessibilityRole='button'
                 key={String(friend.id)}
                 style={[
                   styles.friendCard,
@@ -1458,6 +1459,7 @@ export default function FriendsScreen({
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
           <View style={styles.modalHeader}>
             <TouchableOpacity
+              accessibilityRole='button'
               style={styles.backButton}
               onPress={closeFriendDetail}
             >
@@ -1637,6 +1639,7 @@ export default function FriendsScreen({
         {selectedDate &&
           getSessionsForDate(selectedDate).map((session) => (
             <TouchableOpacity
+              accessibilityRole='button'
               key={String(session.id)}
               style={styles.sessionListItem}
               onPress={() => handleSessionPress(session, selectedFriend)}
@@ -1850,6 +1853,7 @@ export default function FriendsScreen({
                     No widgets on this tab yet
                   </Text>
                   <TouchableOpacity
+                    accessibilityRole='button'
                     style={styles.emptyButton}
                     onPress={widgetBoard.openGallery}
                   >
@@ -2191,7 +2195,7 @@ export const makeStyles = (colors: ThemeColors) =>
       borderBottomWidth: 1,
       borderBottomColor: colors.surfaceBorder,
     },
-    backButton: { width: 80 },
+    backButton: { width: 80, minHeight: 44, justifyContent: "center" },
     messageButton: { alignItems: "flex-end" },
     tabsRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 20 },
     tabsBar: { flexGrow: 1, flexBasis: 0, marginBottom: 0 },

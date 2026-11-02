@@ -58,7 +58,7 @@ function LiveSessionAction({
             session.
           </Text>
         </View>
-        <TouchableOpacity style={watchStyles.stopBtn} onPress={onStopWatching}>
+        <TouchableOpacity accessibilityRole='button' style={watchStyles.stopBtn} onPress={onStopWatching}>
           <Text style={watchStyles.stopBtnText}>Stop</Text>
         </TouchableOpacity>
       </View>
@@ -66,6 +66,7 @@ function LiveSessionAction({
   } else if (friendActive) {
     row = (
       <TouchableOpacity
+        accessibilityRole='button'
         style={[
           styles.actionRow,
           watchStyles.availableRow,
@@ -186,6 +187,7 @@ function LiftTogetherAction({
   } else if (friendActive) {
     row = (
       <TouchableOpacity
+        accessibilityRole='button'
         style={[
           styles.actionRow,
           jointStyles.inviteRow,

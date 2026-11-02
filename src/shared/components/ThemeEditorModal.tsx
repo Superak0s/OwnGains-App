@@ -766,6 +766,7 @@ export default function ThemeEditorModal({
             )}
 
             <TouchableOpacity
+              accessibilityRole='button'
               style={[
                 s.createCta,
                 {
@@ -886,6 +887,7 @@ export default function ThemeEditorModal({
             <View style={s.presetRow}>
               {(["light", "dark"] as const).map((p) => (
                 <TouchableOpacity
+                  accessibilityRole='button'
                   key={p}
                   style={[
                     s.presetChip,
@@ -1030,6 +1032,7 @@ export default function ThemeEditorModal({
             )}
 
             <TouchableOpacity
+              accessibilityRole='button'
               style={[
                 s.saveBtn,
                 { backgroundColor: colors.accent },

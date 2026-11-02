@@ -878,6 +878,7 @@ export default function ExerciseAnalytics({
                   accessibilityRole='button'
                   accessibilityLabel='Clear search'
                   style={styles.clearSearchButton}
+                  hitSlop={8}
                   onPress={() => setSearchQuery("")}
                 >
                   <Text style={styles.clearSearchText}>✕</Text>

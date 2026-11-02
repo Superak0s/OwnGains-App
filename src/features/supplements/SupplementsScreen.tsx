@@ -466,6 +466,7 @@ export default function SupplementsScreen(): React.JSX.Element {
                 style={{ marginBottom: 0 }}
               />
               <TouchableOpacity
+                accessibilityRole='button'
                 style={styles.addButton}
                 onPress={() => setShowTemplateSheet(true)}
               >
@@ -556,6 +557,7 @@ export default function SupplementsScreen(): React.JSX.Element {
             const added = alreadyAdded(t);
             return (
               <TouchableOpacity
+                accessibilityRole='button'
                 key={t.name}
                 style={[styles.templateRow, added && styles.templateRowAdded]}
                 onPress={() => !added && openAddSheet(t)}
@@ -583,6 +585,7 @@ export default function SupplementsScreen(): React.JSX.Element {
         </ScrollView>
 
         <TouchableOpacity
+          accessibilityRole='button'
           style={styles.customButton}
           onPress={() => openAddSheet()}
         >
@@ -656,12 +659,14 @@ export default function SupplementsScreen(): React.JSX.Element {
 
         <View style={styles.sheetButtons}>
           <TouchableOpacity
+            accessibilityRole='button'
             style={styles.cancelBtn}
             onPress={() => setShowAddSheet(false)}
           >
             <Text style={styles.cancelBtnText}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity
+            accessibilityRole='button'
             style={[styles.saveBtn, saving && { opacity: 0.6 }]}
             onPress={handleAddCustom}
             disabled={saving}
@@ -696,6 +701,7 @@ export default function SupplementsScreen(): React.JSX.Element {
             <Text style={styles.historyEmptyIcon}>⚠️</Text>
             <Text style={styles.historyEmptyText}>{historyError}</Text>
             <TouchableOpacity
+              accessibilityRole='button'
               style={styles.emptyButton}
               onPress={() => historySupp && void openHistory(historySupp)}
             >

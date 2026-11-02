@@ -27,6 +27,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Importing a skin whose text would be unreadable on its background is refused.
 - Warnings in the light theme use a darker amber that is easier to read.
 - Deleting or cancelling a scheduled workout now asks for confirmation first.
+- Screen readers announce more buttons in Supplements, Friends and the theme editor as buttons, and the search clear and Friends back buttons are easier to tap.
 
 ### Fixed
 
