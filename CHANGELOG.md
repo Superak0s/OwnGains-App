@@ -32,6 +32,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 ### Security
 
 - Server and marketplace addresses with a backslash or a user name before the host (such as `http://evil.example\@192.168.1.10`) are now refused. Before, they could pass as a private network address and send your login over plain HTTP to a public host.
+- The privacy policy now covers Share My Machine Names: what the server stores, who sees it, and when it is deleted.
 
 ### Internal
 
