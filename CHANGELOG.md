@@ -69,6 +69,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - api_audit.py follows the skin marketplace app, fetch wrappers and `fooRouter` routers, so it reports no false gaps.
 - play-upload.js refuses release notes over 500 characters before uploading.
 - publish-ota.js restores `distribution.ts` when interrupted.
+- README names React Native 0.88.1, and SonarQube reads the Jest coverage report.
 
 
 ## [1.1.0] - 2026-10-29

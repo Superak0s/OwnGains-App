@@ -167,7 +167,7 @@ The web copies of the legal text are generated from the in-app screens: [privacy
 
 ### Stack
 
-- **React Native 0.88.0** + **React 19.3.0** on **Expo ~58** (New Architecture, Hermes), written in **TypeScript ~6.0**.
+- **React Native 0.88.1** + **React 19.3.0** on **Expo ~58** (New Architecture, Hermes), written in **TypeScript ~6.0**.
 - **Navigation:** React Navigation v7 (native-stack + a custom animated, collapsible bottom tab bar).
 - **State:** React Context (no Redux): `AuthContext`, `WorkoutContext`, `ThemeContext`, `TabBarContext`, `JointSessionContext`, plus custom hooks under `src/shared/context/hooks`.
 - **Local storage:** **`expo-sqlite`** (WAL mode) behind `src/shared/services/sqliteStorage.tsx`, a key/value + record store. Plus `expo-file-system` for photos and `expo-secure-store` for auth tokens.

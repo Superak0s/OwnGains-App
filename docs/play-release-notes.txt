@@ -1,8 +1,9 @@
-• Drop sets: add drops at lower weights to the same set
+• Drop sets: log drops at lower weights in the same set
 • ▲/▼ arrows step the weight by each machine's step
 • Towel widget for Home: track uses and when to wash
-• Pick a font and text size under Appearance, and share them in skins
-• Redesigned Skins screen with previews in each skin's colors
+• Pick a font and text size, and share them in skins
+• Skins screen redesigned as a gallery with previews
 • Machine name suggestions from you and friends at your gym
 • Effort is now called Reps in reserve (RIR)
-• Fixed a tab bar error when the Friends or Clients tab appeared or went away
+• Delete confirmations and better screen reader support
+• Fixes to sync, sign-in, backups, alarms and offline tracking
