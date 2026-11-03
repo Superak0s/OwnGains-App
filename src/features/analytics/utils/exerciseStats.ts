@@ -380,9 +380,10 @@ const dropTotals = (
   drops: readonly DropSegment[] | undefined,
   isAssisted: boolean,
   bodyWeight: number | null,
-): Pick<ExerciseHistoryEntry, "dropVolume" | "dropReps"> =>
+): Pick<ExerciseHistoryEntry, "dropVolume" | "dropReps" | "drops"> =>
   drops?.length
     ? {
+        drops: [...drops],
         dropVolume: drops.reduce(
           (sum, d) =>
             sum + finite(effectiveLoad(isAssisted, d.weight, bodyWeight)) * finite(d.reps),

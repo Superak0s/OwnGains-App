@@ -36,6 +36,7 @@ import {
   toTimeString,
 } from "@utils/format";
 import ModalSheet from "@shared/components/ModalSheet";
+import { DropChips } from "@shared/components/DropChips";
 import { TrainerLoggedBadge, trainerLoggedLabel } from "@shared/components/TrainerLoggedBadge";
 import UniversalCalendar from "@shared/components/UniversalCalendar";
 import { showToast } from "@shared/components/toast";
@@ -554,10 +555,13 @@ function SessionDetailView({
             }
           >
             <Text style={styles.setLabel}>Set {set.setIndex}</Text>
-            <Text style={styles.setDetail}>
-              {kgToDisplay(set.weight ?? 0, unitOf(group.exerciseName))}{" "}
-              {unitOf(group.exerciseName)} × {set.reps ?? 0}
-            </Text>
+            <View style={styles.setDetailColumn}>
+              <Text style={styles.setDetail}>
+                {kgToDisplay(set.weight ?? 0, unitOf(group.exerciseName))}{" "}
+                {unitOf(group.exerciseName)} × {set.reps ?? 0}
+              </Text>
+              <DropChips drops={set.drops} unit={unitOf(group.exerciseName)} />
+            </View>
             <Text style={styles.setTime}>
               {formatDateTime(set.endTime, {
                 month: "short",
@@ -1572,11 +1576,11 @@ const makeStyles = (colors: ThemeColors) =>
       borderTopColor: colors.surfaceBorder,
     },
     setLabel: { fontSize: 13, color: colors.textMuted, width: 50 },
+    setDetailColumn: { flex: 1 },
     setDetail: {
       fontSize: 14,
       fontWeight: "600",
       color: colors.textPrimary,
-      flex: 1,
     },
     setTime: { fontSize: 12, color: colors.textSecondary },
     modalDescription: {

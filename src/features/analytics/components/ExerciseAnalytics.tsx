@@ -71,6 +71,7 @@ import {
 import { STORAGE_KEYS } from "@shared/services/storage";
 import { useWorkoutPick } from "@shared/context/WorkoutContext";
 import { KG_TO_LBS, kgToDisplay } from "@features/workout/utils";
+import { DropChips } from "@shared/components/DropChips";
 import {
   useExerciseSelection,
   setSelectedExercise,
@@ -1042,6 +1043,11 @@ export default function ExerciseAnalytics({
                   <Text style={styles.setCardStatLabel}>Reps</Text>
                 </View>
               </View>
+              <DropChips
+                drops={set.drops}
+                unit={weightUnit}
+                style={styles.setCardDrops}
+              />
               <Text style={styles.setCardDay}>{dayLabel(set.dayNumber)}</Text>
             </View>
           ))}
@@ -1372,6 +1378,7 @@ const makeStyles = (colors: ThemeColors) =>
       marginBottom: 4,
     },
     setCardStatLabel: { fontSize: 12, color: colors.textSecondary },
+    setCardDrops: { justifyContent: "center" },
     setCardDay: {
       fontSize: 12,
       color: colors.textMuted,

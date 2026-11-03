@@ -6,6 +6,8 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-03
+
 ### Added
 
 - A Towel widget for Home shows the towel you're using, with its photo and how many workouts it has been used for. Pick how many uses each towel gets before it needs a wash, and the widget turns red when it's time. Every workout you finish counts as one use, and Washed resets the count. Towels and their photos are kept on your phone only.
@@ -13,7 +15,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - Friends who train at the same gym can share their machine names: turn on Share My Machine Names for a friend in Friends, and your program's machines show up as one-tap suggestions in their Exercise Settings. The list is sent again after each workout you finish. Needs a server update.
 - Settings → Appearance → Theme lets you pick a font (Serif, Mono, Condensed or Casual) and a text size from 90% to 130%, on top of your phone's own font size. Skins can include them: previewing a skin shows its font, applying keeps it, and publishing or exporting can include yours. The marketplace keeps a skin's font once its server is updated.
 - The set form has ▲ and ▼ arrows next to the weight that move it by the machine's weight step. Set the step for each machine with ✏️ in Exercise Settings (2.5 kg or 5 lbs when none is set). On an empty field the first press starts from last time's weight.
-- Drop sets: tap ↘ Add drop on the set form to log more weight × reps at a lower weight in the same set. Each new drop starts one weight step below the last. Drops count toward volume and total reps, and show when you tap the set. Needs a server update to sync.
+- Drop sets: tap ↘ Add drop on the set form to log more weight × reps at a lower weight in the same set. Each new drop starts one weight step below the last. Drops count toward volume and total reps, and show when you tap the set, in workout details on Home and in Friends, in Analytics, in a friend's live session and in Settings → workout history. Needs a server update to sync.
 
 ### Changed
 
@@ -54,6 +56,7 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - When a device on your Wi-Fi advertises a server with an internet address, the server picker now says so and asks you to use it only if you recognise the address.
 - Trainer access now also refuses account routes written with different letter case, encoded characters or extra path segments, and never sends a client's requests to another server.
 - Signing out now keeps trying to stop message notifications for that account on this phone when the server couldn't be reached at the time.
+- Skin links and marketplace addresses containing `?` or `#` are now refused. Before, a crafted skin link could make the app send a signed-in request to any route on your own server.
 
 ### Internal
 
@@ -70,7 +73,6 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 - play-upload.js refuses release notes over 500 characters before uploading.
 - publish-ota.js restores `distribution.ts` when interrupted.
 - README names React Native 0.88.1, and SonarQube reads the Jest coverage report.
-
 
 ## [1.1.0] - 2026-10-29
 

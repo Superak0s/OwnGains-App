@@ -53,6 +53,9 @@ export function normalizeMarketplaceUrl(url: string): string {
   const parsed = parseStrictUrl(trimmed)
   if (!parsed || (parsed.scheme !== "http" && parsed.scheme !== "https"))
     throw new Error("Enter a full address starting with https://")
+  // Request paths are appended to this, so a query or fragment would let a deep link aim an
+  // authenticated request at any route on the user's own server.
+  if (/[?#]/.test(parsed.rest)) throw new Error("Enter the marketplace address only, with no ? or #")
   if (parsed.scheme === "http" && !isPrivateHost(parsed.hostname))
     throw new Error("Use https:// for a marketplace on the internet")
   return trimmed

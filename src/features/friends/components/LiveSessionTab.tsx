@@ -163,6 +163,9 @@ const SetBubble = React.memo(function SetBubble({
             {weightUnit}
           </Text>
           <Text style={bbl.detailText}>×{setData?.reps ?? 0}</Text>
+          {!!setData?.drops?.length && (
+            <Text style={bbl.detailText}>↘{setData.drops.length}</Text>
+          )}
         </View>
       )}
       {done && (

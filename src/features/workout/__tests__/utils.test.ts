@@ -14,6 +14,7 @@ import {
   getPartnerStatusText,
   editMachineMeta,
   stepWeight,
+  formatDrops,
   parseDrops,
   resolveExerciseMuscles,
   exercisesForMuscle,
@@ -539,6 +540,25 @@ describe("stepWeight", () => {
     expect(stepWeight("", "kg", 2.5, 1, "57.5")).toBe("60");
     expect(stepWeight("", "kg", 2.5, 1)).toBe("2.5");
     expect(stepWeight("1", "kg", 2.5, -1)).toBe("0");
+  });
+});
+
+describe("formatDrops", () => {
+  it("lists each drop in the viewer's unit, reading server strings as numbers", () => {
+    expect(
+      formatDrops(
+        [
+          { weight: 80, reps: 6 },
+          { weight: "60" as unknown as number, reps: "5" as unknown as number },
+        ],
+        "kg",
+      ),
+    ).toBe("↘ 80kg × 6 ↘ 60kg × 5");
+    expect(formatDrops([{ weight: 10, reps: 3 }], "lbs")).toBe("↘ 22.05lbs × 3");
+  });
+
+  it("is empty for a straight set", () => {
+    expect(formatDrops(undefined, "kg")).toBe("");
   });
 });
 

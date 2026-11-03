@@ -12,7 +12,7 @@ jest.mock("@shared/services/config", () => ({
 import { setSessionRefresher } from "@shared/services/authenticatedFetch"
 import { getServerUrl } from "@shared/services/config"
 import { tokenStorage } from "@shared/services/tokenStorage"
-import { getSkin, rateSkin, recordDownload, setMarketplaceUrl } from "../marketplace"
+import { getSkin, normalizeMarketplaceUrl, rateSkin, recordDownload, setMarketplaceUrl } from "../marketplace"
 
 const BASE = "https://owngains.superak0s.com/marketplace"
 
@@ -105,4 +105,17 @@ describe("marketplace client", () => {
   it("refuses an insecure marketplace URL", async () => {
     await expect(setMarketplaceUrl("http://example.com")).rejects.toThrow(/https/i)
   })
+})
+
+describe("normalizeMarketplaceUrl", () => {
+  it("keeps a marketplace under a path", () => {
+    expect(normalizeMarketplaceUrl(`${BASE}/`)).toBe(BASE)
+  })
+
+  it.each(["https://owngains.superak0s.com/api/users/me#", "https://owngains.superak0s.com/api/users/me?x="])(
+    "rejects %s, which would retarget requests at another route",
+    (url) => {
+      expect(() => normalizeMarketplaceUrl(url)).toThrow()
+    },
+  )
 })

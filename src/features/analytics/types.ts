@@ -1,3 +1,5 @@
+import type { DropSegment } from "@shared/types";
+
 export type { CompletedDays } from "@shared/types";
 
 /** The fields of a plan exercise the analytics code actually reads. */
@@ -29,6 +31,7 @@ export interface ExerciseHistoryEntry {
   load: number;
   /** Load × reps of a drop set's drops, on top of `load` × `reps`. */
   dropVolume?: number;
+  drops?: DropSegment[];
   dropReps?: number;
   dayNumber: number;
   setNumber: number;

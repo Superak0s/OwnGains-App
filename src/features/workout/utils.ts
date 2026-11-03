@@ -123,6 +123,16 @@ export function stepWeight(
   return String(Math.round(next * 100) / 100);
 }
 
+/** A drop set's drops as "↘ 80kg × 6 ↘ 60kg × 5", or "" for a straight set. */
+export const formatDrops = (
+  drops: readonly DropSegment[] | undefined,
+  unit: "kg" | "lbs",
+): string =>
+  (drops ?? [])
+    // Shared sessions can arrive with MySQL decimals serialized as strings.
+    .map((d) => `↘ ${kgToDisplay(Number(d.weight) || 0, unit)}${unit} × ${Number(d.reps) || 0}`)
+    .join(" ");
+
 export interface DropDraft {
   weight: string;
   reps: string;

@@ -8,7 +8,8 @@ import type { GroupedExercise, SetTiming } from "@shared/types";
 import { formatTime } from "@utils/timeEstimation";
 import { formatClockTime, formatDate } from "@utils/format";
 import { dayLabel } from "@utils/dayCarryOver";
-import { kgToDisplay } from "@features/workout/utils";
+import { formatDrops, kgToDisplay } from "@features/workout/utils";
+import { DropChips } from "@shared/components/DropChips";
 
 type WeightUnit = "kg" | "lbs";
 
@@ -153,12 +154,15 @@ function SetRow({
     <View
       style={[styles.setRow, isFirst && styles.setRowFirst]}
       accessible
-      accessibilityLabel={[`Set ${set.setIndex + 1}`, line, duration]
+      accessibilityLabel={[`Set ${set.setIndex + 1}`, line, formatDrops(set.drops, weightUnit), duration]
         .filter(Boolean)
         .join(", ")}
     >
       <Text style={styles.setRowIndex}>{set.setIndex + 1}</Text>
-      <Text style={styles.setRowMain}>{line}</Text>
+      <View style={styles.setRowMainColumn}>
+        <Text style={styles.setRowMain}>{line}</Text>
+        <DropChips drops={set.drops} unit={weightUnit} />
+      </View>
       <Text style={styles.setRowDuration}>{duration}</Text>
     </View>
   );
@@ -244,8 +248,8 @@ const makeStyles = (colors: ThemeColors) =>
       fontWeight: "700",
       color: colors.textMuted,
     },
+    setRowMainColumn: { flex: 1 },
     setRowMain: {
-      flex: 1,
       fontSize: 15,
       fontWeight: "600",
       color: colors.textPrimary,
