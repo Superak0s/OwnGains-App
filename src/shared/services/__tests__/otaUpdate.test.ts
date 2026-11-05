@@ -8,6 +8,8 @@ const mockUpdates = {
 const mockDistribution = { GITHUB_BUILD: false }
 jest.mock("expo-updates", () => mockUpdates)
 jest.mock("@shared/distribution", () => mockDistribution)
+const mockShowToast = jest.fn()
+jest.mock("@shared/components/toast", () => ({ showToast: mockShowToast }))
 
 function load(): typeof import("../otaUpdate") {
   let mod!: typeof import("../otaUpdate")
@@ -31,6 +33,20 @@ describe("fetchOtaUpdate", () => {
     await fetchOtaUpdate()
     expect(mockUpdates.fetchUpdateAsync).toHaveBeenCalledTimes(1)
     expect(mockUpdates.checkForUpdateAsync).toHaveBeenCalledTimes(1)
+  })
+
+  it("tells the user while downloading and when done", async () => {
+    await load().fetchOtaUpdate()
+    expect(mockShowToast.mock.calls.map(([m]) => m)).toEqual([
+      "Downloading app update…",
+      "Update downloaded. It installs next time you reopen the app.",
+    ])
+  })
+
+  it("downloads once when checks overlap", async () => {
+    const { fetchOtaUpdate } = load()
+    await Promise.all([fetchOtaUpdate(), fetchOtaUpdate()])
+    expect(mockUpdates.fetchUpdateAsync).toHaveBeenCalledTimes(1)
   })
 
   it("keeps the native play channel on Play builds", async () => {
@@ -74,8 +90,12 @@ describe("applyOtaOnResume", () => {
   it("waits while a workout is in progress", async () => {
     const mod = load()
     await mod.fetchOtaUpdate()
+    mockShowToast.mockClear()
     expect(await mod.applyOtaOnResume(true)).toBe(false)
+    await mod.applyOtaOnResume(true)
     expect(mockUpdates.reloadAsync).not.toHaveBeenCalled()
+    expect(mockShowToast).toHaveBeenCalledTimes(1)
+    expect(mockShowToast).toHaveBeenCalledWith("Update pending. It installs after your workout.")
   })
 
   it("does not reload without a download", async () => {

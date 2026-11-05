@@ -2,18 +2,30 @@ import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 import * as Updates from "expo-updates";
 import { GITHUB_BUILD } from "@shared/distribution";
+import { showToast } from "@shared/components/toast";
 
 let downloaded = false;
+let pendingShown = false;
+let inFlight: Promise<void> | null = null;
 
 /** Downloads a newer JS bundle from the update server. It runs on the next cold start or resume. */
-export async function fetchOtaUpdate() {
+export function fetchOtaUpdate(): Promise<void> {
+  inFlight ??= download().finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
+}
+
+async function download() {
   if (!Updates.isEnabled || downloaded) return;
   // The APK and AAB bundles differ (Ko-fi link), and native config sends "play", the channel safe for both.
   if (GITHUB_BUILD) Updates.setUpdateRequestHeadersOverride({ "expo-channel-name": "github" });
   const { isAvailable } = await Updates.checkForUpdateAsync();
   if (!isAvailable) return;
+  showToast("Downloading app update…");
   await Updates.fetchUpdateAsync();
   downloaded = true;
+  showToast("Update downloaded. It installs next time you reopen the app.");
 }
 
 /**
@@ -21,8 +33,13 @@ export async function fetchOtaUpdate() {
  * @returns Whether it reloaded.
  */
 export async function applyOtaOnResume(workoutActive: boolean) {
+  if (!downloaded) return false;
   // A reload drops in-memory workout state such as the rest timer and an unsaved set.
-  if (!downloaded || workoutActive) return false;
+  if (workoutActive) {
+    if (!pendingShown) showToast("Update pending. It installs after your workout.");
+    pendingShown = true;
+    return false;
+  }
   await Updates.reloadAsync();
   return true;
 }
