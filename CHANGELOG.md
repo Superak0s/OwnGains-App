@@ -6,6 +6,11 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Fixed
+
+- Adding or editing an exercise shows one suggestion box at a time instead of up to three: a misspelled muscle first, then the browsed muscle's exercises, then "Did you mean", then similar exercises to swap to.
+- Muscle fields no longer ask "Did you mean" about a muscle you already spelled right, such as after typing a comma to add another one.
+
 ## [1.2.0] - 2026-11-03
 
 ### Added

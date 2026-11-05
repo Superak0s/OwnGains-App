@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { View, TouchableOpacity } from "react-native";
 import { Text, TextInput } from "@shared/components/Text";
 import { useTheme } from "@shared/context/ThemeContext";
-import { checkForTypo } from "@utils/exerciseMatching";
+import { replaceLastMuscle, suggestMuscles } from "@utils/exerciseMatching";
 import type { makeStyles } from "../WorkoutScreen";
 
 type MuscleInputProps = {
@@ -11,6 +11,7 @@ type MuscleInputProps = {
   readonly value: string;
   readonly onChange: (text: string) => void;
   readonly allMuscleGroups: string[];
+  readonly showSuggestions: boolean;
   readonly styles: ReturnType<typeof makeStyles>;
 };
 
@@ -20,18 +21,13 @@ export function MuscleInput({
   value,
   onChange,
   allMuscleGroups,
+  showSuggestions,
   styles,
 }: MuscleInputProps): React.JSX.Element {
   const { colors } = useTheme();
-  // A picked suggestion is the user's answer, so it must not be second-guessed
-  // by re-running the typo check against the value it just wrote.
-  const [accepted, setAccepted] = useState<string>("");
   const suggestions = useMemo(
-    () =>
-      value.trim() && value !== accepted
-        ? checkForTypo(value, allMuscleGroups).suggestions
-        : [],
-    [value, accepted, allMuscleGroups],
+    () => (showSuggestions ? suggestMuscles(value, allMuscleGroups) : []),
+    [value, allMuscleGroups, showSuggestions],
   );
 
   return (
@@ -56,10 +52,7 @@ export function MuscleInput({
               style={styles.suggestionButton}
               accessibilityRole="button"
               accessibilityLabel={`Use ${s.name}`}
-              onPress={() => {
-                onChange(s.name);
-                setAccepted(s.name);
-              }}
+              onPress={() => onChange(replaceLastMuscle(value, s.name))}
             >
               <Text style={styles.suggestionText}>{s.name}</Text>
               <Text style={styles.suggestionMatch}>

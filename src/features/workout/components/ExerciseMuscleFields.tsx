@@ -10,6 +10,7 @@ import {
 import { Text } from "@shared/components/Text";
 import { Chip, useUi } from "@shared/components/ui";
 import { muscleLabel, parseMuscleList } from "@utils/exerciseDb";
+import { suggestMuscles } from "@utils/exerciseMatching";
 import { BROWSE_MUSCLES, muscleDisplayName } from "../utils";
 import { MuscleInput } from "./MuscleInput";
 import type { makeStyles } from "../WorkoutScreen";
@@ -56,6 +57,20 @@ export function MuscleBrowseChips({
         })}
       </ScrollView>
     </View>
+  );
+}
+
+/** Whether the open muscle fields show a correction, which outranks the exercise suggestion lists. */
+export function hasMuscleCorrection(
+  expanded: boolean,
+  primary: string,
+  secondary: string,
+  allMuscleGroups: string[],
+): boolean {
+  return (
+    expanded &&
+    (suggestMuscles(primary, allMuscleGroups).length > 0 ||
+      suggestMuscles(secondary, allMuscleGroups).length > 0)
   );
 }
 
@@ -106,6 +121,7 @@ export function AdvancedMuscles({
             value={primary}
             onChange={onPrimaryChange}
             allMuscleGroups={allMuscleGroups}
+            showSuggestions
             styles={styles}
           />
           <MuscleInput
@@ -114,6 +130,7 @@ export function AdvancedMuscles({
             value={secondary}
             onChange={onSecondaryChange}
             allMuscleGroups={allMuscleGroups}
+            showSuggestions={suggestMuscles(primary, allMuscleGroups).length === 0}
             styles={styles}
           />
         </>

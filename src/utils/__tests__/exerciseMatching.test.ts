@@ -1,6 +1,8 @@
 import {
   CANONICAL_MUSCLE_GROUPS,
   checkForTypo,
+  replaceLastMuscle,
+  suggestMuscles,
   getAllExerciseNames,
   getAllMuscleGroups,
   getCanonicalName,
@@ -217,5 +219,23 @@ describe("checkForTypo", () => {
       isLikelyTypo: false,
       suggestions: [],
     });
+  });
+});
+
+describe("suggestMuscles", () => {
+  const all = [...CANONICAL_MUSCLE_GROUPS];
+
+  it("does not suggest a muscle the user already spelled correctly", () => {
+    expect(suggestMuscles("Chest,", all)).toEqual([]);
+    expect(suggestMuscles("Chest, Triceps", all)).toEqual([]);
+  });
+
+  it("checks only the muscle being typed", () => {
+    expect(suggestMuscles("Chest, Tricep", all)[0]?.name).toBe("Triceps");
+  });
+
+  it("swaps the typed entry for the picked one", () => {
+    expect(replaceLastMuscle("Chest , Tricep", "Triceps")).toBe("Chest, Triceps");
+    expect(replaceLastMuscle("Bicep", "Biceps")).toBe("Biceps");
   });
 });

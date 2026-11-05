@@ -214,5 +214,13 @@ export const checkForTypo = (
   };
 };
 
-export const getCanonicalName = (name: string, allNames: string[]): string =>
+/** Typo suggestions for the muscle being typed, the last entry of a comma-separated list. */
+export const suggestMuscles = (value: string, allMuscles: string[]) =>
+  checkForTypo(value.split(",").pop() ?? "", allMuscles).suggestions;
+
+/** Replaces the last entry of a comma-separated muscle list with a picked suggestion. */
+export const replaceLastMuscle = (value: string, muscle: string) =>
+  [...value.split(",").slice(0, -1).map((m) => m.trim()), muscle].join(", ");
+
+export const getCanonicalName =(name: string, allNames: string[]): string =>
   findExactMatch(name, allNames) ?? name;

@@ -147,6 +147,7 @@ import { ExerciseCard, SET_GAP } from "./components/ExerciseCard";
 import {
   MuscleBrowseChips,
   AdvancedMuscles,
+  hasMuscleCorrection,
 } from "./components/ExerciseMuscleFields";
 import {
   SuggestionList,
@@ -708,7 +709,8 @@ function WorkoutScreenBody({
   const deferredExerciseName = useDeferredValue(newExerciseName);
   const nameSuggestions = useMemo<SuggestionItem[]>(() => {
     const query = deferredExerciseName.trim();
-    if (!showEditNameModal || !query) return [];
+    if (!showEditNameModal || !query || query === editingExercise?.exercise.name)
+      return [];
     const seen = new Set([normalizeExerciseName(query)]);
     return [
       ...checkForTypo(query, allExerciseNames).suggestions.map((s) => ({
@@ -722,7 +724,7 @@ function WorkoutScreenBody({
       seen.add(key);
       return true;
     });
-  }, [deferredExerciseName, showEditNameModal, allExerciseNames]);
+  }, [deferredExerciseName, showEditNameModal, allExerciseNames, editingExercise]);
 
   const musclesForEditedName = (name: string) => {
     if (!editingExercise) return null;
@@ -2602,7 +2604,12 @@ Note: ${existing.note}`;
             style={styles.inputGroup}
             labelStyle={styles.inputLabel}
           />
-          {browseMuscle ? (
+          {hasMuscleCorrection(
+            showAdvancedEdit,
+            newPrimaryMuscles,
+            newSecondaryMuscles,
+            allMuscleGroups,
+          ) ? null : browseMuscle ? (
             <SuggestionList
               key={`muscle:${browseMuscle}`}
               title={`${muscleDisplayName(browseMuscle)} exercises:`}
@@ -2610,23 +2617,22 @@ Note: ${existing.note}`;
               onPick={handlePickEditSuggestion}
               styles={styles}
             />
+          ) : nameSuggestions.length > 0 ? (
+            <SuggestionList
+              key={`name:${newExerciseName}`}
+              title='💡 Did you mean:'
+              items={nameSuggestions}
+              onPick={handlePickEditSuggestion}
+              styles={styles}
+            />
           ) : (
-            <>
-              <SuggestionList
-                key={`name:${newExerciseName}`}
-                title='💡 Did you mean:'
-                items={nameSuggestions}
-                onPick={handlePickEditSuggestion}
-                styles={styles}
-              />
-              <SuggestionList
-                key={`swap:${newPrimaryMuscles}`}
-                title='🔄 Swap for similar exercise:'
-                items={swapSuggestions.map((name) => ({ name }))}
-                onPick={handlePickEditSuggestion}
-                styles={styles}
-              />
-            </>
+            <SuggestionList
+              key={`swap:${newPrimaryMuscles}`}
+              title='🔄 Swap for similar exercise:'
+              items={swapSuggestions.map((name) => ({ name }))}
+              onPick={handlePickEditSuggestion}
+              styles={styles}
+            />
           )}
           <AdvancedMuscles
             expanded={showAdvancedEdit}
@@ -3020,7 +3026,12 @@ Note: ${existing.note}`;
             style={styles.inputGroup}
             labelStyle={styles.inputLabel}
           />
-          {browseMuscle ? (
+          {hasMuscleCorrection(
+            showAdvancedEdit,
+            newExercise.primaryMuscles,
+            newExercise.secondaryMuscles,
+            allMuscleGroups,
+          ) ? null : browseMuscle ? (
             <SuggestionList
               key={`muscle:${browseMuscle}`}
               title={`${muscleDisplayName(browseMuscle)} exercises:`}

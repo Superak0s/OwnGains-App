@@ -1,0 +1,2 @@
+• Adding or editing an exercise shows one suggestion box at a time, most important first
+• Muscle fields no longer ask "Did you mean" about a muscle you already spelled right
