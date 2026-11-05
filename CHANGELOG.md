@@ -6,6 +6,8 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-05
+
 ### Added
 
 - A short message tells you when an app update is downloading, when it has downloaded, and when it is waiting for your workout to finish before it installs.
@@ -14,6 +16,10 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 - Adding or editing an exercise shows one suggestion box at a time instead of up to three: a misspelled muscle first, then the browsed muscle's exercises, then "Did you mean", then similar exercises to swap to.
 - Muscle fields no longer ask "Did you mean" about a muscle you already spelled right, such as after typing a comma to add another one.
+
+### Internal
+
+- `publish-ota.js` points the sourcemap upload at the native sentry-cli binary, so OTA releases no longer fail on Windows.
 
 ## [1.2.0] - 2026-11-03
 

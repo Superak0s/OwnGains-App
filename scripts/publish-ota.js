@@ -28,6 +28,8 @@ const die = (msg) => {
 };
 if (!fs.existsSync(KEY)) die(`no signing key at ${KEY}. Generate it with npx expo-updates codesigning:generate.`);
 if (!process.env.SENTRY_AUTH_TOKEN && !noSourcemaps) die("SENTRY_AUTH_TOKEN unset. Crash reports from this update would be unreadable (--no-sourcemaps).");
+// sentry-expo-upload-sourcemaps spawns the node shim bin/sentry-cli without a shell, which is ENOENT on Windows.
+process.env.SENTRY_CLI_EXECUTABLE ||= require("@sentry/cli").SentryCli.getPath();
 
 const run = (cmd) => execSync(cmd, { cwd: ROOT, stdio: "inherit" });
 const { exp } = getConfig(ROOT, { isPublicConfig: true, skipSDKVersionRequirement: true });
