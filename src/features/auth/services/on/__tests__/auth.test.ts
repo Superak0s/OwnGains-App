@@ -11,6 +11,7 @@ jest.mock("@shared/services/config", () => ({
 jest.mock("@shared/services/tokenStorage", () => ({
   tokenStorage: { set: jest.fn().mockResolvedValue(undefined), get: jest.fn() },
   refreshTokenStorage: { get: jest.fn(), set: jest.fn() },
+  singleRenewal: (run: () => Promise<unknown>) => run(),
 }))
 
 jest.mock("@shared/services/sqliteStorage", () => ({

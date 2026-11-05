@@ -1,0 +1,1 @@
+• Installing an app update no longer signs you out of your account.

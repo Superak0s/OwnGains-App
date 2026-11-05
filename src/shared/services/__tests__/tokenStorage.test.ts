@@ -99,3 +99,12 @@ it("a read that resolves after a clear does not bring the token back", async () 
   expect(await pending).toBe(null);
   expect(await tokenStorage.get()).toBe(null);
 });
+
+it("shares one refresh between concurrent callers", async () => {
+  const { singleRenewal } = require("../tokenStorage");
+  const run = jest.fn(async () => "t");
+  expect(await Promise.all([singleRenewal(run), singleRenewal(run)])).toEqual(["t", "t"]);
+  expect(run).toHaveBeenCalledTimes(1);
+  expect(await singleRenewal(run)).toBe("t");
+  expect(run).toHaveBeenCalledTimes(2);
+});

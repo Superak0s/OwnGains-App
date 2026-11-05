@@ -3,6 +3,7 @@ import { AppState } from "react-native";
 import * as Updates from "expo-updates";
 import { GITHUB_BUILD } from "@shared/distribution";
 import { showToast } from "@shared/components/toast";
+import { holdRenewals } from "@shared/services/tokenStorage";
 
 let downloaded = false;
 let pendingShown = false;
@@ -40,7 +41,13 @@ export async function applyOtaOnResume(workoutActive: boolean) {
     pendingShown = true;
     return false;
   }
-  await Updates.reloadAsync();
+  const release = await holdRenewals();
+  try {
+    await Updates.reloadAsync();
+  } catch (error) {
+    release();
+    throw error;
+  }
   return true;
 }
 

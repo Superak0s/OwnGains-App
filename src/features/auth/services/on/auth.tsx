@@ -4,7 +4,7 @@ import {
   removeStorageItem,
 } from "@shared/services/sqliteStorage"
 import { assertSecureTransport, getServerUrl } from "@shared/services/config"
-import { refreshTokenStorage, tokenStorage } from "@shared/services/tokenStorage"
+import { refreshTokenStorage, singleRenewal, tokenStorage } from "@shared/services/tokenStorage"
 import { buildDeviceBackup } from "@utils/deviceBackup"
 import { apiCall, isCredentialRejection, parseApiResponse } from "@shared/services/apiClient"
 import { ApiError, ServerUnreachableError } from "@shared/services/apiError"
@@ -59,7 +59,11 @@ async function unauthenticatedCall<T>(
   }
 }
 
-async function renewTokens(timeoutMs: number): Promise<string | null> {
+function renewTokens(timeoutMs: number): Promise<string | null> {
+  return singleRenewal(() => rotateTokens(timeoutMs))
+}
+
+async function rotateTokens(timeoutMs: number): Promise<string | null> {
   try {
     // A session without a refresh token can't be renewed: sign in again.
     const stored = await refreshTokenStorage.get()

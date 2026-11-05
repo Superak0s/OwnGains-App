@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store"
 import { log, metric } from "./crashReporting"
+import { ServerUnreachableError } from "./apiErrorClasses"
 
 const SECURE_TOKEN_KEY = "auth_token"
 const SECURE_REFRESH_TOKEN_KEY = "auth_refresh_token"
@@ -90,3 +91,32 @@ export const tokenStorage = {
  * nowhere else.
  */
 export const refreshTokenStorage = refreshToken
+
+let renewal: Promise<unknown> | null = null
+let renewalsHeld = false
+
+/**
+ * Runs one token refresh at a time and shares it with concurrent callers.
+ * Refresh tokens rotate, so presenting one twice reads as theft to the server
+ * and revokes the whole session.
+ */
+export function singleRenewal<T>(run: () => Promise<T>): Promise<T> {
+  if (renewalsHeld) return Promise.reject(new ServerUnreachableError())
+  renewal ??= run().finally(() => {
+    renewal = null
+  })
+  return renewal as Promise<T>
+}
+
+/**
+ * Waits for a refresh in flight and refuses new ones until release is called.
+ * A JS reload mid-refresh loses the rotated token the server already issued.
+ * @returns release
+ */
+export async function holdRenewals(): Promise<() => void> {
+  renewalsHeld = true
+  await renewal?.catch(() => {})
+  return () => {
+    renewalsHeld = false
+  }
+}

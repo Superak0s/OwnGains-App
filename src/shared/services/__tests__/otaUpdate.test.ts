@@ -98,6 +98,27 @@ describe("applyOtaOnResume", () => {
     expect(mockShowToast).toHaveBeenCalledWith("Update pending. It installs after your workout.")
   })
 
+  it("waits for a token refresh in flight before reloading, and blocks new ones", async () => {
+    let mod!: typeof import("../otaUpdate")
+    let tokens!: typeof import("../tokenStorage")
+    jest.isolateModules(() => {
+      mod = require("../otaUpdate")
+      tokens = require("../tokenStorage")
+    })
+    await mod.fetchOtaUpdate()
+    let finishRefresh!: () => void
+    void tokens.singleRenewal(() => new Promise<void>((r) => (finishRefresh = r)))
+
+    const applying = mod.applyOtaOnResume(false)
+    await Promise.resolve()
+    expect(mockUpdates.reloadAsync).not.toHaveBeenCalled()
+    await expect(tokens.singleRenewal(async () => "late")).rejects.toThrow()
+
+    finishRefresh()
+    expect(await applying).toBe(true)
+    expect(mockUpdates.reloadAsync).toHaveBeenCalledTimes(1)
+  })
+
   it("does not reload without a download", async () => {
     expect(await load().applyOtaOnResume(false)).toBe(false)
     expect(mockUpdates.reloadAsync).not.toHaveBeenCalled()

@@ -6,6 +6,10 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+### Fixed
+
+- Installing an app update when you return to the app no longer signs you out. The restart used to interrupt a sign-in renewal, and the server then ended the session.
+
 ## [1.2.1] - 2026-11-05
 
 ### Added
