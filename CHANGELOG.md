@@ -6,9 +6,16 @@ Add an entry under **Unreleased** in the same change that introduces it. At rele
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-11-06
+
 ### Fixed
 
 - Installing an app update when you return to the app no longer signs you out. The restart used to interrupt a sign-in renewal, and the server then ended the session.
+
+### Internal
+
+- `release.sh --no-test` labels and times each local check (ESLint, a11y lint, typecheck, tests), and prints only ESLint's summary line, with the full report in `release/eslint.log`.
+- `release.sh` shows Gradle's progress bar again in a terminal (its output is piped to the log, so Gradle had switched to plain output).
 
 ## [1.2.1] - 2026-11-05
 

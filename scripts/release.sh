@@ -23,6 +23,8 @@ if grep -qi microsoft /proc/version 2>/dev/null; then
     fi
 fi
 
+# stdout is piped through tee below, so Gradle would otherwise fall back to plain output without its progress bar.
+[ -t 1 ] && export GRADLE_OPTS="${GRADLE_OPTS:+$GRADLE_OPTS }-Dorg.gradle.console=rich"
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
     B=$'\e[1m' DIM=$'\e[2m' RED=$'\e[31m' GRN=$'\e[32m' YEL=$'\e[33m' CYN=$'\e[36m' R=$'\e[0m'
 else
@@ -552,12 +554,30 @@ if [ "$RUN_ACT" = true ]; then
     (cd "$SRC" && act push -j check --rm --pull=false -P ubuntu-latest=catthehacker/ubuntu:act-latest)
     ok "CI (act)"
 else
-    info "Verifying: lint, a11y lint, typecheck$([ "$SKIP_TESTS" = true ] && echo ' (tests skipped by --no-test)' || echo ', tests')"
-    npm run lint
-    npm run lint:a11y
-    npx tsc --noEmit
-    [ "$SKIP_TESTS" = true ] || npm test -- --silent
-    ok "Checks"
+    check() {
+        local name="$1" start=$SECONDS
+        shift
+        info "$name: $*"
+        "$@"
+        ok "$name ($((SECONDS - start))s)"
+    }
+    # The warning backlog runs to hundreds of lines, so only the summary is printed unless there are errors.
+    ESLINT_REPORT="$SRC/release/eslint.log"
+    lint_start=$SECONDS
+    info "ESLint: npm run lint (full report in $ESLINT_REPORT)"
+    if ! npm run lint --silent > "$ESLINT_REPORT" 2>&1; then
+        cat "$ESLINT_REPORT"
+        die "ESLint found errors."
+    fi
+    lint_summary="$(grep -m1 '[0-9] problems\? (' "$ESLINT_REPORT" | sed 's/^[^0-9]*//')"
+    ok "ESLint ($((SECONDS - lint_start))s): ${lint_summary:-no problems}"
+    check "a11y lint" npm run lint:a11y
+    check "Typecheck" npx tsc --noEmit
+    if [ "$SKIP_TESTS" = true ]; then
+        info "Tests skipped (--no-test)"
+    else
+        check "Tests" npm test -- --silent
+    fi
 fi
 
 # xlsx is pinned to a SheetJS CDN tarball rather than the npm registry, so

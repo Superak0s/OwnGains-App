@@ -2,7 +2,7 @@
   "expo": {
     "name": "OwnGains",
     "slug": "owngains",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "orientation": "portrait",
     "icon": "./assets/adaptive-icon.png",
     "scheme": "owngains",
@@ -100,7 +100,7 @@
       }
     },
     "android": {
-      "versionCode": 20,
+      "versionCode": 21,
       "allowBackup": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon-foreground.png",
